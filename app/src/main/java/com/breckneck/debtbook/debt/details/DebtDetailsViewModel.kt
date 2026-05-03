@@ -111,6 +111,7 @@ class DebtDetailsViewModel @Inject constructor(
                                 Log.e(TAG, "New human id is ${_humanId}")
                             } catch (e: Exception) {
                                 Log.e(TAG, e.stackTraceToString())
+                                _screenState.value = ScreenState.EMPTY
                             }
                         } else {
                             getDebtInfo()
@@ -153,9 +154,14 @@ class DebtDetailsViewModel @Inject constructor(
     private fun getAllDebts() {
         viewModelScope.launch {
             try {
+                val id = humanId ?: run {
+                    Log.e(TAG, "humanId is null, cannot load debts")
+                    _screenState.value = ScreenState.EMPTY
+                    return@launch
+                }
                 val debts = withContext(Dispatchers.IO) {
-                    getAllDebtsByIdUseCase.execute(id = humanId!!)
-                        .also { Log.e(TAG, "Open Debt Details of Human id = ${humanId}") }
+                    getAllDebtsByIdUseCase.execute(id = id)
+                        .also { Log.e(TAG, "Open Debt Details of Human id = $id") }
                 }
                 if (debts.isNotEmpty()) {
                     _initialDebtList.value = debts
@@ -167,6 +173,7 @@ class DebtDetailsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, e.stackTraceToString())
+                _screenState.value = ScreenState.EMPTY
             }
         }
     }
@@ -200,6 +207,7 @@ class DebtDetailsViewModel @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, e.stackTraceToString())
+            _screenState.value = ScreenState.EMPTY
         }
     }
 

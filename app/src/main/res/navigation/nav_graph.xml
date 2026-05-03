@@ -121,7 +121,7 @@
             app:popExitAnim="@anim/slide_down"
             app:popUpToInclusive="false" />
         <argument
-            android:name="humanId"
+            android:name="idHuman"
             android:defaultValue="0"
             app:argType="integer" />
         <argument
@@ -133,7 +133,7 @@
             app:argType="string"
             app:nullable="true" />
         <argument
-            android:name="humanName"
+            android:name="name"
             app:argType="string"
             app:nullable="true" />
     </fragment>
