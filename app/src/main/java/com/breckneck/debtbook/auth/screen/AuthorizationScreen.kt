@@ -175,7 +175,7 @@ fun AuthorizationScreen(
                             Intent(
                                 activity,
                                 MainActivity::class.java
-                            ).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP and Intent.FLAG_ACTIVITY_NEW_TASK) })
+                            ).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK) })
                         activity.finish()
                     } else {
                         vm.resetPINCodes()
@@ -224,7 +224,7 @@ fun AuthorizationScreen(
                 Intent(
                     activity,
                     MainActivity::class.java
-                ).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP and Intent.FLAG_ACTIVITY_NEW_TASK) })
+                ).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK) })
         },
         showFingerprintButton = vm.isFingerprintAuthEnabled.value && vm.pinCodeAction.value == CHECK
     )
