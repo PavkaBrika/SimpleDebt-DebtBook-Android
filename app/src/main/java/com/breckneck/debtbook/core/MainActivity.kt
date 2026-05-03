@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.core
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.*
@@ -229,6 +230,16 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                     }, 350)
                 }
             }
+        }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        val config = newBase.resources.configuration
+        if (config.fontScale > MAX_FONT_SCALE) {
+            config.fontScale = MAX_FONT_SCALE
+            super.attachBaseContext(newBase.createConfigurationContext(config))
+        } else {
+            super.attachBaseContext(newBase)
         }
     }
 
@@ -761,5 +772,9 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             }
         }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    companion object {
+        private const val MAX_FONT_SCALE = 1.2f
     }
 }
