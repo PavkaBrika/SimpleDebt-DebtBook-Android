@@ -309,8 +309,8 @@ class CreateDebtFragment: Fragment() {
                                 lifecycleScope.launch {
                                     try {
                                         withContext(Dispatchers.IO) {
-                                            val pastSum = arguments?.getFloat("sum")
-                                            val currentSum = updateCurrentSumUseCase.execute(sum.toDouble(), pastSum!!.toDouble())
+                                            val pastSum = arguments?.getDouble("sum")
+                                            val currentSum = updateCurrentSumUseCase.execute(sum.toDouble(), pastSum!!)
                                             if (info.trim().isEmpty())
                                                 editDebtUseCase.execute(id = idDebt!!, sum = sum.toDouble(), idHuman = idHuman!!, info = null, date = date)
                                             else

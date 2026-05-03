@@ -71,6 +71,10 @@ class DebtDetailsViewModel @Inject constructor(
     val overallSum: LiveData<Double>
         get() = _overallSum
 
+    private val _debtDeleted = MutableLiveData<Unit>()
+    val debtDeleted: LiveData<Unit>
+        get() = _debtDeleted
+
     private val _isSortDialogShown by lazy { MutableLiveData<Boolean>() }
     val isSortDialogShown: LiveData<Boolean>
         get() = _isSortDialogShown
@@ -253,6 +257,7 @@ class DebtDetailsViewModel @Inject constructor(
                     addSumUseCase.execute(humanId = humanId!!, sum = (debtDomain.sum * (-1.0)))
                     Log.e(TAG, "Debt delete success")
                 }
+                _debtDeleted.value = Unit
                 _listState.value = DebtLogicListState.Loading
             } catch (e: Exception) {
                 Log.e(TAG, e.stackTraceToString())

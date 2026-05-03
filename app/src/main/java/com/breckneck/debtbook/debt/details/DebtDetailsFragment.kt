@@ -178,6 +178,10 @@ class DebtDetailsFragment : Fragment() {
             debtFilter.observe(viewLifecycleOwner) { filter ->
                 changeFilterButtonColor(filter = filter)
             }
+
+            debtDeleted.observe(viewLifecycleOwner) {
+                setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
+            }
         }
 
         val deleteHumanButton: ImageView = view.findViewById(R.id.deleteHumanButton)
@@ -273,7 +277,6 @@ class DebtDetailsFragment : Fragment() {
 
         dialog.findViewById<Button>(R.id.deleteButton)!!.setOnClickListener {
             vm.deleteDebt(debtDomain = debtDomain)
-            setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
             dialog.dismiss()
         }
 

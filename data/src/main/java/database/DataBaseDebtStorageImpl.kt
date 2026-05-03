@@ -36,7 +36,7 @@ class DataBaseDebtStorageImpl(context: Context): DebtStorage {
     }
 
     override fun deleteDebtsByHumanId(id: Int) {
-        db.appDao().deleteHumanById(id = id)
+        db.appDao().deleteDebtsByHumanId(id = id)
     }
 
     override fun getDebtQuantity(): Int {

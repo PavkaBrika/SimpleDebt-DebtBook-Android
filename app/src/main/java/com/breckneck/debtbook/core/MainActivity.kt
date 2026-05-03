@@ -393,7 +393,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val args = Bundle()
         args.putInt("idDebt", debtDomain.id)
         args.putInt("idHuman", debtDomain.idHuman)
-        args.putFloat("sum", debtDomain.sum.toFloat())
+        args.putDouble("sum", debtDomain.sum)
         args.putString("date", debtDomain.date)
         if (debtDomain.info == null)
             args.putString("info", "")
