@@ -18,6 +18,9 @@ import com.breckneck.deptbook.domain.usecase.Settings.SetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetIsFingerprintAuthEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.SetSecondMainCurrency
+import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
+import com.breckneck.deptbook.domain.usecase.Settings.SetPinLockDelay
+import com.breckneck.deptbook.domain.util.PinLockDelay
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -47,10 +50,14 @@ class SettingsViewModelTest {
     private val setIsFingerprintAuthEnabled = Mockito.mock(SetIsFingerprintAuthEnabled::class.java)
     private val getIsFingerprintAuthEnabled = Mockito.mock(GetIsFingerprintAuthEnabled::class.java)
 
+    private val getPinLockDelay = Mockito.mock(GetPinLockDelay::class.java)
+    private val setPinLockDelay = Mockito.mock(SetPinLockDelay::class.java)
+
     private lateinit var viewModel: SettingsViewModel
 
     @Before
     fun setUp() {
+        Mockito.`when`(getPinLockDelay.execute()).thenReturn(PinLockDelay.IMMEDIATE)
         Mockito.`when`(getFirstMainCurrency.execute()).thenReturn("USD")
         Mockito.`when`(getSecondMainCurrency.execute()).thenReturn("EUR")
         Mockito.`when`(getDefaultCurrency.execute()).thenReturn("USD")
@@ -72,7 +79,9 @@ class SettingsViewModelTest {
             getIsAuthorized = getIsAuthorized,
             getUserData = getUserData,
             setIsFingerprintAuthEnabled = setIsFingerprintAuthEnabled,
-            getIsFingerprintAuthEnabled = getIsFingerprintAuthEnabled
+            getIsFingerprintAuthEnabled = getIsFingerprintAuthEnabled,
+            getPinLockDelay = getPinLockDelay,
+            setPinLockDelay = setPinLockDelay
         )
     }
 
@@ -206,5 +215,10 @@ class SettingsViewModelTest {
         viewModel.setIsFingerprintAuthEnabled(true)
         assertEquals(true, viewModel.isFingerprintAuthEnabled.value)
         Mockito.verify(setIsFingerprintAuthEnabled).execute(true)
+    }
+    @Test fun `lock delay selection is saved and displayed`() {
+        viewModel.setPinLockDelay(PinLockDelay.MINUTE_1)
+        Mockito.verify(setPinLockDelay).execute(PinLockDelay.MINUTE_1)
+        assertEquals(PinLockDelay.MINUTE_1, viewModel.pinLockDelay.value)
     }
 }

@@ -60,7 +60,7 @@ app/src/main/java/com/breckneck/debtbook/
 
 ## MainActivity
 
-Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`). `exported=false`; `ActivityAuthGate` скрывает содержимое до проверки PIN, сохраняет текущую навигацию и повторно блокирует доступ после ухода в фон. Смена конфигурации не сбрасывает сессию; новый процесс всегда заблокирован. При PIN включён `FLAG_SECURE`.
+Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`). `exported=false`; `ActivityAuthGate` скрывает содержимое до проверки PIN, сохраняет текущую навигацию и повторно блокирует доступ после ухода в фон с учётом `GetPinLockDelay`: сразу (по умолчанию), 30 секунд, 1 минута или 5 минут. `AuthSession` хранит начало фона только в памяти и использует монотонное время `SystemClock.elapsedRealtime()`; launcher проверяет тот же интервал. Смена конфигурации не сбрасывает сессию; новый процесс всегда заблокирован независимо от настройки. При PIN включён `FLAG_SECURE`.
 
 ### Характеристики
 - Хостит `NavHostFragment` с `nav_graph.xml`
@@ -87,6 +87,7 @@ app/src/main/java/com/breckneck/debtbook/
 - `GetClicksUseCase` / `SaveClicksUseCase` — счётчик кликов по рекламе
 - `GetAppTheme` — тема приложения
 - `Get/SetPINCodeEnabled` — управление PIN
+- `GetPinLockDelay` — интервал повторной блокировки Main после ухода в фон
 - `SetIsFingerprintAuthEnabled` — управление биометрией
 
 ### State
@@ -267,7 +268,7 @@ AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`
 Обёртка над `androidx.biometric.BiometricPrompt`. Буферизованный канал не теряет ранние callback; повторный открытый prompt не создаётся. Только CHECK с ранее включённой биометрией принимает success, навигация выполняется однократно в эффекте.
 
 ### Связь с Settings
-PIN изменяет `AuthorizationViewModel` после проверки; Settings обновляет состояние из хранилища при результате. Main не доверяет `PINCodeState` из сторонних Activity result. Биометрия → `SettingsViewModel.setIsFingerprintAuthEnabled()`.
+PIN изменяет `AuthorizationViewModel` после проверки; Settings обновляет состояние из хранилища при результате. Main не доверяет `PINCodeState` из сторонних Activity result. Биометрия → `SettingsViewModel.setIsFingerprintAuthEnabled()`. Задержка повторного запроса PIN → `SettingsViewModel.setPinLockDelay()` и `Get/SetPinLockDelay` (Hilt DomainModule); влияет на Main и launcher.
 
 ---
 

@@ -1,0 +1,8 @@
+<resources>
+    <string name="pin_lock_delay_title">Блокировка после ухода из приложения</string>
+    <string name="pin_lock_immediately">Сразу</string>
+    <string name="pin_lock_30_seconds">Через 30 секунд</string>
+    <string name="pin_lock_1_minute">Через 1 минуту</string>
+    <string name="pin_lock_5_minutes">Через 5 минут</string>
+    <string name="pin_lock_delay_explanation">Если Android закроет приложение в фоне, PIN потребуется заново.</string>
+</resources>

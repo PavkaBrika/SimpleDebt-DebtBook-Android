@@ -1,0 +1,8 @@
+<resources>
+    <string name="pin_lock_delay_title">Sperren nach Verlassen der App</string>
+    <string name="pin_lock_immediately">Sofort</string>
+    <string name="pin_lock_30_seconds">Nach 30 Sekunden</string>
+    <string name="pin_lock_1_minute">Nach 1 Minute</string>
+    <string name="pin_lock_5_minutes">Nach 5 Minuten</string>
+    <string name="pin_lock_delay_explanation">Wenn Android die App im Hintergrund schließt, müssen Sie die PIN erneut eingeben.</string>
+</resources>

@@ -40,7 +40,7 @@ class AuthAccessTest {
         originalFile = pinFile.takeIf(File::exists)?.readBytes()
         AuthSession.lock()
         prefs.edit().putBoolean("pin_code_is_enabled", true)
-            .putBoolean("fingerprint_auth_is_enabled", false).commit()
+            .putBoolean("fingerprint_auth_is_enabled", false).putLong("pin_lock_delay_millis", 0L).commit()
         pinFile.outputStream().use { CryptoManager().encrypt("1234".encodeToByteArray(), it) }
     }
 
@@ -58,6 +58,8 @@ class AuthAccessTest {
         }
         (originalPrefs["pin_code"] as? String)?.let { editor.putString("pin_code", it) }
             ?: editor.remove("pin_code")
+        (originalPrefs["pin_lock_delay_millis"] as? Long)?.let { editor.putLong("pin_lock_delay_millis", it) }
+            ?: editor.remove("pin_lock_delay_millis")
         editor.commit()
         originalFile?.let(pinFile::writeBytes) ?: pinFile.delete()
         AuthSession.lock()

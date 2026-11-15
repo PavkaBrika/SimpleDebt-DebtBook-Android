@@ -69,6 +69,8 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnable
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsAuthorized
 import com.breckneck.deptbook.domain.usecase.Settings.GetLastSyncDate
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCode
+import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
+import com.breckneck.deptbook.domain.usecase.Settings.SetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetUserData
@@ -477,4 +479,9 @@ object DomainModule {
     @Provides
     fun provideReplaceAllAppData(appDataRepository: AppDataRepository) =
         ReplaceAllAppData(appDataRepository = appDataRepository)
+    @Provides
+    fun provideGetPinLockDelay(repository: SettingsRepository) = GetPinLockDelay(repository)
+
+    @Provides
+    fun provideSetPinLockDelay(repository: SettingsRepository) = SetPinLockDelay(repository)
 }

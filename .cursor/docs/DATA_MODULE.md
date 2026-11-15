@@ -154,7 +154,8 @@ data/src/main/java/
 Все настройки приложения хранятся в SharedPreferences:
 - Валюты (first/second main, default, finance)
 - Тема, сортировка, флаги
-- PIN-код (зашифрованный), fingerprint enable
+- Флаг PIN, legacy PIN, fingerprint enable; актуальный зашифрованный PIN хранится отдельно в AtomicFile, см. `APP_CORE.md`
+- `pin_lock_delay_millis` (Long, по умолчанию 0): интервал блокировки. `SettingsRepositoryImpl` → `SettingsStorage.get/setPinLockDelayMillis` → SharedPreferences. Состояние авторизации и время ухода в фон не записываются.
 - User data (JSON через Gson)
 - Last sync date, isAuthorized
 

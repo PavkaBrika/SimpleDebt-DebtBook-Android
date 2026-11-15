@@ -82,10 +82,13 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     private val interstitialTAG = "INTERSTITIAL AD"
 
     private val vm by viewModels<MainViewModel>()
-    private val authGate = ActivityAuthGate(this) {
-        vm.getIsPINCodeEnabled()
-        vm.isPINCodeEnabled.value == true
-    }
+    private val authGate = ActivityAuthGate(this,
+        pinEnabled = {
+            vm.getIsPINCodeEnabled()
+            vm.isPINCodeEnabled.value == true
+        },
+        lockDelayMillis = { vm.pinLockDelayMillis() }
+    )
     lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {

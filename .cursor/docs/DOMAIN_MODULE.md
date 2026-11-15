@@ -184,7 +184,7 @@ Key-value хранилище настроек:
 - Валюты: `firstMainCurrency`, `secondMainCurrency`, `defaultCurrency`, `financeCurrency`
 - Тема: `appTheme`
 - Сортировка: `debtOrder` (Pair<DebtOrderAttribute, Boolean>), `humanOrder`
-- Безопасность: `PINCodeEnabled`, `PINCode`, `isFingerprintAuthEnabled`
+- Безопасность: `PINCodeEnabled`, `PINCode`, `isFingerprintAuthEnabled`, `get/setPinLockDelayMillis` (Long)
 - Синхронизация: `isAuthorized`, `userData` (User), `lastSyncDate`
 - UI: `addSumInShareText`, `debtQuantityForAppRateDialogShow`, `appIsRated`
 
@@ -245,6 +245,8 @@ CRUD + `GetGoalDepositsByGoalId`, `DeleteGoalDepositsByGoalId`, `ReplaceAllGoals
 Getter/Setter пары для каждой настройки. Примеры:
 `GetFirstMainCurrency` / `SetFirstMainCurrency`, `GetPINCode` / `SetPINCode`, `GetAppTheme` / `SetAppTheme` и т.д.
 
+`GetPinLockDelay` / `SetPinLockDelay` преобразуют значение хранилища в `PinLockDelay`: IMMEDIATE (0), SECONDS_30 (30 000), MINUTE_1 (60 000), MINUTES_5 (300 000). Неизвестное значение читается как IMMEDIATE. Настройка не сохраняет авторизованную сессию.
+
 ### `usecase/Ad/` (2 use cases)
 `GetClicksUseCase`, `SaveClicksUseCase`.
 
@@ -269,6 +271,7 @@ Getter/Setter пары для каждой настройки. Примеры:
 | `HumanOrderAttribute` (enum) | DATE, SUM, NAME | Сортировка людей |
 | `PINCodeAction` (enum) | ENABLE, DISABLE, CHANGE, CHECK | Действие с PIN |
 | `PINCodeEnterState` (enum) | FIRST, CONFIRMATION, INCORRECT | Этап ввода PIN |
+| `PinLockDelay` (enum) | IMMEDIATE, SECONDS_30, MINUTE_1, MINUTES_5 | Задержка блокировки в миллисекундах, безопасное значение по умолчанию |
 | `CreateFragmentState` (enum) | LOADING, READY | Состояние создания |
 | `DebtLogicListState` (sealed class) | Loading, Received(needToSetFilter: Boolean), Sorted | State machine для списков долгов/людей |
 | `ChangeGoalSavedSumDialogState` (enum) | — | Состояние диалога цели |

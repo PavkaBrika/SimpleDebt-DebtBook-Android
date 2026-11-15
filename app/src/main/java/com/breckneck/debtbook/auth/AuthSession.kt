@@ -7,10 +7,26 @@ object AuthSession {
     var isUnlocked: Boolean = false
         private set
 
-    fun unlock() { isUnlocked = true }
-    fun lock() { isUnlocked = false }
+    private var backgroundedAt: Long? = null
 
-    fun canAccess(pinEnabled: Boolean): Boolean = !pinEnabled || isUnlocked
+    fun unlock() { isUnlocked = true; backgroundedAt = null }
+    fun lock() { isUnlocked = false; backgroundedAt = null }
+
+    fun onBackground(nowMillis: Long) {
+        if (isUnlocked && backgroundedAt == null) backgroundedAt = nowMillis
+    }
+
+    fun onForeground() { backgroundedAt = null }
+
+    fun canAccess(pinEnabled: Boolean, nowMillis: Long = 0L, delayMillis: Long = 0L): Boolean {
+        if (!pinEnabled) return true
+        backgroundedAt?.let { since ->
+            val elapsed = nowMillis - since
+            if (elapsed < 0 || elapsed >= delayMillis.coerceAtLeast(0L)) lock()
+        }
+        return isUnlocked
+    }
+
 }
 
 /** Launcher extras are untrusted, including requests to replace an existing PIN. */

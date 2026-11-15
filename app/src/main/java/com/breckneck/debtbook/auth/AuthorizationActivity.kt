@@ -3,6 +3,9 @@ package com.breckneck.debtbook.auth
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import javax.inject.Inject
+import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -35,6 +38,7 @@ import java.io.File
 
 @AndroidEntryPoint
 class AuthorizationActivity : AppCompatActivity() {
+    @Inject lateinit var getPinLockDelay: GetPinLockDelay
     private val vm by viewModels<AuthorizationViewModel>()
     val biometricPromptManager = BiometricPromptManager(this)
     private var completed = false
@@ -54,7 +58,10 @@ class AuthorizationActivity : AppCompatActivity() {
             trustedCaller = trustedCaller
         ))
 
-        if (vm.pinCodeAction.value == CHECK && vm.isPINCodeEnabled.value == false) {
+        if (vm.pinCodeAction.value == CHECK && AuthSession.canAccess(
+                pinEnabled = vm.isPINCodeEnabled.value == true,
+                nowMillis = SystemClock.elapsedRealtime(),
+                delayMillis = getPinLockDelay.execute().millis)) {
             completeAuthentication()
             return
         }

@@ -40,4 +40,30 @@ class AuthSessionTest {
         assertEquals(PINCodeAction.CHECK, allowedPINAction(null, true, true))
         assertEquals(PINCodeAction.CHECK, allowedPINAction("unknown", true, true))
     }
+    @Test fun `grace period ends exactly at its boundary`() {
+        AuthSession.unlock()
+        AuthSession.onBackground(10_000)
+        assertTrue(AuthSession.canAccess(true, 69_999, 60_000))
+        assertFalse(AuthSession.canAccess(true, 70_000, 60_000))
+    }
+
+    @Test fun `foreground restarts grace only after verified access`() {
+        AuthSession.unlock()
+        AuthSession.onBackground(10_000)
+        assertTrue(AuthSession.canAccess(true, 20_000, 30_000))
+        AuthSession.onForeground()
+        AuthSession.onBackground(100_000)
+        AuthSession.onBackground(120_000) // duplicate stop cannot extend the deadline
+        assertFalse(AuthSession.canAccess(true, 130_000, 30_000))
+    }
+
+    @Test fun `immediate lock clock rollback and expired sessions fail closed`() {
+        for ((now, delay) in listOf(10_000L to 0L, 9_999L to 60_000L)) {
+            AuthSession.unlock()
+            AuthSession.onBackground(10_000)
+            assertFalse(AuthSession.canAccess(true, now, delay))
+        }
+        AuthSession.lock()
+        assertFalse(AuthSession.canAccess(true, 10_000, 300_000))
+    }
 }

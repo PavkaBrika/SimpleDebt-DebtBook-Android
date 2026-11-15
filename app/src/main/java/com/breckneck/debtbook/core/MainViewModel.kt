@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.core
 
 import android.util.Log
+import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -35,7 +36,8 @@ class MainViewModel @Inject constructor(
     private val getPINCodeEnabled: GetPINCodeEnabled,
     private val setIsFingerprintAuthEnabled: SetIsFingerprintAuthEnabled,
     private val getAdsDisabled: GetAdsDisabled,
-    private val setAdsDisabled: SetAdsDisabled
+    private val setAdsDisabled: SetAdsDisabled,
+    private val getPinLockDelay: GetPinLockDelay
     ) : ViewModel() {
 
     private val TAG = "MainActivityViewModel"
@@ -174,6 +176,8 @@ class MainViewModel @Inject constructor(
         _isPINCodeEnabled.value = enabled
         setPINCodeEnabled.execute(_isPINCodeEnabled.value!!)
     }
+
+    fun pinLockDelayMillis(): Long = getPinLockDelay.execute().millis
 
     fun getIsPINCodeEnabled() {
         _isPINCodeEnabled.value = getPINCodeEnabled.execute()

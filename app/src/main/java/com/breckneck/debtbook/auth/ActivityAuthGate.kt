@@ -2,6 +2,7 @@ package com.breckneck.debtbook.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,7 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 /** Keeps the current navigation/form state behind the lock, including after process death. */
 class ActivityAuthGate(
     private val activity: AppCompatActivity,
-    private val pinEnabled: () -> Boolean
+    private val pinEnabled: () -> Boolean,
+    private val lockDelayMillis: () -> Long
 ) {
     private var awaitingAuthentication = false
     private val launcher = activity.registerForActivityResult(
@@ -18,7 +20,7 @@ class ActivityAuthGate(
     ) {
         awaitingAuthentication = false
         // Neither a successful result nor an Intent extra is an authentication credential.
-        if (AuthSession.canAccess(pinEnabled())) {
+        if (canAccess()) {
             activity.window.decorView.visibility = View.VISIBLE
         } else {
             activity.finish()
@@ -31,8 +33,9 @@ class ActivityAuthGate(
     }
 
     fun onStart() {
+        if (canAccess()) AuthSession.onForeground()
         updateVisibility()
-        if (!AuthSession.canAccess(pinEnabled()) && !awaitingAuthentication) {
+        if (!canAccess() && !awaitingAuthentication) {
             awaitingAuthentication = true
             launcher.launch(Intent(activity, AuthorizationActivity::class.java))
         }
@@ -42,7 +45,10 @@ class ActivityAuthGate(
         if (!activity.isChangingConfigurations) {
             // The CHECK activity owns the handoff; a fast biometric result may arrive
             // before Main finishes stopping. Do not revoke that verified result.
-            if (!awaitingAuthentication) AuthSession.lock()
+            if (!awaitingAuthentication) {
+                AuthSession.onBackground(SystemClock.elapsedRealtime())
+                if (lockDelayMillis() <= 0L) AuthSession.lock()
+            }
             if (pinEnabled()) activity.window.decorView.visibility = View.INVISIBLE
         }
     }
@@ -56,8 +62,11 @@ class ActivityAuthGate(
         if (enabled) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         activity.window.decorView.visibility =
-            if (AuthSession.canAccess(enabled)) View.VISIBLE else View.INVISIBLE
+            if (canAccess()) View.VISIBLE else View.INVISIBLE
     }
+
+    private fun canAccess() = AuthSession.canAccess(pinEnabled(),
+        SystemClock.elapsedRealtime(), lockDelayMillis())
 
     private companion object {
         const val AWAITING_AUTH = "awaitingPinAuthentication"

@@ -28,6 +28,7 @@ app/src/main/java/com/breckneck/debtbook/settings/
 - `fragment_synchronization.xml` — экран синхронизации
 - `dialog_setting.xml` — диалог выбора значения настройки
 - `item_setting.xml` — элемент настройки (radio button)
+- `dialog_pincode_lock.xml` — PIN, смена PIN, задержка блокировки и отпечаток
 
 ---
 
@@ -44,6 +45,7 @@ VM экрана настроек.
 - `GetIsAuthorized` — авторизован ли для Google Drive
 - `GetUserData` — данные пользователя (имя, email)
 - `Get/SetIsFingerprintAuthEnabled` — включение биометрии
+- `Get/SetPinLockDelay` — интервал повторного запроса PIN после ухода в фон
 
 ### State
 | Поле | Тип | Описание |
@@ -56,6 +58,7 @@ VM экрана настроек.
 | `isAuthorized` | `LiveData<Boolean>` | Авторизация Google |
 | `userName` / `emailAddress` | `LiveData<String>` | Данные пользователя |
 | `isFingerprintAuthEnabled` | `LiveData<Boolean>` | Биометрия |
+| `pinLockDelay` | `LiveData<PinLockDelay>` | Сразу / 30 секунд / 1 минута / 5 минут |
 | `isSynchronizationAvailable` | `LiveData<Boolean>` | Доступна ли синхронизация |
 
 ### Ключевая логика
@@ -63,6 +66,8 @@ VM экрана настроек.
 - Изменение настройки мгновенно сохраняется через соответствующий use case
 - Диалог настроек: универсальный `dialog_setting.xml` с `SettingsAdapter` (radio-кнопки)
 - Тема применяется через `AppCompatDelegate.setDefaultNightMode()` в Fragment
+- В диалоге PIN настройка «Блокировка после ухода из приложения» появляется при включённом PIN. Выбор сохраняется сразу, по умолчанию — сразу. После завершения процесса вход требуется независимо от выбранной задержки.
+- Если отпечаток ещё не зарегистрирован, открытие диалога PIN не запускает системные настройки. Регистрация открывается только при явном нажатии на отпечаток (API30+).
 
 ---
 
@@ -114,6 +119,7 @@ VM экрана синхронизации с Google Drive.
 | Add Sum In Share Text | Включать сумму в шаринг | Boolean |
 | PIN Code Enabled | PIN-замок включён | Boolean |
 | PIN Code | Зашифрованный PIN-код | String |
+| PIN Lock Delay | Задержка блокировки при уходе в фон; по умолчанию 0 | Long, миллисекунды |
 | Fingerprint Auth Enabled | Биометрия включена | Boolean |
 | Is Authorized | Авторизован в Google | Boolean |
 | User Data | Имя + email | User (JSON) |

@@ -146,6 +146,10 @@ class SettingsRepositoryImpl(private val settingsStorage: SettingsStorage): Sett
         return settingsStorage.getPINCodeEnabled()
     }
 
+    override fun getPinLockDelayMillis(): Long = settingsStorage.getPinLockDelayMillis()
+
+    override fun setPinLockDelayMillis(delayMillis: Long) = settingsStorage.setPinLockDelayMillis(delayMillis)
+
     override fun getPINCode(): String {
         return settingsStorage.getPINCode()
     }

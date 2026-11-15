@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.settings.main
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.breckneck.deptbook.domain.util.PinLockDelay
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -340,6 +342,23 @@ class SettingsFragment : Fragment() {
                 }
             }
 
+            val lockDelayText: TextView = dialog.findViewById(R.id.pinLockDelayText)!!
+            val delayLabels = listOf(R.string.pin_lock_immediately, R.string.pin_lock_30_seconds,
+                R.string.pin_lock_1_minute, R.string.pin_lock_5_minutes).map(::getString)
+            vm.pinLockDelay.observe(viewLifecycleOwner) { delay ->
+                lockDelayText.text = delayLabels[PinLockDelay.entries.indexOf(delay).coerceAtLeast(0)]
+            }
+            dialog.findViewById<View>(R.id.pinLockDelayLayout)!!.setOnClickListener {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.pin_lock_delay_title)
+                    .setSingleChoiceItems(delayLabels.toTypedArray(),
+                        PinLockDelay.entries.indexOf(vm.pinLockDelay.value).coerceAtLeast(0)) { picker, index ->
+                        vm.setPinLockDelay(PinLockDelay.entries[index])
+                        picker.dismiss()
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
             val biometricManager = BiometricManager.from(requireActivity())
             when (biometricManager.canAuthenticate(BIOMETRIC_STRONG)) {
                 BiometricManager.BIOMETRIC_SUCCESS -> {
@@ -367,7 +386,20 @@ class SettingsFragment : Fragment() {
                                 BIOMETRIC_STRONG
                             )
                         }
-                        startActivity(enrollIntent)
+                        // Opening PIN settings must not leave the app. Enrolment is
+                        // only requested when the user explicitly chooses fingerprint.
+                        unlockFingerprintSwitch.isChecked = false
+                        unlockFingerprintLayout.setOnClickListener {
+                            dialog.dismiss()
+                            startActivity(enrollIntent)
+                        }
+                        unlockFingerprintSwitch.setOnCheckedChangeListener { button, _ ->
+                            if (button.isPressed) {
+                                unlockFingerprintSwitch.isChecked = false
+                                dialog.dismiss()
+                                startActivity(enrollIntent)
+                            }
+                        }
                     } else {
                         unlockFingerprintLayout.visibility = View.GONE
                     }
