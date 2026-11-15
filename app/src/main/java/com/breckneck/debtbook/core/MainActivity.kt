@@ -141,14 +141,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             }
         }
 
-        vm.adClicksCounter.observe(this) { counter ->
-            if (vm.adsDisabled.value != true && counter > CLICKS_QUANTITY_FOR_AD_SHOW) {
-                if (interstitialAd != null) {
-                    showInterstitialAd()
-                }
-            }
-        }
-
         vm.getAppTheme()
         vm.appTheme.observe(this) { theme ->
             if (theme.equals(getString(R.string.dark_theme)))
@@ -246,6 +238,14 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val bottomNavBar = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
         bottomNavBar.setupWithNavController(navController)
 
+        bottomNavBar.setOnItemSelectedListener { item ->
+            val from = navController.currentDestination?.id
+            val navigated = item.onNavDestinationSelected(navController)
+            if (navigated && from != item.itemId && from in TOP_LEVEL_DESTINATIONS) {
+                maybeShowInterstitial()
+            }
+            navigated
+        }
         vm.isBottomNavViewVisible.observe(this) { visible ->
             bottomNavBar.clearAnimation()
             bottomNavBar.translationY = 0f
@@ -261,6 +261,14 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     override fun onStop() {
         authGate.onStop()
         super.onStop()
+    }
+
+    private fun maybeShowInterstitial() {
+        if (vm.adsDisabled.value == true || interstitialAd == null ||
+            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
+            navController.currentDestination?.id !in TOP_LEVEL_DESTINATIONS ||
+            vm.isAppRateDialogShow.value == true || vm.isAppReviewDialogShow.value == true) return
+        if (adPolicy.tryStart(SystemClock.elapsedRealtime())) showInterstitialAd()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -282,10 +290,14 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
                 override fun onAdFailedToShow(p0: AdError) {
                     Log.e(interstitialTAG, "Interstitial ad failed to show")
+                    adPolicy.finish()
+                    destroyInterstitialAd()
+                    loadInterstitialAd()
                 }
 
                 override fun onAdDismissed() {
                     Log.e(interstitialTAG, "Interstitial ad dismissed")
+                    adPolicy.finish()
                     interstitialAd?.setAdEventListener(null)
                     interstitialAd = null
                     loadInterstitialAd()
@@ -308,6 +320,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         interstitialAdLoader?.setAdLoadListener(null)
         interstitialAdLoader = null
         destroyInterstitialAd()
+        adPolicy.finish()
     }
 
     private fun startTickVibration() {
@@ -782,5 +795,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     companion object {
+        private val adPolicy = InterstitialPolicy(SystemClock.elapsedRealtime())
+        private val TOP_LEVEL_DESTINATIONS = setOf(R.id.mainFragment, R.id.financeFragment,
+            R.id.goalsFragment, R.id.settingsFragment)
     }
 }
