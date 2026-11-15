@@ -16,5 +16,5 @@ class InterstitialPolicy(private val sessionStartedAt: Long) {
 
     fun finish() { showing = false }
 
-    companion object { const val MIN_INTERVAL_MS = 180_000L }
+    companion object { const val MIN_INTERVAL_MS = 60_000L }
 }

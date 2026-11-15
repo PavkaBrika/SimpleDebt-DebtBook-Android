@@ -6,12 +6,12 @@ import org.junit.Test
 class InterstitialPolicyTest {
     @Test fun `warmup cooldown in-flight and session cap prevent chains`() {
         val policy = InterstitialPolicy(0)
-        assertFalse(policy.tryStart(179_999))
-        assertTrue(policy.tryStart(180_000))
+        assertFalse(policy.tryStart(59_999))
+        assertTrue(policy.tryStart(60_000))
         assertFalse(policy.tryStart(400_000)) // still showing
         policy.finish()
-        assertFalse(policy.tryStart(180_001)) // return from advertisement
-        assertTrue(policy.tryStart(400_000))
+        assertFalse(policy.tryStart(119_999)) // return from advertisement
+        assertTrue(policy.tryStart(120_000))
         policy.finish()
         assertFalse(policy.tryStart(9_000_000)) // session cap
     }
