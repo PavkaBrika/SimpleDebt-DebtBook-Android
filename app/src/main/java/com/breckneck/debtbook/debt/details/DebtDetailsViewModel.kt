@@ -1,6 +1,6 @@
 package com.breckneck.debtbook.debt.details
 
-import android.util.Log
+import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
@@ -16,17 +16,17 @@ import com.breckneck.deptbook.domain.usecase.Human.GetHumanSumDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetLastHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder
-import com.breckneck.deptbook.domain.util.DebtLogicListState
 import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.Filter
-import com.breckneck.deptbook.domain.util.ScreenState
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+enum class DebtDetailsState { LOADING, SUCCESS, EMPTY, ERROR }
 
 @HiltViewModel
 class DebtDetailsViewModel @Inject constructor(
@@ -39,19 +39,16 @@ class DebtDetailsViewModel @Inject constructor(
     private val addSumUseCase: AddSumUseCase,
     private val getDebtOrder: GetDebtOrder,
     private val setDebtOrder: SetDebtOrder,
+    private val transaction: DataTransaction,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val TAG = "DebtDetailsViewModel"
-
-    private val _screenState = MutableLiveData(ScreenState.LOADING)
-    val screenState: LiveData<ScreenState>
+    private val _screenState = MutableLiveData(DebtDetailsState.LOADING)
+    val screenState: LiveData<DebtDetailsState>
         get() = _screenState
-    private val _listState: MutableStateFlow<DebtLogicListState> =
-        MutableStateFlow(DebtLogicListState.Loading)
+    private var loadJob: Job? = null
 
     private val _initialDebtList = MutableLiveData<List<DebtDomain>>()
-    private val _sortedDebtList = MutableLiveData<List<DebtDomain>>()
     private val _resultedDebtList = MutableLiveData<List<DebtDomain>>()
     val resultedDebtList: LiveData<List<DebtDomain>>
         get() = _resultedDebtList
@@ -65,7 +62,6 @@ class DebtDetailsViewModel @Inject constructor(
     private val _humanCurrency = savedStateHandle.get<String>("currency")
     val humanCurrency: String?
         get() = _humanCurrency
-    private val _newHuman = savedStateHandle.get<Boolean>("newHuman")
 
     private val _overallSum = MutableLiveData<Double>()
     val overallSum: LiveData<Double>
@@ -92,177 +88,136 @@ class DebtDetailsViewModel @Inject constructor(
         get() = _settingDebt
 
     private val _debtOrder = MutableLiveData<Pair<DebtOrderAttribute, Boolean>>()
-    val debtOrder: LiveData<Pair<DebtOrderAttribute, Boolean>>
-        get() = _debtOrder
-    private val _debtFilter = MutableLiveData<Filter>(Filter.ALL)
-    val debtFilter: LiveData<Filter>
-        get() = _debtFilter
+    val debtOrder: LiveData<Pair<DebtOrderAttribute, Boolean>> = _debtOrder
+    private val _debtFilter = MutableLiveData(
+        savedStateHandle.get<String>("historyFilter")?.let { value ->
+            Filter.entries.firstOrNull { it.name == value }
+        } ?: Filter.ALL
+    )
+    val debtFilter: LiveData<Filter> = _debtFilter
+    private val _isDeleting = MutableLiveData(false)
+    val isDeleting: LiveData<Boolean> = _isDeleting
+    private val _humanDeleted = MutableLiveData(false)
+    val humanDeleted: LiveData<Boolean> = _humanDeleted
+    private val _operationFailed = MutableLiveData(false)
+    val operationFailed: LiveData<Boolean> = _operationFailed
 
     init {
-        Log.e(TAG, "Debt Fragment View Model Started")
+        retry()
+    }
 
-        viewModelScope.launch {
-            _listState.collectLatest { state ->
-                when (state) {
-                    DebtLogicListState.Loading -> {
-                        _screenState.value = ScreenState.LOADING
-                        if (_newHuman == true) {
-                            try {
-                                _humanId = withContext(Dispatchers.IO) {
-                                    getLastHumanIdUseCase.exectute()
-                                }
-                                getDebtInfo()
-                                Log.e(TAG, "New human id is ${_humanId}")
-                            } catch (e: Exception) {
-                                Log.e(TAG, e.stackTraceToString())
-                                _screenState.value = ScreenState.EMPTY
-                            }
-                        } else {
-                            getDebtInfo()
-                        }
+    /** One load owns the spinner and publishes the history and its total together. */
+    fun retry() {
+        if ((_screenState.value == DebtDetailsState.LOADING && loadJob?.isActive == true) || _isDeleting.value == true) return
+        _screenState.value = DebtDetailsState.LOADING
+        loadJob = viewModelScope.launch {
+            try {
+                if (_debtOrder.value == null) {
+                    val preference = getDebtOrder.execute()
+                    val attribute = when (savedStateHandle.get<String>("historyOrder")) {
+                        "creation" -> DebtOrderAttribute.CreationDate
+                        "date" -> DebtOrderAttribute.Date
+                        "sum" -> DebtOrderAttribute.Sum
+                        else -> preference.first
                     }
-
-                    is DebtLogicListState.Received -> {
-                        _screenState.value = ScreenState.LOADING
-                        sortDebts(state = state)
-                    }
-
-                    DebtLogicListState.Sorted -> {
-                        _resultedDebtList.value = _sortedDebtList.value
-                        _screenState.value = ScreenState.SUCCESS
-                    }
+                    _debtOrder.value = attribute to
+                        (savedStateHandle.get<Boolean>("historyAscending") ?: preference.second)
                 }
+                val id = humanId?.takeIf { it > 0 } ?: if (savedStateHandle.get<Boolean>("newHuman") == true) {
+                    withContext(Dispatchers.IO) { getLastHumanIdUseCase.exectute() }
+                } else null
+                require(id != null && id > 0) { "Missing history ID" }
+                _humanId = id
+                savedStateHandle["idHuman"] = id
+                savedStateHandle["newHuman"] = false
+                val (debts, sum) = withContext(Dispatchers.IO) {
+                    getAllDebtsByIdUseCase.execute(id) to getHumanSumDebtUseCase.execute(id)
+                }
+                _initialDebtList.value = debts
+                _overallSum.value = sum
+                applySort()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _screenState.value = DebtDetailsState.ERROR
             }
         }
     }
 
-    private fun getDebtInfo() {
-        getDebtOrder()
-        getAllDebts()
-        getOverallSum()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.e(TAG, "Debt Fragment View Model cleared")
-    }
-
-    private fun getDebtOrder() {
-        _debtOrder.value = getDebtOrder.execute()
+    private fun applySort() {
+        try {
+            val filtered = (_initialDebtList.value ?: emptyList()).filter { debt ->
+                when (_debtFilter.value ?: Filter.ALL) {
+                    Filter.ALL -> true
+                    Filter.NEGATIVE -> debt.sum <= 0
+                    Filter.POSITIVE -> debt.sum >= 0
+                }
+            }
+            val result = com.breckneck.deptbook.domain.util.sortDebts(filtered, _debtOrder.value!!)
+            _resultedDebtList.value = result
+            _screenState.value = if (result.isEmpty()) DebtDetailsState.EMPTY else DebtDetailsState.SUCCESS
+        } catch (_: Exception) {
+            // Legacy locale-dependent dates can fail to sort. Keep the records unchanged;
+            // the screen offers retry and lets the user select creation order instead.
+            _screenState.value = DebtDetailsState.ERROR
+        }
     }
 
     fun saveDebtOrder(order: Pair<DebtOrderAttribute, Boolean>) {
-        setDebtOrder.execute(order = order)
-    }
-
-    private fun getAllDebts() {
-        viewModelScope.launch {
-            try {
-                val id = humanId ?: run {
-                    Log.e(TAG, "humanId is null, cannot load debts")
-                    _screenState.value = ScreenState.EMPTY
-                    return@launch
-                }
-                val debts = withContext(Dispatchers.IO) {
-                    getAllDebtsByIdUseCase.execute(id = id)
-                        .also { Log.e(TAG, "Open Debt Details of Human id = $id") }
-                }
-                if (debts.isNotEmpty()) {
-                    _initialDebtList.value = debts
-                    _sortedDebtList.value = debts
-                    _listState.value = DebtLogicListState.Received(needToSetFilter = true)
-                    Log.e(TAG, "Debts load success")
-                } else {
-                    _screenState.value = ScreenState.EMPTY
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, e.stackTraceToString())
-                _screenState.value = ScreenState.EMPTY
-            }
-        }
-    }
-
-    private fun filterDebts(list: List<DebtDomain>): List<DebtDomain> {
-        return when (debtFilter.value!!) {
-            Filter.ALL -> list
-            Filter.NEGATIVE -> list.filter { debt -> debt.sum <= 0 }
-            Filter.POSITIVE -> list.filter { debt -> debt.sum >= 0 }
-        }
-    }
-
-    private suspend fun sortDebts(state: DebtLogicListState) {
-        try {
-            val sorted = withContext(Dispatchers.Default) {
-                var list = _sortedDebtList.value
-                if (state.needToSetFilter == true) {
-                    list = filterDebts(list!!)
-                    Log.e(TAG, "FILTERED")
-                }
-                list = orderDebts(list!!)
-                Log.e(TAG, "SORTED")
-                list
-            }
-            Log.e(TAG, "RECEIVED")
-            if (sorted.isNotEmpty()) {
-                _sortedDebtList.value = sorted
-                _listState.value = DebtLogicListState.Sorted
-            } else {
-                _screenState.value = ScreenState.EMPTY
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, e.stackTraceToString())
-            _screenState.value = ScreenState.EMPTY
-        }
-    }
-
-    private fun orderDebts(list: List<DebtDomain>): List<DebtDomain> {
-        return com.breckneck.deptbook.domain.util.sortDebts(
-            debtList = list,
-            order = debtOrder.value!!
-        )
-    }
-
-    private fun getOverallSum() {
-        viewModelScope.launch {
-            try {
-                val sum = withContext(Dispatchers.IO) {
-                    getHumanSumDebtUseCase.execute(humanId = humanId!!)
-                }
-                _overallSum.value = sum
-            } catch (e: Exception) {
-                Log.e(TAG, e.stackTraceToString())
-            }
-        }
+        setDebtOrder.execute(order)
     }
 
     fun deleteHuman() {
+        val id = humanId ?: return
+        if (_isDeleting.value == true) return
+        _isDeleting.value = true
+        _operationFailed.value = false
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    deleteHumanUseCase.execute(id = humanId!!)
-                    deleteDebtsByHumanIdUseCase.execute(id = humanId!!)
-                }
-                Log.e(TAG, "Deleted human with id = ${humanId}")
-            } catch (e: Exception) {
-                Log.e(TAG, e.stackTraceToString())
+                withContext(Dispatchers.IO) { transaction.run {
+                    deleteHumanUseCase.execute(id)
+                    deleteDebtsByHumanIdUseCase.execute(id)
+                } }
+                _humanDeleted.value = true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _operationFailed.value = true
+            } finally {
+                _isDeleting.value = false
             }
         }
     }
 
     fun deleteDebt(debtDomain: DebtDomain) {
+        val id = humanId ?: return
+        if (_isDeleting.value == true) return
+        _isDeleting.value = true
+        _operationFailed.value = false
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    deleteDebtUseCase.execute(debtDomain)
-                    addSumUseCase.execute(humanId = humanId!!, sum = (debtDomain.sum * (-1.0)))
-                    Log.e(TAG, "Debt delete success")
-                }
+                withContext(Dispatchers.IO) { transaction.run {
+                    // Use the persisted amount, and make repeated deletion a no-op.
+                    val current = getAllDebtsByIdUseCase.execute(id).firstOrNull { it.id == debtDomain.id }
+                    if (current != null) {
+                        deleteDebtUseCase.execute(current)
+                        addSumUseCase.execute(humanId = id, sum = -current.sum)
+                    }
+                } }
                 _debtDeleted.value = Unit
-                _listState.value = DebtLogicListState.Loading
-            } catch (e: Exception) {
-                Log.e(TAG, e.stackTraceToString())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _operationFailed.value = true
+            } finally {
+                _isDeleting.value = false
             }
+            retry()
         }
+    }
+
+    fun dismissOperationError() {
+        _operationFailed.value = false
     }
 
     fun onHumanDeleteDialogOpen() {
@@ -302,18 +257,15 @@ class DebtDetailsViewModel @Inject constructor(
     }
 
     fun onSetDebtSort(filter: Filter, order: Pair<DebtOrderAttribute, Boolean>) {
-        if (debtFilter.value!! != filter && debtOrder.value!! == order) {
-            _debtFilter.value = filter
-            _sortedDebtList.value = _initialDebtList.value
-            _listState.value = DebtLogicListState.Received(needToSetFilter = true)
-        } else if (debtFilter.value!! == filter && debtOrder.value!! != order) {
-            _debtOrder.value = order
-            _listState.value = DebtLogicListState.Received(needToSetFilter = false)
-        } else if (debtFilter.value!! != filter && debtOrder.value!! != order) {
-            _debtFilter.value = filter
-            _debtOrder.value = order
-            _sortedDebtList.value = _initialDebtList.value
-            _listState.value = DebtLogicListState.Received(needToSetFilter = true)
+        _debtFilter.value = filter
+        _debtOrder.value = order
+        savedStateHandle["historyFilter"] = filter.name
+        savedStateHandle["historyOrder"] = when (order.first) {
+            DebtOrderAttribute.CreationDate -> "creation"
+            DebtOrderAttribute.Date -> "date"
+            DebtOrderAttribute.Sum -> "sum"
         }
+        savedStateHandle["historyAscending"] = order.second
+        if (_initialDebtList.value != null) applySort() else retry()
     }
 }

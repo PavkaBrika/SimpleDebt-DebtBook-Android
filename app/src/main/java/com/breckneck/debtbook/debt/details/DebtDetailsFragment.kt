@@ -38,7 +38,6 @@ import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_DECREASE
 import com.breckneck.deptbook.domain.util.ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_INCREASE
-import com.breckneck.deptbook.domain.util.ScreenState
 import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -99,6 +98,7 @@ class DebtDetailsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 //        postponeEnterTransition()
 
+        sortButton = view.findViewById(R.id.sortButton)
         val recyclerView: RecyclerView = view.findViewById(R.id.debtsRecyclerView)
 //        recyclerView.doOnPreDraw {
 //            startPostponedEnterTransition()
@@ -115,11 +115,12 @@ class DebtDetailsFragment : Fragment() {
 
         debtClickListener = object : DebtDetailsAdapter.OnDebtClickListener { //ALERT DIALOG
             override fun onDebtClick(debtDomain: DebtDomain, position: Int) {
-                showDebtSettings(debtDomain = debtDomain, currency = vm.humanCurrency!!, name = vm.humanName.value!!)
+                if (vm.isDeleting.value == true) return
+                showDebtSettings(debtDomain = debtDomain, currency = vm.humanCurrency.orEmpty(), name = vm.humanName.value.orEmpty())
                 Log.e(TAG, "Click on debt with id = ${debtDomain.id}")
             }
         }
-        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency!!)
+        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty())
         recyclerView.adapter = debtDetailsAdapter
 
         vm.apply {
@@ -133,22 +134,27 @@ class DebtDetailsFragment : Fragment() {
                 showShareDialog(humanName.value, humanCurrency)
 
             if ((isDebtSettingsDialogShown.value != null) && (isDebtSettingsDialogShown.value == true))
-                showDebtSettings(settingDebt.value!!, currency = humanCurrency!!, name = humanName.value!!)
+                showDebtSettings(settingDebt.value!!, currency = humanCurrency.orEmpty(), name = humanName.value.orEmpty())
 
             val debtsLayout: ConstraintLayout = view.findViewById(R.id.debtsLayout)
             val emptyDebtsLayout: ConstraintLayout = view.findViewById(R.id.emptyDebtsLayout)
             val loadingDebtsLayout: ConstraintLayout = view.findViewById(R.id.loadingDebtsLayout)
+            val errorDebtsLayout: View = view.findViewById(R.id.errorDebtsLayout)
+            view.findViewById<Button>(R.id.retryHistoryButton).setOnClickListener { retry() }
             val shimmerLayout: ShimmerFrameLayout = view.findViewById(R.id.shimmerLayout)
 
             screenState.observe(viewLifecycleOwner) { state ->
+                errorDebtsLayout.visibility = if (state == DebtDetailsState.ERROR) View.VISIBLE else View.GONE
+                view.findViewById<View>(R.id.shareHumanButton).isEnabled = state == DebtDetailsState.SUCCESS
+                sortButton.isEnabled = state != DebtDetailsState.LOADING && debtOrder.value != null
                 when (state) {
-                    ScreenState.LOADING -> {
+                    DebtDetailsState.LOADING -> {
                         debtsLayout.visibility = View.GONE
                         emptyDebtsLayout.visibility = View.GONE
                         loadingDebtsLayout.visibility = View.VISIBLE
                         shimmerLayout.startShimmerAnimation()
                     }
-                    ScreenState.SUCCESS -> {
+                    DebtDetailsState.SUCCESS -> {
                         val transition = Fade()
                         transition.duration = 200
                         transition.addTarget(debtsLayout)
@@ -158,7 +164,13 @@ class DebtDetailsFragment : Fragment() {
                         loadingDebtsLayout.visibility = View.GONE
                         shimmerLayout.stopShimmerAnimation()
                     }
-                    ScreenState.EMPTY -> {
+                    DebtDetailsState.ERROR -> {
+                        debtsLayout.visibility = View.GONE
+                        emptyDebtsLayout.visibility = View.GONE
+                        loadingDebtsLayout.visibility = View.GONE
+                        shimmerLayout.stopShimmerAnimation()
+                    }
+                    DebtDetailsState.EMPTY -> {
                         val transition = Fade()
                         transition.duration = 200
                         transition.addTarget(emptyDebtsLayout)
@@ -172,13 +184,29 @@ class DebtDetailsFragment : Fragment() {
             }
 
             overallSum.observe(viewLifecycleOwner) {
-                setOverallSumText(sum = it, currency = humanCurrency!!, view = view)
+                setOverallSumText(sum = it, currency = humanCurrency.orEmpty(), view = view)
             }
 
             debtFilter.observe(viewLifecycleOwner) { filter ->
                 changeFilterButtonColor(filter = filter)
             }
 
+            humanDeleted.observe(viewLifecycleOwner) { deleted ->
+                if (deleted) {
+                    setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
+                    buttonClickListener?.deleteHuman()
+                }
+            }
+            operationFailed.observe(viewLifecycleOwner) { failed ->
+                if (failed) {
+                    Toast.makeText(requireContext(), R.string.history_change_failed, Toast.LENGTH_LONG).show()
+                    dismissOperationError()
+                }
+            }
+            isDeleting.observe(viewLifecycleOwner) { deleting ->
+                view.findViewById<View>(R.id.deleteHumanButton).isEnabled = !deleting
+                view.findViewById<View>(R.id.addDebtButton).isEnabled = !deleting
+            }
             debtDeleted.observe(viewLifecycleOwner) {
                 setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
             }
@@ -196,7 +224,7 @@ class DebtDetailsFragment : Fragment() {
 
         val shareHumanButton: ImageView = view.findViewById(R.id.shareHumanButton)
         shareHumanButton.setOnClickListener {
-            showShareDialog(vm.humanName.value, vm.humanName.value)
+            showShareDialog(vm.humanName.value, vm.humanCurrency)
         }
 
         val addDebtButton: FloatingActionButton = view.findViewById(R.id.addDebtButton)
@@ -204,8 +232,8 @@ class DebtDetailsFragment : Fragment() {
             if (vm.humanId != null)
                 buttonClickListener?.addNewDebtFragment(
                     idHuman = vm.humanId!!,
-                    currency = vm.humanCurrency!!,
-                    name = vm.humanName.value!!
+                    currency = vm.humanCurrency.orEmpty(),
+                    name = vm.humanName.value.orEmpty()
                 )
         }
 
@@ -244,9 +272,7 @@ class DebtDetailsFragment : Fragment() {
         vm.onHumanDeleteDialogOpen()
 
         dialog.findViewById<Button>(R.id.okButton)!!.setOnClickListener {
-            setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
             vm.deleteHuman()
-            buttonClickListener?.deleteHuman()
             dialog.dismiss()
         }
 

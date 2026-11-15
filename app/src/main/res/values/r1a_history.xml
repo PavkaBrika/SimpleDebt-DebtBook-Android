@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_load_failed">Could not load this history. Try again or choose another sort order. If it still fails, return to the debt list and reopen it.</string>
+    <string name="history_retry">Try again</string>
+    <string name="history_change_failed">Could not complete the change. Check the history before trying again.</string>
+    <string name="backup_transfer_failed">The backup operation failed. Check your connection and try again. Invalid or incomplete backups cannot be restored.</string>
+</resources>
