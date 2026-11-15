@@ -3,6 +3,8 @@ package com.breckneck.debtbook.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.deptbook.domain.backup.BackupCodec
@@ -94,6 +96,20 @@ class PartialRepaymentRoomTest {
         }
         fun open() = Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(*DatabaseMigrations.ALL).build()
         try {
+            val failing = object : Migration(16, 17) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    DatabaseMigrations.MIGRATION_16_17.migrate(db)
+                    error("Failure after adding repayment schema")
+                }
+            }
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing).build().use { db ->
+                try { db.appDao().getAllDebts(); fail("Migration should fail") } catch (_: IllegalStateException) { }
+            }
+            SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+                assertEquals(16, db.version)
+                db.rawQuery("SELECT sumDebt FROM Human WHERE id = 1", null).use { assertTrue(it.moveToFirst()); assertEquals("87.01", it.getString(0)) }
+                db.rawQuery("SELECT * FROM Debt", null).use { assertEquals(-1, it.getColumnIndex("repaymentOfId")) }
+            }
             open().use { db ->
                 val dao = db.appDao()
                 assertTrue(dao.getAllDebts().all { it.repaymentOfId == null && !it.cancelled && it.operationId == null })
