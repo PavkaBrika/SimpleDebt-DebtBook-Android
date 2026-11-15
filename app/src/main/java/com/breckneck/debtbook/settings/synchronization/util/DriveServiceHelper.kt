@@ -10,6 +10,7 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.Collections
+import com.breckneck.debtbook.settings.synchronization.readTextBounded
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -43,8 +44,8 @@ class DriveServiceHelper(driveService: Drive) {
                 val metadata = mDriveService.files()[fileId].execute()
                 val name = metadata.name
                 val contents = mDriveService.files()[fileId].executeMediaAsInputStream().use { stream ->
-                    BufferedReader(InputStreamReader(stream)).use { reader ->
-                        reader.readText()
+                    BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
+                        reader.readTextBounded(com.breckneck.deptbook.domain.backup.BackupCodec.MAX_CHARACTERS)
                     }
                 }
                 tcs.setResult(Pair(name, contents))
@@ -76,7 +77,8 @@ class DriveServiceHelper(driveService: Drive) {
             try {
                 val result = mDriveService.files().list()
                     .setSpaces("appDataFolder")
-                    .setQ("name = '$fileName'")
+                    .setOrderBy("modifiedTime desc")
+                    .setQ("name = '$fileName' and trashed = false")
                     .execute()
                 tcs.setResult(result)
             } catch (e: Exception) {

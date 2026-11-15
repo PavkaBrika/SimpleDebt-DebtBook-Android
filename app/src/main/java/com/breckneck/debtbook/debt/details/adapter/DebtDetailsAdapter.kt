@@ -21,7 +21,7 @@ class DebtDetailsAdapter(
     private val currencyText: String
 ) : RecyclerView.Adapter<DebtDetailsAdapter.DebtViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.####################")
+    private val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
     private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val debtDomainList: MutableList<DebtDomain> = debtDomainListImmutable.toMutableList()
 

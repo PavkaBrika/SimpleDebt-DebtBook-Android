@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><string name="invalid_decimal_amount">Enter an amount with a dot or comma and up to 2 decimal places, without thousands separators.</string></resources>
+<resources><string name="invalid_decimal_amount">Enter a valid amount using a dot or comma and the precision allowed by this currency.</string></resources>

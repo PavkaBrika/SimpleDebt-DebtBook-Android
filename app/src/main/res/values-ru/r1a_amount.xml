@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><string name="invalid_decimal_amount">Введите сумму с точкой или запятой и максимум 2 знаками после неё, без разделителей тысяч.</string></resources>
+<resources><string name="invalid_decimal_amount">Введите сумму с точкой или запятой и допустимым для этой валюты числом дробных знаков.</string></resources>

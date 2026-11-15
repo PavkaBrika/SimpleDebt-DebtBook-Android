@@ -19,7 +19,7 @@ class HumanAdapter(
     private val humanClickListener: OnHumanClickListener
 ) : RecyclerView.Adapter<HumanAdapter.HumanViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.####################")
+    private val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
     private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val humanDomainList: MutableList<HumanDomain> = humanDomainListImmutable.toMutableList()
 

@@ -37,8 +37,6 @@ import com.breckneck.debtbook.auth.AuthorizationActivity
 import com.breckneck.deptbook.domain.util.PINCodeAction
 import com.breckneck.debtbook.core.adapter.SettingsAdapter
 import com.breckneck.debtbook.core.MainViewModel
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import androidx.fragment.app.activityViewModels
@@ -100,17 +98,8 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         Log.e(TAG, "onViewCreated")
 
-        if (vm.isSynchronizationAvailable.value == null) {
-            checkIsSynchronizationAvailable()
-        }
-
-        val synchronizationCardView: CardView = view.findViewById(R.id.synchronizationCardView)
-        vm.isSynchronizationAvailable.observe(viewLifecycleOwner) { isAvailable ->
-            if (isAvailable)
-                synchronizationCardView.visibility = View.VISIBLE
-            else
-                synchronizationCardView.visibility = View.GONE
-        }
+        // File backup is available even without Google Play services.
+        view.findViewById<CardView>(R.id.synchronizationCardView).visibility = View.VISIBLE
 
         val authorizationLayout: LinearLayout = view.findViewById(R.id.authorizationLayout)
         val accountInfoLayout: ConstraintLayout = view.findViewById(R.id.accountInfoLayout)
@@ -499,14 +488,6 @@ class SettingsFragment : Fragment() {
             settingsSelectListener = onSettingsSelectListener
         )
         dialog.show()
-    }
-
-    private fun checkIsSynchronizationAvailable() {
-        val isAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(requireContext())
-        if (isAvailable == ConnectionResult.SUCCESS)
-            vm.setIsSynchronizationAvailable(true)
-        else
-            vm.setIsSynchronizationAvailable(false)
     }
 
     override fun onPause() {

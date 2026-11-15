@@ -113,7 +113,7 @@ class GoalDetailsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val decimalFormat = DecimalFormat("###,###,###.####################")
+        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
         val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
         vm.operationError.observe(viewLifecycleOwner) { failed ->
             if (failed) Toast.makeText(requireContext(), R.string.something_went_wrong, Toast.LENGTH_LONG).show()

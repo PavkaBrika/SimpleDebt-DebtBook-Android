@@ -58,7 +58,7 @@ internal fun FinanceDetailsList(
     val rowDateFormatter = remember { SimpleDateFormat("d MMM", Locale.getDefault()) }
     val decimalFormat = remember {
         val symbols = DecimalFormatSymbols().apply { groupingSeparator = ' ' }
-        DecimalFormat("###,###,###.####################", symbols)
+        DecimalFormat("###,###,###.##", symbols).apply { maximumFractionDigits = 100 }
     }
     val groupedFinances = remember(financeList) {
         financeList.groupBy { monthFormatter.format(it.date) }

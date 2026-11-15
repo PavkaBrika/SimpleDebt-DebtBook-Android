@@ -10,7 +10,7 @@ import com.breckneck.deptbook.domain.util.abs
 
 class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
 
-    val decimalFormat = DecimalFormat("###,###,###.####################")
+    val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
     val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
 
     fun execute(firstCurrency: String, secondCurrency: String): Pair<String, String> {

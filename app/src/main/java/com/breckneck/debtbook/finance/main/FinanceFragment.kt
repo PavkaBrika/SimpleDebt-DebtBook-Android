@@ -85,7 +85,7 @@ class FinanceFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val decimalFormat = DecimalFormat("###,###,###.####################")
+        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
         val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
         customSymbol.groupingSeparator = ' '
         decimalFormat.decimalFormatSymbols = customSymbol

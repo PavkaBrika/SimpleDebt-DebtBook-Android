@@ -1,80 +1,91 @@
 package com.breckneck.debtbook.settings.synchronization
 
-import java.math.BigDecimal
-
-import com.breckneck.deptbook.domain.model.AppDataLists
-import com.breckneck.deptbook.domain.model.DebtDomain
-import com.breckneck.deptbook.domain.model.HumanDomain
-import com.google.gson.Gson
+import com.breckneck.deptbook.domain.backup.BackupCodec
+import com.breckneck.deptbook.domain.model.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.IOException
+import java.math.BigDecimal
+import java.util.Date
 
 class BackupTransferTest {
-    private val gson = Gson()
-    private fun snapshot(id: Int, amount: BigDecimal) = AppDataLists(
-        listOf(HumanDomain(id, "Person $id", amount, "EUR")),
-        listOf(DebtDomain(id, amount, id, null, "1 Jan 2026")),
+    private val codec = BackupCodec()
+    private fun snapshot(id: Int, amount: String) = AppDataLists(
+        listOf(HumanDomain(id, "Person $id", amount.toBigDecimal(), "EUR", BigDecimal.ZERO)),
+        listOf(DebtDomain(id, amount.toBigDecimal(), id, null, "2026-01-01")),
         emptyList(), emptyList(), emptyList(), emptyList(),
     )
-
-    @Test fun `A then restore B then upload writes B from current database`() = runBlocking {
-        var current = snapshot(1, "10.0".toBigDecimal().stripTrailingZeros())
-        val restored = snapshot(2, "20.25".toBigDecimal().stripTrailingZeros())
+    @Test fun `A then restore B then upload reads B and retains A`() = runBlocking {
+        var current = snapshot(1, "10.01")
+        val original = current
+        val b = snapshot(2, "20.25")
+        var retained = ""
+        val transfer = BackupTransfer({ current }, { current = it }, { retained = it })
+        transfer.upload { assertEquals(original, codec.decode(it).data) }
+        transfer.restore { codec.encode(b) }
+        transfer.upload { assertEquals(b, codec.decode(it).data) }
+        assertEquals(original, codec.decode(retained).data)
+    }
+    @Test fun `local changes after screen creation enter the next upload`() = runBlocking {
+        var current = snapshot(1, "10.01")
         val transfer = BackupTransfer({ current }, { current = it })
-        var uploaded = ""
-        transfer.upload { uploaded = it }
-        assertEquals(1, gson.fromJson(uploaded, AppDataLists::class.java).humanList.single().id)
-        transfer.restore { gson.toJson(restored) }
-        transfer.upload { uploaded = it }
-        assertEquals(restored, gson.fromJson(uploaded, AppDataLists::class.java))
+        current = snapshot(1, "12.34")
+        transfer.upload { assertEquals(current, codec.decode(it).data) }
     }
-
-    @Test fun `local changes after opening screen are included in next upload`() = runBlocking {
-        var current = snapshot(1, "10.0".toBigDecimal().stripTrailingZeros())
-        val transfer = BackupTransfer({ current }, { current = it })
-        current = snapshot(1, "12.34".toBigDecimal().stripTrailingZeros())
-        transfer.upload { assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(gson.fromJson(it, AppDataLists::class.java).debtList.single().sum!!)) }
+    @Test fun `failed snapshot never overwrites remote backup`() = runBlocking {
+        val transfer = BackupTransfer({ throw IOException("read failed") }, { fail("No restore") })
+        var wrote = false
+        try { transfer.upload { wrote = true }; fail() } catch (_: IOException) { }
+        assertFalse(wrote)
     }
-
-    @Test fun `failed current snapshot read never overwrites remote backup`() = runBlocking {
-        val transfer = BackupTransfer({ throw IOException("read failed") }, { fail("No restore expected") })
-        var wroteRemote = false
-        try {
-            transfer.upload { wroteRemote = true }
-            fail("Expected read failure")
-        } catch (_: IOException) { }
-        assertFalse(wroteRemote)
-    }
-
-    @Test fun `malformed or incomplete backup never reaches replacement`() = runBlocking {
-        var replaces = 0
-        val transfer = BackupTransfer({ snapshot(1, "10.0".toBigDecimal().stripTrailingZeros()) }, { replaces++ })
-        val valid = gson.toJson(snapshot(1, "10.0".toBigDecimal().stripTrailingZeros()))
-        for (content in listOf("not json", "null", "{}", "[]", valid.replace("\"humanList\":[", "\"humanList\":[null,"),
-            valid.replace("\"name\":\"Person 1\"", "\"name\":null"),
-            valid.replace(Regex("\"sum\":[^,]+,"), ""))) {
-            try {
-                transfer.restore { content }
-                fail("Invalid backup accepted")
-            } catch (_: IllegalArgumentException) { }
-              catch (_: com.google.gson.JsonParseException) { }
+    @Test fun `bad content is rejected before safety copy or replacement`() = runBlocking {
+        var replaces = 0; var retained = 0
+        val transfer = BackupTransfer({ snapshot(1, "10.01") }, { replaces++ }, { retained++ })
+        val valid = codec.encode(snapshot(1, "10.01"))
+        for (content in listOf("not json", "null", "{}", "[]", valid.dropLast(1),
+            valid.replace("\"formatVersion\":2", "\"formatVersion\":99"),
+            valid.replace("\"idHuman\":1", "\"idHuman\":99"))) {
+            try { transfer.restore { content }; fail("Invalid backup accepted") } catch (_: Exception) { }
         }
-        assertEquals(0, replaces)
+        assertEquals(0, replaces); assertEquals(0, retained)
     }
-
-    @Test fun `remote failure preserves local data and a later attempt can succeed`() = runBlocking {
-        val original = snapshot(1, "10.0".toBigDecimal().stripTrailingZeros())
-        var current = original
-        val transfer = BackupTransfer({ current }, { current = it })
-        try {
-            transfer.restore { throw IOException("offline") }
-            fail("Expected network failure")
-        } catch (_: IOException) { }
+    @Test fun `safety copy failure preserves current database`() = runBlocking {
+        val original = snapshot(1, "10.01"); var current = original
+        val transfer = BackupTransfer({ current }, { current = it }, { throw IOException("disk full") })
+        try { transfer.restore { codec.encode(snapshot(2, "20.02")) }; fail() } catch (_: IOException) { }
         assertEquals(original, current)
-        val next = snapshot(2, "20.0".toBigDecimal().stripTrailingZeros())
-        transfer.restore { gson.toJson(next) }
-        assertEquals(next, current)
+    }
+    @Test fun `remote failure preserves data and retry succeeds`() = runBlocking {
+        var current = snapshot(1, "10.01"); val original = current
+        val transfer = BackupTransfer({ current }, { current = it })
+        try { transfer.restore { throw IOException("offline") }; fail() } catch (_: IOException) { }
+        assertEquals(original, current)
+        val next = snapshot(2, "20.02")
+        transfer.restore { codec.encode(next) }; assertEquals(next, current)
+    }
+    @Test fun `failed database replacement discards staged photos and keeps safety copy`() = runBlocking {
+        val original = snapshot(1, "10.01")
+        var retained = ""; val discarded = mutableListOf<String>()
+        val photos = object : BackupTransfer.BackupPhotos {
+            override fun read(path: String): String? = null
+            override fun validate(encoded: String) {}
+            override fun write(encoded: String) = "/staged/image"
+            override fun discard(path: String) { discarded += path }
+        }
+        val b = snapshot(2, "20.02").copy(goalList = listOf(Goal(3, "Photo", BigDecimal.TEN, BigDecimal.ZERO, "EUR", null, Date(1), null)))
+        val transfer = BackupTransfer({ original }, { throw IOException("DB failed") }, { retained = it }, photos)
+        try { transfer.restore { codec.encode(b, mapOf(3 to "aW1hZ2U=")) }; fail() } catch (_: IOException) { }
+        assertEquals(listOf("/staged/image"), discarded)
+        assertEquals(original, codec.decode(retained).data)
+    }
+    @Test fun `restore confirmation reads the content that was previewed`() = runBlocking {
+        val original = snapshot(1, "10.01"); var current = original
+        val transfer = BackupTransfer({ current }, { current = it })
+        val content = codec.encode(snapshot(2, "20.02"))
+        assertEquals(2, transfer.preview(content).data.humanList.single().id)
+        assertEquals(original, current)
+        transfer.restore { content }
+        assertEquals(2, current.humanList.single().id)
     }
 }

@@ -253,7 +253,7 @@ class DebtDetailsFragment : Fragment() {
 
     fun setOverallSumText(sum: BigDecimal, currency: String, view: View) {
         overallSumTextView = view.findViewById(R.id.overallSumTextView)
-        val decimalFormat = DecimalFormat("###,###,###.####################")
+        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
         val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
         customSymbol.groupingSeparator = ' '
         decimalFormat.decimalFormatSymbols = customSymbol

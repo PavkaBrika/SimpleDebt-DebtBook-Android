@@ -59,6 +59,13 @@ class SynchronizationFragment : Fragment() {
     private var synchronizationInterface: SynchronizationInterface? = null
     private lateinit var synchronizationProgressBar: ProgressBar
     private lateinit var signInLauncher: ActivityResultLauncher<Intent>
+    private var restoreDialog: BottomSheetDialog? = null
+    private val exportFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let(vm::exportFile)
+    }
+    private val importFileLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(vm::restoreFile)
+    }
     private lateinit var driveAuthLauncher: ActivityResultLauncher<Intent>
 
 
@@ -101,11 +108,26 @@ class SynchronizationFragment : Fragment() {
             synchronizationInterface!!.onBackButtonClick()
         }
 
-        if (vm.isRestoreDialogOpened.value == true)
-            openRestoreDataDialog()
         if (vm.isLogOutDialogOpened.value == true)
             openLogOutDialog()
 
+        view.findViewById<Button>(R.id.exportBackupFileButton).setOnClickListener {
+            exportFileLauncher.launch("SimpleDebt-backup.json")
+        }
+        view.findViewById<Button>(R.id.importBackupFileButton).setOnClickListener {
+            importFileLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+        }
+        view.findViewById<Button>(R.id.previousLocalBackupButton).setOnClickListener { vm.restorePreviousLocalBackup() }
+        view.findViewById<Button>(R.id.previousCloudBackupButton).setOnClickListener { vm.restorePreviousCloudBackup() }
+        vm.restorePreview.observe(viewLifecycleOwner) { preview ->
+            if (preview != null && restoreDialog?.isShowing != true) openRestoreDataDialog(preview)
+        }
+        vm.operationSucceeded.observe(viewLifecycleOwner) { succeeded ->
+            if (succeeded) {
+                Toast.makeText(requireContext(), R.string.backup_operation_complete, Toast.LENGTH_LONG).show()
+                vm.operationSucceeded.value = false
+            }
+        }
         val authorizationLayout: LinearLayout = view.findViewById(R.id.authorizationLayout)
         val accountLayout: LinearLayout = view.findViewById(R.id.accountLayout)
         vm.isAuthorized.observe(viewLifecycleOwner) { isAuthorized ->
@@ -145,6 +167,13 @@ class SynchronizationFragment : Fragment() {
         }
 
         val googleButtonCardView: CardView = view.findViewById(R.id.googleButtonCardView)
+        val driveAvailable = com.google.android.gms.common.GoogleApiAvailability.getInstance()
+            .isGooglePlayServicesAvailable(requireContext()) == com.google.android.gms.common.ConnectionResult.SUCCESS
+        if (!driveAvailable) {
+            googleButtonCardView.visibility = View.GONE
+            view.findViewById<TextView>(R.id.driveHintTextView).setText(R.string.backup_drive_unavailable)
+            vm.setIsAuthorized(false)
+        }
         synchronizationProgressBar = view.findViewById(R.id.synchronizationProgressBar)
         googleButtonCardView.setOnClickListener {
             requestGoogleSignIn()
@@ -158,7 +187,7 @@ class SynchronizationFragment : Fragment() {
 
         val restoreButtonLayout: ConstraintLayout = view.findViewById(R.id.restoreButtonLayout)
         restoreButtonLayout.setOnClickListener {
-            openRestoreDataDialog()
+            vm.restoreBackup()
         }
 
         val restoreTextView: TextView = view.findViewById(R.id.restoreTextView)
@@ -172,7 +201,12 @@ class SynchronizationFragment : Fragment() {
             restoreTextView.setText(if (restoring) R.string.loading else R.string.restore_data)
             synchronizeButtonLayout.isEnabled = enabled
             restoreButtonLayout.isEnabled = enabled
+            view.findViewById<Button>(R.id.exportBackupFileButton).isEnabled = !uploading && !restoring
+            view.findViewById<Button>(R.id.importBackupFileButton).isEnabled = !uploading && !restoring
+            view.findViewById<Button>(R.id.previousCloudBackupButton).isEnabled = enabled
+            view.findViewById<Button>(R.id.previousLocalBackupButton).isEnabled = !uploading && !restoring && vm.hasPrevious.value == true
         }
+        vm.hasPrevious.observe(viewLifecycleOwner) { updateTransferControls() }
         vm.fileId.observe(viewLifecycleOwner) { updateTransferControls() }
         vm.driveServiceHelper.observe(viewLifecycleOwner) { updateTransferControls() }
         vm.isSynchronizing.observe(viewLifecycleOwner) { updateTransferControls() }
@@ -308,31 +342,35 @@ class SynchronizationFragment : Fragment() {
             }
     }
 
-    private fun openRestoreDataDialog() {
-        val bottomSheetDialog = BottomSheetDialog(requireContext())
-        bottomSheetDialog.setContentView(R.layout.dialog_are_you_sure)
+    private fun openRestoreDataDialog(preview: SynchronizationViewModel.RestorePreview) {
+        val ownerActivity = requireActivity()
+        val bottomSheetDialog = BottomSheetDialog(ownerActivity)
+        bottomSheetDialog.setContentView(R.layout.dialog_restore_backup)
 
-        bottomSheetDialog.findViewById<TextView>(R.id.dialogMessage)!!.text = getString(R.string.recover_all_data_from_the_cloud_this_will_delete_the_current_application_data)
+        restoreDialog = bottomSheetDialog
+        val date = preview.createdAt?.let { java.text.DateFormat.getDateTimeInstance().format(java.util.Date(it)) }
+            ?: getString(R.string.backup_unknown_date)
+        val details = getString(R.string.backup_preview, date, preview.records, preview.photoCount)
+        val legacy = if (preview.legacy) "\n\n" + getString(R.string.backup_legacy_warning, java.util.TimeZone.getDefault().id) else ""
+        bottomSheetDialog.findViewById<TextView>(R.id.dialogMessage)!!.text =
+            details + legacy + "\n\n" + getString(R.string.recover_all_data_from_the_cloud_this_will_delete_the_current_application_data)
 
         bottomSheetDialog.findViewById<Button>(R.id.okButton)!!.setOnClickListener {
-            vm.restoreBackup()
+            vm.confirmRestore()
             bottomSheetDialog.dismiss()
         }
 
         bottomSheetDialog.findViewById<Button>(R.id.cancelButton)!!.setOnClickListener {
+            vm.dismissRestorePreview()
             bottomSheetDialog.dismiss()
         }
 
-        bottomSheetDialog.setOnDismissListener {
-            vm.setIsRestoreDialogOpened(false)
-        }
-
         bottomSheetDialog.setOnCancelListener {
-            vm.setIsRestoreDialogOpened(false)
+            if (!ownerActivity.isChangingConfigurations) vm.dismissRestorePreview()
         }
 
-        vm.setIsRestoreDialogOpened(true)
         bottomSheetDialog.show()
+        bottomSheetDialog.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
     }
 
     private fun openLogOutDialog() {
@@ -361,6 +399,14 @@ class SynchronizationFragment : Fragment() {
 
         vm.setIsLogOutDialogOpened(true)
         bottomSheetDialog.show()
+    }
+
+    override fun onDestroyView() {
+        restoreDialog?.setOnDismissListener(null)
+        restoreDialog?.setOnCancelListener(null)
+        restoreDialog?.dismiss()
+        restoreDialog = null
+        super.onDestroyView()
     }
 
     override fun onPause() {

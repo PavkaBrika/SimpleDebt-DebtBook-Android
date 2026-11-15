@@ -13,7 +13,7 @@ import java.text.DecimalFormat
 class ExportDebtDataInExcelUseCase {
 
     fun execute(debtList: List<DebtDomain>, sheetName: String, rootFolder: File, sheetTitles: Array<String>): File {
-        val decimalFormat = DecimalFormat("###,###,###.####################")
+        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
 
         val classTitles = arrayOf("date", "sum", "info")
         val gson = Gson()

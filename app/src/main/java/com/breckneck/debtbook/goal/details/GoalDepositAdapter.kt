@@ -20,7 +20,7 @@ class GoalDepositAdapter(
     private val currency: String
 ): RecyclerView.Adapter<GoalDepositAdapter.GoalDepositViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.####################")
+    private val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
     private val sdf = SimpleDateFormat("d MMM yyyy")
     private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val goalDepositList: MutableList<GoalDeposit> = goalDepositListImmutable.toMutableList()

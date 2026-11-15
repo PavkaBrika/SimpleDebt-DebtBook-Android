@@ -1,69 +1,70 @@
 package com.breckneck.debtbook.settings.synchronization
 
-
+import com.breckneck.deptbook.domain.backup.BackupCodec
 import com.breckneck.deptbook.domain.model.AppDataLists
-import com.google.gson.Gson
-import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** Keeps the upload snapshot at the moment of upload, never at screen creation. */
+/** One coordinator for file/Drive operations. Validation always precedes safety copy and replacement. */
 internal class BackupTransfer(
     private val readCurrentData: () -> AppDataLists,
     private val replaceCurrentData: (AppDataLists) -> Unit,
+    private val retainPrevious: (String) -> Unit = {},
+    private val photos: BackupPhotos? = null,
 ) {
-    private val gson = Gson()
+    private val codec = BackupCodec()
+    private val mutex = Mutex()
 
-    suspend fun upload(writeRemote: suspend (String) -> Unit) {
-        val content = withContext(Dispatchers.IO) { gson.toJson(readCurrentData()) }
+    interface BackupPhotos {
+        fun read(path: String): String?
+        fun validate(encoded: String)
+        fun write(encoded: String): String
+        fun discard(path: String)
+    }
+
+    private fun snapshot(): String {
+        val current = readCurrentData()
+        val images = current.goalList.mapNotNull { goal ->
+            goal.photoPath?.let { photos?.read(it) }?.let { goal.id to it }
+        }.toMap()
+        // Local paths never leave this installation. Missing source files cannot be recovered.
+        val portable = current.copy(goalList = current.goalList.map { it.copy(photoPath = null) })
+        return codec.encode(portable, images)
+    }
+
+    suspend fun preview(content: String): BackupCodec.Document = withContext(Dispatchers.IO) {
+        codec.decode(content).also { document ->
+            require(photos != null || document.photos.isEmpty()) { "Photo storage unavailable" }
+            document.photos.values.forEach { photos!!.validate(it) }
+        }
+    }
+
+    suspend fun upload(writeRemote: suspend (String) -> Unit) = mutex.withLock {
+        val content = withContext(Dispatchers.IO) { snapshot() }
         writeRemote(content)
     }
 
-    suspend fun restore(readRemote: suspend () -> String) {
-        val content = readRemote()
+    suspend fun restore(readRemote: suspend () -> String) = mutex.withLock {
+        val document = preview(readRemote())
         withContext(Dispatchers.IO) {
-            val data = decode(content)
-            // The repository performs the entire replacement in its existing Room transaction.
-            replaceCurrentData(data)
-        }
-    }
-
-    @Suppress("SENSELESS_COMPARISON") // Gson may populate null into Kotlin non-null fields.
-    private fun decode(content: String): AppDataLists {
-        val root = JsonParser.parseString(content)
-        require(root.isJsonObject) { "Invalid backup" }
-        val requiredNumbers = mapOf(
-            "humanList" to listOf("id", "sumDebt"),
-            "debtList" to listOf("id", "sum", "idHuman"),
-            "financeList" to listOf("id", "sum", "financeCategoryId"),
-            "financeCategoryList" to listOf("id", "image"),
-            "goalList" to listOf("id", "sum", "savedSum"),
-            "goalDepositList" to listOf("id", "sum", "goalId"),
-        )
-        requiredNumbers.forEach { (name, numericFields) ->
-            val list = root.asJsonObject.get(name)
-            require(list != null && list.isJsonArray) { "Incomplete backup" }
-            require(list.asJsonArray.all { it.isJsonObject }) { "Invalid backup record" }
-            list.asJsonArray.forEach { record ->
-                numericFields.forEach { field ->
-                    val value = record.asJsonObject.get(field)
-                    require(value != null && value.isJsonPrimitive && value.asJsonPrimitive.isNumber) {
-                        "Missing or invalid numeric backup field"
+            val createdPhotos = mutableListOf<String>()
+            try {
+                val data = document.data.copy(goalList = document.data.goalList.map { goal ->
+                    val path = document.photos[goal.id]?.let { encoded ->
+                        photos!!.write(encoded).also { createdPhotos += it }
                     }
-                }
+                    goal.copy(photoPath = path)
+                })
+                // Failure to retain a usable previous snapshot cancels restore too.
+                retainPrevious(snapshot())
+                replaceCurrentData(data) // Repository replaces all tables in one Room transaction.
+            } catch (error: Throwable) {
+                createdPhotos.forEach { photos?.discard(it) }
+                throw error
             }
         }
-        val data = gson.fromJson(root, AppDataLists::class.java)
-        // Gson can bypass Kotlin non-null constructors. Validate before any database mutation.
-        require(data.humanList.all { it.name != null && it.currency != null && it.sumDebt != null })
-        require(data.debtList.all { it.date != null && it.sum != null })
-        require(data.financeList.all { it.date != null && it.sum != null })
-        require(data.financeCategoryList.all { it.name != null && it.state != null && it.color != null })
-        require(data.goalList.all {
-            it.name != null && it.currency != null && it.creationDate != null &&
-                it.sum != null && it.savedSum != null
-        })
-        require(data.goalDepositList.all { it.date != null && it.sum != null })
-        return data
+        document
     }
 }

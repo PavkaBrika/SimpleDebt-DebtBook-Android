@@ -321,3 +321,5 @@ Getter/Setter пары для каждой настройки. Примеры:
 `util/MoneyPolicy.kt`: точные десятичные суммы, допустимый ввод и явное HALF_EVEN; `util/LedgerDate.kt`: календарный ISO-день, строгое распознавание старых строк, отображение и стабильная сортировка без зависимости от зоны. Инварианты: `docs/r1b-data-contract.md`.
 
 Все денежные поля и контракты HumanRepository/AddSum/GetHumanSumDebt/SetDebt/EditDebt/FormatDebtSum теперь `BigDecimal`; DecimalInput парсит напрямую из строки и валидирует точность валюты. HumanDomain/Goal включают `openingAdjustment`, DebtDomain — `legacyDate`. GetCurrentDate/SetDate возвращают календарный ISO-день; sortDebts использует LedgerDate и сохраняет неизвестные даты.
+
+`backup/BackupCodec.kt`: версионированный JSON v2 (точные суммы строками, время epoch millis, дата/число записей/фото); строгая проверка структуры/дублей/ссылок/агрегатов, совместимый импорт старого плоского JSON. Старые даты без зоны требуют явно показанной пользователю интерпретации.

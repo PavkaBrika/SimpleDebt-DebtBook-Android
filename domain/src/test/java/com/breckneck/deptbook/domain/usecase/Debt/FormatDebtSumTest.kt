@@ -9,7 +9,7 @@ class FormatDebtSumTest {
         val previous = Locale.getDefault()
         try {
             Locale.setDefault(Locale.US)
-            val cases = mapOf("-0.0" to "0", "-0.005" to "-0.005", "-0.5555" to "-0.5555", "10000000.9999" to "10,000,000.9999")
+            val cases = mapOf("-0.0" to "0", "0.000000000000000000000001" to "0.000000000000000000000001", "-0.005" to "-0.005", "-0.5555" to "-0.5555", "10000000.9999" to "10,000,000.9999")
             for ((value, expected) in cases) assertEquals(expected, FormatDebtSum().execute(value.toBigDecimal()))
         } finally { Locale.setDefault(previous) }
     }
