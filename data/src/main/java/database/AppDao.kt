@@ -2,6 +2,8 @@ package database
 
 import java.math.BigDecimal
 import com.breckneck.deptbook.domain.util.compareTo
+import com.breckneck.deptbook.domain.util.RepaymentPolicy
+import com.breckneck.deptbook.domain.util.MoneyPolicy
 
 import androidx.room.*
 import entity.Debt
@@ -39,7 +41,7 @@ interface AppDao {
     @Transaction
     fun addSum(humanId: Int, sum: BigDecimal) {
         val human = requireNotNull(getHuman(humanId))
-        human.sumDebt = getAllDebtsById(humanId).fold(human.openingAdjustment) { total, debt -> total + debt.sum }
+        human.sumDebt = getAllDebtsById(humanId).fold(human.openingAdjustment) { total, debt -> total + debt.toDomain().effectiveSum }
         updateHuman(human)
     }
 
@@ -66,6 +68,22 @@ interface AppDao {
 
     @Transaction
     fun saveDebt(debt: Debt) {
+        val history = getAllDebts()
+        if (debt.repaymentOfId != null) {
+            val previous = history.firstOrNull { it.operationId == debt.operationId }
+            if (previous != null) {
+                require(previous.repaymentOfId == debt.repaymentOfId && previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0) { "Repayment request reused" }
+                return // Includes cancelled requests: retry must never resurrect a repayment.
+            }
+            require(!debt.cancelled && debt.id == 0) { "Invalid new repayment" }
+            val original = requireNotNull(history.firstOrNull { it.id == debt.repaymentOfId }) { "Missing original debt" }
+            val remaining = RepaymentPolicy.remaining(original.toDomain(), history.map { it.toDomain() })
+            val currency = requireNotNull(getHuman(original.idHuman)).currency
+            require(debt.sum.abs().compareTo(remaining) == 0 || MoneyPolicy.parse(debt.sum.abs().toPlainString(), currency) != null) { "Invalid repayment precision" }
+        }
+        // A synthetic unused ID allows validation before Room assigns the real primary key.
+        val candidate = debt.toDomain().copy(id = if (debt.id == 0) Int.MIN_VALUE else debt.id)
+        RepaymentPolicy.validate(history.map { it.toDomain() } + candidate)
         insertDebt(debt)
         addSum(debt.idHuman, BigDecimal.ZERO)
     }
@@ -73,6 +91,10 @@ interface AppDao {
     @Transaction
     fun reviseDebt(debt: Debt) {
         val previous = getAllDebts().firstOrNull { it.id == debt.id } ?: error("Missing debt")
+        require(previous.repaymentOfId == null && debt.repaymentOfId == null && debt.operationId == null && !debt.cancelled) { "Cancel a repayment instead of editing" }
+        if (getAllDebts().any { it.repaymentOfId == previous.id }) {
+            require(previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0) { "Debt has repayment history" }
+        }
         debt.legacyDate = previous.legacyDate
         updateDebt(debt)
         addSum(previous.idHuman, BigDecimal.ZERO)
@@ -82,7 +104,13 @@ interface AppDao {
     @Transaction
     fun removeDebt(debt: Debt) {
         val previous = getAllDebts().firstOrNull { it.id == debt.id } ?: return
-        deleteDebt(previous)
+        if (previous.repaymentOfId != null) {
+            if (previous.cancelled) return
+            updateDebt(previous.copy(cancelled = true))
+        } else {
+            require(getAllDebts().none { it.repaymentOfId == previous.id }) { "Debt has repayment history" }
+            deleteDebt(previous)
+        }
         addSum(previous.idHuman, BigDecimal.ZERO)
     }
 
@@ -243,6 +271,7 @@ interface AppDao {
         goals: List<GoalData>,
         goalDeposits: List<GoalDepositData>
     ) {
+        RepaymentPolicy.validate(debts.map { it.toDomain() })
         // Delete children before parents to respect FK constraints
         deleteAllFinances()
         deleteAllGoalDeposits()

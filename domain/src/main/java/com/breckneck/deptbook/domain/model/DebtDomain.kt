@@ -8,5 +8,9 @@ data class DebtDomain
      var idHuman: Int,
      var info: String?,
      var date: String,
-     var legacyDate: String? = null) {
+     var legacyDate: String? = null,
+     val repaymentOfId: Int? = null,
+     val operationId: String? = null,
+     val cancelled: Boolean = false) {
+    val effectiveSum: BigDecimal get() = if (cancelled) BigDecimal.ZERO else sum
 }

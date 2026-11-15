@@ -59,6 +59,7 @@ class BackupCodecTest {
             }
             old.getAsJsonArray("financeList").forEach { it.asJsonObject.remove("currency"); it.asJsonObject.remove("calendarDay") }
             old.getAsJsonArray("goalList").forEach { it.asJsonObject.remove("goalDay") }
+            old.getAsJsonArray("debtList").forEach { it.asJsonObject.remove("cancelled") }
             old.getAsJsonArray("debtList")[0].asJsonObject.addProperty("date", "01/02/2024")
             old.getAsJsonArray("goalList")[0].asJsonObject.addProperty("photoPath", "/another/device/photo.jpg")
             val document = BackupCodec("GBP").decode(old.toString())
@@ -76,7 +77,7 @@ class BackupCodecTest {
     @Test fun `unsupported corrupt and incomplete envelopes are rejected`() {
         val valid = encoded()
         val bad = listOf(
-            valid.replace("\"formatVersion\":2", "\"formatVersion\":3"),
+            valid.replace("\"formatVersion\":3", "\"formatVersion\":99"),
             valid.replace("\"recordCount\":6", "\"recordCount\":7"),
             valid.replace("\"calendarDay\":\"2026-11-15\"", "\"calendarDay\":\"2026-02-30\""),
             valid.replace("\"idHuman\":1", "\"idHuman\":99"),

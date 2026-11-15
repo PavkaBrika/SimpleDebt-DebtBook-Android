@@ -13,6 +13,7 @@ import com.breckneck.deptbook.domain.repository.AppDataRepository
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import database.AppDataBase
 import entity.Debt
+import entity.toEntity
 import entity.FinanceCategoryData
 import entity.FinanceData
 import entity.GoalData
@@ -31,7 +32,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
                 HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
             },
             debtList = dao.getAllDebts().map {
-                DebtDomain(id = it.id, sum = it.sum, idHuman = it.idHuman, info = it.info, date = it.date, legacyDate = it.legacyDate)
+                it.toDomain()
             },
             financeCategoryList = dao.getAllFinanceCategories().map {
                 FinanceCategory(
@@ -63,7 +64,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
                 Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
             },
             debts = appDataLists.debtList.map {
-                Debt(id = it.id, sum = it.sum, idHuman = it.idHuman, info = it.info, date = it.date, legacyDate = it.legacyDate)
+                it.toEntity()
             },
             financeCategories = appDataLists.financeCategoryList.map {
                 FinanceCategoryData(

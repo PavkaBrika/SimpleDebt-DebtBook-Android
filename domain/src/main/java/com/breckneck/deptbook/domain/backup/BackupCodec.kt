@@ -4,6 +4,7 @@ import com.breckneck.deptbook.domain.model.*
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.util.MoneyPolicy
+import com.breckneck.deptbook.domain.util.RepaymentPolicy
 import com.google.gson.*
 import java.math.BigDecimal
 import java.text.ParsePosition
@@ -38,10 +39,11 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         require(content.length <= MAX_CHARACTERS) { "Backup too large" }
         val root = parseStrict(content).let { require(it.isJsonObject); it.asJsonObject }
         val legacy = !root.has("format") && !root.has("formatVersion")
+        val version = if (legacy) 0 else root.integer("formatVersion")
         val payload: JsonObject
         val created: Long?
         if (legacy) { payload = root; created = null } else {
-            require(root.string("format") == FORMAT && root.integer("formatVersion") == VERSION) { "Unsupported backup version" }
+            require(root.string("format") == FORMAT && version in 2..VERSION) { "Unsupported backup version" }
             created = root.long("createdAt").also { require(it > 0) }
             payload = root.get("data").let { require(it?.isJsonObject == true); it.asJsonObject }
         }
@@ -50,10 +52,14 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
                 if (legacy) BigDecimal.ZERO else row.money("openingAdjustment", false))
         }
         val debts = payload.rows("debtList").map { row ->
+            if (version < 3) require(listOf("repaymentOfId", "operationId", "cancelled").none { row.has(it) }) { "Repayment fields need backup v3" }
             val rawDate = row.string("date")
             DebtDomain(row.id(), row.money("sum", legacy), row.integer("idHuman"), row.optionalString("info"),
                 if (legacy) LedgerDate.canonical(rawDate) ?: rawDate else rawDate,
-                if (legacy) rawDate else row.optionalString("legacyDate"))
+                if (legacy) rawDate else row.optionalString("legacyDate"),
+                if (version >= 3 && row.has("repaymentOfId")) row.integer("repaymentOfId") else null,
+                if (version >= 3) row.optionalString("operationId") else null,
+                if (version >= 3) row.boolean("cancelled") else false)
         }
         val categories = payload.rows("financeCategoryList").map { row ->
             val color = row.string("color")
@@ -84,7 +90,8 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         val categoryIds = unique(categories.map { it.id }); unique(finances.map { it.id })
         val goalIds = unique(goals.map { it.id }); unique(deposits.map { it.id })
         require(debts.all { it.idHuman in humanIds } && finances.all { it.financeCategoryId in categoryIds } && deposits.all { it.goalId in goalIds }) { "Broken backup references" }
-        val debtTotals = debts.groupBy { it.idHuman }.mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.sum } }
+        RepaymentPolicy.validate(debts)
+        val debtTotals = debts.groupBy { it.idHuman }.mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.effectiveSum } }
         val depositTotals = deposits.groupBy { it.goalId }.mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.sum } }
         humans.forEach {
             val total = debtTotals[it.id] ?: BigDecimal.ZERO
@@ -167,6 +174,10 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
     }
     private fun JsonObject.integer(name: String): Int = long(name).also { require(it in Int.MIN_VALUE..Int.MAX_VALUE) }.toInt()
     private fun JsonObject.id() = integer("id")
+    private fun JsonObject.boolean(name: String): Boolean = get(name).let {
+        require(it != null && it.isJsonPrimitive && it.asJsonPrimitive.isBoolean) { "Missing boolean" }
+        it.asBoolean
+    }
     private fun JsonObject.money(name: String, legacy: Boolean): BigDecimal = get(name).let {
         require(it != null && it.isJsonPrimitive &&
             (if (legacy) it.asJsonPrimitive.isNumber else it.asJsonPrimitive.isString)) { "Missing decimal amount" }
@@ -202,7 +213,7 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         return Date(candidates.single())
     }
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
         const val FORMAT = "SimpleDebtBackup"
         const val MAX_CHARACTERS = 32 * 1024 * 1024
         const val MAX_PHOTO_CHARACTERS = 8 * 1024 * 1024

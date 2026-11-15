@@ -132,6 +132,17 @@ object DatabaseMigrations {
             db.execSQL("ALTER TABLE GoalData ADD COLUMN goalDay TEXT")
         }
     }
-    fun forCurrency(currency: String) = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, migration15To16(currency))
+    val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Every historical row remains an independent original operation.
+            db.execSQL("ALTER TABLE Debt ADD COLUMN repaymentOfId INTEGER")
+            db.execSQL("ALTER TABLE Debt ADD COLUMN operationId TEXT")
+            db.execSQL("ALTER TABLE Debt ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE UNIQUE INDEX index_Debt_operationId ON Debt(operationId)")
+            db.execSQL("CREATE INDEX index_Debt_repaymentOfId ON Debt(repaymentOfId)")
+        }
+    }
+
+    fun forCurrency(currency: String) = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, migration15To16(currency), MIGRATION_16_17)
     val ALL = forCurrency("USD")
 }
