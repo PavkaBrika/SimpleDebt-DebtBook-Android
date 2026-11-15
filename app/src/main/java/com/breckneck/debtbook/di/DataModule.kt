@@ -1,6 +1,8 @@
 package com.breckneck.debtbook.di
 
 import android.content.Context
+import com.breckneck.deptbook.domain.repository.DataTransaction
+import repository.RoomDataTransaction
 import com.breckneck.deptbook.data.storage.AdStorage
 import com.breckneck.deptbook.data.storage.DebtStorage
 import com.breckneck.deptbook.data.storage.FinanceCategoryStorage
@@ -45,6 +47,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DataModule {
+    @Provides
+    @Singleton
+    fun provideDataTransaction(@ApplicationContext context: Context): DataTransaction =
+        RoomDataTransaction(context)
+
 
     // HUMAN
 

@@ -1,6 +1,14 @@
 package com.breckneck.debtbook.debt.create
 
 import android.util.Log
+import com.breckneck.deptbook.domain.repository.DataTransaction
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.breckneck.deptbook.domain.usecase.Human.*
+import com.breckneck.deptbook.domain.usecase.Debt.*
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -14,8 +22,55 @@ import javax.inject.Inject
 class CreateDebtViewModel @Inject constructor(
     private val getDefaultCurrency: GetDefaultCurrency,
     private val getCurrentDateUseCase: GetCurrentDateUseCase,
+    private val setHuman: SetHumanUseCase,
+    private val getLastHumanId: GetLastHumanIdUseCase,
+    private val setDebt: SetDebtUseCase,
+    private val editDebt: EditDebtUseCase,
+    private val getDebts: GetAllDebtsByIdUseCase,
+    private val addSum: AddSumUseCase,
+    private val transaction: DataTransaction,
     private val setDateUseCase: SetDateUseCase
 ) : ViewModel() {
+
+    val isSaving = MutableLiveData(false)
+    val saveError = MutableLiveData(false)
+    val savedHumanId = MutableLiveData<Int?>()
+
+    fun consumeSaveResult() { savedHumanId.value = null }
+
+    fun saveDebt(humanId: Int, debtId: Int, name: String, sum: Double,
+                 date: String, info: String) {
+        if (isSaving.value == true || savedHumanId.value != null) return
+        isSaving.value = true
+        saveError.value = false
+        viewModelScope.launch {
+            try {
+                val savedId = withContext(Dispatchers.IO) { transaction.run {
+                    val id = if (humanId > 0) humanId else {
+                        setHuman.execute(name, sum, currency.value!!)
+                        getLastHumanId.exectute()
+                    }
+                    if (debtId > 0) {
+                        val previous = requireNotNull(getDebts.execute(id).firstOrNull { it.id == debtId })
+                        editDebt.execute(debtId, sum, id, info.ifBlank { null }, date)
+                        addSum.execute(id, sum - previous.sum)
+                    } else {
+                        setDebt.execute(sum, id, info.ifBlank { null }, date)
+                        if (humanId > 0) addSum.execute(id, sum)
+                    }
+                    id
+                } }
+                savedHumanId.value = savedId
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                saveError.value = true
+                Log.e("CreateDebt", "Saving debt failed")
+            } finally {
+                isSaving.value = false
+            }
+        }
+    }
 
     private val TAG = "NewDebtFragmentVM"
 

@@ -382,9 +382,9 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         startTickVibration()
     }
 
-    override fun DebtDetailsNewHuman(currency: String, name: String) {
+    override fun DebtDetailsNewHuman(idHuman: Int, currency: String, name: String) {
         val args = Bundle()
-        args.putBoolean("newHuman", true)
+        args.putInt("idHuman", idHuman)
         args.putString("currency", currency)
         args.putString("name", name)
         navController.navigate(R.id.action_newDebtFragment_to_debtDetailsFragment, args)
