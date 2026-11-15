@@ -29,7 +29,6 @@ import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.settings.synchronization.util.DriveServiceHelper
-import com.breckneck.deptbook.domain.model.AppDataLists
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -43,7 +42,6 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.FileList
-import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Collections
 
@@ -57,9 +55,8 @@ class SynchronizationFragment : Fragment() {
     private val TAG = "Sync fragment"
 
     private val vm by viewModels<SynchronizationViewModel>()
-    private val fileName = "DebtBookSync.json"
+    private val fileName = SynchronizationViewModel.BACKUP_FILE_NAME
     private var synchronizationInterface: SynchronizationInterface? = null
-    private val gson = Gson()
     private lateinit var synchronizationProgressBar: ProgressBar
     private lateinit var signInLauncher: ActivityResultLauncher<Intent>
     private lateinit var driveAuthLauncher: ActivityResultLauncher<Intent>
@@ -156,8 +153,7 @@ class SynchronizationFragment : Fragment() {
 
         val synchronizeButtonLayout: ConstraintLayout = view.findViewById(R.id.synchronizeButtonLayout)
         synchronizeButtonLayout.setOnClickListener {
-            vm.setIsSynchronizing(true)
-            saveFileChanges()
+            vm.uploadBackup()
         }
 
         val restoreButtonLayout: ConstraintLayout = view.findViewById(R.id.restoreButtonLayout)
@@ -167,59 +163,38 @@ class SynchronizationFragment : Fragment() {
 
         val restoreTextView: TextView = view.findViewById(R.id.restoreTextView)
         val synchronizeTextView: TextView = view.findViewById(R.id.synchronizeTextView)
-        vm.fileId.observe(viewLifecycleOwner) { fileId ->
-            if ((fileId == null) || (vm.appDataInfoForSync.value == null)) {
-                synchronizeTextView.text = getString(R.string.loading)
-                restoreTextView.text = getString(R.string.loading)
-                synchronizeButtonLayout.isClickable = false
-                restoreButtonLayout.isClickable = false
-            } else {
-                synchronizeTextView.text = getString(R.string.synchronize)
-                restoreTextView.text = getString(R.string.restore_data)
-                synchronizeButtonLayout.isClickable = true
-                restoreButtonLayout.isClickable = true
-            }
+        fun updateTransferControls() {
+            val uploading = vm.isSynchronizing.value == true
+            val restoring = vm.isRestoring.value == true
+            val ready = vm.fileId.value != null && vm.driveServiceHelper.value != null
+            val enabled = ready && !uploading && !restoring
+            synchronizeTextView.setText(if (uploading) R.string.loading else R.string.synchronize)
+            restoreTextView.setText(if (restoring) R.string.loading else R.string.restore_data)
+            synchronizeButtonLayout.isEnabled = enabled
+            restoreButtonLayout.isEnabled = enabled
         }
-        vm.appDataInfoForSync.observe(viewLifecycleOwner) { appData ->
-            if ((appData == null) || (vm.fileId.value == null)) {
-                synchronizeTextView.text = getString(R.string.loading)
-                restoreTextView.text = getString(R.string.loading)
-                synchronizeButtonLayout.isClickable = false
-                restoreButtonLayout.isClickable = false
-            } else {
-                synchronizeTextView.text = getString(R.string.synchronize)
-                restoreTextView.text = getString(R.string.restore_data)
-                synchronizeButtonLayout.isClickable = true
-                restoreButtonLayout.isClickable = true
-            }
-        }
-
-        vm.isSynchronizing.observe(viewLifecycleOwner) { isSynchronizing ->
-            if (isSynchronizing) {
-                synchronizeTextView.text = getString(R.string.loading)
-                synchronizeButtonLayout.isClickable = false
-                restoreButtonLayout.isClickable = false
-            } else {
-                synchronizeTextView.text = getString(R.string.synchronize)
-                synchronizeButtonLayout.isClickable = true
-                restoreButtonLayout.isClickable = true
-            }
-        }
-
-        vm.isRestoring.observe(viewLifecycleOwner) { isRestoring ->
-            if (isRestoring) {
-                restoreTextView.text = getString(R.string.loading)
-                synchronizeButtonLayout.isClickable = false
-                restoreButtonLayout.isClickable = false
-            } else {
-                restoreTextView.text = getString(R.string.restore_data)
-                synchronizeButtonLayout.isClickable = true
-                restoreButtonLayout.isClickable = true
+        vm.fileId.observe(viewLifecycleOwner) { updateTransferControls() }
+        vm.driveServiceHelper.observe(viewLifecycleOwner) { updateTransferControls() }
+        vm.isSynchronizing.observe(viewLifecycleOwner) { updateTransferControls() }
+        vm.isRestoring.observe(viewLifecycleOwner) { updateTransferControls() }
+        vm.operationError.observe(viewLifecycleOwner) { error ->
+            if (error != null) {
+                vm.dismissOperationError()
+                if (error is UserRecoverableAuthIOException) {
+                    driveAuthLauncher.launch(error.intent)
+                } else {
+                    Toast.makeText(requireContext(), R.string.backup_transfer_failed, Toast.LENGTH_LONG).show()
+                }
             }
         }
 
         val googleLogOutButtonLayout: ConstraintLayout =
             view.findViewById(R.id.googleLogoutButtonLayout)
+        fun updateLogOutControl() {
+            googleLogOutButtonLayout.isEnabled = vm.isSynchronizing.value != true && vm.isRestoring.value != true
+        }
+        vm.isSynchronizing.observe(viewLifecycleOwner) { updateLogOutControl() }
+        vm.isRestoring.observe(viewLifecycleOwner) { updateLogOutControl() }
         googleLogOutButtonLayout.setOnClickListener {
             openLogOutDialog()
         }
@@ -310,56 +285,6 @@ class SynchronizationFragment : Fragment() {
         }
     }
 
-    private fun saveFileChanges() {
-        vm.driveServiceHelper.value!!.saveFile(
-            vm.fileId.value,
-            fileName,
-            gson.toJson(vm.appDataInfoForSync.value)
-        )
-            .addOnSuccessListener {
-                vm.setIsSynchronizing(false)
-                vm.setLastSyncDate()
-            }
-            .addOnFailureListener {
-                vm.setIsSynchronizing(false)
-                if (it is UserRecoverableAuthIOException) {
-                    driveAuthLauncher.launch(it.intent)
-                } else {
-                    Log.e(TAG, "Failed to save file to Drive", it)
-                    Toast.makeText(requireActivity(), getString(R.string.something_went_wrong), Toast.LENGTH_SHORT).show()
-                }
-            }
-    }
-
-    private fun getFile() {
-        vm.driveServiceHelper.value!!.readFile(vm.fileId.value)
-            .addOnSuccessListener {
-                vm.replaceAllData(gson.fromJson(it.second, AppDataLists::class.java))
-            }
-            .addOnFailureListener {
-                vm.setIsRestoring(false)
-                if (it is UserRecoverableAuthIOException) {
-                    driveAuthLauncher.launch(it.intent)
-                } else {
-                    Log.e(TAG, "Failed to read file from Drive", it)
-                    Toast.makeText(requireActivity(), getString(R.string.something_went_wrong), Toast.LENGTH_SHORT).show()
-                }
-            }
-    }
-
-//    private fun isDataDifferent(data: String): Boolean {
-//        val appDataLists = gson.fromJson(data, AppDataLists::class.java)
-//        if ((vm.appDataInfoForSync.value!!.humanList.size == appDataLists.humanList.size)
-//            && (vm.appDataInfoForSync.value!!.debtList.size == appDataLists.debtList.size)
-//            && (vm.appDataInfoForSync.value!!.humanList.containsAll(appDataLists.humanList))
-//            && (vm.appDataInfoForSync.value!!.debtList.containsAll(appDataLists.debtList))
-//        ) {
-//            return true
-//        } else {
-//            return false
-//        }
-//    }
-
     private fun findOrCreateFile(it: FileList) {
         if (it.files.size == 0) {
             createNewFile()
@@ -390,8 +315,7 @@ class SynchronizationFragment : Fragment() {
         bottomSheetDialog.findViewById<TextView>(R.id.dialogMessage)!!.text = getString(R.string.recover_all_data_from_the_cloud_this_will_delete_the_current_application_data)
 
         bottomSheetDialog.findViewById<Button>(R.id.okButton)!!.setOnClickListener {
-            getFile()
-            vm.setIsRestoring(true)
+            vm.restoreBackup()
             bottomSheetDialog.dismiss()
         }
 
