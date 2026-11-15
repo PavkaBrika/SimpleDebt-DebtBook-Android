@@ -14,6 +14,7 @@ import com.breckneck.deptbook.domain.usecase.Goal.UpdateGoal
 import com.breckneck.deptbook.domain.usecase.GoalDeposit.DeleteGoalDepositsByGoalId
 import com.breckneck.deptbook.domain.usecase.GoalDeposit.SetGoalDeposit
 import com.breckneck.deptbook.domain.util.ListState
+import com.breckneck.deptbook.domain.util.DecimalInput
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -87,15 +88,7 @@ class GoalsViewModel @Inject constructor(
     }
 
     private fun updateDepositSum(text: String) = intent {
-        val dotIndex = text.indexOf('.')
-        val isValid = if (dotIndex != -1) {
-            val beforeDot = text.substring(0, dotIndex)
-            val afterDot = text.substring(dotIndex + 1)
-            beforeDot.isNotEmpty() && afterDot.length <= 2
-        } else {
-            true
-        }
-        if (isValid) {
+        if (DecimalInput.isEditable(text)) {
             reduce {
                 state.copy(
                     addDepositPopup = state.addDepositPopup.copy(
@@ -129,7 +122,7 @@ class GoalsViewModel @Inject constructor(
         val goalId = state.addDepositPopup.selectedGoalId ?: return@intent
         val goal = domainGoals.firstOrNull { it.id == goalId } ?: return@intent
         val sumText = state.addDepositPopup.sumText.trim()
-        val parsed = sumText.toDoubleOrNull()
+        val parsed = DecimalInput.parse(sumText)
         when {
             sumText.isEmpty() -> {
                 reduce {
@@ -142,7 +135,7 @@ class GoalsViewModel @Inject constructor(
                 return@intent
             }
 
-            parsed == null || parsed == 0.0 -> {
+            parsed == null || parsed <= 0.0 -> {
                 reduce {
                     state.copy(
                         addDepositPopup = state.addDepositPopup.copy(

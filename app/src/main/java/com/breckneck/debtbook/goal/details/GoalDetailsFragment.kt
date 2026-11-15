@@ -33,6 +33,9 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.goal.details.GoalDepositAdapter
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.model.GoalDeposit
+import android.text.InputType
+import android.text.method.DigitsKeyListener
+import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.ChangeGoalSavedSumDialogState
 import com.breckneck.deptbook.domain.util.ListState
 import com.bumptech.glide.Glide
@@ -328,33 +331,22 @@ class GoalDetailsFragment : Fragment() {
             ChangeGoalSavedSumDialogState.SUBTRACT -> requireActivity().getString(R.string.subtract)
         }
 
-        goalSumEditText.addTextChangedListener {
-            object : TextWatcher {
-                override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-
-                override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-
-                override fun afterTextChanged(editable: Editable?) {
-                    val str = editable.toString()
-                    val position = str.indexOf(".")
-                    if (position != -1) {
-                        val subStr = str.substring(position)
-                        val subStrStart = str.substring(0, position)
-                        if ((subStr.length > 3) || (subStrStart.length == 0))
-                            editable?.delete(editable.length - 1, editable.length)
-                    }
-                }
-            }
-        }
+        goalSumEditText.keyListener = DigitsKeyListener.getInstance("0123456789.,")
+        goalSumEditText.setRawInputType(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
 
         dialog.findViewById<Button>(R.id.confirmButton)!!.setOnClickListener {
             val savedSum = goalSumEditText.text.toString().trim()
             if (savedSum.isEmpty())
                 goalSumTextInput.error = getString(R.string.youmustentername)
             else {
+                val parsed = DecimalInput.parse(savedSum)
+                if (parsed == null || parsed <= 0.0) {
+                    goalSumTextInput.error = getString(R.string.something_went_wrong)
+                    return@setOnClickListener
+                }
                 val savedSumDouble = when (state) {
-                    ChangeGoalSavedSumDialogState.ADD -> savedSum.toDouble()
-                    ChangeGoalSavedSumDialogState.SUBTRACT -> savedSum.toDouble() * (-1)
+                    ChangeGoalSavedSumDialogState.ADD -> parsed
+                    ChangeGoalSavedSumDialogState.SUBTRACT -> -parsed
                 }
                 if (savedSumDouble == 0.0) {
                     goalSumTextInput.error = getString(R.string.zerodebt)

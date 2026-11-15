@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="save_failed_retry">Не удалось сохранить. Проверьте данные и повторите.</string>
+    <string name="form_retry">Повторить</string>
+</resources>

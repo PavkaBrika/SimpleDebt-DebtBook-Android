@@ -16,6 +16,7 @@ import com.breckneck.deptbook.domain.usecase.FinanceCategory.GetFinanceCategorie
 import com.breckneck.deptbook.domain.usecase.Settings.GetFinanceCurrency
 import com.breckneck.deptbook.domain.util.CreateFragmentState
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -73,6 +74,11 @@ class CreateFinanceViewModel @Inject constructor(
     val deleteFinanceCategory: LiveData<FinanceCategory>
         get() = _deleteFinanceCategory
 
+    enum class SaveState { IDLE, SAVING, SAVED, ERROR }
+
+    private val _saveState = MutableLiveData(SaveState.IDLE)
+    val saveState: LiveData<SaveState> = _saveState
+
     init {
         Log.e(TAG, "Initialized")
         getFinanceCurrency()
@@ -109,24 +115,29 @@ class CreateFinanceViewModel @Inject constructor(
         }
     }
 
-    fun setFinance(finance: Finance) {
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) { setFinance.execute(finance = finance) }
-                Log.e(TAG, "finance added")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
-            }
-        }
-    }
+    fun setFinance(finance: Finance) = saveFinance(finance, isEdit = false)
 
-    fun editFinance(finance: Finance) {
+    fun editFinance(finance: Finance) = saveFinance(finance, isEdit = true)
+
+    private fun saveFinance(finance: Finance, isEdit: Boolean) {
+        if (_saveState.value == SaveState.SAVING || _saveState.value == SaveState.SAVED) return
+        if (!finance.sum.isFinite() || finance.sum <= 0.0) {
+            _saveState.value = SaveState.ERROR
+            return
+        }
+        _saveState.value = SaveState.SAVING
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { updateFinance.execute(finance = finance) }
-                Log.e(TAG, "finance updated")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
+                withContext(Dispatchers.IO) {
+                    if (isEdit) updateFinance.execute(finance) else setFinance.execute(finance)
+                }
+                _saveState.value = SaveState.SAVED
+            } catch (cancelled: CancellationException) {
+                _saveState.value = SaveState.IDLE
+                throw cancelled
+            } catch (_: Exception) {
+                // Keep the form and allow an explicit retry; never log financial contents.
+                _saveState.value = SaveState.ERROR
             }
         }
     }

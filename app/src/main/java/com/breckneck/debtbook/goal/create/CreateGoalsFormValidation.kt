@@ -3,6 +3,7 @@ package com.breckneck.debtbook.goal.create
 import com.breckneck.debtbook.goal.create.model.NameError
 import com.breckneck.debtbook.goal.create.model.SavedSumError
 import com.breckneck.debtbook.goal.create.model.SumError
+import com.breckneck.deptbook.domain.util.DecimalInput
 
 /**
  * Pure validation for create/edit goal form. Used by [CreateGoalsViewModel] and unit-tested directly.
@@ -13,7 +14,7 @@ object CreateGoalsFormValidation {
         if (name.isEmpty()) NameError.EMPTY else null
 
     fun validateSum(sumText: String): Pair<Double?, SumError?> {
-        val sumDouble = sumText.toDoubleOrNull()
+        val sumDouble = DecimalInput.parse(sumText)
         val error = when {
             sumText.isEmpty() || sumDouble == null -> SumError.INVALID
             sumDouble < 0 -> SumError.NEGATIVE
@@ -28,7 +29,7 @@ object CreateGoalsFormValidation {
         sumDouble: Double?,
     ): Pair<Double?, SavedSumError?> {
         if (savedSumText.isEmpty()) return Pair(0.0, null)
-        val parsed = savedSumText.toDoubleOrNull() ?: return Pair(0.0, SavedSumError.INVALID)
+        val parsed = DecimalInput.parse(savedSumText) ?: return Pair(0.0, SavedSumError.INVALID)
         if (parsed < 0) return Pair(0.0, SavedSumError.NEGATIVE)
         if (sumDouble != null && parsed >= sumDouble) {
             return Pair(0.0, SavedSumError.GREATER_THAN_SUM)

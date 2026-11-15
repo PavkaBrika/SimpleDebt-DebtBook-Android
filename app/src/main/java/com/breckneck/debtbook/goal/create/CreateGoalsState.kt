@@ -15,6 +15,8 @@ data class CreateGoalsState(
     val isCurrencySheetVisible: Boolean,
     val isDatePickerVisible: Boolean,
     val isEditMode: Boolean,
+    val isSaving: Boolean = false,
+    val saveFailed: Boolean = false,
 ) {
     companion object {
         fun initial() = CreateGoalsState(

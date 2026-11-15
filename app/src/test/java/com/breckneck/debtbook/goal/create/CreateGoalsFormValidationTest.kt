@@ -6,6 +6,10 @@ import com.breckneck.debtbook.goal.create.model.SumError
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.breckneck.debtbook.goal.create.mapper.toCreateGoalUi
+import com.breckneck.deptbook.domain.model.Goal
+import java.util.Date
+import java.util.Locale
 
 class CreateGoalsFormValidationTest {
 
@@ -96,5 +100,35 @@ class CreateGoalsFormValidationTest {
         val (value, err) = CreateGoalsFormValidation.validateSavedSum("10", sumDouble = null)
         assertEquals(10.0, value!!, 0.0)
         assertNull(err)
+    }
+
+    @Test
+    fun `locale decimal edit values round trip without grouping or truncation`() {
+        val previousLocale = Locale.getDefault()
+        try {
+            listOf(Locale.US, Locale("ru", "RU"), Locale.GERMANY, Locale.FRANCE).forEach { locale ->
+                Locale.setDefault(locale)
+                val goal = Goal(id = 7, name = "Trip", sum = 12345.67, savedSum = 1234.56,
+                    currency = "€", creationDate = Date(), goalDate = null, photoPath = null)
+                val ui = goal.toCreateGoalUi("EUR €")
+                val (sum, sumError) = CreateGoalsFormValidation.validateSum(ui.sum)
+                val (saved, savedError) = CreateGoalsFormValidation.validateSavedSum(ui.savedSum, sum)
+                assertEquals(goal.sum, sum!!, 0.0)
+                assertEquals(goal.savedSum, saved!!, 0.0)
+                assertNull(sumError)
+                assertNull(savedError)
+                assertEquals(12.34, CreateGoalsFormValidation.validateSum("12,34").first!!, 0.0)
+            }
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
+    }
+
+    @Test
+    fun `partial or ambiguous amounts never validate`() {
+        listOf("12,34oops", "1,234.56", "1.234,56", "12 34", "12,345", "NaN", "Infinity", "1e4").forEach {
+            assertEquals(it, SumError.INVALID, CreateGoalsFormValidation.validateSum(it).second)
+            assertEquals(it, SavedSumError.INVALID, CreateGoalsFormValidation.validateSavedSum(it, 20000.0).second)
+        }
     }
 }
