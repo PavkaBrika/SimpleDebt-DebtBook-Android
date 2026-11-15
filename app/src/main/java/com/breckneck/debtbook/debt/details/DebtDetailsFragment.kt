@@ -52,6 +52,9 @@ import java.io.File
 import javax.inject.Inject
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import com.breckneck.deptbook.domain.util.DecimalInput
+import com.breckneck.deptbook.domain.util.LedgerDate
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 
 @AndroidEntryPoint
@@ -118,13 +121,20 @@ class DebtDetailsFragment : Fragment() {
 
         debtClickListener = object : DebtDetailsAdapter.OnDebtClickListener { //ALERT DIALOG
             override fun onDebtClick(debtDomain: DebtDomain, position: Int) {
-                if (vm.isDeleting.value == true) return
+                if (vm.isDeleting.value == true || vm.screenState.value != DebtDetailsState.SUCCESS) return
                 showDebtSettings(debtDomain = debtDomain, currency = vm.humanCurrency.orEmpty(), name = vm.humanName.value.orEmpty())
                 Log.e(TAG, "Click on debt with id = ${debtDomain.id}")
             }
         }
-        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty())
+        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty(), vm::remaining)
         recyclerView.adapter = debtDetailsAdapter
+
+        vm.repaymentDebtId.observe(viewLifecycleOwner) { id ->
+            if (id != null && childFragmentManager.findFragmentByTag(RepaymentDialogFragment.TAG) == null &&
+                !childFragmentManager.isStateSaved) {
+                RepaymentDialogFragment().show(childFragmentManager, RepaymentDialogFragment.TAG)
+            }
+        }
 
         vm.apply {
             if ((isSortDialogShown.value != null) && (isSortDialogShown.value == true))
@@ -295,21 +305,55 @@ class DebtDetailsFragment : Fragment() {
 
     private fun showDebtSettings(debtDomain: DebtDomain, currency: String, name: String) {
         val dialog = BottomSheetDialog(requireContext())
-        dialog.setContentView(R.layout.dialog_extra_functions)
+        dialog.setContentView(R.layout.dialog_debt_actions)
         val formatDebtSum = FormatDebtSum()
 
         vm.onDebtSettingsDialogOpen()
         vm.onSetSettingDebt(debtDomain)
 
         dialog.findViewById<TextView>(R.id.extrasTitle)!!.text =
-            "${debtDomain.date} : ${formatDebtSum.execute(debtDomain.sum)} $currency"
+            "${LedgerDate.display(debtDomain.date)} : ${formatDebtSum.execute(debtDomain.sum)} $currency"
 
-        dialog.findViewById<Button>(R.id.deleteButton)!!.setOnClickListener {
-            vm.deleteDebt(debtDomain = debtDomain)
-            dialog.dismiss()
+        val isRepayment = debtDomain.repaymentOfId != null
+        val linked = vm.hasRepayments(debtDomain.id)
+        val status = dialog.findViewById<TextView>(R.id.debtActionStatus)!!
+        val repay = dialog.findViewById<Button>(R.id.repaymentButton)!!
+        if (isRepayment) {
+            status.text = getString(R.string.repayment_parent, debtDomain.repaymentOfId,
+                getString(if (debtDomain.cancelled) R.string.repayment_cancelled else
+                    if (debtDomain.sum.signum() < 0) R.string.repayment_received else R.string.repayment_paid))
+            repay.visibility = View.GONE
+        } else {
+            val rest = vm.remaining(debtDomain)
+            status.text = getString(R.string.repayment_status, DecimalInput.format(debtDomain.sum.abs()), currency,
+                DecimalInput.format(rest)) + if (linked) "\n\n${getString(R.string.repayment_locked)}" else ""
+            repay.setText(if (debtDomain.sum.signum() > 0) R.string.repayment_received else R.string.repayment_paid)
+            repay.isEnabled = rest.signum() > 0
+            repay.setOnClickListener {
+                dialog.dismiss()
+                vm.openRepayment(debtDomain)
+            }
         }
 
-        dialog.findViewById<Button>(R.id.editButton)!!.setOnClickListener {
+        val delete = dialog.findViewById<Button>(R.id.deleteButton)!!
+        delete.visibility = if (linked || debtDomain.cancelled) View.GONE else View.VISIBLE
+        if (isRepayment) delete.setText(R.string.repayment_cancel)
+
+        delete.setOnClickListener {
+            dialog.dismiss()
+            if (isRepayment) {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.repayment_cancel)
+                    .setMessage(getString(R.string.repayment_cancel_confirm, DecimalInput.format(debtDomain.sum.abs()), currency))
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.repayment_cancel) { _, _ -> vm.deleteDebt(debtDomain) }
+                    .show()
+            } else vm.deleteDebt(debtDomain)
+        }
+
+        val edit = dialog.findViewById<Button>(R.id.editButton)!!
+        edit.visibility = if (isRepayment || linked) View.GONE else View.VISIBLE
+        edit.setOnClickListener {
             buttonClickListener?.editDebt(debtDomain = debtDomain, currency = currency, name = name)
             dialog.dismiss()
         }
@@ -340,7 +384,7 @@ class DebtDetailsFragment : Fragment() {
             intent.putExtra(
                 EXTRA_TEXT,
                 getDebtShareString.execute(
-                    debtList = vm.resultedDebtList.value!!,
+                    debtList = vm.resultedDebtList.value!!.map(::withHistoryDescription),
                     name = humanName!!,
                     currency = currency!!,
                     sum = vm.overallSum.value!!,
@@ -362,7 +406,7 @@ class DebtDetailsFragment : Fragment() {
                 getString(R.string.comment)
             )
             val excelFile = ExportDebtDataInExcelUseCase().execute(
-                debtList = vm.resultedDebtList.value!!,
+                debtList = vm.resultedDebtList.value!!.map(::withHistoryDescription),
                 sheetName = "${humanName}_debts",
                 rootFolder = rootFolder,
                 sheetTitles = sheetTitles
@@ -397,6 +441,18 @@ class DebtDetailsFragment : Fragment() {
         }
 
         dialog.show()
+    }
+
+    private fun withHistoryDescription(debt: DebtDomain): DebtDomain {
+        val description = if (debt.repaymentOfId != null) {
+            getString(R.string.repayment_parent, debt.repaymentOfId,
+                getString(if (debt.cancelled) R.string.repayment_cancelled else
+                    if (debt.sum.signum() < 0) R.string.repayment_received else R.string.repayment_paid))
+        } else {
+            getString(R.string.debt_record, debt.id, getString(if (debt.sum.signum() >= 0) R.string.debt_lent else R.string.debt_borrowed)) +
+                "; " + getString(R.string.debt_remaining, DecimalInput.format(vm.remaining(debt)), vm.humanCurrency)
+        }
+        return debt.copy(info = listOfNotNull(description.replace('\n', ' '), debt.info?.takeIf { it.isNotBlank() }).joinToString("; "))
     }
 
     private fun showSortDialog() {

@@ -21,6 +21,12 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder
 import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.Filter
+import com.breckneck.deptbook.domain.util.RepaymentPolicy
+import com.breckneck.deptbook.domain.util.DecimalInput
+import com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase
+import com.breckneck.deptbook.domain.usecase.Debt.RepaymentExceedsRemaining
+import com.breckneck.deptbook.domain.util.LedgerDate
+import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +36,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 enum class DebtDetailsState { LOADING, SUCCESS, EMPTY, ERROR }
+enum class RepaymentError { INVALID_AMOUNT, EXCEEDS_REMAINING, SAVE_FAILED }
 
 @HiltViewModel
 class DebtDetailsViewModel @Inject constructor(
@@ -43,7 +50,8 @@ class DebtDetailsViewModel @Inject constructor(
     private val getDebtOrder: GetDebtOrder,
     private val setDebtOrder: SetDebtOrder,
     private val transaction: DataTransaction,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val recordRepayment: RecordRepaymentUseCase
 ) : ViewModel() {
 
     private val _screenState = MutableLiveData(DebtDetailsState.LOADING)
@@ -105,6 +113,76 @@ class DebtDetailsViewModel @Inject constructor(
     private val _operationFailed = MutableLiveData(false)
     val operationFailed: LiveData<Boolean> = _operationFailed
 
+    val repaymentDebtId = savedStateHandle.getLiveData<Int?>("repaymentDebtId", null)
+    val repaymentAmount = savedStateHandle.getLiveData("repaymentAmount", "")
+    val repaymentError = MutableLiveData<RepaymentError?>(null)
+    val repaymentRemaining = MutableLiveData<BigDecimal>()
+
+    fun originalDebt(id: Int): DebtDomain? = _initialDebtList.value?.firstOrNull { it.id == id && it.repaymentOfId == null }
+    fun hasRepayments(id: Int): Boolean = _initialDebtList.value.orEmpty().any { it.repaymentOfId == id }
+    fun remaining(debt: DebtDomain): BigDecimal = RepaymentPolicy.remaining(debt, _initialDebtList.value.orEmpty())
+
+    fun openRepayment(debt: DebtDomain) {
+        if (_isDeleting.value == true || debt.repaymentOfId != null || remaining(debt).signum() <= 0) return
+        savedStateHandle["repaymentRequestId"] = UUID.randomUUID().toString()
+        savedStateHandle["repaymentDay"] = LedgerDate.today()
+        repaymentAmount.value = ""
+        repaymentError.value = null
+        repaymentRemaining.value = remaining(debt)
+        repaymentDebtId.value = debt.id
+    }
+
+    fun changeRepaymentAmount(text: String) {
+        repaymentAmount.value = text
+        repaymentError.value = null
+    }
+
+    fun closeRepayment() {
+        if (_isDeleting.value == true) return
+        repaymentDebtId.value = null
+        savedStateHandle.remove<String>("repaymentRequestId")
+        savedStateHandle.remove<String>("repaymentDay")
+    }
+
+    fun saveRepayment() {
+        if (_isDeleting.value == true || _screenState.value == DebtDetailsState.LOADING) return
+        val debt = repaymentDebtId.value?.let(::originalDebt) ?: return
+        val rest = remaining(debt)
+        repaymentRemaining.value = rest
+        val amount = DecimalInput.parse(repaymentAmount.value.orEmpty(), humanCurrency, previous = rest)
+        if (amount == null || amount.signum() <= 0) {
+            repaymentError.value = RepaymentError.INVALID_AMOUNT
+            return
+        }
+        if (amount > rest) {
+            repaymentError.value = RepaymentError.EXCEEDS_REMAINING
+            return
+        }
+        val request = savedStateHandle.get<String>("repaymentRequestId") ?: return
+        val day = savedStateHandle.get<String>("repaymentDay") ?: return
+        _isDeleting.value = true
+        repaymentError.value = null
+        viewModelScope.launch {
+            var saved = false
+            try {
+                withContext(Dispatchers.IO) { recordRepayment.execute(debt.id, debt.idHuman, amount, day, request) }
+                saved = true
+                _debtDeleted.value = Unit
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (exceeded: RepaymentExceedsRemaining) {
+                repaymentRemaining.value = exceeded.remaining
+                repaymentError.value = RepaymentError.EXCEEDS_REMAINING
+            } catch (_: Exception) {
+                repaymentError.value = RepaymentError.SAVE_FAILED
+            } finally {
+                _isDeleting.value = false
+            }
+            if (saved) closeRepayment()
+            retry()
+        }
+    }
+
     init {
         retry()
     }
@@ -134,10 +212,16 @@ class DebtDetailsViewModel @Inject constructor(
                 savedStateHandle["idHuman"] = id
                 savedStateHandle["newHuman"] = false
                 val (debts, sum) = withContext(Dispatchers.IO) {
-                    getAllDebtsByIdUseCase.execute(id) to getHumanSumDebtUseCase.execute(id)
+                    transaction.run { getAllDebtsByIdUseCase.execute(id) to getHumanSumDebtUseCase.execute(id) }
                 }
                 _initialDebtList.value = debts
                 _overallSum.value = sum
+                val request = savedStateHandle.get<String>("repaymentRequestId")
+                if (request != null && debts.any { it.operationId == request }) closeRepayment()
+                repaymentDebtId.value?.let { selected ->
+                    val original = debts.firstOrNull { it.id == selected && it.repaymentOfId == null }
+                    if (original == null) closeRepayment() else repaymentRemaining.value = remaining(original)
+                }
                 applySort()
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -150,10 +234,11 @@ class DebtDetailsViewModel @Inject constructor(
     private fun applySort() {
         try {
             val filtered = (_initialDebtList.value ?: emptyList()).filter { debt ->
+                val direction = debt.repaymentOfId?.let { id -> originalDebt(id)?.sum } ?: debt.sum
                 when (_debtFilter.value ?: Filter.ALL) {
                     Filter.ALL -> true
-                    Filter.NEGATIVE -> debt.sum <= 0
-                    Filter.POSITIVE -> debt.sum >= 0
+                    Filter.NEGATIVE -> direction <= 0
+                    Filter.POSITIVE -> direction >= 0
                 }
             }
             val result = com.breckneck.deptbook.domain.util.sortDebts(filtered, _debtOrder.value!!)

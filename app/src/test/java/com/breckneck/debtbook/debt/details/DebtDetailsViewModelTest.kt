@@ -11,6 +11,7 @@ import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
+import com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase
 import com.breckneck.deptbook.domain.usecase.Human.AddSumUseCase
 import com.breckneck.deptbook.domain.usecase.Human.DeleteHumanUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetHumanSumDebtUseCase
@@ -44,6 +45,7 @@ class DebtDetailsViewModelTest {
     private val addSum: AddSumUseCase = mock()
     private val getOrder: GetDebtOrder = mock()
     private val setOrder: SetDebtOrder = mock()
+    private val recordRepayment: RecordRepaymentUseCase = mock()
     private val record = DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "1 Jan 2026")
 
     @Before fun setup() {
@@ -58,7 +60,74 @@ class DebtDetailsViewModelTest {
         DebtDetailsViewModel(debts, latestId, sum, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
-            }, state)
+            }, state, recordRepayment)
+
+    @Test fun `repayment validates positive amount and refuses more than selected record`() {
+        val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        model.openRepayment(record)
+        for (text in listOf("0", "-1", "abc", "0.001")) {
+            model.changeRepaymentAmount(text)
+            model.saveRepayment()
+            assertEquals(RepaymentError.INVALID_AMOUNT, model.repaymentError.value)
+        }
+        model.changeRepaymentAmount("13")
+        model.saveRepayment()
+        assertEquals(RepaymentError.EXCEEDS_REMAINING, model.repaymentError.value)
+        verifyNoInteractions(recordRepayment)
+    }
+
+    @Test fun `failed repayment retains request and amount across saved state reconstruction`() {
+        val saved = SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR"))
+        doThrow(IllegalStateException("disk write failure")).whenever(recordRepayment).execute(any(), any(), any(), any(), any())
+        val model = vm(saved)
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        model.openRepayment(record)
+        model.changeRepaymentAmount("2,34")
+        val request = saved.get<String>("repaymentRequestId")!!
+        model.saveRepayment()
+        model.repaymentError.await { it == RepaymentError.SAVE_FAILED }
+        model.isDeleting.await { it == false }
+        val restored = SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) })
+        val recreated = vm(restored)
+        recreated.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(request, restored.get<String>("repaymentRequestId"))
+        assertEquals("2,34", recreated.repaymentAmount.value)
+        recreated.saveRepayment()
+        recreated.repaymentError.await { it == RepaymentError.SAVE_FAILED }
+        verify(recordRepayment, times(2)).execute(eq(9), eq(7), eq("2.34".toBigDecimal()), any(), eq(request))
+    }
+
+    @Test fun `committed request recovered from saved state closes form without another payment`() {
+        val saved = SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR", "repaymentDebtId" to 9,
+            "repaymentRequestId" to "request-000000001", "repaymentAmount" to "2.34", "repaymentDay" to "2026-11-16"))
+        val payment = record.copy(id = 10, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, operationId = "request-000000001")
+        whenever(debts.execute(7)).thenReturn(listOf(record, payment))
+        val model = vm(saved)
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertNull(model.repaymentDebtId.value)
+        model.saveRepayment()
+        verifyNoInteractions(recordRepayment)
+        model.onSetDebtSort(Filter.POSITIVE, DebtOrderAttribute.CreationDate to true)
+        assertEquals(setOf(record, payment), model.resultedDebtList.value?.toSet())
+    }
+
+    @Test fun `repeated repayment tap submits one request while write is pending`() {
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        doAnswer { started.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)); Unit }
+            .whenever(recordRepayment).execute(any(), any(), any(), any(), any())
+        val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        model.openRepayment(record)
+        model.changeRepaymentAmount("2.34")
+        model.saveRepayment()
+        assertTrue(started.await(5, TimeUnit.SECONDS))
+        model.saveRepayment()
+        release.countDown()
+        model.repaymentDebtId.await { it == null }
+        verify(recordRepayment, times(1)).execute(any(), any(), any(), any(), any())
+    }
 
     @Test fun `restored ID loads history without querying latest person`() {
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "newHuman" to true)))

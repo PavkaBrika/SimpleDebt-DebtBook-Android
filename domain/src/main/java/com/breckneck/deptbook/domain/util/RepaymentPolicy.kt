@@ -14,6 +14,7 @@ object RepaymentPolicy {
         require(byId.size == history.size) { "Duplicate debt IDs" }
         val keys = history.mapNotNull { it.operationId }
         require(keys.distinct().size == keys.size) { "Duplicate repayment request" }
+        val repaid = mutableMapOf<Int, BigDecimal>()
         history.forEach { row ->
             if (row.repaymentOfId == null) {
                 require(row.operationId == null && !row.cancelled) { "Invalid original debt" }
@@ -24,10 +25,11 @@ object RepaymentPolicy {
                 require(row.sum.abs() <= original.sum.abs()) { "Repayment exceeds original debt" }
                 require(row.operationId?.let { Regex("[A-Za-z0-9-]{16,64}").matches(it) } == true) { "Missing repayment request ID" }
                 require(LedgerDate.canonical(row.date) == row.date) { "Invalid repayment day" }
+                if (!row.cancelled) repaid[original.id] = (repaid[original.id] ?: BigDecimal.ZERO) + row.sum.abs()
             }
         }
         history.filter { it.repaymentOfId == null }.forEach {
-            require(remaining(it, history).signum() >= 0) { "Repayment exceeds remaining debt" }
+            require((repaid[it.id] ?: BigDecimal.ZERO) <= it.sum.abs()) { "Repayment exceeds remaining debt" }
         }
     }
 }

@@ -44,7 +44,7 @@ class BackupTransferTest {
         val transfer = BackupTransfer({ snapshot(1, "10.01") }, { replaces++ }, { retained++ })
         val valid = codec.encode(snapshot(1, "10.01"))
         for (content in listOf("not json", "null", "{}", "[]", valid.dropLast(1),
-            valid.replace("\"formatVersion\":2", "\"formatVersion\":99"),
+            valid.replace("\"formatVersion\":3", "\"formatVersion\":99"),
             valid.replace("\"idHuman\":1", "\"idHuman\":99"))) {
             try { transfer.restore { content }; fail("Invalid backup accepted") } catch (_: Exception) { }
         }

@@ -1,0 +1,23 @@
+<resources>
+    <string name="repayment_received">Received repayment</string>
+    <string name="repayment_paid">I repaid</string>
+    <string name="repayment_cancel">Cancel repayment</string>
+    <string name="repayment_cancelled">Repayment cancelled · excluded from balance</string>
+    <string name="debt_record">Record #%1$d · %2$s</string>
+    <string name="debt_lent">Owed to me</string>
+    <string name="debt_borrowed">I owe</string>
+    <string name="debt_remaining">Remaining on this record: %1$s %2$s</string>
+    <string name="debt_repaid">Repaid: %1$s %2$s</string>
+    <string name="repayment_parent">Repayment for record #%1$d\n%2$s</string>
+    <string name="repayment_context">Record #%1$d · %2$s %3$s\n%4$s</string>
+    <string name="repayment_balance_help">Person’s total balance: %1$s %2$s. This repayment applies only to the selected record.</string>
+    <string name="repayment_full">Repay remaining amount</string>
+    <string name="repayment_invalid">Enter an amount greater than zero using the currency’s decimal places.</string>
+    <string name="repayment_over">The repayment exceeds the remaining %1$s %2$s. Enter a smaller amount.</string>
+    <string name="repayment_save_failed">Could not save the repayment. Please retry.</string>
+    <string name="repayment_locked">This record has repayment history. Its original amount and history are preserved.</string>
+    <string name="repayment_closed">Fully repaid</string>
+    <string name="repayment_cancel_confirm">Cancel the repayment of %1$s %2$s? The amount will be added back to the remaining debt; the repayment will stay in history.</string>
+    <string name="repayment_amount">Repayment amount</string>
+    <string name="repayment_status">Original record: %1$s %2$s\nRemaining: %3$s %2$s</string>
+</resources>

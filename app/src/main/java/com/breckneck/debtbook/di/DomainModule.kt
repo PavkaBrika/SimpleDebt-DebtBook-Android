@@ -142,6 +142,10 @@ object DomainModule {
     // ── DEBT ─────────────────────────────────────────────────────────────────
 
     @Provides
+    fun provideRecordRepaymentUseCase(debtRepository: DebtRepository, transaction: com.breckneck.deptbook.domain.repository.DataTransaction) =
+        com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase(debtRepository, transaction)
+
+    @Provides
     fun provideGetAllDebts(debtRepository: DebtRepository) =
         GetAllDebts(debtRepository = debtRepository)
 

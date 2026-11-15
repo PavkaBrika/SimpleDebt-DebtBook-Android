@@ -26,7 +26,7 @@ class GetDebtShareString {
                 var sumString = formatDebtSum.execute(debt.sum)
                 if (!sumString.contains("-"))
                     sumString = "+$sumString"
-                sumForEachNote += debt.sum
+                sumForEachNote += debt.effectiveSum
                 if (debt.info == null)
                     stringBuilder.append("${com.breckneck.deptbook.domain.util.LedgerDate.display(debt.date)}: $sumString $currency  (${formatDebtSum.execute(sumForEachNote)} ${currency})\n")
                 else
