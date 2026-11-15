@@ -19,7 +19,7 @@ class UsedFinanceCategoryAdapter(
     private var currency: String
 ) : RecyclerView.Adapter<UsedFinanceCategoryAdapter.UsedFinanceCategoryViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##")
+    private val decimalFormat = DecimalFormat("###,###,###.####################")
     private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val usedFinanceCategoryList: MutableList<FinanceCategoryWithFinances> = mutableListOf()
     val getFinanceCategoryNameInLocalLanguage = GetFinanceCategoryNameInLocalLanguage()

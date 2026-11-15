@@ -21,6 +21,7 @@ data class AddDepositPopup(
     val selectedGoalId: Int?,
     val sumText: String,
     val inputError: DepositInputError?,
+    val isSaving: Boolean = false,
 ) {
     companion object {
         fun initial() = AddDepositPopup(
@@ -34,5 +35,6 @@ data class AddDepositPopup(
     enum class DepositInputError {
         EMPTY,
         ZERO_OR_INVALID,
+        SAVE_FAILED,
     }
 }

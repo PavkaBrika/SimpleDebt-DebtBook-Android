@@ -12,7 +12,7 @@ class DataBaseGoalDepositStorageImpl(context: Context): GoalDepositStorage {
     private val db = AppDataBase(context = context)
 
     override fun setGoalDepositData(goalDepositData: GoalDepositData) {
-        db.appDao().insertGoalDeposit(goalDepositData = goalDepositData)
+        db.appDao().addGoalDeposit(goalDepositData)
     }
 
     override fun getGoalDepositsDataByGoalId(goalId: Int): List<GoalDepositData> {

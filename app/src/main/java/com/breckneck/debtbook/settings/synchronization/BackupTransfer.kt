@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.settings.synchronization
 
+
 import com.breckneck.deptbook.domain.model.AppDataLists
 import com.google.gson.Gson
 import com.google.gson.JsonParser
@@ -54,15 +55,15 @@ internal class BackupTransfer(
         }
         val data = gson.fromJson(root, AppDataLists::class.java)
         // Gson can bypass Kotlin non-null constructors. Validate before any database mutation.
-        require(data.humanList.all { it.name != null && it.currency != null && it.sumDebt.isFinite() })
-        require(data.debtList.all { it.date != null && it.sum.isFinite() })
-        require(data.financeList.all { it.date != null && it.sum.isFinite() })
+        require(data.humanList.all { it.name != null && it.currency != null && it.sumDebt != null })
+        require(data.debtList.all { it.date != null && it.sum != null })
+        require(data.financeList.all { it.date != null && it.sum != null })
         require(data.financeCategoryList.all { it.name != null && it.state != null && it.color != null })
         require(data.goalList.all {
             it.name != null && it.currency != null && it.creationDate != null &&
-                it.sum.isFinite() && it.savedSum.isFinite()
+                it.sum != null && it.savedSum != null
         })
-        require(data.goalDepositList.all { it.date != null && it.sum.isFinite() })
+        require(data.goalDepositList.all { it.date != null && it.sum != null })
         return data
     }
 }

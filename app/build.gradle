@@ -42,6 +42,10 @@ android {
         }
     }
 
+    sourceSets {
+        androidTest.assets.srcDirs += ["$rootDir/data/schemas"]
+    }
+
     buildTypes {
         release {
             minifyEnabled false

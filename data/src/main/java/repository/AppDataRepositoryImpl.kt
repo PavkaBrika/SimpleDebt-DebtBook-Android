@@ -1,5 +1,6 @@
 package repository
 
+
 import android.content.Context
 import com.breckneck.deptbook.domain.model.AppDataLists
 import com.breckneck.deptbook.domain.model.Finance
@@ -27,10 +28,10 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
         val dao = db.appDao()
         AppDataLists(
             humanList = dao.getAllHuman().map {
-                HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency)
+                HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
             },
             debtList = dao.getAllDebts().map {
-                DebtDomain(id = it.id, sum = it.sum, idHuman = it.idHuman, info = it.info, date = it.date)
+                DebtDomain(id = it.id, sum = it.sum, idHuman = it.idHuman, info = it.info, date = it.date, legacyDate = it.legacyDate)
             },
             financeCategoryList = dao.getAllFinanceCategories().map {
                 FinanceCategory(
@@ -48,7 +49,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
                 Finance(id = it.id, sum = it.sum, date = it.date, info = it.info, financeCategoryId = it.financeCategoryId)
             },
             goalList = dao.getAllGoals().map {
-                Goal(id = it.id, name = it.name, sum = it.sum, savedSum = it.savedSum, currency = it.currency, photoPath = it.photoPath, creationDate = it.creationDate, goalDate = it.goalDate)
+                Goal(id = it.id, name = it.name, sum = it.sum, savedSum = it.savedSum, currency = it.currency, photoPath = it.photoPath, creationDate = it.creationDate, goalDate = it.goalDate, openingAdjustment = it.openingAdjustment)
             },
             goalDepositList = dao.getAllGoalDeposits().map {
                 GoalDeposit(id = it.id, sum = it.sum, date = it.date, goalId = it.goalId)
@@ -59,10 +60,10 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
     override fun replaceAllAppData(appDataLists: AppDataLists) {
         db.appDao().replaceAllAppData(
             humans = appDataLists.humanList.map {
-                Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency)
+                Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
             },
             debts = appDataLists.debtList.map {
-                Debt(id = it.id, sum = it.sum, idHuman = it.idHuman, info = it.info, date = it.date)
+                Debt(id = it.id, sum = it.sum, idHuman = it.idHuman, info = it.info, date = it.date, legacyDate = it.legacyDate)
             },
             financeCategories = appDataLists.financeCategoryList.map {
                 FinanceCategoryData(
@@ -80,7 +81,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
                 FinanceData(id = it.id, sum = it.sum, date = it.date, info = it.info, financeCategoryId = it.financeCategoryId)
             },
             goals = appDataLists.goalList.map {
-                GoalData(id = it.id, name = it.name, sum = it.sum, savedSum = it.savedSum, currency = it.currency, photoPath = it.photoPath, creationDate = it.creationDate, goalDate = it.goalDate)
+                GoalData(id = it.id, name = it.name, sum = it.sum, savedSum = it.savedSum, currency = it.currency, photoPath = it.photoPath, creationDate = it.creationDate, goalDate = it.goalDate, openingAdjustment = it.openingAdjustment)
             },
             goalDeposits = appDataLists.goalDepositList.map {
                 GoalDepositData(id = it.id, sum = it.sum, date = it.date, goalId = it.goalId)

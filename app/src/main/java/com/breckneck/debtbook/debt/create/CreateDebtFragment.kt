@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.debt.create
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DatePickerDialog
@@ -106,7 +109,7 @@ class CreateDebtFragment: Fragment() {
         val idHuman =  arguments?.getInt("idHuman")
         val idDebt = arguments?.getInt("idDebt")
         val currency = arguments?.getString("currency")
-        val sumArgs = arguments?.getDouble("sum") ?: 0.0
+        val sumArgs = arguments?.getString("sum")?.toBigDecimalOrNull() ?: BigDecimal.ZERO
         val dateArgs = arguments?.getString("date")
         val infoArgs = arguments?.getString("info")
         val nameArgs = arguments?.getString("name")
@@ -170,7 +173,7 @@ class CreateDebtFragment: Fragment() {
         debtSumEditText.keyListener = DigitsKeyListener.getInstance("0123456789.,")
 
         vm.date.observe(viewLifecycleOwner) { date ->
-            debtDateTextView.text = "$date ${getString(R.string.year)}"
+            debtDateTextView.text = com.breckneck.deptbook.domain.util.LedgerDate.display(date)
         }
 
         val dateSetListener = DatePickerDialog.OnDateSetListener{view, year, month, day ->
@@ -185,9 +188,10 @@ class CreateDebtFragment: Fragment() {
         }
 
         if (idDebt != null && idDebt > 0) { //EXIST HUMAN EDIT DEBT LAYOUT CHANGES
-            debtSumEditText.setText(DecimalInput.format(kotlin.math.abs(sumArgs)))
-            customSwitch.setChecked(sumArgs >= 0.0)
-            debtDateTextView.text = dateArgs
+            debtSumEditText.setText(DecimalInput.format(com.breckneck.deptbook.domain.util.abs(sumArgs)))
+            customSwitch.setChecked(sumArgs >= BigDecimal.ZERO)
+            debtDateTextView.text = dateArgs?.let { com.breckneck.deptbook.domain.util.LedgerDate.display(it) }
+            vm.setStoredDate(dateArgs ?: com.breckneck.deptbook.domain.util.LedgerDate.today())
             infoEditText.setText(infoArgs)
             collapsed.title = getString(R.string.editdebtcollaps)
             currencyTextView.isClickable = false
@@ -220,25 +224,25 @@ class CreateDebtFragment: Fragment() {
         }
         setButton.setOnClickListener {
             val name = humanNameEditText.text.toString().trim()
-            val parsed = DecimalInput.parse(debtSumEditText.text.toString())
+            val parsed = DecimalInput.parse(debtSumEditText.text.toString(), vm.currency.value, sumArgs.abs().takeIf { (idDebt ?: 0) > 0 })
             humanNameTextInput.error = null
             debtSumTextInput.error = null
             if ((idHuman == null || idHuman <= 0) && name.isEmpty()) {
                 humanNameTextInput.error = getString(R.string.youmustentername)
                 return@setOnClickListener
             }
-            if (parsed == null || parsed < 0.0) {
+            if (parsed == null || parsed < BigDecimal.ZERO) {
                 debtSumTextInput.error = getString(R.string.invalid_decimal_amount)
                 return@setOnClickListener
             }
-            if (parsed == 0.0) {
+            if (parsed.signum() == 0) {
                 debtSumTextInput.error = getString(R.string.zerodebt)
                 return@setOnClickListener
             }
             buttonClickListener.onSetButtonClick()
             vm.saveDebt(idHuman ?: -1, idDebt ?: -1, name,
                 if (customSwitch.isChecked()) parsed else -parsed,
-                debtDateTextView.text.toString(), infoEditText.text.toString())
+                (vm.date.value ?: dateArgs ?: com.breckneck.deptbook.domain.util.LedgerDate.today()), infoEditText.text.toString())
         }
 
         fun showContacts() {

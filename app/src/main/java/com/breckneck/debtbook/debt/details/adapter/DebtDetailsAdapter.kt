@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.details.adapter
 
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
@@ -19,7 +21,7 @@ class DebtDetailsAdapter(
     private val currencyText: String
 ) : RecyclerView.Adapter<DebtDetailsAdapter.DebtViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##")
+    private val decimalFormat = DecimalFormat("###,###,###.####################")
     private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val debtDomainList: MutableList<DebtDomain> = debtDomainListImmutable.toMutableList()
 
@@ -64,7 +66,7 @@ class DebtDetailsAdapter(
             holder.currency.setTextColor(holder.redColor)
             holder.debt.text = decimalFormat.format(debtDomain.sum)
         }
-        holder.date.text = debtDomain.date
+        holder.date.text = com.breckneck.deptbook.domain.util.LedgerDate.display(debtDomain.date)
         holder.info.text = debtDomain.info
         holder.currency.text = currencyText
         if (holder.info.text.equals("")) {

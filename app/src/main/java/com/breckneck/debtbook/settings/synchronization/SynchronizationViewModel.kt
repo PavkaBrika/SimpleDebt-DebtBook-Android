@@ -87,7 +87,7 @@ class SynchronizationViewModel @Inject constructor(
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         )
-        _lastSyncDate.value = date
+        _lastSyncDate.value = com.breckneck.deptbook.domain.util.LedgerDate.display(date)
     }
 
     private fun getLastSyncDate() {
@@ -101,7 +101,7 @@ class SynchronizationViewModel @Inject constructor(
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
             )
-            _lastSyncDate.value = date
+            _lastSyncDate.value = com.breckneck.deptbook.domain.util.LedgerDate.display(date)
         }
     }
 

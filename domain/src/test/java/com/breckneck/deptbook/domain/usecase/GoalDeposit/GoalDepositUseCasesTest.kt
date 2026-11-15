@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.GoalDeposit
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.GoalDeposit
 import com.breckneck.deptbook.domain.repository.GoalDepositRepository
 import org.junit.jupiter.api.AfterEach
@@ -21,7 +23,7 @@ class GoalDepositUseCasesTest {
         Mockito.reset(goalDepositRepository)
     }
 
-    private fun createDeposit(id: Int = 0, goalId: Int = 1, sum: Double = 100.0) =
+    private fun createDeposit(id: Int = 0, goalId: Int = 1, sum: BigDecimal = "100.0".toBigDecimal().stripTrailingZeros()) =
         GoalDeposit(id = id, sum = sum, date = testDate, goalId = goalId)
 
     // --- GetAllGoalDeposits ---
@@ -62,7 +64,7 @@ class GoalDepositUseCasesTest {
 
     @Test
     fun `SetGoalDeposit should call setGoalDeposit with provided deposit`() {
-        val deposit = createDeposit(0, 3, 250.0)
+        val deposit = createDeposit(0, 3, "250.0".toBigDecimal().stripTrailingZeros())
         SetGoalDeposit(goalDepositRepository).execute(goalDeposit = deposit)
         verify(goalDepositRepository).setGoalDeposit(goalDeposit = deposit)
     }

@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.common
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.Finance
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -15,7 +17,7 @@ fun Date.toDMYFormat(pattern: String = "d MMM yyyy"): String {
     return sdf.format(this)
 }
 
-fun Double.format(pattern: String = "###,###,###.##"): String {
+fun BigDecimal.format(pattern: String = "###,###,###.######################################"): String {
     val symbols = DecimalFormatSymbols().apply { groupingSeparator = ' ' }
     val df = DecimalFormat(pattern , symbols)
     return df.format(this)

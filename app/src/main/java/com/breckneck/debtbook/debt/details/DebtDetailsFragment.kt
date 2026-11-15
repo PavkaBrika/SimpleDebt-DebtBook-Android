@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.debt.details
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.*
@@ -248,9 +251,9 @@ class DebtDetailsFragment : Fragment() {
         }
     }
 
-    fun setOverallSumText(sum: Double, currency: String, view: View) {
+    fun setOverallSumText(sum: BigDecimal, currency: String, view: View) {
         overallSumTextView = view.findViewById(R.id.overallSumTextView)
-        val decimalFormat = DecimalFormat("###,###,###.##")
+        val decimalFormat = DecimalFormat("###,###,###.####################")
         val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
         customSymbol.groupingSeparator = ' '
         decimalFormat.decimalFormatSymbols = customSymbol

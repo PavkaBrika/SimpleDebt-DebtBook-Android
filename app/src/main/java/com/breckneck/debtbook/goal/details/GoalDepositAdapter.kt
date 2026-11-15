@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.details
 
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
@@ -18,7 +20,7 @@ class GoalDepositAdapter(
     private val currency: String
 ): RecyclerView.Adapter<GoalDepositAdapter.GoalDepositViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##")
+    private val decimalFormat = DecimalFormat("###,###,###.####################")
     private val sdf = SimpleDateFormat("d MMM yyyy")
     private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val goalDepositList: MutableList<GoalDeposit> = goalDepositListImmutable.toMutableList()

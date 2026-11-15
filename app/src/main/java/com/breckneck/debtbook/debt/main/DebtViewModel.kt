@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.main
 
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

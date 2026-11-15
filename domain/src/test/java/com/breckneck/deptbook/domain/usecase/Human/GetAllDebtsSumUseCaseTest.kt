@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.Human
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.repository.HumanRepository
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions
@@ -22,7 +24,7 @@ class GetAllDebtsSumUseCaseTest {
     @Test
     fun `FIRST CURRENCY should return the same data as in repository`() {
         val currencyTestData = "RUB"
-        val debtsTestData = listOf(100.0, -100.0)
+        val debtsTestData = listOf("100.0".toBigDecimal().stripTrailingZeros(), -"100.0".toBigDecimal().stripTrailingZeros())
         `when`(humanRepository.getAllDebtsSum(currencyTestData)).thenReturn(debtsTestData)
 
         val useCase = GetAllDebtsSumUseCase(humanRepository = humanRepository)
@@ -38,7 +40,7 @@ class GetAllDebtsSumUseCaseTest {
     @Test
     fun `SECOND CURRENCY should return the same data as in repository`() {
         val currencyTestData = "EUR"
-        val debtsTestData = listOf(100.0, -100.0)
+        val debtsTestData = listOf("100.0".toBigDecimal().stripTrailingZeros(), -"100.0".toBigDecimal().stripTrailingZeros())
         `when`(humanRepository.getAllDebtsSum(currencyTestData)).thenReturn(debtsTestData)
         val useCase = GetAllDebtsSumUseCase(humanRepository = humanRepository)
         val actual = useCase.execute("RUB", currencyTestData)
@@ -54,8 +56,8 @@ class GetAllDebtsSumUseCaseTest {
     fun `BOTH CURRENCIES should return the same data as in repository`() {
         val firstCurrencyTestData = "EUR"
         val secondCurrencyTestData = "RUB"
-        val firstCurrencyDebtsTestData = listOf(100.0, -100.0)
-        val secondCurrencyDebtsTestData = listOf(200.0, -200.0)
+        val firstCurrencyDebtsTestData = listOf("100.0".toBigDecimal().stripTrailingZeros(), -"100.0".toBigDecimal().stripTrailingZeros())
+        val secondCurrencyDebtsTestData = listOf("200.0".toBigDecimal().stripTrailingZeros(), -"200.0".toBigDecimal().stripTrailingZeros())
         `when`(humanRepository.getAllDebtsSum(firstCurrencyTestData)).thenReturn(
             firstCurrencyDebtsTestData
         )

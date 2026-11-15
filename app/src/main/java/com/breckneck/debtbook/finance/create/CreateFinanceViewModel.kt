@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.finance.create
 
+import java.math.BigDecimal
+
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -121,7 +123,7 @@ class CreateFinanceViewModel @Inject constructor(
 
     private fun saveFinance(finance: Finance, isEdit: Boolean) {
         if (_saveState.value == SaveState.SAVING || _saveState.value == SaveState.SAVED) return
-        if (!finance.sum.isFinite() || finance.sum <= 0.0) {
+        if (finance.sum <= BigDecimal.ZERO) {
             _saveState.value = SaveState.ERROR
             return
         }

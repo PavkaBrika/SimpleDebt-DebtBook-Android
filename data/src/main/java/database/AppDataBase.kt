@@ -17,7 +17,7 @@ import util.DATA_BASE_NAME
 
 @Database(
     entities = [Human::class, Debt::class, FinanceData::class, FinanceCategoryData::class, GoalData::class, GoalDepositData::class],
-    version = 14
+    version = 15
 )
 @TypeConverters(Converters::class)
 abstract class AppDataBase : RoomDatabase() {
@@ -46,7 +46,13 @@ abstract class AppDataBase : RoomDatabase() {
         }
 
         private fun createDatabase(context: Context) =
-            Room.databaseBuilder(context, AppDataBase::class.java, DATA_BASE_NAME).build()
+            Room.databaseBuilder(context.applicationContext, AppDataBase::class.java, DATA_BASE_NAME)
+                .addMigrations(*DatabaseMigrations.ALL)
+                .addCallback(object : Callback() {
+                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        DatabaseMigrations.insertInitialFinanceCategoryData(db)
+                    }
+                }).build()
 
         private fun createDatabaseWithMigration(
             context: Context,
@@ -55,7 +61,7 @@ abstract class AppDataBase : RoomDatabase() {
         ) =
             Room.databaseBuilder(context, AppDataBase::class.java, DATA_BASE_NAME)
                 .addCallback(roomDatabaseCallback)
-                .addMigrations(*migrations)
+                .addMigrations(*DatabaseMigrations.ALL, *migrations)
                 .build()
     }
 }

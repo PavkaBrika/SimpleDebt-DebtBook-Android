@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.create
 
+import java.math.BigDecimal
+
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
@@ -45,37 +47,37 @@ class CreateDebtViewModelTest {
         doAnswer { started.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)); null }
             .whenever(setDebt).execute(any(), any(), anyOrNull(), any())
         val model = vm()
-        model.saveDebt(7, -1, "Person", 12.34, "14 Nov 2026", "")
+        model.saveDebt(7, -1, "Person", "12.34".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         assertTrue(started.await(5, TimeUnit.SECONDS))
-        model.saveDebt(7, -1, "Person", 12.34, "14 Nov 2026", "")
+        model.saveDebt(7, -1, "Person", "12.34".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         assertNull(model.savedHumanId.value)
         release.countDown()
         model.savedHumanId.await { it == 7 }
-        verify(setDebt, times(1)).execute(12.34, 7, null, "14 Nov 2026")
-        verify(addSum, times(1)).execute(7, 12.34)
+        verify(setDebt, times(1)).execute("12.34".toBigDecimal().stripTrailingZeros(), 7, null, "14 Nov 2026")
+        verify(addSum, times(1)).execute(7, "12.34".toBigDecimal().stripTrailingZeros())
     }
 
     @Test fun `failed write permits retry without reporting success`() {
         doThrow(IllegalStateException("write failed")).doNothing()
             .whenever(setDebt).execute(any(), any(), anyOrNull(), any())
         val model = vm()
-        model.saveDebt(7, -1, "Person", 12.34, "14 Nov 2026", "")
+        model.saveDebt(7, -1, "Person", "12.34".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         model.isSaving.await { it == false }
         assertTrue(model.saveError.value!!)
         assertNull(model.savedHumanId.value)
         verifyNoInteractions(addSum)
-        model.saveDebt(7, -1, "Person", 12.34, "14 Nov 2026", "")
+        model.saveDebt(7, -1, "Person", "12.34".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         model.savedHumanId.await { it == 7 }
-        verify(addSum, times(1)).execute(7, 12.34)
+        verify(addSum, times(1)).execute(7, "12.34".toBigDecimal().stripTrailingZeros())
     }
 
     @Test fun `editing uses persisted sum and respects direction`() {
-        whenever(getDebts.execute(7)).thenReturn(listOf(DebtDomain(9, 12.34, 7, null, "old date")))
+        whenever(getDebts.execute(7)).thenReturn(listOf(DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "old date")))
         val model = vm()
-        model.saveDebt(7, 9, "Person", -20.55, "14 Nov 2026", "")
+        model.saveDebt(7, 9, "Person", -"20.55".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         model.savedHumanId.await { it == 7 }
-        verify(editDebt).execute(9, -20.55, 7, null, "14 Nov 2026")
-        verify(addSum).execute(7, -20.55 - 12.34)
+        verify(editDebt).execute(9, -"20.55".toBigDecimal().stripTrailingZeros(), 7, null, "14 Nov 2026")
+        verify(addSum).execute(7, -"20.55".toBigDecimal().stripTrailingZeros() - "12.34".toBigDecimal().stripTrailingZeros())
         verifyNoInteractions(setDebt, setHuman)
     }
 

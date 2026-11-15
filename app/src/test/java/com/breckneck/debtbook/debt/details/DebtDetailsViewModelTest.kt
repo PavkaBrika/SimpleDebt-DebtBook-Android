@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.details
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
@@ -42,7 +44,7 @@ class DebtDetailsViewModelTest {
     private val addSum: AddSumUseCase = mock()
     private val getOrder: GetDebtOrder = mock()
     private val setOrder: SetDebtOrder = mock()
-    private val record = DebtDomain(9, 12.34, 7, null, "1 Jan 2026")
+    private val record = DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "1 Jan 2026")
 
     @Before fun setup() {
         Dispatchers.setMain(Dispatchers.Unconfined)
@@ -62,7 +64,7 @@ class DebtDetailsViewModelTest {
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "newHuman" to true)))
         model.screenState.await { it == DebtDetailsState.SUCCESS }
         assertEquals(listOf(record), model.resultedDebtList.value)
-        assertEquals(12.34, model.overallSum.value!!, 0.0)
+        assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(model.overallSum.value!!!!))
         verify(debts).execute(7)
         verifyNoInteractions(latestId)
     }
@@ -96,11 +98,12 @@ class DebtDetailsViewModelTest {
         assertEquals(listOf(record), model.resultedDebtList.value)
     }
 
-    @Test fun `legacy date sorting failure can recover using creation order`() {
+    @Test fun `unknown legacy date remains visible and can switch to creation order`() {
         whenever(getOrder.execute()).thenReturn(DebtOrderAttribute.Date to false)
         whenever(debts.execute(7)).thenReturn(listOf(record.copy(date = "unknown date"), record.copy(id = 10)))
         val model = vm()
-        model.screenState.await { it == DebtDetailsState.ERROR }
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals("unknown date", model.resultedDebtList.value!!.last().date)
         model.onSetDebtSort(Filter.ALL, DebtOrderAttribute.CreationDate to false)
         model.screenState.await { it == DebtDetailsState.SUCCESS }
         assertEquals(2, model.resultedDebtList.value!!.size)

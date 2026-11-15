@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.finance.main
 
+import java.math.BigDecimal
+
 import android.text.format.DateFormat
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -64,8 +66,8 @@ class FinanceViewModel @Inject constructor(
     private val _currentDayInSeconds = MutableLiveData<Long>()
     val currentDayInSeconds: LiveData<Long>
         get() = _currentDayInSeconds
-    private val _overallSum = MutableLiveData<Double>(0.0)
-    val overallSum: LiveData<Double>
+    private val _overallSum = MutableLiveData<BigDecimal>(BigDecimal.ZERO)
+    val overallSum: LiveData<BigDecimal>
         get() = _overallSum
     private val _financeListState = MutableLiveData<ListState>(ListState.LOADING)
     val financeListState: LiveData<ListState>
@@ -239,7 +241,7 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val (list, sum) = withContext(Dispatchers.IO) {
-                    var overallSum = 0.0
+                    var overallSum = BigDecimal.ZERO
                     val categoriesWithFinancesList = getAllCategoriesWithFinances.execute()
                     val deleteFinancesList: MutableList<Finance> = mutableListOf()
                     val deleteCategoriesList: MutableList<FinanceCategoryWithFinances> = mutableListOf()
@@ -268,7 +270,7 @@ class FinanceViewModel @Inject constructor(
                     categoriesWithFinancesList.removeAll(deleteCategoriesList)
 
                     for (categoriesWithFinances in categoriesWithFinancesList) {
-                        categoriesWithFinances.categoryPercentage = ((categoriesWithFinances.categorySum * 100) / overallSum).roundToInt()
+                        categoriesWithFinances.categoryPercentage = if (overallSum.signum() == 0) 0 else categoriesWithFinances.categorySum.multiply(BigDecimal(100)).divide(overallSum, 0, java.math.RoundingMode.HALF_EVEN).toInt()
                     }
                     categoriesWithFinancesList.sortBy { financeCategoryWithFinances -> financeCategoryWithFinances.categoryPercentage }
 

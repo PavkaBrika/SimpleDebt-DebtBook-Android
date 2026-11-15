@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.Human
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.repository.HumanRepository
 import org.junit.jupiter.api.AfterEach
@@ -25,13 +27,13 @@ class HumanUseCasesTest {
     @Test
     fun `SetHumanUseCase should call insertHuman with correct HumanDomain`() {
         val useCase = SetHumanUseCase(humanRepository)
-        useCase.execute(name = "Alice", sumDebt = 150.0, currency = "USD")
+        useCase.execute(name = "Alice", sumDebt = "150.0".toBigDecimal().stripTrailingZeros(), currency = "USD")
 
         val captor = argumentCaptor<HumanDomain>()
         verify(humanRepository).insertHuman(captor.capture())
         val inserted = captor.firstValue
         Assertions.assertEquals("Alice", inserted.name)
-        Assertions.assertEquals(150.0, inserted.sumDebt)
+        Assertions.assertEquals(0, ("150.0".toBigDecimal().stripTrailingZeros()).compareTo(inserted.sumDebt!!))
         Assertions.assertEquals("USD", inserted.currency)
         Assertions.assertEquals(0, inserted.id)
     }
@@ -39,7 +41,7 @@ class HumanUseCasesTest {
     @Test
     fun `SetHumanUseCase should call insertHuman exactly once`() {
         val useCase = SetHumanUseCase(humanRepository)
-        useCase.execute("Bob", 0.0, "EUR")
+        useCase.execute("Bob", "0.0".toBigDecimal().stripTrailingZeros(), "EUR")
         verify(humanRepository, Mockito.times(1)).insertHuman(any())
     }
 
@@ -63,26 +65,26 @@ class HumanUseCasesTest {
 
     @Test
     fun `GetHumanSumDebtUseCase should return sum from repository`() {
-        Mockito.`when`(humanRepository.getHumanSumDebt(7)).thenReturn(500.0)
+        Mockito.`when`(humanRepository.getHumanSumDebt(7)).thenReturn("500.0".toBigDecimal().stripTrailingZeros())
         val useCase = GetHumanSumDebtUseCase(humanRepository)
         val result = useCase.execute(humanId = 7)
-        Assertions.assertEquals(500.0, result)
+        Assertions.assertEquals(0, ("500.0".toBigDecimal().stripTrailingZeros()).compareTo(result!!))
     }
 
     @Test
     fun `GetHumanSumDebtUseCase should return negative sum`() {
-        Mockito.`when`(humanRepository.getHumanSumDebt(3)).thenReturn(-200.0)
+        Mockito.`when`(humanRepository.getHumanSumDebt(3)).thenReturn(-"200.0".toBigDecimal().stripTrailingZeros())
         val useCase = GetHumanSumDebtUseCase(humanRepository)
         val result = useCase.execute(humanId = 3)
-        Assertions.assertEquals(-200.0, result)
+        Assertions.assertEquals(0, (-"200.0".toBigDecimal().stripTrailingZeros()).compareTo(result!!))
     }
 
     @Test
     fun `GetHumanSumDebtUseCase should return zero sum`() {
-        Mockito.`when`(humanRepository.getHumanSumDebt(0)).thenReturn(0.0)
+        Mockito.`when`(humanRepository.getHumanSumDebt(0)).thenReturn("0.0".toBigDecimal().stripTrailingZeros())
         val useCase = GetHumanSumDebtUseCase(humanRepository)
         val result = useCase.execute(humanId = 0)
-        Assertions.assertEquals(0.0, result)
+        Assertions.assertEquals(0, ("0.0".toBigDecimal().stripTrailingZeros()).compareTo(result!!))
     }
 
     // --- GetLastHumanIdUseCase ---
@@ -108,22 +110,22 @@ class HumanUseCasesTest {
     @Test
     fun `AddSumUseCase should call addSum with correct params`() {
         val useCase = AddSumUseCase(humanRepository)
-        useCase.execute(humanId = 5, sum = 300.0)
-        verify(humanRepository).addSum(humanId = 5, sum = 300.0)
+        useCase.execute(humanId = 5, sum = "300.0".toBigDecimal().stripTrailingZeros())
+        verify(humanRepository).addSum(humanId = 5, sum = "300.0".toBigDecimal().stripTrailingZeros())
     }
 
     @Test
     fun `AddSumUseCase should call addSum with negative sum`() {
         val useCase = AddSumUseCase(humanRepository)
-        useCase.execute(humanId = 2, sum = -100.0)
-        verify(humanRepository).addSum(humanId = 2, sum = -100.0)
+        useCase.execute(humanId = 2, sum = -"100.0".toBigDecimal().stripTrailingZeros())
+        verify(humanRepository).addSum(humanId = 2, sum = -"100.0".toBigDecimal().stripTrailingZeros())
     }
 
     // --- UpdateHuman ---
 
     @Test
     fun `UpdateHuman should call updateHuman with provided HumanDomain`() {
-        val human = HumanDomain(id = 1, name = "Carol", sumDebt = 75.0, currency = "RUB")
+        val human = HumanDomain(id = 1, name = "Carol", sumDebt = "75.0".toBigDecimal().stripTrailingZeros(), currency = "RUB")
         val useCase = UpdateHuman(humanRepository)
         useCase.execute(humanDomain = human)
         verify(humanRepository).updateHuman(human)
@@ -131,7 +133,7 @@ class HumanUseCasesTest {
 
     @Test
     fun `UpdateHuman should call updateHuman exactly once`() {
-        val human = HumanDomain(id = 2, name = "Dave", sumDebt = 0.0, currency = "USD")
+        val human = HumanDomain(id = 2, name = "Dave", sumDebt = "0.0".toBigDecimal().stripTrailingZeros(), currency = "USD")
         val useCase = UpdateHuman(humanRepository)
         useCase.execute(humanDomain = human)
         verify(humanRepository, Mockito.times(1)).updateHuman(any())
@@ -142,8 +144,8 @@ class HumanUseCasesTest {
     @Test
     fun `ReplaceAllHumans should call replaceAllHumans with provided list`() {
         val humans = listOf(
-            HumanDomain(id = 1, name = "Alice", sumDebt = 100.0, currency = "USD"),
-            HumanDomain(id = 2, name = "Bob", sumDebt = -50.0, currency = "EUR")
+            HumanDomain(id = 1, name = "Alice", sumDebt = "100.0".toBigDecimal().stripTrailingZeros(), currency = "USD"),
+            HumanDomain(id = 2, name = "Bob", sumDebt = -"50.0".toBigDecimal().stripTrailingZeros(), currency = "EUR")
         )
         val useCase = ReplaceAllHumans(humanRepository)
         useCase.execute(humanList = humans)

@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.Finance
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.repository.FinanceRepository
 import org.junit.jupiter.api.AfterEach
@@ -23,14 +25,14 @@ class FinanceUseCasesTest {
         Mockito.reset(financeRepository)
     }
 
-    private fun createFinance(id: Int = 0, sum: Double = 100.0, categoryId: Int = 1) =
+    private fun createFinance(id: Int = 0, sum: BigDecimal = "100.0".toBigDecimal().stripTrailingZeros(), categoryId: Int = 1) =
         Finance(id = id, sum = sum, date = testDate, info = null, financeCategoryId = categoryId)
 
     // --- GetAllFinances ---
 
     @Test
     fun `GetAllFinances should return list from repository`() {
-        val finances = listOf(createFinance(1, 100.0), createFinance(2, -50.0))
+        val finances = listOf(createFinance(1, "100.0".toBigDecimal().stripTrailingZeros()), createFinance(2, -"50.0".toBigDecimal().stripTrailingZeros()))
         Mockito.`when`(financeRepository.getAllFinance()).thenReturn(finances)
         val result = GetAllFinances(financeRepository).execute()
         Assertions.assertEquals(finances, result)
@@ -47,7 +49,7 @@ class FinanceUseCasesTest {
 
     @Test
     fun `GetFinanceByCategoryId should return finances for given categoryId`() = runTest {
-        val finances = listOf(createFinance(1, 200.0, 3))
+        val finances = listOf(createFinance(1, "200.0".toBigDecimal().stripTrailingZeros(), 3))
         whenever(financeRepository.getFinanceByCategoryId(3)).thenReturn(finances)
         val result = GetFinanceByCategoryId(financeRepository).execute(categoryId = 3)
         Assertions.assertEquals(finances, result)
@@ -64,7 +66,7 @@ class FinanceUseCasesTest {
 
     @Test
     fun `SetFinance should call setFinance with provided finance`() {
-        val finance = createFinance(0, 350.0, 2)
+        val finance = createFinance(0, "350.0".toBigDecimal().stripTrailingZeros(), 2)
         SetFinance(financeRepository).execute(finance = finance)
         verify(financeRepository).setFinance(finance = finance)
     }
@@ -79,7 +81,7 @@ class FinanceUseCasesTest {
 
     @Test
     fun `DeleteFinance should call deleteFinance with provided finance`() = runTest {
-        val finance = createFinance(5, 75.0)
+        val finance = createFinance(5, "75.0".toBigDecimal().stripTrailingZeros())
         DeleteFinance(financeRepository).execute(finance = finance)
         verify(financeRepository).deleteFinance(finance = finance)
     }
@@ -88,7 +90,7 @@ class FinanceUseCasesTest {
 
     @Test
     fun `UpdateFinance should call updateFinance with provided finance`() {
-        val finance = createFinance(3, 125.0, 4)
+        val finance = createFinance(3, "125.0".toBigDecimal().stripTrailingZeros(), 4)
         UpdateFinance(financeRepository).execute(finance = finance)
         verify(financeRepository).updateFinance(finance = finance)
     }

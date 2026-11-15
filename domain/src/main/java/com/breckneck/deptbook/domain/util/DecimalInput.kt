@@ -1,27 +1,17 @@
 package com.breckneck.deptbook.domain.util
 
-import java.text.DecimalFormat
+import java.math.BigDecimal
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 
-/** Form input only. Persisted money remains Double until the R1b migration.
- * Accept a single decimal dot OR comma, at most two fraction digits, no grouping,
- * exponent, suffix, NaN or infinity. Never parse only the prefix of a value.
- */
 object DecimalInput {
-    private val complete = Regex("[+-]?[0-9]+(?:[.,][0-9]{1,2})?")
-    private val editing = Regex("[+-]?[0-9]*(?:[.,][0-9]{0,2})?")
-
-    fun parse(text: String): Double? {
-        val input = text.trim()
-        if (!complete.matches(input)) return null
-        return input.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
+    fun parse(text: String, currency: String? = "USD", previous: BigDecimal? = null): BigDecimal? {
+        // Editing a note must not force rounding a legacy amount with extra precision.
+        if (previous != null && text.trim().replace(',', '.') == previous.stripTrailingZeros().toPlainString()) return previous
+        return MoneyPolicy.parse(text, currency)
     }
-
-    fun isEditable(text: String): Boolean = editing.matches(text)
-
-    fun format(value: Double, locale: Locale = Locale.getDefault()): String =
-        DecimalFormat("0.##", DecimalFormatSymbols(locale)).apply {
-            isGroupingUsed = false
-        }.format(value)
+    fun isEditable(text: String, currency: String = "USD"): Boolean =
+        Regex("[+-]?[0-9]{0,18}(?:[.,][0-9]{0,${MoneyPolicy.scale(currency)}})?").matches(text)
+    fun format(value: BigDecimal, locale: Locale = Locale.getDefault()): String =
+        value.stripTrailingZeros().toPlainString().replace('.', DecimalFormatSymbols(locale).decimalSeparator)
 }

@@ -41,7 +41,7 @@ domain/src/main/java/com/breckneck/deptbook/domain/
 data class HumanDomain(
     var id: Int,
     var name: String,
-    var sumDebt: Double,   // суммарный долг (+ = мне должны, - = я должен)
+    var sumDebt: BigDecimal,   // суммарный долг (+ = мне должны, - = я должен)
     var currency: String   // код валюты
 )
 ```
@@ -51,7 +51,7 @@ data class HumanDomain(
 ```kotlin
 data class DebtDomain(
     var id: Int,
-    var sum: Double,       // сумма (+ = дал, - = взял)
+    var sum: BigDecimal,       // сумма (+ = дал, - = взял)
     var idHuman: Int,      // FK → HumanDomain.id
     var info: String?,     // описание
     var date: String       // дата строкой
@@ -63,7 +63,7 @@ data class DebtDomain(
 ```kotlin
 data class Finance(
     var id: Int = 0,
-    var sum: Double,
+    var sum: BigDecimal,
     var date: Date,
     var info: String?,
     var financeCategoryId: Int  // FK → FinanceCategory.id
@@ -92,8 +92,8 @@ data class FinanceCategory(
 data class Goal(
     val id: Int = 0,
     var name: String,
-    var sum: Double,          // целевая сумма
-    var savedSum: Double,     // накопленная сумма
+    var sum: BigDecimal,          // целевая сумма
+    var savedSum: BigDecimal,     // накопленная сумма
     var currency: String,
     var photoPath: String?,   // путь к фото цели
     var creationDate: Date,
@@ -106,7 +106,7 @@ data class Goal(
 ```kotlin
 data class GoalDeposit(
     var id: Int = 0,
-    var sum: Double,
+    var sum: BigDecimal,
     var date: Date,
     var goalId: Int  // FK → Goal.id
 )
@@ -319,3 +319,5 @@ Getter/Setter пары для каждой настройки. Примеры:
 ### R1b — правила точных данных
 
 `util/MoneyPolicy.kt`: точные десятичные суммы, допустимый ввод и явное HALF_EVEN; `util/LedgerDate.kt`: календарный ISO-день, строгое распознавание старых строк, отображение и стабильная сортировка без зависимости от зоны. Инварианты: `docs/r1b-data-contract.md`.
+
+Все денежные поля и контракты HumanRepository/AddSum/GetHumanSumDebt/SetDebt/EditDebt/FormatDebtSum теперь `BigDecimal`; DecimalInput парсит напрямую из строки и валидирует точность валюты. HumanDomain/Goal включают `openingAdjustment`, DebtDomain — `legacyDate`. GetCurrentDate/SetDate возвращают календарный ISO-день; sortDebts использует LedgerDate и сохраняет неизвестные даты.

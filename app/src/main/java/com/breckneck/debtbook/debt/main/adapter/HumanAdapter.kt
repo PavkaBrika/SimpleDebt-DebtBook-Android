@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.main.adapter
 
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
@@ -17,7 +19,7 @@ class HumanAdapter(
     private val humanClickListener: OnHumanClickListener
 ) : RecyclerView.Adapter<HumanAdapter.HumanViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##")
+    private val decimalFormat = DecimalFormat("###,###,###.####################")
     private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val humanDomainList: MutableList<HumanDomain> = humanDomainListImmutable.toMutableList()
 

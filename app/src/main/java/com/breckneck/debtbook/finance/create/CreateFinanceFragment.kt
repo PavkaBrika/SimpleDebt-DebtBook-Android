@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.finance.create
 
+import java.math.BigDecimal
+
 import android.app.DatePickerDialog
 import android.content.Context
 import android.graphics.Typeface
@@ -239,13 +241,13 @@ class CreateFinanceFragment : Fragment() {
         fun isAllFieldsFilledRight(): Boolean {
             var isFilledRight = true
 
-            val sum = DecimalInput.parse(financeSumEditText.text.toString())
+            val sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)
             financeSumTextInput.error = when {
                 sum == null -> getString(R.string.something_went_wrong)
-                sum <= 0.0 -> getString(R.string.zerodebt)
+                sum <= BigDecimal.ZERO -> getString(R.string.zerodebt)
                 else -> null
             }
-            if (sum == null || sum <= 0.0) isFilledRight = false
+            if (sum == null || sum <= BigDecimal.ZERO) isFilledRight = false
 
             if (vm.createFragmentState.value == CreateFragmentState.CREATE) {
                 if (vm.checkedFinanceCategory.value == null) {
@@ -282,7 +284,7 @@ class CreateFinanceFragment : Fragment() {
                     CreateFragmentState.CREATE -> {
                         vm.setFinance(
                             Finance(
-                                sum = DecimalInput.parse(financeSumEditText.text.toString())!!,
+                                sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)!!,
                                 info = financeInfoEditText.text.toString(),
                                 financeCategoryId = vm.checkedFinanceCategory.value!!.id,
                                 date = vm.date.value!!
@@ -294,7 +296,7 @@ class CreateFinanceFragment : Fragment() {
                         vm.editFinance(
                             Finance(
                                 id = vm.financeEdit.value!!.id,
-                                sum = DecimalInput.parse(financeSumEditText.text.toString())!!,
+                                sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)!!,
                                 info = financeInfoEditText.text.toString(),
                                 financeCategoryId = vm.financeEdit.value!!.financeCategoryId,
                                 date = vm.date.value!!

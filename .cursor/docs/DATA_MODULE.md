@@ -5,7 +5,7 @@
 - **Тип**: Android Library (`com.android.library`)
 - **Namespace**: `com.breckneck.data`
 - **Пакеты в коде**: `com.breckneck.deptbook.data.storage` (интерфейсы), `database`, `entity`, `repository`, `sharedprefs`, `util` (flat-пакеты)
-- **SDK**: compileSdk 34, minSdk 21, targetSdk 34
+- **SDK**: compileSdk 36, minSdk 23, targetSdk 35
 - **Java target**: 17
 - **Зависимости**: Room 2.8.4 + KSP, зависимость на `:domain`
 
@@ -32,9 +32,9 @@ data/src/main/java/
 
 ### `AppDataBase` (`database/AppDataBase.kt`)
 
-- **Version**: 14
+- **Version**: 15
 - **Entities**: `Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`
-- **TypeConverters**: `Converters` (конвертация `Date` ↔ `Long` и др.)
+- **TypeConverters**: `Converters` (конвертация `Date` ↔ `Long`, `BigDecimal` ↔ десятичный `TEXT`)
 - **Singleton**: thread-safe через `synchronized` + `@Volatile`
 - **Database name**: определено в `util/ConstantsData.kt`
 
@@ -49,7 +49,7 @@ data/src/main/java/
 | `getPositiveHumans()` | `WHERE sumDebt >= 0` |
 | `getNegativeHumans()` | `WHERE sumDebt <= 0` |
 | `getLastHumanId()` | `ORDER BY id DESC LIMIT 1` |
-| `addSum(humanId, sum)` | `UPDATE human SET sumDebt = sumDebt + :sum WHERE id = :humanId` |
+| `addSum(humanId, sum)` | Транзакционный пересчет: openingAdjustment + точная сумма Debt |
 | `getAllDebtsSum(currency)` | `SELECT sumDebt WHERE currency = :currency` |
 | `getHumanSumDebt(humanId)` | `SELECT sumDebt WHERE id = :humanId` |
 | `deleteHumanById(id)` | `DELETE FROM human WHERE id = :id` |
@@ -184,3 +184,7 @@ Data-слой enum, зеркало `FinanceCategoryState` из domain. Испо�
 ## R1a — граница транзакции
 
 `repository/RoomDataTransaction.kt` реализует domain `DataTransaction` через `AppDataBase.runInTransaction` на том же singleton DB, что используют storage. Схема v14 не менялась. Создание/изменение/удаление долга и баланс, удаление человека и его долгов выполняются атомарно. Instrumented `DebtReliabilityTest` проверяет откат исключения; `BackupRoomTest` — restore B → snapshot B на настоящей Room-базе (без обращения к Drive).
+
+### R1b — точные суммы и миграция 15
+
+`DatabaseMigrations` регистрирует пути 5→11→12→13→14→15 при любом открытии БД; `schemas/database.AppDataBase/{14,15}.json` — экспортированные схемы. Миграция сохраняет ID, последовательности, связи, исходные суммы без округления, старые даты (`Debt.legacyDate`). `Human.openingAdjustment` и `GoalData.openingAdjustment` сохраняют расхождение прежнего итога с историей. `saveDebt/reviseDebt/removeDebt/addGoalDeposit/updateGoalDetails` — транзакционные команды; арифметика выполняется BigDecimal в Kotlin. SQL SUM/сложение над TEXT не используется.

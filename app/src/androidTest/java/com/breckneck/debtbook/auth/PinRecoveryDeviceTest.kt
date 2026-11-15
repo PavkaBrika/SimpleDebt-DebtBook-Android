@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.auth
 
+import java.math.BigDecimal
+
 import android.app.KeyguardManager
 import android.content.ComponentName
 import android.content.Context
@@ -42,8 +44,8 @@ class PinRecoveryDeviceTest {
     @Before fun prepare() {
         originalData = repository.getAllAppData()
         fixture = originalData.copy(
-            humanList = originalData.humanList + HumanDomain(910001, "PIN recovery fixture", 12.34, "EUR"),
-            debtList = originalData.debtList + DebtDomain(910001, 12.34, 910001, null, "15 Nov 2026"))
+            humanList = originalData.humanList + HumanDomain(910001, "PIN recovery fixture", "12.34".toBigDecimal().stripTrailingZeros(), "EUR"),
+            debtList = originalData.debtList + DebtDomain(910001, "12.34".toBigDecimal().stripTrailingZeros(), 910001, null, "15 Nov 2026"))
         repository.replaceAllAppData(fixture)
         originalFile = file.takeIf { it.exists() }?.readBytes()
         originalPrefs = prefs.all.toMap()

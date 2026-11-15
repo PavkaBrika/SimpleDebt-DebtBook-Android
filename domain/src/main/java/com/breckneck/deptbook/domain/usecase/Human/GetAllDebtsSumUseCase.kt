@@ -1,13 +1,16 @@
 package com.breckneck.deptbook.domain.usecase.Human
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import com.breckneck.deptbook.domain.repository.HumanRepository
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
-import kotlin.math.abs
+import com.breckneck.deptbook.domain.util.abs
 
 class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
 
-    val decimalFormat = DecimalFormat("###,###,###.##")
+    val decimalFormat = DecimalFormat("###,###,###.####################")
     val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
 
     fun execute(firstCurrency: String, secondCurrency: String): Pair<String, String> {
@@ -15,10 +18,10 @@ class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
         decimalFormat.decimalFormatSymbols = customSymbol
         val debtsInFirstCurrency = humanRepository.getAllDebtsSum(currency = firstCurrency)
         val debtsInSecondCurrency = humanRepository.getAllDebtsSum(currency = secondCurrency)
-        var positiveNumbers = 0.0
+        var positiveNumbers = BigDecimal.ZERO
         var positiveText = ""
         var negativeText = ""
-        var negativeNumbers = 0.0
+        var negativeNumbers = BigDecimal.ZERO
         if (debtsInFirstCurrency.isNotEmpty()) {
             for (i in debtsInFirstCurrency.indices) {
                 if (debtsInFirstCurrency[i] > 0) {
@@ -28,19 +31,19 @@ class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
                     negativeNumbers += abs(debtsInFirstCurrency[i])
                 }
             }
-            if (positiveNumbers != 0.0)
+            if (positiveNumbers.signum() != 0)
                 if (positiveText.isEmpty())
                     positiveText = "+${decimalFormat.format(positiveNumbers)} $firstCurrency"
                 else
                     positiveText = "$positiveText\n+${decimalFormat.format(positiveNumbers)} $firstCurrency"
-            if (negativeNumbers != 0.0)
+            if (negativeNumbers.signum() != 0)
                 if (negativeText.isEmpty())
                     negativeText = "-${decimalFormat.format(negativeNumbers)} $firstCurrency"
                 else
                     negativeText = "$negativeText\n-${decimalFormat.format(negativeNumbers)} $firstCurrency"
         }
-        positiveNumbers = 0.0
-        negativeNumbers = 0.0
+        positiveNumbers = BigDecimal.ZERO
+        negativeNumbers = BigDecimal.ZERO
         if (debtsInSecondCurrency.isNotEmpty()) {
             for (i in debtsInSecondCurrency.indices) {
                 if (debtsInSecondCurrency[i] > 0) {
@@ -50,12 +53,12 @@ class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
                     negativeNumbers += abs(debtsInSecondCurrency[i])
                 }
             }
-            if (positiveNumbers != 0.0)
+            if (positiveNumbers.signum() != 0)
                 if (positiveText.isEmpty())
                     positiveText = "+${decimalFormat.format(positiveNumbers)} $secondCurrency"
                 else
                     positiveText = "$positiveText\n+${decimalFormat.format(positiveNumbers)} $secondCurrency"
-            if (negativeNumbers != 0.0)
+            if (negativeNumbers.signum() != 0)
                 if (negativeText.isEmpty())
                     negativeText = "-${decimalFormat.format(negativeNumbers)} $secondCurrency"
                 else

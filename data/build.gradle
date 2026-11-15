@@ -50,3 +50,6 @@ dependencies {
     //Clean Architecture
     implementation project(path:':domain')
 }
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}

@@ -1,5 +1,7 @@
 package entity
 
+import java.math.BigDecimal
+
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -16,7 +18,7 @@ import java.util.Date
 data class GoalDepositData(
     @PrimaryKey(autoGenerate = true)
     var id: Int,
-    var sum: Double,
+    var sum: BigDecimal,
     var date: Date,
     var goalId: Int
 )

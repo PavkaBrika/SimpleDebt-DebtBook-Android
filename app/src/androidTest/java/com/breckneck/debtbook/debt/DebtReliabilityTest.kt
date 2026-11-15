@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt
 
+import java.math.BigDecimal
+
 import android.content.Context
 import android.graphics.Bitmap
 import java.io.File
@@ -88,10 +90,10 @@ class DebtReliabilityTest {
                 view.findViewById<View>(R.id.setFinanceButton).performClick()
                 view.findViewById<View>(R.id.setFinanceButton).performClick() // duplicate tap
             }
-            await("debt was not created") { dao.getAllHuman().any { it.name == name } && dao.getAllDebts().any { it.sum == 12.34 } }
+            await("debt was not created") { dao.getAllHuman().any { it.name == name } && dao.getAllDebts().any { it.sum == "12.34".toBigDecimal().stripTrailingZeros() } }
             val human = dao.getAllHuman().single { it.name == name }
             val initial = dao.getAllDebtsById(human.id).single()
-            assertEquals(12.34, human.sumDebt, 0.0)
+            assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(human.sumDebt!!))
             await("details navigation") {
                 var ready = false
                 scenario.onActivity { ready = it.navController.currentDestination?.id == R.id.debtDetailsFragment }
@@ -106,13 +108,13 @@ class DebtReliabilityTest {
             scenario.onActivity { activity ->
                 val view = current(activity).requireView()
                 val input = view.findViewById<EditText>(R.id.debtSumEditText)
-                assertEquals(12.34, com.breckneck.deptbook.domain.util.DecimalInput.parse(input.text.toString())!!, 0.0)
+                assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(com.breckneck.deptbook.domain.util.DecimalInput.parse(input.text.toString())!!!!))
                 input.setText("20,55")
                 view.findViewById<CustomSwitchView>(R.id.customSwitch).setChecked(false)
                 view.findViewById<View>(R.id.setFinanceButton).performClick()
             }
-            await("edited amount not persisted") { dao.getAllDebtsById(human.id).single().sum == -20.55 }
-            assertEquals(-20.55, dao.getHumanSumDebt(human.id), 0.00000001)
+            await("edited amount not persisted") { dao.getAllDebtsById(human.id).single().sum == -"20.55".toBigDecimal().stripTrailingZeros() }
+            assertEquals(0, (-"20.55".toBigDecimal().stripTrailingZeros()).compareTo(dao.getHumanSumDebt(human.id)!!))
             await("details after edit") {
                 var ready = false
                 scenario.onActivity { ready = it.navController.currentDestination?.id == R.id.debtDetailsFragment }
@@ -126,7 +128,7 @@ class DebtReliabilityTest {
                 vm.deleteDebt(record)
             }
             await("deleted record or balance survived") {
-                dao.getAllDebtsById(human.id).isEmpty() && kotlin.math.abs(dao.getHumanSumDebt(human.id)) < 0.00000001
+                dao.getAllDebtsById(human.id).isEmpty() && com.breckneck.deptbook.domain.util.abs(dao.getHumanSumDebt(human.id)) < "0.00000001".toBigDecimal().stripTrailingZeros()
             }
         }
     }
@@ -135,8 +137,8 @@ class DebtReliabilityTest {
         val transaction = RoomDataTransaction(context)
         try {
             transaction.run {
-                dao.insertHuman(Human(900010, name, 45.67, "EUR"))
-                dao.insertDebt(Debt(900010, 45.67, 900010, null, "14 Nov 2026"))
+                dao.insertHuman(Human(900010, name, "45.67".toBigDecimal().stripTrailingZeros(), "EUR"))
+                dao.insertDebt(Debt(900010, "45.67".toBigDecimal().stripTrailingZeros(), 900010, null, "14 Nov 2026"))
                 throw IllegalStateException("simulated second write failure")
             }
             fail("transaction did not throw")

@@ -1,5 +1,8 @@
 package database
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import androidx.room.*
 import entity.Debt
 import entity.FinanceCategoryData
@@ -21,23 +24,30 @@ interface AppDao {
     @Query("DELETE FROM human")
     fun deleteAllHumans()
 
-    @Query("SELECT * FROM human WHERE sumDebt >= 0")
+    @Query("SELECT * FROM human WHERE CAST(sumDebt AS NUMERIC) >= 0")
     fun getPositiveHumans(): List<Human>
 
-    @Query("SELECT * FROM human WHERE sumDebt <= 0")
+    @Query("SELECT * FROM human WHERE CAST(sumDebt AS NUMERIC) <= 0")
     fun getNegativeHumans(): List<Human>
 
     @Query("SELECT id FROM human ORDER BY id DESC LIMIT 1")
     fun getLastHumanId() : Int
 
-    @Query("UPDATE human SET sumDebt = sumDebt + :sum WHERE id = :humanId")
-    fun addSum(humanId: Int, sum: Double)
+    @Query("SELECT * FROM human WHERE id = :humanId")
+    fun getHuman(humanId: Int): Human?
+
+    @Transaction
+    fun addSum(humanId: Int, sum: BigDecimal) {
+        val human = requireNotNull(getHuman(humanId))
+        human.sumDebt = getAllDebtsById(humanId).fold(human.openingAdjustment) { total, debt -> total + debt.sum }
+        updateHuman(human)
+    }
 
     @Query("SELECT sumDebt from human WHERE currency = :currency")
-    fun getAllDebtsSum(currency: String): List<Double>
+    fun getAllDebtsSum(currency: String): List<BigDecimal>
 
     @Query("SELECT sumDebt from human WHERE id = :humanId")
-    fun getHumanSumDebt(humanId: Int): Double
+    fun getHumanSumDebt(humanId: Int): BigDecimal
 
     @Query("DELETE FROM human WHERE id = :id")
     fun deleteHumanById(id: Int)
@@ -53,6 +63,28 @@ interface AppDao {
 
     @Update
     fun updateHuman(human: Human)
+
+    @Transaction
+    fun saveDebt(debt: Debt) {
+        insertDebt(debt)
+        addSum(debt.idHuman, BigDecimal.ZERO)
+    }
+
+    @Transaction
+    fun reviseDebt(debt: Debt) {
+        val previous = getAllDebts().firstOrNull { it.id == debt.id } ?: error("Missing debt")
+        debt.legacyDate = previous.legacyDate
+        updateDebt(debt)
+        addSum(previous.idHuman, BigDecimal.ZERO)
+        if (previous.idHuman != debt.idHuman) addSum(debt.idHuman, BigDecimal.ZERO)
+    }
+
+    @Transaction
+    fun removeDebt(debt: Debt) {
+        val previous = getAllDebts().firstOrNull { it.id == debt.id } ?: return
+        deleteDebt(previous)
+        addSum(previous.idHuman, BigDecimal.ZERO)
+    }
 
     //Debt
     @Query("SELECT * FROM debt")
@@ -138,6 +170,24 @@ interface AppDao {
     fun updateFinanceCategory(financeCategoryData: FinanceCategoryData)
 
     //GOAL
+
+    @Transaction
+    fun updateGoalDetails(goal: GoalData) {
+        val totalDeposits = getGoalDepositsByGoalId(goal.id).fold(BigDecimal.ZERO) { total, row -> total + row.sum }
+        goal.openingAdjustment = goal.savedSum - totalDeposits
+        updateGoal(goal)
+    }
+
+    @Query("SELECT * FROM GoalData WHERE id = :id")
+    fun getGoal(id: Int): GoalData?
+
+    @Transaction
+    fun addGoalDeposit(deposit: GoalDepositData) {
+        val goal = requireNotNull(getGoal(deposit.goalId))
+        insertGoalDeposit(deposit)
+        goal.savedSum = getGoalDepositsByGoalId(goal.id).fold(goal.openingAdjustment) { total, row -> total + row.sum }
+        updateGoal(goal)
+    }
 
     @Query("SELECT * FROM GoalData")
     fun getAllGoals(): List<GoalData>

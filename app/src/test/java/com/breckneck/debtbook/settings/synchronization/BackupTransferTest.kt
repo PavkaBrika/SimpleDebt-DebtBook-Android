@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.settings.synchronization
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.AppDataLists
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.model.HumanDomain
@@ -11,15 +13,15 @@ import java.io.IOException
 
 class BackupTransferTest {
     private val gson = Gson()
-    private fun snapshot(id: Int, amount: Double) = AppDataLists(
+    private fun snapshot(id: Int, amount: BigDecimal) = AppDataLists(
         listOf(HumanDomain(id, "Person $id", amount, "EUR")),
         listOf(DebtDomain(id, amount, id, null, "1 Jan 2026")),
         emptyList(), emptyList(), emptyList(), emptyList(),
     )
 
     @Test fun `A then restore B then upload writes B from current database`() = runBlocking {
-        var current = snapshot(1, 10.0)
-        val restored = snapshot(2, 20.25)
+        var current = snapshot(1, "10.0".toBigDecimal().stripTrailingZeros())
+        val restored = snapshot(2, "20.25".toBigDecimal().stripTrailingZeros())
         val transfer = BackupTransfer({ current }, { current = it })
         var uploaded = ""
         transfer.upload { uploaded = it }
@@ -30,10 +32,10 @@ class BackupTransferTest {
     }
 
     @Test fun `local changes after opening screen are included in next upload`() = runBlocking {
-        var current = snapshot(1, 10.0)
+        var current = snapshot(1, "10.0".toBigDecimal().stripTrailingZeros())
         val transfer = BackupTransfer({ current }, { current = it })
-        current = snapshot(1, 12.34)
-        transfer.upload { assertEquals(12.34, gson.fromJson(it, AppDataLists::class.java).debtList.single().sum, 0.0) }
+        current = snapshot(1, "12.34".toBigDecimal().stripTrailingZeros())
+        transfer.upload { assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(gson.fromJson(it, AppDataLists::class.java).debtList.single().sum!!)) }
     }
 
     @Test fun `failed current snapshot read never overwrites remote backup`() = runBlocking {
@@ -48,11 +50,11 @@ class BackupTransferTest {
 
     @Test fun `malformed or incomplete backup never reaches replacement`() = runBlocking {
         var replaces = 0
-        val transfer = BackupTransfer({ snapshot(1, 10.0) }, { replaces++ })
-        val valid = gson.toJson(snapshot(1, 10.0))
+        val transfer = BackupTransfer({ snapshot(1, "10.0".toBigDecimal().stripTrailingZeros()) }, { replaces++ })
+        val valid = gson.toJson(snapshot(1, "10.0".toBigDecimal().stripTrailingZeros()))
         for (content in listOf("not json", "null", "{}", "[]", valid.replace("\"humanList\":[", "\"humanList\":[null,"),
             valid.replace("\"name\":\"Person 1\"", "\"name\":null"),
-            valid.replace("\"sum\":10.0,", ""))) {
+            valid.replace(Regex("\"sum\":[^,]+,"), ""))) {
             try {
                 transfer.restore { content }
                 fail("Invalid backup accepted")
@@ -63,7 +65,7 @@ class BackupTransferTest {
     }
 
     @Test fun `remote failure preserves local data and a later attempt can succeed`() = runBlocking {
-        val original = snapshot(1, 10.0)
+        val original = snapshot(1, "10.0".toBigDecimal().stripTrailingZeros())
         var current = original
         val transfer = BackupTransfer({ current }, { current = it })
         try {
@@ -71,7 +73,7 @@ class BackupTransferTest {
             fail("Expected network failure")
         } catch (_: IOException) { }
         assertEquals(original, current)
-        val next = snapshot(2, 20.0)
+        val next = snapshot(2, "20.0".toBigDecimal().stripTrailingZeros())
         transfer.restore { gson.toJson(next) }
         assertEquals(next, current)
     }

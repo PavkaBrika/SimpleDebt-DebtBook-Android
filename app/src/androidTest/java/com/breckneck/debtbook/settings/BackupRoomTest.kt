@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.settings
 
+import java.math.BigDecimal
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.breckneck.debtbook.settings.synchronization.BackupTransfer
@@ -19,8 +21,8 @@ class BackupRoomTest {
         val gson = Gson()
         val transfer = BackupTransfer(repository::getAllAppData, repository::replaceAllAppData)
         val b = AppDataLists(
-            listOf(HumanDomain(900020, "Backup test", 20.25, "EUR")),
-            listOf(DebtDomain(900020, 20.25, 900020, null, "14 Nov 2026")),
+            listOf(HumanDomain(900020, "Backup test", "20.25".toBigDecimal().stripTrailingZeros(), "EUR")),
+            listOf(DebtDomain(900020, "20.25".toBigDecimal().stripTrailingZeros(), 900020, null, "14 Nov 2026")),
             emptyList(), emptyList(), emptyList(), emptyList()
         )
         try {

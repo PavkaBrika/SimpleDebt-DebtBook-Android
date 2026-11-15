@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.core
 
+
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -429,7 +430,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val args = Bundle()
         args.putInt("idDebt", debtDomain.id)
         args.putInt("idHuman", debtDomain.idHuman)
-        args.putDouble("sum", debtDomain.sum)
+        args.putString("sum", debtDomain.sum.toPlainString())
         args.putString("date", debtDomain.date)
         if (debtDomain.info == null)
             args.putString("info", "")

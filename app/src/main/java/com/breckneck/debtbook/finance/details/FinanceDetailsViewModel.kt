@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.finance.details
 
+
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.finance.create
 
+import java.math.BigDecimal
+
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import com.breckneck.deptbook.domain.model.Finance
@@ -34,7 +36,7 @@ class CreateFinanceViewModelTest {
     @get:Rule val instantTaskExecutorRule = InstantTaskExecutorRule()
     private val setFinance = mock<SetFinance>()
     private val updateFinance = mock<UpdateFinance>()
-    private val finance = Finance(sum = 12.34, info = "", financeCategoryId = 1, date = Date())
+    private val finance = Finance(sum = "12.34".toBigDecimal().stripTrailingZeros(), info = "", financeCategoryId = 1, date = Date())
     private lateinit var vm: CreateFinanceViewModel
 
     @Before fun setUp() {

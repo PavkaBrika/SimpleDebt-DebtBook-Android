@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.debt.details
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -63,8 +66,8 @@ class DebtDetailsViewModel @Inject constructor(
     val humanCurrency: String?
         get() = _humanCurrency
 
-    private val _overallSum = MutableLiveData<Double>()
-    val overallSum: LiveData<Double>
+    private val _overallSum = MutableLiveData<BigDecimal>()
+    val overallSum: LiveData<BigDecimal>
         get() = _overallSum
 
     private val _debtDeleted = MutableLiveData<Unit>()

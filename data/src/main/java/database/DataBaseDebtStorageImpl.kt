@@ -24,15 +24,15 @@ class DataBaseDebtStorageImpl(context: Context): DebtStorage {
     }
 
     override fun setDebt(debt: Debt) {
-        db.appDao().insertDebt(debt)
+        db.appDao().saveDebt(debt)
     }
 
     override fun deleteDebt(debt: Debt) {
-        db.appDao().deleteDebt(debt)
+        db.appDao().removeDebt(debt)
     }
 
     override fun editDebt(debt: Debt) {
-        db.appDao().updateDebt(debt)
+        db.appDao().reviseDebt(debt)
     }
 
     override fun deleteDebtsByHumanId(id: Int) {

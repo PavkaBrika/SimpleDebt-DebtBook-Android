@@ -1,5 +1,10 @@
 package com.breckneck.debtbook.goal.details
 
+import android.widget.Toast
+
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -108,8 +113,11 @@ class GoalDetailsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val decimalFormat = DecimalFormat("###,###,###.##")
+        val decimalFormat = DecimalFormat("###,###,###.####################")
         val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
+        vm.operationError.observe(viewLifecycleOwner) { failed ->
+            if (failed) Toast.makeText(requireContext(), R.string.something_went_wrong, Toast.LENGTH_LONG).show()
+        }
         val sdf = SimpleDateFormat("d MMM yyyy")
         customSymbol.groupingSeparator = ' '
         decimalFormat.decimalFormatSymbols = customSymbol
@@ -309,7 +317,6 @@ class GoalDetailsFragment : Fragment() {
                 if (goalDepositList.isNotEmpty()) {
                     goalDepositAdapter.updateGoalDepositList(goalDepositList)
                     Log.e(TAG, "data in adapter link success")
-                    vm.setGoalListState(state = ListState.RECEIVED)
                 } else {
                     vm.setGoalListState(ListState.EMPTY)
                 }
@@ -335,12 +342,13 @@ class GoalDetailsFragment : Fragment() {
         goalSumEditText.setRawInputType(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
 
         dialog.findViewById<Button>(R.id.confirmButton)!!.setOnClickListener {
+            if (vm.isSaving.value == true) return@setOnClickListener
             val savedSum = goalSumEditText.text.toString().trim()
             if (savedSum.isEmpty())
                 goalSumTextInput.error = getString(R.string.youmustentername)
             else {
-                val parsed = DecimalInput.parse(savedSum)
-                if (parsed == null || parsed <= 0.0) {
+                val parsed = DecimalInput.parse(savedSum, vm.goal.value?.currency)
+                if (parsed == null || parsed <= BigDecimal.ZERO) {
                     goalSumTextInput.error = getString(R.string.something_went_wrong)
                     return@setOnClickListener
                 }
@@ -348,17 +356,14 @@ class GoalDetailsFragment : Fragment() {
                     ChangeGoalSavedSumDialogState.ADD -> parsed
                     ChangeGoalSavedSumDialogState.SUBTRACT -> -parsed
                 }
-                if (savedSumDouble == 0.0) {
+                if (savedSumDouble.signum() == 0) {
                     goalSumTextInput.error = getString(R.string.zerodebt)
                 } else {
-                    vm.updateGoalSum(sum = savedSumDouble)
                     val goalDeposit = GoalDeposit(
                         sum = savedSumDouble,
                         date = Date(),
                         goalId = vm.goal.value!!.id
                     )
-                    goalDepositAdapter.addGoalDeposit(goalDeposit = goalDeposit)
-                    vm.setGoalListState(state = ListState.RECEIVED)
                     vm.setGoalDeposit(goalDeposit = goalDeposit)
                     dialog.dismiss()
                 }

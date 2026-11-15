@@ -1,5 +1,7 @@
 package entity
 
+import java.math.BigDecimal
+
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -8,6 +10,7 @@ data class Human(
     @PrimaryKey(autoGenerate = true)
     var id: Int,
     var name: String,
-    var sumDebt: Double,
-    var currency: String) {
+    var sumDebt: BigDecimal,
+    var currency: String,
+    var openingAdjustment: BigDecimal = sumDebt) {
 }

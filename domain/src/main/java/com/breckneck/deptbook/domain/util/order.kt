@@ -43,11 +43,10 @@ fun sortDebts(debtList: List<DebtDomain>, order: Pair<DebtOrderAttribute, Boolea
             }
         }
         DebtOrderAttribute.Date -> {
-            val sdf = SimpleDateFormat("d MMM yyyy")
             if (order.second) {
-                sortedList = debtList.sortedWith(comparator = compareBy { sdf.parse(it.date) }).asReversed()
+                sortedList = debtList.sortedWith(comparator = compareBy { LedgerDate.sortKey(it.date) }).asReversed()
             } else {
-                sortedList = debtList.sortedWith(comparator = compareBy { sdf.parse(it.date) })
+                sortedList = debtList.sortedWith(comparator = compareBy { LedgerDate.sortKey(it.date) })
             }
         }
     }

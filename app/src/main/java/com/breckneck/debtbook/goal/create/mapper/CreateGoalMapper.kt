@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.create.mapper
 
+import java.math.BigDecimal
+
 import com.breckneck.debtbook.common.empty
 import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.debtbook.goal.create.model.CreateGoalUi
@@ -10,7 +12,7 @@ fun Goal.toCreateGoalUi(currencyDisplayName: String): CreateGoalUi =
     CreateGoalUi(
         name = name,
         sum = DecimalInput.format(sum),
-        savedSum = if (savedSum != 0.0) DecimalInput.format(savedSum) else String.empty,
+        savedSum = if (savedSum.signum() != 0) DecimalInput.format(savedSum) else String.empty,
         currency = currency,
         currencyDisplayName = currencyDisplayName,
         goalDate = goalDate,
@@ -18,8 +20,8 @@ fun Goal.toCreateGoalUi(currencyDisplayName: String): CreateGoalUi =
     )
 
 fun CreateGoalUi.toDomain(
-    sum: Double,
-    savedSum: Double,
+    sum: BigDecimal,
+    savedSum: BigDecimal,
     photoPath: String?,
     originalGoal: Goal? = null,
 ): Goal =

@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.debt.create
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.util.Log
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.lifecycle.viewModelScope
@@ -38,7 +41,7 @@ class CreateDebtViewModel @Inject constructor(
 
     fun consumeSaveResult() { savedHumanId.value = null }
 
-    fun saveDebt(humanId: Int, debtId: Int, name: String, sum: Double,
+    fun saveDebt(humanId: Int, debtId: Int, name: String, sum: BigDecimal,
                  date: String, info: String) {
         if (isSaving.value == true || savedHumanId.value != null) return
         isSaving.value = true
@@ -47,7 +50,7 @@ class CreateDebtViewModel @Inject constructor(
             try {
                 val savedId = withContext(Dispatchers.IO) { transaction.run {
                     val id = if (humanId > 0) humanId else {
-                        setHuman.execute(name, sum, currency.value!!)
+                        setHuman.execute(name, BigDecimal.ZERO, currency.value!!)
                         getLastHumanId.exectute()
                     }
                     if (debtId > 0) {
@@ -56,7 +59,7 @@ class CreateDebtViewModel @Inject constructor(
                         addSum.execute(id, sum - previous.sum)
                     } else {
                         setDebt.execute(sum, id, info.ifBlank { null }, date)
-                        if (humanId > 0) addSum.execute(id, sum)
+                        addSum.execute(id, sum)
                     }
                     id
                 } }
@@ -114,6 +117,8 @@ class CreateDebtViewModel @Inject constructor(
     private fun getDefaultCurrency() {
         _currency.value = getDefaultCurrency.execute()
     }
+
+    fun setStoredDate(date: String) { _date.value = date }
 
     fun getCurrentDate() {
         _date.value = getCurrentDateUseCase.execute()

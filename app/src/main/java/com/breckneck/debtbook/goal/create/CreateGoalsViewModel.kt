@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.create
 
+import java.math.BigDecimal
+
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -192,9 +194,9 @@ class CreateGoalsViewModel @Inject constructor(
         val savedSumText = goal.savedSum.trim()
 
         val nameError = CreateGoalsFormValidation.validateName(name)
-        val (sumDouble, sumError) = CreateGoalsFormValidation.validateSum(sumText)
+        val (sumDouble, sumError) = CreateGoalsFormValidation.validateSum(sumText, goal.currency, originalGoal?.sum)
         val (savedSumDouble, savedSumError) =
-            CreateGoalsFormValidation.validateSavedSum(savedSumText, sumDouble)
+            CreateGoalsFormValidation.validateSavedSum(savedSumText, sumDouble, goal.currency, originalGoal?.savedSum)
 
         if (nameError != null || sumError != null || savedSumError != null) {
             reduce {
@@ -219,7 +221,7 @@ class CreateGoalsViewModel @Inject constructor(
                 else savePhotoToInternalStorage(goal.imageUri)
                 val savingGoal = goal.toDomain(
                     sum = sumDouble!!,
-                    savedSum = savedSumDouble ?: 0.0,
+                    savedSum = savedSumDouble ?: BigDecimal.ZERO,
                     photoPath = photoPath,
                     originalGoal = original,
                 )

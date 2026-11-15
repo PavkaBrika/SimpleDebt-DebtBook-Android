@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.util
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.model.HumanDomain
 import org.junit.jupiter.api.AfterEach
@@ -26,9 +28,9 @@ class SortUtilTest {
     // ===================== sortHumans =====================
 
     private val humans = listOf(
-        HumanDomain(id = 3, name = "Charlie", sumDebt = 300.0, currency = "USD"),
-        HumanDomain(id = 1, name = "Alice", sumDebt = -100.0, currency = "USD"),
-        HumanDomain(id = 2, name = "Bob", sumDebt = 150.0, currency = "EUR")
+        HumanDomain(id = 3, name = "Charlie", sumDebt = "300.0".toBigDecimal().stripTrailingZeros(), currency = "USD"),
+        HumanDomain(id = 1, name = "Alice", sumDebt = -"100.0".toBigDecimal().stripTrailingZeros(), currency = "USD"),
+        HumanDomain(id = 2, name = "Bob", sumDebt = "150.0".toBigDecimal().stripTrailingZeros(), currency = "EUR")
     )
 
     @Test
@@ -46,13 +48,13 @@ class SortUtilTest {
     @Test
     fun `sortHumans by Sum ascending should sort by sumDebt ascending`() {
         val result = sortHumans(humans, Pair(HumanOrderAttribute.Sum, true))
-        Assertions.assertEquals(listOf(-100.0, 150.0, 300.0), result.map { it.sumDebt })
+        Assertions.assertEquals(listOf(-"100.0".toBigDecimal().stripTrailingZeros(), "150.0".toBigDecimal().stripTrailingZeros(), "300.0".toBigDecimal().stripTrailingZeros()), result.map { it.sumDebt })
     }
 
     @Test
     fun `sortHumans by Sum descending should sort by sumDebt descending`() {
         val result = sortHumans(humans, Pair(HumanOrderAttribute.Sum, false))
-        Assertions.assertEquals(listOf(300.0, 150.0, -100.0), result.map { it.sumDebt })
+        Assertions.assertEquals(listOf("300.0".toBigDecimal().stripTrailingZeros(), "150.0".toBigDecimal().stripTrailingZeros(), -"100.0".toBigDecimal().stripTrailingZeros()), result.map { it.sumDebt })
     }
 
     @Test
@@ -63,7 +65,7 @@ class SortUtilTest {
 
     @Test
     fun `sortHumans should handle single element`() {
-        val single = listOf(HumanDomain(id = 1, name = "Alice", sumDebt = 100.0, currency = "USD"))
+        val single = listOf(HumanDomain(id = 1, name = "Alice", sumDebt = "100.0".toBigDecimal().stripTrailingZeros(), currency = "USD"))
         val result = sortHumans(single, Pair(HumanOrderAttribute.Sum, true))
         Assertions.assertEquals(single, result)
     }
@@ -71,9 +73,9 @@ class SortUtilTest {
     // ===================== sortDebts =====================
 
     private val debts = listOf(
-        DebtDomain(id = 3, sum = 300.0, idHuman = 1, info = null, date = "15 Mar 2024"),
-        DebtDomain(id = 1, sum = -100.0, idHuman = 1, info = null, date = "1 Jan 2024"),
-        DebtDomain(id = 2, sum = 50.0, idHuman = 1, info = null, date = "10 Feb 2024")
+        DebtDomain(id = 3, sum = "300.0".toBigDecimal().stripTrailingZeros(), idHuman = 1, info = null, date = "15 Mar 2024"),
+        DebtDomain(id = 1, sum = -"100.0".toBigDecimal().stripTrailingZeros(), idHuman = 1, info = null, date = "1 Jan 2024"),
+        DebtDomain(id = 2, sum = "50.0".toBigDecimal().stripTrailingZeros(), idHuman = 1, info = null, date = "10 Feb 2024")
     )
 
     @Test
@@ -91,13 +93,13 @@ class SortUtilTest {
     @Test
     fun `sortDebts by Sum ascending should sort by sum ascending`() {
         val result = sortDebts(debts, Pair(DebtOrderAttribute.Sum, true))
-        Assertions.assertEquals(listOf(-100.0, 50.0, 300.0), result.map { it.sum })
+        Assertions.assertEquals(listOf(-"100.0".toBigDecimal().stripTrailingZeros(), "50.0".toBigDecimal().stripTrailingZeros(), "300.0".toBigDecimal().stripTrailingZeros()), result.map { it.sum })
     }
 
     @Test
     fun `sortDebts by Sum descending should sort by sum descending`() {
         val result = sortDebts(debts, Pair(DebtOrderAttribute.Sum, false))
-        Assertions.assertEquals(listOf(300.0, 50.0, -100.0), result.map { it.sum })
+        Assertions.assertEquals(listOf("300.0".toBigDecimal().stripTrailingZeros(), "50.0".toBigDecimal().stripTrailingZeros(), -"100.0".toBigDecimal().stripTrailingZeros()), result.map { it.sum })
     }
 
     @Test

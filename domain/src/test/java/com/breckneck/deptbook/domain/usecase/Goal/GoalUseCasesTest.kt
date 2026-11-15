@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.Goal
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.repository.GoalRepository
 import org.junit.jupiter.api.AfterEach
@@ -22,7 +24,7 @@ class GoalUseCasesTest {
     }
 
     private fun createGoal(id: Int = 0, name: String = "Goal $id") =
-        Goal(id = id, name = name, sum = 1000.0, savedSum = 0.0, currency = "USD",
+        Goal(id = id, name = name, sum = "1000.0".toBigDecimal().stripTrailingZeros(), savedSum = "0.0".toBigDecimal().stripTrailingZeros(), currency = "USD",
             photoPath = null, creationDate = testDate, goalDate = null)
 
     // --- GetAllGoals ---

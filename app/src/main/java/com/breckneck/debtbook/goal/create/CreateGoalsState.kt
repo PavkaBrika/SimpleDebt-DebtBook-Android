@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.goal.create
 
+
 import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.debtbook.goal.create.model.NameError
 import com.breckneck.debtbook.goal.create.model.SavedSumError

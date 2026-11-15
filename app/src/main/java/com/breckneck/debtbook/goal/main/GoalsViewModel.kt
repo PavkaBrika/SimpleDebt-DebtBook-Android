@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.main
 
+import java.math.BigDecimal
+
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -119,10 +121,11 @@ class GoalsViewModel @Inject constructor(
     }
 
     private fun addGoalDeposit() = intent {
+        if (!state.addDepositPopup.isVisible || state.addDepositPopup.isSaving) return@intent
         val goalId = state.addDepositPopup.selectedGoalId ?: return@intent
         val goal = domainGoals.firstOrNull { it.id == goalId } ?: return@intent
         val sumText = state.addDepositPopup.sumText.trim()
-        val parsed = DecimalInput.parse(sumText)
+        val parsed = DecimalInput.parse(sumText, goal.currency)
         when {
             sumText.isEmpty() -> {
                 reduce {
@@ -135,7 +138,7 @@ class GoalsViewModel @Inject constructor(
                 return@intent
             }
 
-            parsed == null || parsed <= 0.0 -> {
+            parsed == null || parsed <= BigDecimal.ZERO -> {
                 reduce {
                     state.copy(
                         addDepositPopup = state.addDepositPopup.copy(
@@ -146,10 +149,10 @@ class GoalsViewModel @Inject constructor(
                 return@intent
             }
         }
+        reduce { state.copy(addDepositPopup = state.addDepositPopup.copy(isSaving = true)) }
         val updatedGoal = goal.copy(savedSum = goal.savedSum + parsed)
         try {
             withContext(Dispatchers.IO) {
-                updateGoal.execute(goal = updatedGoal)
                 setGoalDeposit.execute(
                     goalDeposit = GoalDeposit(sum = parsed, date = Date(), goalId = goal.id)
                 )
@@ -170,7 +173,7 @@ class GoalsViewModel @Inject constructor(
             }
             Log.e(TAG, "Goal deposit added")
         } catch (e: Exception) {
-            Log.e(TAG, e.message.toString())
+            reduce { state.copy(addDepositPopup = state.addDepositPopup.copy(isSaving = false, inputError = AddDepositPopup.DepositInputError.SAVE_FAILED)) }
         }
     }
 
