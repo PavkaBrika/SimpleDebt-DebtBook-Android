@@ -91,6 +91,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         authGate.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 //        val config = resources.configuration
 //        val lang = "fr" // your language code
 //        val locale = Locale(lang)
@@ -100,6 +101,24 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 //        else
 //            config.locale = locale
         setContentView(R.layout.activity_main)
+        // One inset owner for the mixed XML/Compose NavHost. Consume here so the
+        // legacy fitsSystemWindows children do not apply the bars a second time.
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.rootLayout)) { root, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val revealInput = ime.bottom > bars.bottom && root.paddingBottom != ime.bottom
+            root.updatePadding(left = bars.left, top = bars.top, right = bars.right,
+                bottom = maxOf(bars.bottom, ime.bottom))
+            if (revealInput) root.doOnNextLayout {
+                // Legacy scrolling forms must reveal the focused field after the
+                // inset changes their viewport, including with a large system font.
+                (root.findFocus() as? EditText)?.let { input ->
+                    input.requestRectangleOnScreen(Rect(0, 0, input.width, input.height), true)
+                }
+            }
+            WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(findViewById(R.id.rootLayout))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager =
@@ -227,24 +246,10 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val bottomNavBar = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
         bottomNavBar.setupWithNavController(navController)
 
-        vm.isBottomNavViewVisible.observe(this) { isVisible ->
-            if (isVisible) {
-                if (bottomNavBar.visibility == View.GONE) { //SHOW NAV BAR
-                    bottomNavBar.clearAnimation()
-                    bottomNavBar.animate().translationY(0F).setDuration(300)
-                    bottomNavBar.visibility = View.VISIBLE
-                }
-            } else {
-                if (bottomNavBar.visibility == View.VISIBLE) { //HIDE NAV BAR
-                    bottomNavBar.clearAnimation()
-                    bottomNavBar.animate()
-                        .translationY(bottomNavBar.height.toFloat() + bannerAd.height.toFloat())
-                        .setDuration(300)
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        bottomNavBar.visibility = View.GONE
-                    }, 350)
-                }
-            }
+        vm.isBottomNavViewVisible.observe(this) { visible ->
+            bottomNavBar.clearAnimation()
+            bottomNavBar.translationY = 0f
+            bottomNavBar.visibility = if (visible) View.VISIBLE else View.GONE
         }
     }
 
@@ -256,16 +261,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     override fun onStop() {
         authGate.onStop()
         super.onStop()
-    }
-
-    override fun attachBaseContext(newBase: Context) {
-        val config = newBase.resources.configuration
-        if (config.fontScale > MAX_FONT_SCALE) {
-            config.fontScale = MAX_FONT_SCALE
-            super.attachBaseContext(newBase.createConfigurationContext(config))
-        } else {
-            super.attachBaseContext(newBase)
-        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -787,6 +782,5 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     companion object {
-        private const val MAX_FONT_SCALE = 1.2f
     }
 }

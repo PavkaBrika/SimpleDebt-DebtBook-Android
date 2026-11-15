@@ -118,15 +118,11 @@ class CustomSwitchView(context: Context, attrs: AttributeSet) : View(context, at
         drawBodyRect(canvas = canvas)
         drawStateRect(canvas = canvas)
         drawText(canvas = canvas)
-        invalidate()
-        requestLayout()
     }
 
     private fun drawBodyRect(canvas: Canvas) {
         bodyRectPaint.color = backgroundColor
         canvas.drawRoundRect(RectF(bodyRect), 15F, 15F, bodyRectPaint)
-        invalidate()
-        requestLayout()
     }
 
     private fun drawStateRect(canvas: Canvas) {
@@ -136,8 +132,6 @@ class CustomSwitchView(context: Context, attrs: AttributeSet) : View(context, at
             stateRectPaint.color = disabledBackgroundColor
         }
         canvas.drawRoundRect(RectF(stateRect), 15F, 15F, stateRectPaint)
-        invalidate()
-        requestLayout()
     }
 
     private fun drawText(canvas: Canvas) {
@@ -225,6 +219,7 @@ class CustomSwitchView(context: Context, attrs: AttributeSet) : View(context, at
             stateRect.right = bodyRect.right / 2 + value
             stateRect.left = value / 2
         }
+        invalidate()
     }
 
 //    override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
@@ -245,7 +240,7 @@ class CustomSwitchView(context: Context, attrs: AttributeSet) : View(context, at
 
     fun setChecked(checked: Boolean) {
         isEnabled = checked
+        if (width > 0 && height > 0) onSizeChanged(width, height, width, height)
         invalidate()
-        requestLayout()
     }
 }
