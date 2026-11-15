@@ -33,7 +33,7 @@ class FinanceCategoryRepositoryImpl(private val financeCategoryStorage: FinanceC
                             sum = financeData.sum,
                             info = financeData.info,
                             financeCategoryId = financeData.financeCategoryId,
-                            date = financeData.date
+                            date = financeData.date, currency = financeData.currency, calendarDay = financeData.calendarDay
                         )
                     }.toMutableList()
                 )

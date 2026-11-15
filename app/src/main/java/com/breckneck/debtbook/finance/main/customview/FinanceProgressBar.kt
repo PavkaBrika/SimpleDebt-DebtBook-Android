@@ -94,10 +94,7 @@ class FinanceProgressBar(context: Context, attrs: AttributeSet): View(context, a
         super.onSizeChanged(w, h, oldw, oldh)
         if (w == 0)
             return
-        bodyRect.left = 0
-        bodyRect.top = h
-        bodyRect.right = w
-        bodyRect.bottom = 0
+        bodyRect.set(0, 0, w, h)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -109,8 +106,6 @@ class FinanceProgressBar(context: Context, attrs: AttributeSet): View(context, a
     private fun drawBodyRect(canvas: Canvas) {
         bodyRectPaint.color = backgroundColor
         canvas.drawRect(RectF(bodyRect), bodyRectPaint)
-        invalidate()
-        requestLayout()
     }
 
     private fun drawFinanceProgressRect(canvas: Canvas) {
@@ -118,23 +113,20 @@ class FinanceProgressBar(context: Context, attrs: AttributeSet): View(context, a
         var marginRight = 0
         for (category in categoryList) {
             val categoryRect = Rect()
-            marginRight = marginLeft + (bodyRect.right * category.categoryPercentage) / 100
+            marginRight = (marginLeft + (bodyRect.right * category.categoryPercentage.coerceIn(0, 100)) / 100).coerceAtMost(bodyRect.right)
             categoryRect.left = marginLeft
-            categoryRect.top = bodyRect.top
+            categoryRect.top = 0
             categoryRect.right = marginRight
-            categoryRect.bottom = 0
+            categoryRect.bottom = bodyRect.bottom
             marginLeft = marginRight
             financeProgressPaint.color = Color.parseColor(category.financeCategory.color)
             canvas.drawRect(categoryRect, financeProgressPaint)
-            invalidate()
-            requestLayout()
         }
     }
 
     fun setCategoryList(categoryList: List<FinanceCategoryWithFinances>) {
         this.categoryList = categoryList
         invalidate()
-        requestLayout()
     }
 }
 

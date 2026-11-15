@@ -33,6 +33,7 @@ import kotlinx.coroutines.withContext
 @HiltViewModel
 class SynchronizationViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val getFinanceCurrency: com.breckneck.deptbook.domain.usecase.Settings.GetFinanceCurrency,
     private val getIsAuthorized: GetIsAuthorized,
     private val setIsAuthorized: SetIsAuthorized,
     private val getAllAppData: GetAllAppData,
@@ -44,8 +45,8 @@ class SynchronizationViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val backupFiles = BackupFiles(context)
-    private val backupTransfer = BackupTransfer(getAllAppData::execute, replaceAllAppData::execute, backupFiles::retainPrevious, backupFiles)
-    data class RestorePreview(val createdAt: Long?, val records: Int, val photoCount: Int, val legacy: Boolean)
+    private val backupTransfer = BackupTransfer(getAllAppData::execute, replaceAllAppData::execute, backupFiles::retainPrevious, backupFiles, getFinanceCurrency::execute)
+    data class RestorePreview(val createdAt: Long?, val records: Int, val photoCount: Int, val legacy: Boolean, val legacyFinanceCurrency: String, val financeCurrencies: String)
     private var pendingRestore: String? = null
     val restorePreview = MutableLiveData<RestorePreview?>(null)
     val hasPrevious = MutableLiveData(backupFiles.hasPrevious())
@@ -211,7 +212,7 @@ class SynchronizationViewModel @Inject constructor(
                 val content = read()
                 val document = backupTransfer.preview(content)
                 pendingRestore = content
-                restorePreview.value = RestorePreview(document.createdAt, document.recordCount, document.photos.size, document.legacy)
+                restorePreview.value = RestorePreview(document.createdAt, document.recordCount, document.photos.size, document.legacy, getFinanceCurrency.execute(), document.data.financeList.map { it.currency }.distinct().sorted().joinToString(", ").ifBlank { "—" })
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) { _operationError.value = error }
             finally { _isRestoring.value = false }

@@ -13,7 +13,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /** Portable, explicit wire contract. Legacy flat JSON is read-only compatibility input. */
-class BackupCodec {
+class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
     data class Document(val data: AppDataLists, val createdAt: Long?, val photos: Map<Int, String>, val legacy: Boolean) {
         val recordCount: Int get() = count(data)
     }
@@ -56,18 +56,22 @@ class BackupCodec {
                 if (legacy) rawDate else row.optionalString("legacyDate"))
         }
         val categories = payload.rows("financeCategoryList").map { row ->
+            val color = row.string("color")
+            require(Regex("#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?").matches(color)) { "Invalid category color" }
+            val image = row.integer("image")
+            require(Character.isValidCodePoint(image)) { "Invalid category image" }
             FinanceCategory(row.id(), row.string("name"),
                 FinanceCategoryState.entries.firstOrNull { it.name == row.string("state") }
-                    ?: throw IllegalArgumentException("Invalid category state"), row.string("color"), row.integer("image"))
+                    ?: throw IllegalArgumentException("Invalid category state"), color, image)
         }
         val finances = payload.rows("financeList").map { row ->
-            Finance(row.id(), row.money("sum", legacy), row.date("date", legacy)!!, row.optionalString("info"), row.integer("financeCategoryId"))
+            Finance(row.id(), row.money("sum", legacy), row.date("date", legacy)!!, row.optionalString("info"), row.integer("financeCategoryId"), if (legacy) legacyFinanceCurrency else row.string("currency"), row.optionalDay("calendarDay"))
         }
         val goals = payload.rows("goalList").map { row ->
             Goal(row.id(), row.string("name"), row.money("sum", legacy), row.money("savedSum", legacy),
                 row.string("currency"), if (legacy) null else row.optionalString("photoPath"),
                 row.date("creationDate", legacy)!!, row.date("goalDate", legacy, optional = true),
-                if (legacy) BigDecimal.ZERO else row.money("openingAdjustment", false))
+                if (legacy) BigDecimal.ZERO else row.money("openingAdjustment", false), row.optionalDay("goalDay"))
         }
         val deposits = payload.rows("goalDepositList").map { row ->
             GoalDeposit(row.id(), row.money("sum", legacy), row.date("date", legacy)!!, row.integer("goalId"))
@@ -143,6 +147,9 @@ class BackupCodec {
         return reader.use { read(0).also { require(reader.peek() == com.google.gson.stream.JsonToken.END_DOCUMENT) } }
     }
 
+    private fun JsonObject.optionalDay(name: String): String? = optionalString(name)?.also {
+        require(LedgerDate.canonical(it) == it) { "Invalid calendar day" }
+    }
     private fun JsonObject.rows(name: String): List<JsonObject> = get(name).let { value ->
         require(value?.isJsonArray == true) { "Missing table" }
         require(value.asJsonArray.size() <= MAX_RECORDS)

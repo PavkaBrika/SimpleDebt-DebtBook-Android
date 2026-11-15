@@ -26,6 +26,18 @@ object LedgerDate {
         }
         return formatter("yyyy-MM-dd", Locale.ROOT).format(calendar.time)
     }
+    fun fromDate(date: Date): String = Calendar.getInstance().apply { time = date }.let {
+        day(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
+    }
+    fun localDate(day: String): Date? {
+        if (canonical(day) != day) return null
+        return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ROOT).apply { isLenient = false }.parse("$day 12:00")
+    }
+    fun pickerMillis(day: String): Long {
+        require(canonical(day) == day)
+        return requireNotNull(parse(day, "yyyy-MM-dd", Locale.ROOT)).time
+    }
+    fun fromPickerMillis(millis: Long): Date = requireNotNull(localDate(formatter("yyyy-MM-dd", Locale.ROOT).format(Date(millis))))
     fun today(): String = Calendar.getInstance().let {
         day(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
     }

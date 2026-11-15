@@ -124,5 +124,14 @@ object DatabaseMigrations {
             }
         }
     }
-    val ALL = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+    fun migration15To16(legacyFinanceCurrency: String) = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE FinanceData ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'")
+            db.execSQL("UPDATE FinanceData SET currency = ?", arrayOf(legacyFinanceCurrency))
+            db.execSQL("ALTER TABLE FinanceData ADD COLUMN calendarDay TEXT")
+            db.execSQL("ALTER TABLE GoalData ADD COLUMN goalDay TEXT")
+        }
+    }
+    fun forCurrency(currency: String) = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, migration15To16(currency))
+    val ALL = forCurrency("USD")
 }

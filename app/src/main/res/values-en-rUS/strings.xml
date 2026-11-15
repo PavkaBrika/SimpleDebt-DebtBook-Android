@@ -181,8 +181,9 @@
     <string name="backup_restore_previous_cloud">Restore previous Drive backup</string>
     <string name="backup_operation_complete">Backup operation completed</string>
     <string name="backup_unknown_date">Date unavailable</string>
-    <string name="backup_preview">Backup: %1$s\nRecords: %2$d\nPhotos: %3$d</string>
-    <string name="backup_legacy_warning">Legacy backup: photo paths cannot transfer images. Timestamps without a time zone will be interpreted in %1$s. Original calendar date text is preserved.</string>
+    <string name="backup_preview">Backup: %1$s\nRecords: %2$d\nPhotos: %3$d\nFinance currencies: %4$s</string>
+    <string name="backup_legacy_warning">Legacy backup: photo paths cannot transfer images. Timestamps without a time zone will be interpreted in %1$s. Original calendar date text is preserved. The old file did not store the finance currency; its finance entries will use %2$s.</string>
     <string name="backup_settings_hint">Save to a file or Google Drive. Restore replaces the current records.</string>
     <string name="backup_drive_unavailable">Google Drive is unavailable on this device. Use a backup file.</string>
+    <string name="finance_currency_filter_hint">The selected currency filters finance entries.</string>
 </resources>

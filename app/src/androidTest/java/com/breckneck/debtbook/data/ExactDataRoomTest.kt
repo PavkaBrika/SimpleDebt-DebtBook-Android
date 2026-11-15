@@ -120,16 +120,19 @@ class ExactDataRoomTest {
     @Test fun failedMigrationLeavesOldSchemaAndRecordsAvailableForRetry() {
         val name = "r1b-failed-migration"
         legacy(name, 14)
+        var converted = false
         val failing = object : Migration(14, 15) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 DatabaseMigrations.MIGRATION_14_15.migrate(db)
+                converted = true
                 error("failure after conversion")
             }
         }
         try {
-            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing).build().use { db ->
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.migration15To16("USD")).build().use { db ->
                 try { db.appDao().getAllHuman(); fail("migration should fail") } catch (_: IllegalStateException) { }
             }
+            assertTrue("Failing conversion was not exercised", converted)
             SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
                 assertEquals(14, db.version)
                 db.rawQuery("SELECT sumDebt, typeof(sumDebt) FROM Human WHERE id = 31", null).use {
@@ -141,6 +144,36 @@ class ExactDataRoomTest {
             }
         } finally { context.deleteDatabase(name) }
     }
+    @Test fun migrate15CapturesFinanceCurrencyAndNeverReinterpretsOldInstants() {
+        val name = "r1b-migration-15"
+        context.deleteDatabase(name)
+        val schema = InstrumentationRegistry.getInstrumentation().context.assets
+            .open("database.AppDataBase/15.json").bufferedReader().use { JsonParser.parseReader(it) }
+            .asJsonObject.getAsJsonObject("database").getAsJsonArray("entities")
+        SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name), null).use { db ->
+            schema.forEach { item ->
+                db.execSQL(item.asJsonObject.get("createSql").asString.replace("\u0024{TABLE_NAME}", item.asJsonObject.get("tableName").asString))
+            }
+            db.execSQL("INSERT INTO FinanceCategoryData VALUES (71, 'Category', 1, '#123456', 123)")
+            db.execSQL("INSERT INTO FinanceData VALUES (81, '0.01', 1735689600123, 'original', 71)")
+            db.version = 15
+        }
+        try {
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(*DatabaseMigrations.forCurrency("EUR")).build().use { db ->
+                val row = db.appDao().getAllFinances().single()
+                assertEquals("EUR", row.currency)
+                assertNull(row.calendarDay)
+                assertEquals(1735689600123L, row.date.time)
+                db.appDao().insertFinance(entity.FinanceData(82, amount("100"), Date(1735689600123L), null, 71, "JPY", "2026-11-15"))
+            }
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(*DatabaseMigrations.forCurrency("USD")).build().use { db ->
+                val rows = db.appDao().getAllFinances().sortedBy { it.id }
+                assertEquals(listOf("EUR", "JPY"), rows.map { it.currency })
+                assertEquals("2026-11-15", rows[1].calendarDay)
+            }
+        } finally { context.deleteDatabase(name) }
+    }
+
 }
 
 private inline fun <T> AppDataBase.use(block: (AppDataBase) -> T): T = try { block(this) } finally { close() }

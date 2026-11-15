@@ -60,8 +60,11 @@ internal fun FinanceDetailsList(
         val symbols = DecimalFormatSymbols().apply { groupingSeparator = ' ' }
         DecimalFormat("###,###,###.##", symbols).apply { maximumFractionDigits = 100 }
     }
-    val groupedFinances = remember(financeList) {
-        financeList.groupBy { monthFormatter.format(it.date) }
+    val zoneId = java.util.TimeZone.getDefault().id
+    monthFormatter.timeZone = java.util.TimeZone.getDefault()
+    rowDateFormatter.timeZone = java.util.TimeZone.getDefault()
+    val groupedFinances = remember(financeList, zoneId) {
+        financeList.groupBy { monthFormatter.format(it.presentationDate) }
     }
     val hintText = stringResource(R.string.details_recycler_view_hint)
 
@@ -172,7 +175,7 @@ private fun FinanceRow(
 ) {
     val spacing = MaterialTheme.spacing
     val formattedSum = remember(finance.sum) { decimalFormat.format(finance.sum) }
-    val formattedDate = remember(finance.date) { dateFormatter.format(finance.date) }
+    val formattedDate = remember(finance.presentationDate) { dateFormatter.format(finance.presentationDate) }
     val accessibilityDesc = "$formattedSum $currency, $formattedDate"
 
     Row(

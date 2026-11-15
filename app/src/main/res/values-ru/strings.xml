@@ -182,8 +182,9 @@
     <string name="backup_restore_previous_cloud">Восстановить предыдущую копию Drive</string>
     <string name="backup_operation_complete">Операция с резервной копией завершена</string>
     <string name="backup_unknown_date">Дата неизвестна</string>
-    <string name="backup_preview">Копия: %1$s\nЗаписей: %2$d\nФотографий: %3$d</string>
-    <string name="backup_legacy_warning">Старая копия: пути фотографий не переносят изображения. Время без часового пояса будет прочитано в %1$s. Исходный текст календарных дат сохранится.</string>
+    <string name="backup_preview">Копия: %1$s\nЗаписей: %2$d\nФотографий: %3$d\nВалюты финансов: %4$s</string>
+    <string name="backup_legacy_warning">Старая копия: пути фотографий не переносят изображения. Время без часового пояса будет прочитано в %1$s. Исходный текст календарных дат сохранится. Старая копия не сохраняла валюту финансов; для этих записей будет использована %2$s.</string>
     <string name="backup_settings_hint">Сохранение в файл или Google Drive. Восстановление заменяет текущие записи.</string>
     <string name="backup_drive_unavailable">Google Drive недоступен на этом устройстве. Используйте резервную копию в файле.</string>
+    <string name="finance_currency_filter_hint">Выбранная валюта фильтрует финансовые записи.</string>
 </resources>

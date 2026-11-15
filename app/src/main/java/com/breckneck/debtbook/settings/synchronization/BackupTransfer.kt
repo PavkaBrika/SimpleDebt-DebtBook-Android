@@ -13,6 +13,7 @@ internal class BackupTransfer(
     private val replaceCurrentData: (AppDataLists) -> Unit,
     private val retainPrevious: (String) -> Unit = {},
     private val photos: BackupPhotos? = null,
+    private val legacyFinanceCurrency: () -> String = { "USD" },
 ) {
     private val codec = BackupCodec()
     private val mutex = Mutex()
@@ -35,7 +36,7 @@ internal class BackupTransfer(
     }
 
     suspend fun preview(content: String): BackupCodec.Document = withContext(Dispatchers.IO) {
-        codec.decode(content).also { document ->
+        BackupCodec(legacyFinanceCurrency()).decode(content).also { document ->
             require(photos != null || document.photos.isEmpty()) { "Photo storage unavailable" }
             document.photos.values.forEach { photos!!.validate(it) }
         }

@@ -21,5 +21,8 @@ data class FinanceData(
     var sum: BigDecimal,
     var date: Date,
     var info: String?,
-    var financeCategoryId: Int
+    var financeCategoryId: Int,
+    @androidx.room.ColumnInfo(defaultValue = "'USD'")
+    var currency: String = "USD",
+    var calendarDay: String? = null,
 )

@@ -350,8 +350,8 @@ class SynchronizationFragment : Fragment() {
         restoreDialog = bottomSheetDialog
         val date = preview.createdAt?.let { java.text.DateFormat.getDateTimeInstance().format(java.util.Date(it)) }
             ?: getString(R.string.backup_unknown_date)
-        val details = getString(R.string.backup_preview, date, preview.records, preview.photoCount)
-        val legacy = if (preview.legacy) "\n\n" + getString(R.string.backup_legacy_warning, java.util.TimeZone.getDefault().id) else ""
+        val details = getString(R.string.backup_preview, date, preview.records, preview.photoCount, preview.financeCurrencies)
+        val legacy = if (preview.legacy) "\n\n" + getString(R.string.backup_legacy_warning, java.util.TimeZone.getDefault().id, preview.legacyFinanceCurrency) else ""
         bottomSheetDialog.findViewById<TextView>(R.id.dialogMessage)!!.text =
             details + legacy + "\n\n" + getString(R.string.recover_all_data_from_the_cloud_this_will_delete_the_current_application_data)
 

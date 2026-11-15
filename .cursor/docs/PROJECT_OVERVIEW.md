@@ -38,7 +38,7 @@ MVVM / LiveData сосуществуют с Compose / Orbit MVI. Полная м
 | SDK | `compileSdk 36`, `targetSdk 36`, `minSdk 23`; версия выпуска — `app/build.gradle` |
 | Application ID | `com.breckneck.debtbook` |
 | DI | Hilt 2.59.2, hilt-navigation-compose 1.2.0 |
-| База | Room 2.8.4, schema version 15, KSP 2.3.6 |
+| База | Room 2.8.4, schema version 16, KSP 2.3.6 |
 | UI | Compose BOM 2026.03.00, Material3; Material Views 1.13.0 |
 | Navigation / Lifecycle | 2.9.7 / 2.10.0 |
 | Orbit | 10.0.0 |
@@ -84,8 +84,8 @@ com.breckneck.debtbook
 
 ## Данные и интеграции
 
-- Room v15: `Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`. Полное восстановление выполняется в транзакции DAO.
-- Суммы `BigDecimal` (Room TEXT), календарные даты долгов ISO с сохранением старой строки. Миграции 5→15 централизованы, destructive fallback отсутствует.
+- Room v16: `Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`. Полное восстановление выполняется в транзакции DAO.
+- Суммы `BigDecimal` (Room TEXT), календарные даты долгов ISO с сохранением старой строки. Миграции 5→16 централизованы, destructive fallback отсутствует.
 - Google Drive — резервное копирование/замена локальной базы, не автоматическая многопользовательская синхронизация.
 - Ресурсы языков: default, RU, en-US, DE, FR; региональные ресурсы валют не означают отдельные переводы интерфейса.
 - В исходном manifest удаляются location permissions SDK; используются READ_CONTACTS, VIBRATE и FileProvider. Итоговые разрешения проверяются в merged manifest.

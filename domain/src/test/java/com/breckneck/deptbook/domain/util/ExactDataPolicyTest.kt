@@ -50,4 +50,21 @@ class ExactDataPolicyTest {
         assertTrue(LedgerDate.sortKey("2024-02-29") < LedgerDate.sortKey("unknown"))
         assertThrows(IllegalArgumentException::class.java) { LedgerDate.day(2023, 1, 29) }
     }
+    @Test fun `calendar finance and goal days survive a timezone change without rewriting instants`() {
+        val originalZone = TimeZone.getDefault()
+        val timestamp = java.util.Date(1794700800123L)
+        val finance = com.breckneck.deptbook.domain.model.Finance(sum = BigDecimal.ONE, date = timestamp, info = null, financeCategoryId = 1, currency = "EUR", calendarDay = "2026-11-15")
+        val goal = com.breckneck.deptbook.domain.model.Goal(name = "Goal", sum = BigDecimal.TEN, savedSum = BigDecimal.ZERO, currency = "JPY", photoPath = null, creationDate = timestamp, goalDate = timestamp, goalDay = "2026-11-15")
+        try {
+            for (zone in listOf("Pacific/Kiritimati", "America/Los_Angeles", "Europe/Berlin", "UTC")) {
+                TimeZone.setDefault(TimeZone.getTimeZone(zone))
+                assertEquals("2026-11-15", LedgerDate.fromDate(finance.presentationDate))
+                val picked = LedgerDate.fromPickerMillis(LedgerDate.pickerMillis("2026-11-15"))
+                assertEquals("2026-11-15", LedgerDate.fromDate(picked))
+                assertEquals("2026-11-15", LedgerDate.fromDate(goal.presentationGoalDate!!))
+                assertEquals(1794700800123L, finance.date.time)
+                assertEquals(1794700800123L, goal.creationDate.time)
+            }
+        } finally { TimeZone.setDefault(originalZone) }
+    }
 }

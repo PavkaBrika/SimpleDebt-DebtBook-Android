@@ -32,7 +32,7 @@ data/src/main/java/
 
 ### `AppDataBase` (`database/AppDataBase.kt`)
 
-- **Version**: 15
+- **Version**: 16
 - **Entities**: `Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`
 - **TypeConverters**: `Converters` (конвертация `Date` ↔ `Long`, `BigDecimal` ↔ десятичный `TEXT`)
 - **Singleton**: thread-safe через `synchronized` + `@Volatile`
@@ -188,3 +188,7 @@ Data-слой enum, зеркало `FinanceCategoryState` из domain. Испо�
 ### R1b — точные суммы и миграция 15
 
 `DatabaseMigrations` регистрирует пути 5→11→12→13→14→15 при любом открытии БД; `schemas/database.AppDataBase/{14,15}.json` — экспортированные схемы. Миграция сохраняет ID, последовательности, связи, исходные суммы без округления, старые даты (`Debt.legacyDate`). `Human.openingAdjustment` и `GoalData.openingAdjustment` сохраняют расхождение прежнего итога с историей. `saveDebt/reviseDebt/removeDebt/addGoalDeposit/updateGoalDetails` — транзакционные команды; арифметика выполняется BigDecimal в Kotlin. SQL SUM/сложение над TEXT не используется.
+
+### R1b — миграция 16
+
+`FinanceData.currency` закрепляет валюту за записью, `calendarDay` хранит новый выбранный день; `GoalData.goalDay` хранит календарный срок. 15→16 присваивает старым финансам действующую `finance_currency` из SharedPreferences, сохраняя суммы и моменты Date. День старого момента не угадывается: nullable metadata. Схема 16 экспортирована; forCurrency регистрирует полный путь миграций на каждом DB builder.

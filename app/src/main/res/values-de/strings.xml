@@ -182,8 +182,9 @@
     <string name="backup_restore_previous_cloud">Vorherige Drive-Sicherung wiederherstellen</string>
     <string name="backup_operation_complete">Sicherungsvorgang abgeschlossen</string>
     <string name="backup_unknown_date">Datum unbekannt</string>
-    <string name="backup_preview">Sicherung: %1$s\nEinträge: %2$d\nFotos: %3$d</string>
-    <string name="backup_legacy_warning">Alte Sicherung: Fotopfade übertragen keine Bilder. Zeitangaben ohne Zeitzone werden in %1$s gelesen. Ursprüngliche Kalenderdatumtexte bleiben erhalten.</string>
+    <string name="backup_preview">Sicherung: %1$s\nEinträge: %2$d\nFotos: %3$d\nFinanzwährungen: %4$s</string>
+    <string name="backup_legacy_warning">Alte Sicherung: Fotopfade übertragen keine Bilder. Zeitangaben ohne Zeitzone werden in %1$s gelesen. Ursprüngliche Kalenderdatumtexte bleiben erhalten. Die alte Datei enthielt keine Finanzwährung; diese Einträge verwenden %2$s.</string>
     <string name="backup_settings_hint">In einer Datei oder Google Drive speichern. Die Wiederherstellung ersetzt die aktuellen Einträge.</string>
     <string name="backup_drive_unavailable">Google Drive ist auf diesem Gerät nicht verfügbar. Eine Sicherungsdatei verwenden.</string>
+    <string name="finance_currency_filter_hint">Die ausgewählte Währung filtert die Finanzeinträge.</string>
 </resources>

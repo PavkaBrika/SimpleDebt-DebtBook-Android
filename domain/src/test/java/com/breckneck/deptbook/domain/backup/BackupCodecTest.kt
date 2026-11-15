@@ -15,9 +15,9 @@ class BackupCodecTest {
     private fun fixture() = AppDataLists(
         listOf(HumanDomain(1, "Person", "999999999999999999.99".toBigDecimal(), "EUR", "0.01".toBigDecimal())),
         listOf(DebtDomain(2, "999999999999999999.98".toBigDecimal(), 1, "Note", "2026-11-15", "15 Nov 2026")),
-        listOf(Finance(3, "0.01".toBigDecimal(), Date(1794700800123L), "Info", 4)),
+        listOf(Finance(3, "0.01".toBigDecimal(), Date(1794700800123L), "Info", 4, "EUR", "2026-11-15")),
         listOf(FinanceCategory(4, "Food", FinanceCategoryState.EXPENSE, "#123456", 123)),
-        listOf(Goal(5, "Goal", "1000".toBigDecimal().stripTrailingZeros(), "20.3".toBigDecimal(), "JPY", null, Date(1794700800123L), Date(1794787200000L), "20.1".toBigDecimal())),
+        listOf(Goal(5, "Goal", "1000".toBigDecimal().stripTrailingZeros(), "20.3".toBigDecimal(), "JPY", null, Date(1794700800123L), Date(1794787200000L), "20.1".toBigDecimal(), "2026-11-16")),
         listOf(GoalDeposit(6, "0.2".toBigDecimal(), Date(1794700800123L), 5)),
     )
     private fun encoded() = codec.encode(fixture(), mapOf(5 to "aW1hZ2U="), 1794700800123L)
@@ -57,10 +57,14 @@ class BackupCodecTest {
                     row.asJsonObject.remove("openingAdjustment")
                 }
             }
+            old.getAsJsonArray("financeList").forEach { it.asJsonObject.remove("currency"); it.asJsonObject.remove("calendarDay") }
+            old.getAsJsonArray("goalList").forEach { it.asJsonObject.remove("goalDay") }
             old.getAsJsonArray("debtList")[0].asJsonObject.addProperty("date", "01/02/2024")
             old.getAsJsonArray("goalList")[0].asJsonObject.addProperty("photoPath", "/another/device/photo.jpg")
-            val document = codec.decode(old.toString())
+            val document = BackupCodec("GBP").decode(old.toString())
             assertTrue(document.legacy)
+            assertEquals("GBP", document.data.financeList.single().currency)
+            assertNull(document.data.financeList.single().calendarDay)
             assertNull(document.createdAt)
             assertEquals("01/02/2024", document.data.debtList.single().date)
             assertEquals("01/02/2024", document.data.debtList.single().legacyDate)
@@ -74,6 +78,7 @@ class BackupCodecTest {
         val bad = listOf(
             valid.replace("\"formatVersion\":2", "\"formatVersion\":3"),
             valid.replace("\"recordCount\":6", "\"recordCount\":7"),
+            valid.replace("\"calendarDay\":\"2026-11-15\"", "\"calendarDay\":\"2026-02-30\""),
             valid.replace("\"idHuman\":1", "\"idHuman\":99"),
             valid.replace("\"financeCategoryId\":4", "\"financeCategoryId\":99"),
             valid.replace("\"goalId\":5", "\"goalId\":99"),
@@ -87,6 +92,7 @@ class BackupCodecTest {
             valid.replace("\"date\":1794700800123", "\"date\":null"),
             valid.replace("\"photos\":{\"5\":", "\"photos\":{\"99\":"),
             valid.replace("aW1hZ2U=", "not a photo"),
+            valid.replace("\"color\":\"#123456\"", "\"color\":\"invalid\""),
             valid.dropLast(1), valid + "garbage", "{}", "[]", "null",
             valid.replace("\"recordCount\":6", "\"recordCount\":6,\"recordCount\":6"),
         )

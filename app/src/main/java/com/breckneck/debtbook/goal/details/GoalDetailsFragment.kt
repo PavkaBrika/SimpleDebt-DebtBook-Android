@@ -282,14 +282,14 @@ class GoalDetailsFragment : Fragment() {
             } else {
                 editGoalButton.visibility = View.VISIBLE
                 goalRemainingMoneyTextView.text = decimalFormat.format(sum - savedSum)
-                if (vm.goal.value!!.goalDate != null) {
+                if (vm.goal.value!!.presentationGoalDate != null) {
                     goalDateLayout.visibility = View.VISIBLE
-                    if (vm.goal.value!!.goalDate!!.before(Date())) {
+                    if (vm.goal.value!!.isPastGoalDay) {
                         goalDateTextView.text = requireActivity().getString(R.string.overdue)
                         goalDateTextView.setTextColor(Color.RED)
                         goalDateImageView.setColorFilter(Color.RED)
                     } else {
-                        goalDateTextView.text = sdf.format(vm.goal.value!!.goalDate!!)
+                        goalDateTextView.text = sdf.format(vm.goal.value!!.presentationGoalDate!!)
                     }
                 } else {
                     goalDateLayout.visibility = View.GONE

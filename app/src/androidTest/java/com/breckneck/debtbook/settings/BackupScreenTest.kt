@@ -12,6 +12,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.matcher.ViewMatchers.withId
+import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
@@ -68,7 +69,7 @@ class BackupScreenTest {
                 }
                 await { vm.restorePreview.value != null && vm.isRestoring.value == false }
                 assertEquals(a, repo.getAllAppData())
-                onView(withId(R.id.cancelButton)).perform(click())
+                onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
                 assertEquals(a, repo.getAllAppData())
                 scenario.onActivity { vm.restoreFile(Uri.fromFile(file)) }
                 await { vm.restorePreview.value != null && vm.isRestoring.value == false }
@@ -79,7 +80,7 @@ class BackupScreenTest {
                     assertSame("Preview ViewModel changed after recreation", vm, recreated)
                     assertNotNull("Preview lost after recreation", vm.restorePreview.value)
                 }
-                onView(withId(R.id.okButton)).perform(click())
+                onView(withId(R.id.okButton)).inRoot(isDialog()).perform(click())
                 await(details = { "preview=${vm.restorePreview.value}, busy=${vm.isRestoring.value}, error=${vm.operationError.value}, IDs=${repo.getAllAppData().humanList.map { it.id }}" }) {
                     vm.operationError.value?.let { throw AssertionError("Restore failed", it) }
                     repo.getAllAppData().humanList.firstOrNull()?.id == 900026
@@ -88,7 +89,7 @@ class BackupScreenTest {
                     current(activity).requireView().findViewById<Button>(R.id.previousLocalBackupButton).performClick()
                 }
                 await { vm.restorePreview.value != null && vm.isRestoring.value == false }
-                onView(withId(R.id.okButton)).perform(click())
+                onView(withId(R.id.okButton)).inRoot(isDialog()).perform(click())
                 await { repo.getAllAppData().humanList.firstOrNull()?.id == 900025 }
                 assertEquals(a, repo.getAllAppData())
                 val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()

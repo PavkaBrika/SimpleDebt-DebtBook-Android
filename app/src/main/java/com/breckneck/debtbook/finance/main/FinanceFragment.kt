@@ -104,6 +104,7 @@ class FinanceFragment : Fragment() {
         val onCurrencySettingsClickListener = object : SettingsAdapter.OnClickListener {
             override fun onClick(setting: String, position: Int) {
                 vm.setCurrency(setting.substring(setting.lastIndexOf(" ") + 1))
+                com.google.android.material.snackbar.Snackbar.make(view, R.string.finance_currency_filter_hint, com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
             }
         }
 

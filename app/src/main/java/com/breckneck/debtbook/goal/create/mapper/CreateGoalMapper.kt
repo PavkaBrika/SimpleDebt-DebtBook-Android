@@ -15,7 +15,7 @@ fun Goal.toCreateGoalUi(currencyDisplayName: String): CreateGoalUi =
         savedSum = if (savedSum.signum() != 0) DecimalInput.format(savedSum) else String.empty,
         currency = currency,
         currencyDisplayName = currencyDisplayName,
-        goalDate = goalDate,
+        goalDate = presentationGoalDate,
         imagePath = photoPath,
     )
 
@@ -34,4 +34,5 @@ fun CreateGoalUi.toDomain(
         photoPath = photoPath,
         creationDate = originalGoal?.creationDate ?: Calendar.getInstance().time,
         goalDate = goalDate,
+        goalDay = goalDate?.let(com.breckneck.deptbook.domain.util.LedgerDate::fromDate),
     )

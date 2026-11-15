@@ -187,9 +187,9 @@ internal fun CreateGoalsContent(
 
     if (state.isDatePickerVisible) {
         GoalDatePickerDialog(
-            currentDateMs = state.goal.goalDate?.time,
+            currentDateMs = state.goal.goalDate?.let { com.breckneck.deptbook.domain.util.LedgerDate.pickerMillis(com.breckneck.deptbook.domain.util.LedgerDate.fromDate(it)) },
             onDateSelected = { ms ->
-                if (ms != null) onAction(CreateGoalsAction.DateSelected(Date(ms)))
+                if (ms != null) onAction(CreateGoalsAction.DateSelected(com.breckneck.deptbook.domain.util.LedgerDate.fromPickerMillis(ms)))
                 else onAction(CreateGoalsAction.DismissDatePicker)
             },
             onDismiss = { onAction(CreateGoalsAction.DismissDatePicker) },
@@ -206,13 +206,7 @@ private fun GoalDatePickerDialog(
 ) {
     // DatePicker передаёт utcTimeMillis → граница тоже должна быть в UTC
     val minSelectableMillis = remember {
-        Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
-            add(Calendar.DAY_OF_YEAR, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        com.breckneck.deptbook.domain.util.LedgerDate.pickerMillis(com.breckneck.deptbook.domain.util.LedgerDate.today()) + 86_400_000L
     }
 
     val selectableDates = remember(minSelectableMillis) {

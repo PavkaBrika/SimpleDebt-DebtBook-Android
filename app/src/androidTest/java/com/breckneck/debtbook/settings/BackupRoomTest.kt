@@ -25,9 +25,9 @@ class BackupRoomTest {
     private fun snapshot(id: Int, photo: String? = null) = AppDataLists(
         listOf(HumanDomain(id, "Backup person", "123456789012345678.91".toBigDecimal(), "EUR", BigDecimal.ZERO)),
         listOf(DebtDomain(id, "123456789012345678.91".toBigDecimal(), id, "Debt", "2026-11-15", "15 Nov 2026")),
-        listOf(Finance(id, "0.01".toBigDecimal(), Date(1794700800123L), "Finance", id)),
+        listOf(Finance(id, "0.01".toBigDecimal(), Date(1794700800123L), "Finance", id, "EUR", "2026-11-15")),
         listOf(FinanceCategory(id, "Category", FinanceCategoryState.INCOME, "#123456", 123)),
-        listOf(Goal(id, "Portable photo", "100.01".toBigDecimal(), "20.21".toBigDecimal(), "JPY", photo, Date(1794700800123L), null, "20.01".toBigDecimal())),
+        listOf(Goal(id, "Portable photo", "100.01".toBigDecimal(), "20.21".toBigDecimal(), "JPY", photo, Date(1794700800123L), Date(1794787200123L), "20.01".toBigDecimal(), "2026-11-16")),
         listOf(GoalDeposit(id, "0.2".toBigDecimal(), Date(1794700800123L), id)),
     )
     @Test fun restoreThenUploadUsesRestoredRoomDataAndRejectsMalformedBackup() = runBlocking {
@@ -101,6 +101,9 @@ class BackupRoomTest {
             assertEquals("123456789012345678.91".toBigDecimal(), restored.debtList.single().sum)
             assertEquals("2026-11-15", restored.debtList.single().date)
             assertEquals(1794700800123L, restored.financeList.single().date.time)
+            assertEquals("EUR", restored.financeList.single().currency)
+            assertEquals("2026-11-15", restored.financeList.single().calendarDay)
+            assertEquals("2026-11-16", restored.goalList.single().goalDay)
             photo = restored.goalList.single().photoPath!!
             assertTrue(File(photo).isFile)
             assertEquals(codec.decode(content).photos.values.single(), files.read(photo))

@@ -66,7 +66,7 @@ class FinanceDetailsViewModel @Inject constructor(
     }
 
     private fun openFinanceSheet(finance: Finance) = intent {
-        val title = "${finance.date.toDMYFormat()} : ${finance.sum.format()} ${state.currency}"
+        val title = "${finance.presentationDate.toDMYFormat()} : ${finance.sum.format()} ${state.currency}"
         reduce {
             state.copy(
                 bottomSheet = state.bottomSheet.copy(
@@ -105,7 +105,7 @@ class FinanceDetailsViewModel @Inject constructor(
 
         reduce { state.copy(financeListState = ListState.LOADING) }
 
-        val finances = getFinanceByCategoryIdUseCase.execute(categoryId = categoryId)
+        val finances = getFinanceByCategoryIdUseCase.execute(categoryId = categoryId).filter { it.currency == state.currency }
         reduce {
             state.copy(
                 financeList = finances,

@@ -33,10 +33,10 @@ fun Goal.toUi(context: Context): GoalUi {
             isOverdue = false
         }
 
-        goalDate != null -> {
-            val date = goalDate!!
+        presentationGoalDate != null -> {
+            val date = presentationGoalDate!!
 
-            isOverdue = date.before(Date())
+            isOverdue = isPastGoalDay
 
             dateChipText = if (isOverdue) {
                 context.getString(R.string.overdue)

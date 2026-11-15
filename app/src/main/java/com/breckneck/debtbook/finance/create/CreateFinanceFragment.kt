@@ -138,7 +138,7 @@ class CreateFinanceFragment : Fragment() {
                         arguments?.getSerializable("financeEdit") as Finance?
                     }
                     vm.setFinanceEdit(finance = financeEdit!!)
-                    vm.setDayInMillis(dayInMillis = financeEdit.date.time)
+                    vm.setDayInMillis(dayInMillis = financeEdit.presentationDate.time)
                     financeSumEditText.setText(DecimalInput.format(financeEdit.sum))
                     financeInfoEditText.setText(financeEdit.info)
                     categoryLinearLayout.visibility = View.GONE
@@ -287,7 +287,9 @@ class CreateFinanceFragment : Fragment() {
                                 sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)!!,
                                 info = financeInfoEditText.text.toString(),
                                 financeCategoryId = vm.checkedFinanceCategory.value!!.id,
-                                date = vm.date.value!!
+                                date = vm.date.value!!,
+                                currency = vm.financeEdit.value?.currency ?: vm.currency.value!!,
+                                calendarDay = com.breckneck.deptbook.domain.util.LedgerDate.fromDate(vm.date.value!!)
                             )
                         )
                     }
@@ -299,7 +301,9 @@ class CreateFinanceFragment : Fragment() {
                                 sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)!!,
                                 info = financeInfoEditText.text.toString(),
                                 financeCategoryId = vm.financeEdit.value!!.financeCategoryId,
-                                date = vm.date.value!!
+                                date = vm.date.value!!,
+                                currency = vm.financeEdit.value?.currency ?: vm.currency.value!!,
+                                calendarDay = com.breckneck.deptbook.domain.util.LedgerDate.fromDate(vm.date.value!!)
                             )
                         )
                     }

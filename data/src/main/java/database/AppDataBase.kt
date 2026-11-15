@@ -17,7 +17,7 @@ import util.DATA_BASE_NAME
 
 @Database(
     entities = [Human::class, Debt::class, FinanceData::class, FinanceCategoryData::class, GoalData::class, GoalDepositData::class],
-    version = 15
+    version = 16
 )
 @TypeConverters(Converters::class)
 abstract class AppDataBase : RoomDatabase() {
@@ -47,7 +47,7 @@ abstract class AppDataBase : RoomDatabase() {
 
         private fun createDatabase(context: Context) =
             Room.databaseBuilder(context.applicationContext, AppDataBase::class.java, DATA_BASE_NAME)
-                .addMigrations(*DatabaseMigrations.ALL)
+                .addMigrations(*DatabaseMigrations.forCurrency(context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE).getString("finance_currency", "USD") ?: "USD"))
                 .addCallback(object : Callback() {
                     override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                         DatabaseMigrations.insertInitialFinanceCategoryData(db)
@@ -61,7 +61,7 @@ abstract class AppDataBase : RoomDatabase() {
         ) =
             Room.databaseBuilder(context, AppDataBase::class.java, DATA_BASE_NAME)
                 .addCallback(roomDatabaseCallback)
-                .addMigrations(*DatabaseMigrations.ALL, *migrations)
+                .addMigrations(*DatabaseMigrations.forCurrency(context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE).getString("finance_currency", "USD") ?: "USD"), *migrations)
                 .build()
     }
 }

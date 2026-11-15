@@ -182,8 +182,9 @@
     <string name="backup_restore_previous_cloud">Restaurer la sauvegarde Drive précédente</string>
     <string name="backup_operation_complete">Opération de sauvegarde terminée</string>
     <string name="backup_unknown_date">Date inconnue</string>
-    <string name="backup_preview">Sauvegarde : %1$s\nÉléments : %2$d\nPhotos : %3$d</string>
-    <string name="backup_legacy_warning">Ancienne sauvegarde : les chemins des photos ne transfèrent pas les images. Les dates sans fuseau horaire seront lues dans %1$s. Le texte des dates calendaires sera conservé.</string>
+    <string name="backup_preview">Sauvegarde : %1$s\nÉléments : %2$d\nPhotos : %3$d\nDevises des finances : %4$s</string>
+    <string name="backup_legacy_warning">Ancienne sauvegarde : les chemins des photos ne transfèrent pas les images. Les dates sans fuseau horaire seront lues dans %1$s. Le texte des dates calendaires sera conservé. Le fichier ancien ne contient pas la devise des finances ; ces éléments utiliseront %2$s.</string>
     <string name="backup_settings_hint">Enregistrer dans un fichier ou sur Google Drive. La restauration remplace les données actuelles.</string>
     <string name="backup_drive_unavailable">Google Drive est indisponible sur cet appareil. Utilisez un fichier de sauvegarde.</string>
+    <string name="finance_currency_filter_hint">La devise sélectionnée filtre les éléments financiers.</string>
 </resources>

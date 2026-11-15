@@ -165,6 +165,7 @@ class CreateFinanceViewModel @Inject constructor(
 
     fun setFinanceEdit(finance: Finance) {
         _financeEdit.value = finance
+        _currency.value = finance.currency
     }
 
     fun setFinanceCategoryState(financeCategoryState: FinanceCategoryState) {

@@ -17,5 +17,6 @@ data class GoalData(
     var photoPath: String?,
     var creationDate: Date,
     var goalDate: Date?,
-    var openingAdjustment: BigDecimal = savedSum
+    var openingAdjustment: BigDecimal = savedSum,
+    var goalDay: String? = null
 )

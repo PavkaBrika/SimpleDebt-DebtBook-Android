@@ -323,3 +323,5 @@ Getter/Setter пары для каждой настройки. Примеры:
 Все денежные поля и контракты HumanRepository/AddSum/GetHumanSumDebt/SetDebt/EditDebt/FormatDebtSum теперь `BigDecimal`; DecimalInput парсит напрямую из строки и валидирует точность валюты. HumanDomain/Goal включают `openingAdjustment`, DebtDomain — `legacyDate`. GetCurrentDate/SetDate возвращают календарный ISO-день; sortDebts использует LedgerDate и сохраняет неизвестные даты.
 
 `backup/BackupCodec.kt`: версионированный JSON v2 (точные суммы строками, время epoch millis, дата/число записей/фото); строгая проверка структуры/дублей/ссылок/агрегатов, совместимый импорт старого плоского JSON. Старые даты без зоны требуют явно показанной пользователю интерпретации.
+
+`Finance.currency/calendarDay` и `Goal.goalDay` отделяют валюту/календарный день от старых Date-моментов. Вычисляемые presentationDate/presentationGoalDate используются только для UI; исходный epoch не переписывается. LedgerDate преобразует UTC-день Material DatePicker без сдвига зоны. Backup v2 сохраняет эти поля; старые JSON без валюты финансов получают явно показанную на preview текущую валюту.

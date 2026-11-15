@@ -234,7 +234,11 @@ class FinanceViewModel @Inject constructor(
         getAllCategoriesWithFinances()
     }
 
+    private var financeLoadGeneration = 0
+
     fun getAllCategoriesWithFinances() {
+        val generation = ++financeLoadGeneration
+        val currentCurrency = currency.value
         _financeListState.value = ListState.LOADING
         val currentCategoryState = financeCategoryState.value
         val currentInterval = financeIntervalUnix.value!!
@@ -251,7 +255,7 @@ class FinanceViewModel @Inject constructor(
                                 deleteCategoriesList.add(categoriesWithFinances)
                             else {
                                 for (finance in categoriesWithFinances.financeList) {
-                                    if ((finance.date.time < currentInterval.first) || (finance.date.time > currentInterval.second))
+                                    if ((finance.currency != currentCurrency) || (finance.presentationDate.time < currentInterval.first) || (finance.presentationDate.time > currentInterval.second))
                                         deleteFinancesList.add(finance)
                                     else {
                                         overallSum += finance.sum
@@ -276,6 +280,7 @@ class FinanceViewModel @Inject constructor(
 
                     Pair(categoriesWithFinancesList, overallSum)
                 }
+                if (generation != financeLoadGeneration) return@launch
                 _categoriesWithFinancesList.value = list
                 _overallSum.value = sum
                 if (_categoriesWithFinancesList.value!!.isEmpty())
