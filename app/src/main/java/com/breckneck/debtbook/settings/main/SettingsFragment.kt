@@ -86,7 +86,11 @@ class SettingsFragment : Fragment() {
             if (bundle.getBoolean("isListModified"))
                 mainActivityVM.setIsNeedUpdateDebtData(true)
         }
-        startActivityForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+        startActivityForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            // Auth writes settings after verification; result extras are not credentials.
+            mainActivityVM.getIsPINCodeEnabled()
+            vm.getIsFingerprintAuthEnabled()
+        }
         return inflater.inflate(R.layout.fragment_settings, container, false)
     }
 
@@ -374,7 +378,7 @@ class SettingsFragment : Fragment() {
             changePINCodeLayout.setOnClickListener {
                 Intent(requireActivity(), AuthorizationActivity::class.java).also {
                     it.putExtra("PINCodeState", PINCodeAction.CHANGE.toString())
-                    startActivity(it)
+                    startActivityForResult.launch(it)
                 }
             }
 

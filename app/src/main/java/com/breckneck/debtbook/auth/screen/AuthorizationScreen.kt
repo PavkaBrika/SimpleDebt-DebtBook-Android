@@ -1,12 +1,9 @@
 package com.breckneck.debtbook.auth.screen
 
-import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import android.widget.Toast
+import android.util.AtomicFile
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +17,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,10 +29,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,8 +59,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -86,13 +82,11 @@ import com.breckneck.debtbook.auth.util.CryptoManager
 import com.breckneck.deptbook.domain.util.PINCodeAction.*
 import com.breckneck.deptbook.domain.util.PINCodeEnterState
 import com.breckneck.deptbook.domain.util.PINCodeEnterState.*
-import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import com.breckneck.deptbook.domain.util.PINCodeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.breckneck.debtbook.auth.AuthorizationViewModel
 import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.roundToInt
 
 @Composable
@@ -100,87 +94,82 @@ fun AuthorizationScreen(
     activity: AppCompatActivity,
     vm: AuthorizationViewModel = hiltViewModel(),
     biometricPromptManager: BiometricPromptManager,
-    cryptoManager: CryptoManager?
+    cryptoManager: CryptoManager?,
+    onAuthenticated: () -> Unit
 ) {
-    fun setPINCode() {
-        val file = File(activity.filesDir, CRYPTO_FILE_NAME)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            cryptoManager?.encrypt(
-                bytes = vm.enteredPINCode.value.encodeToByteArray(),
-                outputStream = FileOutputStream(file)
-            )
-        } else {
-            vm.setPINCode()
+    var saveFailed by remember { mutableStateOf(false) }
+    var showRecovery by remember { mutableStateOf(false) }
+    fun savePIN(): Boolean {
+        val file = AtomicFile(File(activity.filesDir, CRYPTO_FILE_NAME))
+        var stream: java.io.FileOutputStream? = null
+        return try {
+            val manager = requireNotNull(cryptoManager)
+            stream = file.startWrite()
+            manager.encrypt(vm.enteredPINCode.value.encodeToByteArray(), stream)
+            file.finishWrite(stream)
+            true
+        } catch (_: Exception) {
+            file.failWrite(stream)
+            vm.resetPINCodes()
+            vm.setPINCodeEnterState(FIRST)
+            saveFailed = true
+            false
         }
     }
     val pinCodeEnterState by vm.pinCodeEnterState.collectAsState()
     val enteredPINCode by vm.enteredPINCode.collectAsState()
-
-    val startActivityLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-        onResult = {
-            println("Activity result: $it")
+    val biometricResult by biometricPromptManager.promptResults.collectAsState(initial = null)
+    LaunchedEffect(biometricResult) {
+        if (biometricResult == BiometricResult.AuthenticationSuccess &&
+            vm.isFingerprintAuthEnabled.value && vm.pinCodeAction.value == CHECK) {
+            onAuthenticated()
         }
-    )
+    }
+    val emailLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
     LaunchedEffect(enteredPINCode) {
-        if ((enteredPINCode.length == 4)) {
+        if (enteredPINCode.length == 4) {
             when (vm.pinCodeAction.value) {
                 ENABLE -> {
-                    if (vm.pinCodeEnterState.value == FIRST) {
+                    if (pinCodeEnterState == FIRST) {
                         vm.setPastPINCode()
                         vm.setPINCodeEnterState(CONFIRMATION)
-                    } else if ((vm.pinCodeEnterState.value == CONFIRMATION) && (vm.pastPINCode.value == vm.enteredPINCode.value)) {
-                        setPINCode()
-                        vm.enablePINCode()
-                        val intent = Intent()
-                        intent.putExtra("PINCodeState", vm.pinCodeAction.value.toString())
-                        activity.setResult(RESULT_OK, intent)
-                        activity.finish()
-                    } else {
-                        vm.resetPINCodes() //pin codes doesnt match
-                        vm.setPINCodeEnterState(INCORRECT)
-                    }
-                }
-
-                DISABLE -> {
-                    if (vm.enteredPINCode.value == vm.currentPINCode.value) {
-                        vm.turnOffPINCode()
-                        Intent().also {
-                            it.putExtra("PINCodeState", vm.pinCodeAction.value.toString())
-                            activity.setResult(RESULT_OK, it)
+                    } else if (pinCodeEnterState == CONFIRMATION && vm.pastPINCode.value == enteredPINCode) {
+                        if (savePIN()) {
+                            vm.enablePINCode()
+                            onAuthenticated()
                         }
-                        activity.finish()
-                    } else {
-                        vm.resetPINCodes() //pin codes doesnt match
-                        vm.setPINCodeEnterState(INCORRECT)
-                    }
-                }
-
-                CHANGE -> {
-                    if ((vm.pinCodeEnterState.value == FIRST) && (vm.enteredPINCode.value == vm.currentPINCode.value)) {
-                        vm.setPastPINCode()
-                        vm.setPINCodeEnterState(CONFIRMATION)
-                    } else if (vm.pinCodeEnterState.value == CONFIRMATION) {
-                        setPINCode()
-                        activity.finish()
-                    } else {
-                        vm.resetPINCodes() //pin codes doesnt match
-                        vm.setPINCodeEnterState(INCORRECT)
-                    }
-                }
-
-                CHECK ->
-                    if (vm.enteredPINCode.value == vm.currentPINCode.value) {
-                        startActivityLauncher.launch(
-                            Intent(
-                                activity,
-                                MainActivity::class.java
-                            ).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK) })
-                        activity.finish()
                     } else {
                         vm.resetPINCodes()
                         vm.setPINCodeEnterState(INCORRECT)
                     }
+                }
+                DISABLE -> {
+                    if (enteredPINCode == vm.currentPINCode.value) {
+                        vm.turnOffPINCode()
+                        onAuthenticated()
+                    } else {
+                        vm.resetPINCodes()
+                        vm.setPINCodeEnterState(INCORRECT)
+                    }
+                }
+                CHANGE -> {
+                    if (pinCodeEnterState == FIRST && enteredPINCode == vm.currentPINCode.value) {
+                        vm.setPastPINCode()
+                        vm.setPINCodeEnterState(CONFIRMATION)
+                    } else if (pinCodeEnterState == CONFIRMATION) {
+                        if (savePIN()) onAuthenticated()
+                    } else {
+                        vm.resetPINCodes()
+                        vm.setPINCodeEnterState(INCORRECT)
+                    }
+                }
+                CHECK -> {
+                    if (enteredPINCode == vm.currentPINCode.value) onAuthenticated()
+                    else {
+                        vm.resetPINCodes()
+                        vm.setPINCodeEnterState(INCORRECT)
+                    }
+                }
             }
         }
     }
@@ -188,7 +177,8 @@ fun AuthorizationScreen(
         pinCodeEnterState = pinCodeEnterState,
         enteredPINCode = enteredPINCode,
         pinCodeAction = vm.pinCodeAction.value,
-        promptManager = biometricPromptManager,
+        biometricResult = biometricResult,
+        pinReadFailed = vm.pinReadFailed.value,
         onFingerprintButtonClick = {
             biometricPromptManager.showBiometricPrompt(
                 title = activity.getString(R.string.login_in_the_debtbook),
@@ -199,35 +189,31 @@ fun AuthorizationScreen(
         },
         onDigitButtonClick = { digit ->
             vm.changeEnteredPINCode(PINCode = enteredPINCode + digit)
-            if (pinCodeEnterState == INCORRECT)
-                vm.setPINCodeEnterState(FIRST)
+            if (pinCodeEnterState == INCORRECT) vm.setPINCodeEnterState(FIRST)
         },
-        onBackspaceButtonClick = {
-            vm.changeEnteredPINCode(PINCode = enteredPINCode.dropLast(1))
-        },
-        onCloseAppButtonClick = {
-            activity.finishAndRemoveTask()
-        },
+        onBackspaceButtonClick = { vm.changeEnteredPINCode(enteredPINCode.dropLast(1)) },
+        onCloseAppButtonClick = { activity.finishAndRemoveTask() },
         onWriteToDevelopersButtonClick = {
-            startActivityLauncher.launch(Intent(Intent.ACTION_SENDTO).apply {
+            emailLauncher.launch(Intent(Intent.ACTION_SENDTO).apply {
                 data = Uri.parse("mailto:pavlikbrichkin@yandex.ru")
-                putExtra(
-                    Intent.EXTRA_SUBJECT,
-                    "${activity.getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}"
-                )
+                putExtra(Intent.EXTRA_SUBJECT, "${activity.getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}")
             })
         },
-        onSuperButtonClick = {
-            vm.turnOffPINCode()
-            Toast.makeText(activity, R.string.your_pin_code_is_reset, Toast.LENGTH_SHORT).show()
-            startActivityLauncher.launch(
-                Intent(
-                    activity,
-                    MainActivity::class.java
-                ).apply { addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK) })
-        },
+        onRecoveryClick = { showRecovery = true },
         showFingerprintButton = vm.isFingerprintAuthEnabled.value && vm.pinCodeAction.value == CHECK
     )
+    if (showRecovery || saveFailed) {
+        AlertDialog(
+            onDismissRequest = { showRecovery = false; saveFailed = false },
+            title = { Text(stringResource(if (saveFailed) R.string.pin_save_failed_title else R.string.pin_recovery_title)) },
+            text = { Text(stringResource(if (saveFailed) R.string.pin_save_failed_message else R.string.pin_recovery_message)) },
+            confirmButton = {
+                TextButton(onClick = { showRecovery = false; saveFailed = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -235,66 +221,22 @@ fun UnlockScreen(
     pinCodeEnterState: PINCodeEnterState,
     enteredPINCode: String,
     pinCodeAction: PINCodeAction,
-    promptManager: BiometricPromptManager,
+    biometricResult: BiometricResult? = null,
+    pinReadFailed: Boolean = false,
     onFingerprintButtonClick: () -> Unit = {},
     onDigitButtonClick: (String) -> Unit = {},
     onBackspaceButtonClick: () -> Unit = {},
     onCloseAppButtonClick: () -> Unit = {},
     onWriteToDevelopersButtonClick: () -> Unit = {},
-    onSuperButtonClick: () -> Unit = {},
+    onRecoveryClick: () -> Unit = {},
     showFingerprintButton: Boolean = true
 ) {
-    val biometricResult by promptManager.promptResults.collectAsState(
-        initial = null
-    )
-    val enrollLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-        onResult = {
-            println("Activity result: $it")
-        }
-    )
-    var showFingerprintButton by remember {
-        mutableStateOf(showFingerprintButton)
-    }
-    LaunchedEffect(biometricResult) {
-        if (biometricResult is BiometricResult.AuthenticationNotSet) {
-            if (Build.VERSION.SDK_INT >= 30) {
-                val enrollIntent = Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
-                    putExtra(
-                        Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
-                        BIOMETRIC_STRONG
-                    )
-                }
-                enrollLauncher.launch(enrollIntent)
-            }
-        }
-    }
-    biometricResult?.let { result ->
-        when (result) {
-            BiometricResult.HardwareUnavailable,
-            BiometricResult.FeatureUnavailable,
-            BiometricResult.AuthenticationNotSet -> {
-                showFingerprintButton = false
-            }
-
-            BiometricResult.AuthenticationSuccess -> {
-                enrollLauncher.launch(
-                    Intent(
-                        LocalContext.current,
-                        MainActivity::class.java
-                    )
-                )
-            }
-
-            else -> {}
-        }
-    }
-
     Scaffold(
         topBar = {
             IconButton(
                 onClick = { onWriteToDevelopersButtonClick() },
                 modifier = Modifier
+                    .statusBarsPadding()
                     .padding(16.dp)
                     .size(40.dp)
                     .shadow(10.dp, shape = CircleShape)
@@ -335,16 +277,7 @@ fun UnlockScreen(
                         centerHorizontallyTo(parent)
                         height = Dimension.fillToConstraints
                     }
-                    .size(100.dp)
-                    .pointerInput(Unit) {
-                        if (pinCodeAction == CHECK) {
-                            detectTapGestures(
-                                onLongPress = {
-                                    onSuperButtonClick()
-                                }
-                            )
-                        }
-                    },
+                    .size(100.dp),
                 painter = painterResource(id = R.drawable.app_icon),
                 contentDescription = stringResource(R.string.app_icon)
             )
@@ -390,13 +323,13 @@ fun UnlockScreen(
                     }
                     .padding(horizontal = 40.dp)
                     .alpha(
-                        if (biometricResult is BiometricResult.AuthenticationError) 1f
+                        if (pinReadFailed || biometricResult is BiometricResult.AuthenticationError) 1f
                         else 0f
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = stringResource(R.string.something_went_wrong_please_login_with_your_pin_code),
+                    text = stringResource(if (pinReadFailed) R.string.pin_unavailable else R.string.something_went_wrong_please_login_with_your_pin_code),
                     textAlign = TextAlign.Center
                 )
             }
@@ -413,8 +346,10 @@ fun UnlockScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (pinCodeAction == CHECK) {
+                    TextButton(onClick = onRecoveryClick) {
+                        Text(stringResource(R.string.pin_recovery_title))
+                    }
                     TextButton(
-                        modifier = Modifier.offset(y = 24.dp),
                         onClick = {
                             onCloseAppButtonClick()
                         }
@@ -677,8 +612,7 @@ fun UnlockScreenPreview() {
         UnlockScreen(
             pinCodeEnterState = FIRST,
             enteredPINCode = "11",
-            pinCodeAction = CHECK,
-            promptManager = BiometricPromptManager(AppCompatActivity())
+            pinCodeAction = CHECK
         )
     }
 }

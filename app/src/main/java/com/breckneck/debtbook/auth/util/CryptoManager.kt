@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.annotation.RequiresApi
 import com.breckneck.deptbook.domain.util.ENCRYPTION_ALIAS
+import java.io.DataInputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.KeyStore
@@ -21,10 +22,6 @@ class CryptoManager {
         load(null)
     }
 
-    private val encryptCipher = Cipher.getInstance(TRANSFORMATION).apply {
-        init(Cipher.ENCRYPT_MODE, getKey())
-    }
-
     private fun getDecryptCipherForIv(iv: ByteArray): Cipher {
         return Cipher.getInstance(TRANSFORMATION).apply {
             init(Cipher.DECRYPT_MODE, getKey(), IvParameterSpec(iv))
@@ -32,7 +29,7 @@ class CryptoManager {
     }
 
     private fun getKey(): SecretKey {
-        val existingKey = keyStore.getEntry("PIN", null) as? SecretKeyEntry
+        val existingKey = keyStore.getEntry(ENCRYPTION_ALIAS, null) as? SecretKeyEntry
         return existingKey?.secretKey ?: createKey()
     }
 
@@ -53,28 +50,27 @@ class CryptoManager {
     }
 
     fun encrypt(bytes: ByteArray, outputStream: OutputStream): ByteArray {
-        val encryptedBytes = encryptCipher.doFinal(bytes)
-        outputStream.use {
-            it.write(encryptCipher.iv.size)
-            it.write(encryptCipher.iv)
-            it.write(encryptedBytes.size)
-            it.write(encryptedBytes)
+        // A new IV/cipher for every write, including a retry in the same Activity.
+        val cipher = Cipher.getInstance(TRANSFORMATION).apply {
+            init(Cipher.ENCRYPT_MODE, getKey())
         }
+        val encryptedBytes = cipher.doFinal(bytes)
+        outputStream.write(cipher.iv.size)
+        outputStream.write(cipher.iv)
+        outputStream.write(encryptedBytes.size)
+        outputStream.write(encryptedBytes)
         return encryptedBytes
     }
 
-    fun decrypt(inputStream: InputStream): ByteArray {
-        return inputStream.use {
-            val ivSize = it.read()
-            val iv = ByteArray(ivSize)
-            it.read(iv)
-
-            val encryptedBytesSize = it.read()
-            val encryptedBytes = ByteArray(encryptedBytesSize)
-            it.read(encryptedBytes)
-
-            getDecryptCipherForIv(iv).doFinal(encryptedBytes)
-        }
+    fun decrypt(inputStream: InputStream): ByteArray = DataInputStream(inputStream).use {
+        val ivSize = it.readUnsignedByte()
+        require(ivSize == 16) { "Invalid PIN storage" }
+        val iv = ByteArray(ivSize).also(it::readFully)
+        val encryptedSize = it.readUnsignedByte()
+        require(encryptedSize == 16) { "Invalid PIN storage" }
+        val encrypted = ByteArray(encryptedSize).also(it::readFully)
+        require(it.read() == -1) { "Invalid PIN storage" }
+        getDecryptCipherForIv(iv).doFinal(encrypted)
     }
 
     companion object {

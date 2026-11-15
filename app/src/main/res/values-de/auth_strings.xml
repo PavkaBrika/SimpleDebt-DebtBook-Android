@@ -1,0 +1,7 @@
+<resources>
+    <string name="pin_recovery_title">PIN vergessen?</string>
+    <string name="pin_recovery_message">Falls die Entsperrung per Fingerabdruck bereits aktiviert war, können Sie sie verwenden. Zum Ändern oder Deaktivieren der PIN ist die aktuelle PIN erforderlich. Ein Zurücksetzen mit Zugriff auf die geschützten Daten ist nicht möglich. Das Löschen der App-Daten in den Android-Einstellungen entfernt die PIN und alle lokalen Einträge; nur eine vorhandene Sicherung kann diese wiederherstellen.</string>
+    <string name="pin_unavailable">Die gespeicherte PIN ist nicht lesbar. Verwenden Sie einen zuvor aktivierten Fingerabdruck oder öffnen Sie „PIN vergessen?“. Ihre Einträge wurden nicht gelöscht.</string>
+    <string name="pin_save_failed_title">PIN nicht gespeichert</string>
+    <string name="pin_save_failed_message">Ihre bisherige PIN-Einstellung bleibt erhalten. Geben Sie die PIN erneut ein.</string>
+</resources>

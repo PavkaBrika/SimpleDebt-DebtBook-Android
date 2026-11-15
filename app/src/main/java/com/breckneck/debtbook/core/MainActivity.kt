@@ -1,5 +1,15 @@
 package com.breckneck.debtbook.core
 
+import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.core.view.doOnNextLayout
+import android.graphics.Rect
+import android.widget.EditText
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.ui.onNavDestinationSelected
+import com.breckneck.debtbook.auth.ActivityAuthGate
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -72,10 +82,15 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     private val interstitialTAG = "INTERSTITIAL AD"
 
     private val vm by viewModels<MainViewModel>()
+    private val authGate = ActivityAuthGate(this) {
+        vm.getIsPINCodeEnabled()
+        vm.isPINCodeEnabled.value == true
+    }
     lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        authGate.onCreate(savedInstanceState)
 //        val config = resources.configuration
 //        val lang = "fr" // your language code
 //        val locale = Locale(lang)
@@ -233,6 +248,16 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        authGate.onStart()
+    }
+
+    override fun onStop() {
+        authGate.onStop()
+        super.onStop()
+    }
+
     override fun attachBaseContext(newBase: Context) {
         val config = newBase.resources.configuration
         if (config.fontScale > MAX_FONT_SCALE) {
@@ -322,7 +347,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putBoolean("Change state", true)
+        authGate.onSaveInstanceState(outState)
     }
 
     //MainFragment interfaces
@@ -759,19 +784,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         }
 
         lowRateBottomSheetDialog.show()
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (resultCode == RESULT_OK) {
-            when (data!!.getStringExtra("PINCodeState")) {
-                PINCodeAction.ENABLE.toString() -> vm.setIsPINCodeEnabled(true)
-                PINCodeAction.DISABLE.toString() -> {
-                    vm.setIsPINCodeEnabled(false)
-                    vm.setIsFingerprintEnabled(false)
-                }
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data)
     }
 
     companion object {

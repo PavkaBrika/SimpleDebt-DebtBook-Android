@@ -1,0 +1,7 @@
+<resources>
+    <string name="pin_recovery_title">Code PIN oublié ?</string>
+    <string name="pin_recovery_message">Si le déverrouillage par empreinte était déjà activé, utilisez-le. Le code PIN actuel est nécessaire pour le modifier ou le désactiver. Aucune réinitialisation ne conserve l’accès aux données protégées. Effacer les données de l’application dans les paramètres Android supprime le PIN et tous les enregistrements locaux ; seule une sauvegarde existante permet de les restaurer.</string>
+    <string name="pin_unavailable">Le code PIN enregistré est illisible. Utilisez une empreinte déjà activée ou ouvrez « Code PIN oublié ? ». Vos enregistrements n’ont pas été supprimés.</string>
+    <string name="pin_save_failed_title">Code PIN non enregistré</string>
+    <string name="pin_save_failed_message">Le réglage précédent du PIN est conservé. Saisissez à nouveau le code.</string>
+</resources>

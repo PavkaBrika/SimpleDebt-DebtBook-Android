@@ -11,8 +11,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 class BiometricPromptManager(
     private val activity: AppCompatActivity
 ) {
-    private val resultChannel = Channel<BiometricResult>()
+    private val resultChannel = Channel<BiometricResult>(Channel.BUFFERED)
     val promptResults = resultChannel.receiveAsFlow()
+    private var promptShowing = false
 
     fun showBiometricPrompt(
         title: String,
@@ -20,6 +21,7 @@ class BiometricPromptManager(
         authenticators: Int,
         negativeButtonText: String
     ) {
+        if (promptShowing) return
         val manager = BiometricManager.from(activity)
 
         val promptInfo = PromptInfo.Builder()
@@ -49,11 +51,13 @@ class BiometricPromptManager(
             activity, object: BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
+                    promptShowing = false
                     resultChannel.trySend(BiometricResult.AuthenticationError(error = errString.toString()))
                 }
 
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
+                    promptShowing = false
                     resultChannel.trySend(BiometricResult.AuthenticationSuccess)
                 }
 
@@ -63,6 +67,7 @@ class BiometricPromptManager(
                 }
             }
         )
+        promptShowing = true
         prompt.authenticate(promptInfo.build())
     }
 
