@@ -16,6 +16,7 @@ app/src/main/java/com/breckneck/debtbook/settings/
 └── synchronization/
     ├── util/
     │   └── DriveServiceHelper.kt      # Хелпер Google Drive API
+    ├── BackupTransfer.kt              # Свежий snapshot перед upload; проверка JSON до restore
     ├── SynchronizationFragment.kt     # Экран синхронизации
     └── SynchronizationViewModel.kt    # VM синхронизации
 ```
@@ -71,19 +72,17 @@ VM экрана синхронизации с Google Drive.
 
 ### Зависимости
 - `GetIsAuthorized` / `SetIsAuthorized` — статус авторизации
-- `GetAllDebts` / `GetAllHumansUseCase` — все долги/люди для бэкапа
-- `GetAllFinances` / `GetAllFinanceCategories` — все финансы/категории
-- `GetAllGoals` / `GetAllGoalDeposits` — все цели/депозиты
-- `ReplaceAllDebts` / `ReplaceAllHumans` — восстановление долгов
-- `ReplaceAllFinances` / `ReplaceAllFinanceCategories` — восстановление финансов
-- `ReplaceAllGoals` / `ReplaceAllGoalDeposits` — восстановление целей
+- `GetAllAppData` — актуальный snapshot всех таблиц в транзакции чтения
+- `ReplaceAllAppData` — полное восстановление через существующую Room-транзакцию
 - `SetUserData` — сохранение данных пользователя
 - `SetDateUseCase` — форматирование даты
 - `Set/GetLastSyncDate` — дата последней синхронизации
 
 ### Ключевая логика
-- **Бэкап**: сериализация `AppDataLists` (все данные) → JSON → upload на Google Drive
-- **Восстановление**: download JSON → десериализация → `replaceAll*` (полная замена данных)
+- **Бэкап**: `uploadBackup()` читает актуальный `AppDataLists` непосредственно перед JSON/upload; snapshot при открытии экрана не кэшируется.
+- **Восстановление**: `restoreBackup()` → download JSON → проверка обязательных списков/полей → `ReplaceAllAppData`; ошибка разбора не достигает записи в БД.
+- **Состояния**: `isSynchronizing`, `isRestoring` взаимно исключают операции; завершаются в `finally`, сохраняются при пересоздании view. `operationError` отображается с возможностью повторить действие.
+- `BackupTransfer` не меняет формат backup и Room schema. Полная совместимость старых форматов/версионирование и хранение предыдущей копии относятся к R1b.
 - **Авторизация**: Google Sign-In + Google Drive scope
 - **DriveServiceHelper**: обёртка над Google Drive API v3 (upload/download файлов)
 

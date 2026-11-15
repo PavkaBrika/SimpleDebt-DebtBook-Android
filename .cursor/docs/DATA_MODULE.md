@@ -179,3 +179,7 @@ Data-слой enum, зеркало `FinanceCategoryState` из domain. Испо�
 - `ExampleInstrumentedTest.kt` — placeholder
 
 Тесты data-модуля минимальны (шаблонные).
+
+## R1a — граница транзакции
+
+`repository/RoomDataTransaction.kt` реализует domain `DataTransaction` через `AppDataBase.runInTransaction` на том же singleton DB, что используют storage. Схема v14 не менялась. Создание/изменение/удаление долга и баланс, удаление человека и его долгов выполняются атомарно. Instrumented `DebtReliabilityTest` проверяет откат исключения; `BackupRoomTest` — restore B → snapshot B на настоящей Room-базе (без обращения к Drive).

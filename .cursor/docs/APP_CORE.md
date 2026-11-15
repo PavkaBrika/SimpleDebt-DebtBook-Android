@@ -18,6 +18,8 @@ app/src/main/java/com/breckneck/debtbook/
 │   ├── util/
 │   │   ├── BiometricPromptManager.kt # AndroidX BiometricPrompt wrapper
 │   │   └── CryptoManager.kt          # AES + Keystore шифрование PIN
+│   ├── AuthSession.kt                # Только в памяти: доступ после проверки PIN/биометрии; policy action extras
+│   ├── ActivityAuthGate.kt            # Блокировка Main при запуске/возврате с сохранением back stack
 │   ├── AuthorizationActivity.kt      # Launcher Activity (hosts Compose)
 │   └── AuthorizationViewModel.kt     # VM авторизации
 ├── common/
@@ -58,7 +60,7 @@ app/src/main/java/com/breckneck/debtbook/
 
 ## MainActivity
 
-Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`).
+Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`). `exported=false`; `ActivityAuthGate` скрывает содержимое до проверки PIN, сохраняет текущую навигацию и повторно блокирует доступ после ухода в фон. Смена конфигурации не сбрасывает сессию; новый процесс всегда заблокирован. При PIN включён `FLAG_SECURE`.
 
 ### Характеристики
 - Хостит `NavHostFragment` с `nav_graph.xml`
@@ -70,7 +72,7 @@ app/src/main/java/com/breckneck/debtbook/
 - Управление видимостью bottom navigation bar
 - Координация обновлений данных между фрагментами
 - Показ диалогов оценки приложения (`dialog_rate_app.xml`, `dialog_low_app_rate.xml`)
-- Управление рекламой (подсчёт кликов, показ по порогу)
+- `InterstitialPolicy`: показ только при явном переходе между основными вкладками, минимум 180 секунд после запуска/попытки, максимум 2 попытки за процесс; события ввода/истории/сохранения не показывают interstitial.
 - Передача callback'ов от фрагментов
 
 ---
@@ -102,7 +104,7 @@ app/src/main/java/com/breckneck/debtbook/
 | `appRate` / `appReviewText` | `LiveData` | Данные оценки |
 
 ### Ключевая логика
-- **Реклама**: счётчик кликов, при достижении порога (`CLICKS_QUANTITY_FOR_AD_SHOW = 9`) показ рекламы, сброс
+- **Реклама**: legacy-счетчик сохраняется, но не запускает показ; ограничения применяет `InterstitialPolicy` в MainActivity.
 - **Оценка**: при достижении порога кол-ва долгов показ диалога оценки, при отказе — увеличение порога на `DEBT_QUANTITY_FOR_NEXT_SHOW_APP_RATE_DIALOG = 10`
 - При `onCleared()` сохраняет счётчик кликов
 
@@ -235,13 +237,13 @@ App Launch → AuthorizationActivity (launcher)
 ```
 
 ### AuthorizationActivity
-Launcher activity, хостит Jetpack Compose через `setContent { DebtBookTheme { AuthorizationScreen() } }`. Класс находится в `auth/` (не `auth/presentation/`).
+Launcher activity, хостит Jetpack Compose. Внешние `PINCodeState` всегда преобразуются в CHECK; ENABLE допускается только при выключенном PIN и внутреннем caller, CHANGE/DISABLE — при включённом PIN и внутреннем caller. Вызывается из Settings через Activity Result API. Успех PIN/биометрии открывает `AuthSession` и возвращает результат без пересоздания Main; результат сам по себе не даёт доступ.
 
 ### AuthorizationScreen
 Composable-функции: `AuthorizationScreen` (корневой, маршрутизация по `PINCodeAction`), `UnlockScreen` (проверка PIN), `PINCodeSection` (точки + цифровая клавиатура).
 
 ### AuthorizationViewModel
-Класс находится в `auth/` (не `auth/viewmodel/`). **Зависимости**: `GetPINCodeEnabled`, `SetPINCodeEnabled`, `GetPINCode`, `SetPINCode`, `GetIsFingerprintAuthEnabled`.
+Класс находится в `auth/` (не `auth/viewmodel/`). **Зависимости**: `GetPINCodeEnabled`, `SetPINCodeEnabled`, `GetPINCode`, `SetPINCode`, `GetIsFingerprintAuthEnabled`, `SetIsFingerprintAuthEnabled`. Отключение PIN также отключает биометрию; чтение повреждённого PIN не выключает защиту.
 
 | State | Тип | Описание |
 |-------|-----|---------|
@@ -254,13 +256,13 @@ Composable-функции: `AuthorizationScreen` (корневой, маршру
 **Логика**: CHECK — сравнение ввода с сохранённым PIN. ENABLE — двойной ввод (FIRST → CONFIRMATION). DISABLE — ввод текущего PIN. CHANGE — проверка + новый ввод.
 
 ### CryptoManager
-AES шифрование через Android Keystore (API 23+). Alias: `"PIN"`, файл: `crypto.txt`. На API < 23 PIN хранится без шифрования.
+AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`, файл: `crypto.txt`. Каждая запись использует новый cipher/IV и `AtomicFile`; чтение проверяет длины и весь файл, ошибка оставляет защиту включённой. Поддерживается ранее сохранённый legacy PIN при отсутствии encrypted-файла. Скрытый сброс по логотипу удалён; видимая справка «Забыли PIN?» объясняет отсутствие сброса с сохранением доступа к данным.
 
 ### BiometricPromptManager
-Обёртка над `androidx.biometric.BiometricPrompt`. Callback-based API (success / error / cancel).
+Обёртка над `androidx.biometric.BiometricPrompt`. Буферизованный канал не теряет ранние callback; повторный открытый prompt не создаётся. Только CHECK с ранее включённой биометрией принимает success, навигация выполняется однократно в эффекте.
 
 ### Связь с Settings
-PIN управляется из `SettingsFragment` → `MainActivityViewModel.setIsPINCodeEnabled()`. Биометрия → `SettingsViewModel.setIsFingerprintAuthEnabled()`.
+PIN изменяет `AuthorizationViewModel` после проверки; Settings обновляет состояние из хранилища при результате. Main не доверяет `PINCodeState` из сторонних Activity result. Биометрия → `SettingsViewModel.setIsFingerprintAuthEnabled()`.
 
 ---
 
@@ -298,6 +300,7 @@ PIN управляется из `SettingsFragment` → `MainActivityViewModel.se
 
 | Файл | ViewModel / модуль | Покрытие |
 |------|-----------|---------|
+| `AuthSessionTest.kt` | `AuthSession`, action policy | новый процесс/фон, недоверенные actions, запрет перезаписи PIN через ENABLE |
 | `DebtViewModelTest.kt` | `DebtViewModel` | getHumanOrder, saveHumanOrder, setIsSearching, sort dialog open/close |
 | `SettingsViewModelTest.kt` | `SettingsViewModel` | init загрузка данных, set/get валют, тема, share text, fingerprint, getUserData, диалог настроек |
 | `CreateGoalsFormValidationTest.kt` | `CreateGoalsFormValidation` | validateName / validateSum / validateSavedSum, граничные случаи |
@@ -319,3 +322,13 @@ PIN управляется из `SettingsFragment` → `MainActivityViewModel.se
 - `arrays.xml` — массивы валют и прочее
 - `data_extraction_rules.xml` — правила бэкапа
 - `provider_paths.xml` — пути для FileProvider (фото целей)
+
+### Android auth regression tests
+
+`AuthAccessTest`: non-exported Main, long-press logo, correct PIN, external ENABLE, missing/corrupt PIN, guarded Main and return from background. Instrumented execution results are recorded in the release plan; test presence alone is not acceptance.
+
+### R1a: отступы и общие компоненты
+
+`MainActivity` включает edge-to-edge и применяет systemBars/cutout/IME к rootLayout один раз; дочерние XML/Compose получают consumed insets. Manifest использует adjustResize, opt-out API35 удален, глобальное ограничение fontScale 1.2 снято. BottomNav не скрывается отложенным callback после уже выполненного возврата. `CustomSwitchView` не вызывает новый layout из onDraw. `DataModule` предоставляет singleton `DataTransaction → RoomDataTransaction`.
+
+Проверка R1a (14.11.2026): MainActivity применяет system bar/IME insets к корню, затем после layout прокручивает XML-форму к активному EditText. Это сохраняет видимость ввода при крупном шрифте; кнопки сохранения debt/finance не скрываются при сворачивании AppBar. CI также запускает lintDebug. Матрица и ограничения: `docs/r1a-verification-2026-11-14.md`.

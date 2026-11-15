@@ -2,218 +2,115 @@
 
 ## Назначение
 
-Android-приложение для учёта долгов, финансов и целей накопления. Позволяет вести список людей и их долгов, отслеживать расходы/доходы по категориям, ставить цели накопления с депозитами, синхронизировать данные через Google Drive и защищать приложение PIN-кодом / биометрией.
+Android-приложение для учёта долгов, финансов и целей накопления. Позволяет вести список людей и их долгов, отслеживать расходы/доходы по категориям, ставить цели накопления с депозитами, создавать и восстанавливать резервные копии через Google Drive и защищать приложение PIN-кодом / биометрией.
 
 ---
 
-## Архитектура
+## Архитектура и текущий UI
 
-**Clean Architecture + MVVM**, три Gradle-модуля:
+Три Gradle-модуля: `app → domain`, `app → data`, `data → domain`.
 
-```
-:app  (com.android.application)
-  ├── Presentation (Fragments, Adapters, ViewModels)
-  ├── DI (Hilt modules)
-  └── Core (MainActivity, Theme, Navigation)
+| Модуль | Содержимое |
+| --- | --- |
+| `:app` | Android UI, ViewModel, Hilt DI, навигация, авторизация, реклама и ручной backup Google Drive |
+| `:domain` | Kotlin/JVM: модели, repository interfaces, use cases, форматирование и экспорт Excel |
+| `:data` | Android library: Room, SharedPreferences, storage и реализации repository |
 
-:domain  (java-library)
-  ├── Model (доменные модели)
-  ├── Repository (интерфейсы-порты)
-  ├── UseCase (бизнес-логика)
-  └── Util (enum'ы, хелперы, константы)
+MVVM / LiveData сосуществуют с Compose / Orbit MVI. Полная миграция UI не является текущей целью; порядок работ — [план надежности и роста](../plans/simpledebt_recovery_and_growth.plan.md).
 
-:data  (com.android.library)
-  ├── Entity (Room @Entity)
-  ├── Database (Room DB, DAO, Storage Impl)
-  ├── Repository Impl (маппинг entity ↔ domain)
-  ├── SharedPrefs (настройки, реклама)
-  └── Storage interfaces (порт между DB и Repository)
-```
+| Область | Реализация на текущей базе |
+| --- | --- |
+| Авторизация | `AuthorizationActivity` + `auth/screen/AuthorizationScreen.kt`, Compose |
+| Долги | `debt/main`, `debt/create`, `debt/details`, XML + View Binding |
+| Финансы | `finance/main`, `finance/create` — XML; `finance/details`, `finance/create_category` — Compose |
+| Цели | `goal/main`, `goal/create` — Compose + Orbit; `goal/details` — XML |
+| Настройки | `settings/main`, `settings/synchronization`, XML |
+| Общие компоненты | `core/ui/components`, `core/ui/theme`, Compose |
 
-Зависимости модулей: `app → domain`, `app → data`, `data → domain`.
+`roadmap/phase2.2.3` содержит отдельную реализацию CreateFinance; она не включается автоматически в базу R1a.
 
----
+## Сборка и зависимости
 
-## Технологии
+| Область | Фактическая конфигурация |
+| --- | --- |
+| Build | AGP 9.1.0 / Gradle wrapper 9.4.1 / JDK 17 |
+| Kotlin | JVM / Compose plugins 2.3.20; Android Kotlin встроен в AGP 9 |
+| SDK | `compileSdk 36`, `targetSdk 36`, `minSdk 23`; версия выпуска — `app/build.gradle` |
+| Application ID | `com.breckneck.debtbook` |
+| DI | Hilt 2.59.2, hilt-navigation-compose 1.2.0 |
+| База | Room 2.8.4, schema version 14, KSP 2.3.6 |
+| UI | Compose BOM 2026.03.00, Material3; Material Views 1.13.0 |
+| Navigation / Lifecycle | 2.9.7 / 2.10.0 |
+| Orbit | 10.0.0 |
+| Изображения | Glide 4.16.0 / Coil 3.1.0 |
+| Реклама | Yandex Mobile Ads 7.18.4 |
+| Backup | Google Sign-In и Google Drive API, ручное сохранение/восстановление JSON |
+| Экспорт / JSON | Apache POI 4.0.0 / Gson 2.10.1 |
+| Тесты | domain — JUnit 5; app/data — JUnit 4; Mockito и coroutines-test; instrumented — Espresso/Compose |
 
-| Область | Технология | Версия |
-|---------|-----------|--------|
-| Язык | Kotlin | 2.1.0 |
-| Build | AGP / Gradle | 8.8.0 / 8.10.2 |
-| DI | Hilt (android, hilt-navigation-compose) | 2.55 |
-| БД | Room + KSP compiler | 2.8.4 |
-| UI (classic) | View Binding, Material, ConstraintLayout, RecyclerView | — |
-| UI (Compose) | Compose BOM, Material3, Activity Compose | 2026.03.00 |
-| Навигация | Navigation Component (nav_graph.xml) + navigation-compose | 2.9.7 |
-| Lifecycle | ViewModel, LiveData | 2.10.0 |
-| Реактивность | Kotlin Coroutines/Flow | — |
-| Изображения | Glide (Views) / Coil 3 (Compose AsyncImage) | 4.16.0 / 3.1.0 |
-| Shimmer | Facebook Shimmer | 0.1.0 |
-| Безопасность | androidx.biometric (BiometricPrompt) | — |
-| Облако | Google Sign-In, Google Drive API v3 | — |
-| Реклама | Yandex Mobile Ads | 7.18.4 |
-| Таблицы | Apache POI (экспорт .xls) | 4.0.0 |
-| JSON | Gson | 2.10.1 |
-| Тесты | JUnit 5, Mockito, Espresso, Compose UI test | — |
-
----
+`release` требует существующий release/upload key и не использует debug signing. Настройка и условия выпуска — [docs/release-build.md](../../docs/release-build.md). Наличие debug APK не подтверждает пригодность для магазина.
 
 ## Навигация
 
-Единый `nav_graph.xml`. Start destination: `MainFragment` (список долгов).
-
-### Экраны и переходы
+Launcher — `AuthorizationActivity`. После проверки доступа открывается `core/MainActivity`; она содержит `NavHostFragment` и четыре нижние вкладки. `nav_graph.xml` использует исторические ID `mainFragment` / `newDebtFragment`, но классы называются `DebtFragment` / `CreateDebtFragment`.
 
 ```
-AuthorizationActivity (launcher, Compose)
-  └── [PIN/Biometric] → MainActivity
-
-MainActivity (NavHostFragment + BottomNav)
-  ├── MainFragment (долги) 
-  │     ├── → NewDebtFragment (создание/редактирование долга)
-  │     └── → DebtDetailsFragment (детали по человеку)
-  │           └── → NewDebtFragment
-  ├── FinanceFragment (финансы)
-  │     ├── → CreateFinanceFragment
-  │     │     └── → CreateFinanceCategoryFragment
-  │     └── → FinanceDetailsFragment
-  │           └── → CreateFinanceFragment
-  ├── GoalsFragment (цели)
-  │     ├── → CreateGoalsFragment
-  │     └── → GoalDetailsFragment
-  │           └── → CreateGoalsFragment
-  └── SettingsFragment (настройки)
-        └── → SynchronizationFragment
+AuthorizationActivity
+  └── MainActivity
+        ├── DebtFragment → CreateDebtFragment / DebtDetailsFragment
+        │                   DebtDetailsFragment → CreateDebtFragment
+        ├── FinanceFragment → CreateFinanceFragment / FinanceDetailsFragment
+        │                      CreateFinanceFragment → CreateFinanceCategoryFragment
+        ├── GoalsFragment → CreateGoalsFragment / GoalDetailsFragment
+        └── SettingsFragment → SynchronizationFragment
 ```
 
-### Bottom Navigation Tabs
-
-1. Долги (`MainFragment`)
-2. Финансы (`FinanceFragment`)  
-3. Цели (`GoalsFragment`)
-4. Настройки (`SettingsFragment`)
-
----
-
-## Пакетная структура `:app`
+## Пакетная структура app
 
 ```
 com.breckneck.debtbook
-├── app/                  # Application class (@HiltAndroidApp + Yandex Ads init)
-├── auth/
-│   ├── presentation/     # AuthorizationActivity, AuthorizationScreen (Compose)
-│   ├── viewmodel/        # AuthorizationViewModel
-│   └── util/             # BiometricPromptManager, CryptoManager
-├── core/
-│   ├── activity/         # MainActivity
-│   ├── viewmodel/        # MainActivityViewModel
-│   ├── customview/       # CustomSwitchView
-│   └── ui/theme/         # Compose Color, Shape, Type, Theme
-├── debt/
-│   ├── adapter/          # HumanAdapter, DebtAdapter, ContactsAdapter
-│   ├── presentation/     # MainFragment, DebtDetailsFragment, NewDebtFragment
-│   └── viewmodel/        # MainFragmentViewModel, DebtDetailsViewModel, NewDebtViewModel
-├── finance/
-│   ├── adapter/          # FinanceAdapter, FinanceCategoryAdapter и др.
-│   ├── customview/       # FinanceProgressBar
-│   ├── presentation/     # FinanceFragment, CreateFinance*, FinanceDetailsFragment
-│   ├── util/             # GetFinanceCategoryNameInLocalLanguage
-│   └── viewmodel/        # FinanceViewModel, CreateFinanceViewModel и др.
-├── goal/
-│   ├── adapter/          # GoalAdapter, GoalDepositAdapter
-│   ├── presentation/     # GoalsFragment, CreateGoalsFragment, GoalDetailsFragment
-│   └── viewmodel/        # GoalsFragmentViewModel и др.
-├── settings/
-│   ├── adapter/          # SettingsAdapter
-│   ├── presentation/     # SettingsFragment, SynchronizationFragment
-│   ├── util/             # DriveServiceHelper
-│   └── viewmodel/        # SettingsViewModel, SynchronizationViewModel
-└── di/                   # DataModule, DomainModule (Hilt)
+├── app/                     # Application
+├── auth/                    # Activity, ViewModel, screen/, util/
+├── common/                  # Compose, coroutine и Kotlin helpers
+├── core/                    # MainActivity, MainViewModel, adapter/, customview/, ui/
+├── debt/                    # main/, create/, details/; адаптеры внутри фич
+├── finance/                 # main/, create/, create_category/, details/, util/
+├── goal/                    # main/, create/, details/
+├── settings/                # main/, synchronization/
+└── di/                      # DataModule, DomainModule (Hilt)
 ```
 
----
+В `domain` сохранен исторический пакет `com.breckneck.deptbook` (с `dept`, не `debt`). У `data` namespace `com.breckneck.data`; исходные пакеты `database`, `entity`, `repository`, `sharedprefs`, `storage`.
 
-## Важные особенности
+## Данные и интеграции
 
-- **Пакетный typo**: `:domain` и `:data` используют `com.breckneck.deptbook`, а `:app` — `com.breckneck.debtbook`. Это отражается в импортах.
-- **Async**: ViewModel'ы используют исключительно Kotlin Coroutines/Flow (`viewModelScope`, `StateFlow`).
-- **Room DB version 14**: 6 таблиц (`Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`).
-- **Compose** используется только для экрана авторизации (`AuthorizationScreen`); остальной UI — View Binding + XML.
-- **Google Drive Sync**: `DriveServiceHelper` + `SynchronizationViewModel` обеспечивают backup/restore всех данных.
-- **Yandex Ads**: интегрированы с подсчётом кликов (`AdRepository` / `AdStorage`).
-- **Локализация**: ru, en-US, de, fr и региональные варианты (BY, KG, KZ, MD, UA).
-- **Excel Export**: через Apache POI (`ExportDebtDataInExcelUseCase`).
+- Room v14: `Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`. Полное восстановление выполняется в транзакции DAO.
+- Суммы пока `Double`, даты долгов — строки; переход к точным деньгам и независимым от языка датам относится к R1b.
+- Google Drive — резервное копирование/замена локальной базы, не автоматическая многопользовательская синхронизация.
+- Ресурсы языков: default, RU, en-US, DE, FR; региональные ресурсы валют не означают отдельные переводы интерфейса.
+- В исходном manifest удаляются location permissions SDK; используются READ_CONTACTS, VIBRATE и FileProvider. Итоговые разрешения проверяются в merged manifest.
 
----
+## Проверки и CI
 
-## Файлы конфигурации
+Из корня проекта с JDK 17 и установленными Android SDK Platform 36 / Build Tools 36.0.0:
 
-| Файл | Назначение |
-|------|-----------|
-| `settings.gradle` | Подключение модулей `:app`, `:domain`, `:data` + JitPack |
-| `build.gradle` (root) | Версии плагинов (AGP 8.8.0, Kotlin 2.1.0, KSP) |
-| `app/build.gradle` | Зависимости app-модуля, Compose, View Binding |
-| `data/build.gradle` | Room + KSP, compile SDK 35 |
-| `domain/build.gradle` | java-library, POI, Gson |
-| `gradle.properties` | AndroidX flags |
-| `AndroidManifest.xml` | Permissions: READ_CONTACTS, VIBRATE; FileProvider |
+```sh
+bash ./gradlew :app:assembleDebug :domain:test :data:test :app:testDebugUnitTest :app:lintDebug --continue
+```
 
----
+`.github/workflows/tests.yml` запускается на push в `main`, `master`, `develop`, `develop_main`, `roadmap/**`, `codex/**`, на любой pull request и вручную. Workflow устанавливает JDK 17 и SDK packages, собирает debug APK, выполняет unit tests всех модулей, lintDebug и сохраняет отчеты. Удаленный запуск CI и instrumented-проверки учитываются отдельно от локальной сборки.
 
 ## Карта документации
 
-| Файл | Что описывает | Когда читать |
-|------|-------------|-------------|
-| `PROJECT_OVERVIEW.md` | Архитектура, tech stack, навигация, общая картина | Всегда первым |
-| `DOMAIN_MODULE.md` | Модели, репозитории, use cases, enum'ы, util | Работа с бизнес-логикой, добавление use case |
-| `DATA_MODULE.md` | Room DB, DAO, entities, storage, маппинг | Работа с БД, миграции, новые таблицы |
-| `APP_CORE.md` | App init, MainActivity, DI (Hilt), навигация, Auth (PIN/Bio) | DI-конфигурация, добавление VM, auth-логика |
-| `APP_DEBT_FEATURE.md` | Фича долгов (3 экрана, 3 VM, 3 адаптера) | Изменения в долгах |
-| `APP_FINANCE_FEATURE.md` | Фича финансов (4 экрана, 4 VM, 5 адаптеров) | Изменения в финансах |
-| `APP_GOAL_FEATURE.md` | Фича целей (3 экрана, 3 VM, 2 адаптера) | Изменения в целях |
-| `APP_SETTINGS_FEATURE.md` | Настройки + Google Drive sync | Изменения в настройках/синхронизации |
+| Файл | Область |
+| --- | --- |
+| `DOMAIN_MODULE.md` | Модели, repository interfaces, use cases, утилиты |
+| `DATA_MODULE.md` | Room, entities, storage, SharedPreferences |
+| `APP_CORE.md` | Application, MainActivity, DI, PIN/биометрия |
+| `APP_DEBT_FEATURE.md` | Долги |
+| `APP_FINANCE_FEATURE.md` | Финансы |
+| `APP_GOAL_FEATURE.md` | Цели |
+| `APP_SETTINGS_FEATURE.md` | Настройки и backup |
+| `DESIGN_SYSTEM.md` | Читаемость, темы, состояния UI и доступность |
 
----
-
-## Паттерны для добавления нового функционала
-
-### Добавление нового экрана (Fragment)
-1. Создать `Fragment` в `app/.../feature/presentation/`
-2. Создать layout XML в `res/layout/`
-3. Создать `ViewModel` в `app/.../feature/viewmodel/`
-4. Аннотировать Fragment через `@AndroidEntryPoint`, VM через `@HiltViewModel @Inject constructor`
-5. Добавить destination + action в `res/navigation/nav_graph.xml`
-6. При необходимости — добавить `@Provides` в `di/DomainModule.kt`
-
-### Добавление новой таблицы (Entity)
-1. Создать domain model в `domain/.../model/`
-2. Создать domain repository interface в `domain/.../repository/`
-3. Создать use cases в `domain/.../usecase/NewFeature/`
-4. Создать Room `@Entity` в `data/.../entity/`
-5. Добавить entity в `@Database(entities = [...])` в `AppDataBase.kt` + увеличить version
-6. Добавить DAO-методы в `AppDao.kt`
-7. Создать `Storage` interface в `data/.../storage/`
-8. Создать `DataBase*StorageImpl` в `data/.../database/`
-9. Создать `*RepositoryImpl` в `data/.../repository/`
-10. Зарегистрировать Storage, Repository, UseCases в `di/DataModule.kt` и `di/DomainModule.kt`
-
-### Добавление нового use case
-1. Создать класс в `domain/.../usecase/Category/` с `fun execute(...)`
-2. Добавить `@Provides` в `di/DomainModule.kt` (с `@Singleton` для Settings use cases)
-3. Добавить параметр в конструктор нужного `@HiltViewModel`
-
----
-
-## CI / GitHub Actions
-
-Конфигурация: `.github/workflows/tests.yml`  
-Триггеры: push и pull_request в `main`, `master`, `develop`
-
-| Шаг | Команда |
-|-----|---------|
-| Checkout | `actions/checkout@v4` |
-| JDK 17 | `actions/setup-java@v4` (Temurin) |
-| Domain unit tests | `./gradlew :domain:test` |
-| App unit tests | `./gradlew :app:testDebugUnitTest` |
-| Data unit tests | `./gradlew :data:test` |
-| Upload results | `actions/upload-artifact@v4` (retention 7 дней) |
+При структурных изменениях обновлять соответствующий документ по `.cursor/rules/update-docs.mdc`. Актуальные критерии приемки и незавершенные проверки вести в плане надежности и роста.

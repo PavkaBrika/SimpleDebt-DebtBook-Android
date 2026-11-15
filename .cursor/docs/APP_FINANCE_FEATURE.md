@@ -229,3 +229,7 @@ Compose UI для экрана деталей категории (история
 - Доступны **24 цвета** (19 пастельных Material 200 + 5 accent оттенков) и **80 эмодзи** (8 категорий × 10)
 - Эмодзи-пикер группирует иконки по **8 категориям** (Food, Shopping, Fun, Health, Education, Finance, Home, Nature) с **10 эмодзи в каждой** (80 всего). Определены в `EmojiGroups.kt`. UI: `SecondaryScrollableTabRow` с текстовыми лейблами + `HorizontalPager` + фиксированная сетка 5 колонок (2 ряда)
 - Цветовой пикер: `FlowRow` с круглыми `Surface(onClick)` элементами 40dp, анимация масштабирования при выборе
+
+## R1a — форма записи
+
+`CreateFinanceViewModel.SaveState`: IDLE/SAVING/SAVED/ERROR. `setFinance`/`editFinance` блокируют повторный запуск; навигация выполняется только после SAVED, ошибка показывает повтор. XML-форма использует `DecimalInput` для полного разбора точки/запятой и форматирования без группировки; никакой интеграции roadmap CreateFinance здесь нет. `CreateFinanceViewModelTest` проверяет отказ/повтор и отсутствие ранней навигации/дубля.

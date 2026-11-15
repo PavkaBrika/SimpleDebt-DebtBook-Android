@@ -106,11 +106,14 @@ ViewModel деталей долгов одного человека.
 | `debtOrder` | `LiveData<Pair<DebtOrderAttribute, Boolean>>` | Сортировка |
 | `debtFilter` | `LiveData<Filter>` | Фильтр |
 | `humanName` | `LiveData<String>` | Имя человека |
+| `screenState` | `LiveData<DebtDetailsState>` | LOADING / SUCCESS / EMPTY / ERROR; ошибка отличается от пустой истории |
+| `isDeleting` / `humanDeleted` / `operationFailed` | `LiveData<Boolean>` | Защита от повторного удаления, подтверждённое завершение, видимая ошибка |
 
 ### Ключевая логика
-- State machine аналогичная: `Loading → Received → Sorted`
-- При удалении долга: вычитание суммы из human через `AddSumUseCase`
-- Поддержка `SavedStateHandle` для навигационных аргументов
+- `retry()` загружает историю и сумму вместе; ошибка прекращает shimmer, экран предлагает повтор и смену сортировки.
+- При удалении долга: вычитание суммы из human через `AddSumUseCase`; переход после удаления человека — только по `humanDeleted`.
+- `SavedStateHandle`: аргументы навигации, разрешённый ID нового человека, фильтр, атрибут и направление сортировки. Переданный ID имеет приоритет над legacy-поиском последнего человека.
+- Legacy-даты не мигрируются в R1a: если сортировка по локализованной дате не удалась, можно выбрать порядок создания; исходные записи сохраняются.
 - Диалоги: удаление человека, настройки долга, сортировка, шаринг
 
 ---
@@ -164,3 +167,10 @@ ViewModel создания/редактирования долга.
 - `DebtFragment → CreateDebtFragment`: idHuman, idDebt, currency, sum, date, info, name
 - `DebtFragment → DebtDetailsFragment`: humanId, newHuman
 - `DebtDetailsFragment → CreateDebtFragment`: добавление нового долга к человеку
+
+## R1a — сохранение формы
+
+- `CreateDebtViewModel` теперь владеет записью, `isSaving`, `saveError`, `savedHumanId`; UI переходит к истории после завершения записи и передает конкретный ID. Повторное нажатие блокируется, ошибка оставляет форму для повтора.
+- `DataTransaction` оборачивает связанные записи; при изменении исходная сумма читается из DB внутри транзакции, при удалении повторная операция не вычитает баланс снова.
+- Bundle `sum` остается `Double` на всем пути; float-аргумент удален из navigation XML. Редактирование показывает модуль суммы и устанавливает направление переключателя.
+- `DecimalInput` обеспечивает одинаковое чтение дробной точки/запятой; ошибки ввода видимы. Полный переход от Double и миграция дат — R1b.

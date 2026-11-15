@@ -198,3 +198,7 @@ VM списка целей. Реализует `ContainerHost<GoalsState, GoalsS
 - Фото цели загружается через **Glide** по `photoPath`
 - `photoPath` задаётся через `FileProvider` (определён в `provider_paths.xml`)
 - При удалении цели каскадно удаляются все депозиты через `DeleteGoalDepositsByGoalId`
+
+## R1a — денежный ввод и сохранение
+
+`CreateGoalsState` добавляет `isSaving`/`saveFailed`; сохранение блокирует дубли, показывает ошибку/повтор и навигирует после DB write. `CreateGoalsFormValidation`, mapper и ввод депозитов используют `DecimalInput`, редактируемые суммы не содержат группировки. Баланс цели и запись депозита пока остаются раздельными операциями (R1b).

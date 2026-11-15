@@ -306,3 +306,9 @@ Getter/Setter пары для каждой настройки. Примеры:
 | `SettingsUseCasesTest.kt` | Все 30 Settings use cases (Get/Set для всех настроек) |
 | `AdUseCasesTest.kt` | GetClicks, SaveClicks |
 | `SortUtilTest.kt` | sortHumans (Date asc/desc, Sum asc/desc), sortDebts (CreationDate, Sum, Date asc/desc) |
+
+## R1a — локальная надежность (14.11.2026)
+
+- `repository/DataTransaction.kt`: общая атомарная граница связанных локальных операций, `fun <T> run(block: () -> T): T`; вызывается на IO.
+- `util/DecimalInput.kt`: полный разбор точки или запятой (до 2 дробных знаков), без группировки/экспоненты/NaN; форматирование редактируемой суммы без разделителей тысяч. Это правила текущих форм, не новая денежная модель.
+- `DecimalInputTest`: round trip RU/EN/DE/FR, недопустимые/неполные/неоднозначные строки. Точные деньги и независимые от языка даты остаются R1b.
