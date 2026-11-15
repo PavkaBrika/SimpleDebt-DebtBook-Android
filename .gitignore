@@ -19,3 +19,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Release/upload signing stays outside version control.
+/keystore.properties
+*.jks
+*.keystore
+
+.kotlin/

@@ -5,6 +5,19 @@ plugins {
     id 'com.google.dagger.hilt.android'
 }
 
+// Use the existing release/upload key. Never fall back to the debug identity.
+def releaseSigningProperties = new Properties()
+def releaseSigningFile = rootProject.file('keystore.properties')
+if (releaseSigningFile.isFile()) {
+    releaseSigningFile.withInputStream { releaseSigningProperties.load(it) }
+}
+def releaseSigningValues = [
+    storeFile: providers.environmentVariable('SIMPLEDEBT_KEYSTORE_FILE').orNull ?: releaseSigningProperties.getProperty('storeFile'),
+    storePassword: providers.environmentVariable('SIMPLEDEBT_KEYSTORE_PASSWORD').orNull ?: releaseSigningProperties.getProperty('storePassword'),
+    keyAlias: providers.environmentVariable('SIMPLEDEBT_KEY_ALIAS').orNull ?: releaseSigningProperties.getProperty('keyAlias'),
+    keyPassword: providers.environmentVariable('SIMPLEDEBT_KEY_PASSWORD').orNull ?: releaseSigningProperties.getProperty('keyPassword')
+]
+
 android {
     namespace "com.breckneck.debtbook"
     compileSdk 36
@@ -12,17 +25,28 @@ android {
     defaultConfig {
         applicationId "com.breckneck.debtbook"
         minSdk 23
-        targetSdk 35
+        targetSdk 36
         versionCode 42
         versionName "4.6.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            if (releaseSigningValues.storeFile) {
+                storeFile rootProject.file(releaseSigningValues.storeFile)
+            }
+            storePassword releaseSigningValues.storePassword
+            keyAlias releaseSigningValues.keyAlias
+            keyPassword releaseSigningValues.keyPassword
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
     buildFeatures{
@@ -51,6 +75,25 @@ android {
             ]
         }
     }
+}
+
+def verifyReleaseSigning = tasks.register('verifyReleaseSigning') {
+    group = 'verification'
+    description = 'Require an explicitly configured existing release/upload key.'
+    doLast {
+        if (releaseSigningValues.values().any { !it }) {
+            throw new GradleException('Release signing is not configured. Set SIMPLEDEBT_* signing variables or an untracked keystore.properties; see docs/release-build.md.')
+        }
+        if (!rootProject.file(releaseSigningValues.storeFile).isFile()) {
+            throw new GradleException('The configured release keystore does not exist; see docs/release-build.md.')
+        }
+        if (releaseSigningValues.keyAlias == 'androiddebugkey') {
+            throw new GradleException('The Android debug key cannot be used for a release.')
+        }
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    dependsOn verifyReleaseSigning
 }
 
 androidComponents {
@@ -85,6 +128,7 @@ dependencies {
     testImplementation 'androidx.arch.core:core-testing:2.2.0'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.room:room-runtime:2.8.4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
 //    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
