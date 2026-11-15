@@ -114,3 +114,5 @@ bash ./gradlew :app:assembleDebug :domain:test :data:test :app:testDebugUnitTest
 | `DESIGN_SYSTEM.md` | Читаемость, темы, состояния UI и доступность |
 
 При структурных изменениях обновлять соответствующий документ по `.cursor/rules/update-docs.mdc`. Актуальные критерии приемки и незавершенные проверки вести в плане надежности и роста.
+
+Восстановление PIN: внутренняя `auth/PinRecoveryActivity` (`exported=false`) вызывается из «Забыли PIN?»; новый PIN задаётся после системного подтверждения Android, без замены базы.

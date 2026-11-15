@@ -3,7 +3,6 @@ package com.breckneck.debtbook.auth.screen
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
-import android.util.AtomicFile
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -76,17 +75,15 @@ import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.Red
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.auth.PinCodeStore
 import com.breckneck.debtbook.auth.util.BiometricPromptManager
 import com.breckneck.debtbook.auth.util.BiometricPromptManager.*
-import com.breckneck.debtbook.auth.util.CryptoManager
 import com.breckneck.deptbook.domain.util.PINCodeAction.*
 import com.breckneck.deptbook.domain.util.PINCodeEnterState
 import com.breckneck.deptbook.domain.util.PINCodeEnterState.*
-import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import com.breckneck.deptbook.domain.util.PINCodeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.breckneck.debtbook.auth.AuthorizationViewModel
-import java.io.File
 import kotlin.math.roundToInt
 
 @Composable
@@ -94,22 +91,15 @@ fun AuthorizationScreen(
     activity: AppCompatActivity,
     vm: AuthorizationViewModel = hiltViewModel(),
     biometricPromptManager: BiometricPromptManager,
-    cryptoManager: CryptoManager?,
-    onAuthenticated: () -> Unit
+    onAuthenticated: () -> Unit,
+    onRecoverPin: () -> Unit
 ) {
     var saveFailed by remember { mutableStateOf(false) }
-    var showRecovery by remember { mutableStateOf(false) }
     fun savePIN(): Boolean {
-        val file = AtomicFile(File(activity.filesDir, CRYPTO_FILE_NAME))
-        var stream: java.io.FileOutputStream? = null
         return try {
-            val manager = requireNotNull(cryptoManager)
-            stream = file.startWrite()
-            manager.encrypt(vm.enteredPINCode.value.encodeToByteArray(), stream)
-            file.finishWrite(stream)
+            PinCodeStore(activity).save(vm.enteredPINCode.value)
             true
         } catch (_: Exception) {
-            file.failWrite(stream)
             vm.resetPINCodes()
             vm.setPINCodeEnterState(FIRST)
             saveFailed = true
@@ -199,16 +189,16 @@ fun AuthorizationScreen(
                 putExtra(Intent.EXTRA_SUBJECT, "${activity.getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}")
             })
         },
-        onRecoveryClick = { showRecovery = true },
+        onRecoveryClick = onRecoverPin,
         showFingerprintButton = vm.isFingerprintAuthEnabled.value && vm.pinCodeAction.value == CHECK
     )
-    if (showRecovery || saveFailed) {
+    if (saveFailed) {
         AlertDialog(
-            onDismissRequest = { showRecovery = false; saveFailed = false },
-            title = { Text(stringResource(if (saveFailed) R.string.pin_save_failed_title else R.string.pin_recovery_title)) },
-            text = { Text(stringResource(if (saveFailed) R.string.pin_save_failed_message else R.string.pin_recovery_message)) },
+            onDismissRequest = { saveFailed = false },
+            title = { Text(stringResource(R.string.pin_save_failed_title)) },
+            text = { Text(stringResource(R.string.pin_save_failed_message)) },
             confirmButton = {
-                TextButton(onClick = { showRecovery = false; saveFailed = false }) {
+                TextButton(onClick = { saveFailed = false }) {
                     Text(stringResource(android.R.string.ok))
                 }
             }

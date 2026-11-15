@@ -9,6 +9,7 @@ import android.os.VibratorManager
 import android.util.AtomicFile
 import android.view.WindowManager
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -38,6 +39,10 @@ class AuthorizationActivity : AppCompatActivity() {
     val biometricPromptManager = BiometricPromptManager(this)
     private var completed = false
     private var trustedCaller = false
+    private val recovery = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        // Result codes/extras alone never unlock the app.
+        if (it.resultCode == RESULT_OK && AuthSession.isUnlocked) completeAuthentication()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,8 +93,10 @@ class AuthorizationActivity : AppCompatActivity() {
                     AuthorizationScreen(
                         activity = this,
                         biometricPromptManager = biometricPromptManager,
-                        cryptoManager = cryptoManager,
-                        onAuthenticated = ::completeAuthentication
+                        onAuthenticated = ::completeAuthentication,
+                        onRecoverPin = {
+                            recovery.launch(Intent(this, PinRecoveryActivity::class.java))
+                        }
                     )
                 }
             }

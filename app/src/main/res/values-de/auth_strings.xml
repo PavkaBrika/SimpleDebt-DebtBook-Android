@@ -1,7 +1,12 @@
 <resources>
     <string name="pin_recovery_title">PIN vergessen?</string>
-    <string name="pin_recovery_message">Falls die Entsperrung per Fingerabdruck bereits aktiviert war, können Sie sie verwenden. Zum Ändern oder Deaktivieren der PIN ist die aktuelle PIN erforderlich. Ein Zurücksetzen mit Zugriff auf die geschützten Daten ist nicht möglich. Das Löschen der App-Daten in den Android-Einstellungen entfernt die PIN und alle lokalen Einträge; nur eine vorhandene Sicherung kann diese wiederherstellen.</string>
+    <string name="pin_recovery_message">Bestätigen Sie Ihre Identität mit Android und legen Sie eine neue App-PIN fest. Ihre Einträge bleiben erhalten.</string>
     <string name="pin_unavailable">Die gespeicherte PIN ist nicht lesbar. Verwenden Sie einen zuvor aktivierten Fingerabdruck oder öffnen Sie „PIN vergessen?“. Ihre Einträge wurden nicht gelöscht.</string>
     <string name="pin_save_failed_title">PIN nicht gespeichert</string>
     <string name="pin_save_failed_message">Ihre bisherige PIN-Einstellung bleibt erhalten. Geben Sie die PIN erneut ein.</string>
+    <string name="pin_recovery_verify">Identität bestätigen</string>
+    <string name="pin_recovery_system_description">Bestätigen Sie Ihre Identität, um eine neue SimpleDebt-PIN festzulegen. Ihre Einträge bleiben erhalten.</string>
+    <string name="pin_recovery_unavailable">Android konnte Ihre Identität nicht bestätigen. Richten Sie eine Displaysperre auf diesem Gerät ein. PIN und Einträge wurden nicht geändert.</string>
+    <string name="pin_recovery_cancelled">Bestätigung abgebrochen. PIN und Einträge wurden nicht geändert.</string>
+    <string name="pin_recovery_mismatch">Die PINs stimmen nicht überein. Geben Sie eine neue PIN ein.</string>
 </resources>

@@ -28,6 +28,10 @@
         </activity>
 
         <activity
+            android:name=".auth.PinRecoveryActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".auth.AuthorizationActivity"
             android:exported="true"
             android:screenOrientation="portrait">

@@ -256,7 +256,12 @@ Composable-функции: `AuthorizationScreen` (корневой, маршру
 **Логика**: CHECK — сравнение ввода с сохранённым PIN. ENABLE — двойной ввод (FIRST → CONFIRMATION). DISABLE — ввод текущего PIN. CHANGE — проверка + новый ввод.
 
 ### CryptoManager
-AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`, файл: `crypto.txt`. Каждая запись использует новый cipher/IV и `AtomicFile`; чтение проверяет длины и весь файл, ошибка оставляет защиту включённой. Поддерживается ранее сохранённый legacy PIN при отсутствии encrypted-файла. Скрытый сброс по логотипу удалён; видимая справка «Забыли PIN?» объясняет отсутствие сброса с сохранением доступа к данным.
+AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`, файл: `crypto.txt`. Каждая запись использует новый cipher/IV и `AtomicFile`; чтение проверяет длины и весь файл, ошибка оставляет защиту включённой. Поддерживается ранее сохранённый legacy PIN при отсутствии encrypted-файла. Общая запись PIN вынесена в `auth/PinCodeStore.kt` (AtomicFile); скрытый сброс по логотипу удалён. «Забыли PIN?» запускает внутреннюю `PinRecoveryActivity` с системным подтверждением владельца и двойным вводом нового PIN.
+
+### Восстановление PIN
+- `auth/PinRecoveryActivity.kt`: не экспортируется; API30+ использует BiometricPrompt (BIOMETRIC_STRONG | DEVICE_CREDENTIAL), API23–29 — системное подтверждение пароля/рисунка/PIN телефона через KeyguardManager.
+- `auth/PinRecoveryViewModel.kt`: VERIFY_OWNER → VERIFYING → NEW_PIN → CONFIRM_PIN → FINISHED. Подтверждение хранится только в памяти ViewModel, теряется при уходе из формы в фон и после завершения процесса; поворот сохраняет текущий шаг. Отмена, несовпадение и ошибка записи не дают доступ.
+- `auth/PinCodeStore.kt`: изменяет только зашифрованный PIN; таблицы долгов/финансов/целей не затрагивает. AuthSession открывается лишь после успешной записи нового PIN.
 
 ### BiometricPromptManager
 Обёртка над `androidx.biometric.BiometricPrompt`. Буферизованный канал не теряет ранние callback; повторный открытый prompt не создаётся. Только CHECK с ранее включённой биометрией принимает success, навигация выполняется однократно в эффекте.

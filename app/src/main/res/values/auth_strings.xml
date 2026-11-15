@@ -1,7 +1,12 @@
 <resources>
     <string name="pin_recovery_title">Forgot PIN?</string>
-    <string name="pin_recovery_message">If fingerprint unlock was already enabled, use it to open the app. Changing or disabling the PIN requires the current PIN. There is no reset that keeps access to protected data. Clearing app storage in Android settings removes the PIN and all local records; only an existing backup can restore those records.</string>
+    <string name="pin_recovery_message">Confirm your identity with Android, then choose a new app PIN. Your records will be kept.</string>
     <string name="pin_unavailable">The saved PIN cannot be read. Use previously enabled fingerprint unlock or read “Forgot PIN?”. Your records have not been deleted.</string>
     <string name="pin_save_failed_title">PIN was not saved</string>
     <string name="pin_save_failed_message">Your previous PIN setting is unchanged. Try entering the PIN again.</string>
+    <string name="pin_recovery_verify">Confirm identity</string>
+    <string name="pin_recovery_system_description">Confirm to set a new SimpleDebt PIN without deleting your records.</string>
+    <string name="pin_recovery_unavailable">Android could not confirm your identity. A screen lock must be set up on this phone. Your PIN and records have not changed.</string>
+    <string name="pin_recovery_cancelled">Confirmation was cancelled. Your PIN and records have not changed.</string>
+    <string name="pin_recovery_mismatch">The PINs did not match. Enter a new PIN again.</string>
 </resources>
