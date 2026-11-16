@@ -124,7 +124,7 @@ class PinRecoveryDeviceTest {
         try {
             instrumentation.waitForIdleSync()
             Thread.sleep(150)
-            val bitmap = instrumentation.uiAutomation.takeScreenshot()
+            val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return
             File(context.getExternalFilesDir(null), "fix-pin-layout.png").outputStream().use {
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }

@@ -35,6 +35,7 @@ class PinLockDelayDeviceTest {
         originalPrefs = prefs.all.toMap()
         originalFile = file.takeIf { it.exists() }?.readBytes()
         prefs.edit().putBoolean("pin_code_is_enabled", true).putBoolean("ads_disabled", true)
+            .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE)
             .putBoolean("fingerprint_auth_is_enabled", false).putLong("pin_lock_delay_millis", 60_000L).commit()
         PinCodeStore(context).save("1234")
         AuthSession.unlock()
@@ -54,6 +55,8 @@ class PinLockDelayDeviceTest {
         }
         (originalPrefs["pin_lock_delay_millis"] as? Long)?.let { editor.putLong("pin_lock_delay_millis", it) }
             ?: editor.remove("pin_lock_delay_millis")
+        val rateKey = "debts_quantity_for_app_rate_dialog_show"
+        if (rateKey in originalPrefs) editor.putInt(rateKey, originalPrefs[rateKey] as Int) else editor.remove(rateKey)
         editor.commit()
         AuthSession.lock()
     }
