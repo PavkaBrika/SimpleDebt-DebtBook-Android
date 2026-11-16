@@ -89,7 +89,7 @@
     <string name="this_function_will_restore_your_data_from_cloud">Sicherung auswählen und vor der Wiederherstellung Datum und Inhalt prüfen.</string>
     <string name="restore_data">Aus Google Drive wiederherstellen</string>
     <string name="the_data_has_not_yet_been_synchronized">Noch keine Sicherung in Google Drive gespeichert</string>
-    <string name="recover_all_data_from_the_cloud_this_will_delete_the_current_application_data">Alle aktuellen Einträge werden durch diese Sicherung ersetzt. Sie werden nicht zusammengeführt.\n\nMit „Letzte Wiederherstellung rückgängig machen“ können Sie die aktuellen Einträge auf diesem Telefon zurückholen, bis zur nächsten Wiederherstellung oder Deinstallation. Speichern Sie zuerst eine Datei, um sie länger aufzubewahren.</string>
+    <string name="recover_all_data_from_the_cloud_this_will_delete_the_current_application_data">Die Einträge in der App werden durch diese Sicherung ersetzt.\n\nDie App behält Ihre aktuellen Einträge zum Rückgängigmachen. Mit „Letzte Wiederherstellung rückgängig machen“ kehren Sie zum bisherigen Stand zurück.\n\nBei der nächsten Wiederherstellung werden die dafür aufbewahrten Einträge ersetzt. Eine Deinstallation löscht auch diese Einträge. Speichern Sie zuerst eine Datei, um Ihre aktuellen Einträge länger aufzubewahren.</string>
     <string name="do_you_really_want_to_log_out">Wollen Sie sich wirklich abmelden?</string>
     <string name="last_synchronization">Letzte Drive-Sicherung:</string>
     <string name="finances">Finanzen</string>
@@ -179,7 +179,7 @@
     <string name="backup_export_file">In Datei speichern</string>
     <string name="backup_import_file">Aus Datei wiederherstellen</string>
     <string name="backup_restore_previous_local">Letzte Wiederherstellung rückgängig machen</string>
-    <string name="backup_restore_previous_cloud">Sicherung vor dem letzten Speichern</string>
+    <string name="backup_restore_previous_cloud">Vorherige Sicherung</string>
     <string name="backup_operation_complete">Sicherungsvorgang abgeschlossen</string>
     <string name="backup_unknown_date">Datum unbekannt</string>
     <string name="backup_preview">Erstellt: %1$s\nEinträge: %2$d\nFotos: %3$d</string>

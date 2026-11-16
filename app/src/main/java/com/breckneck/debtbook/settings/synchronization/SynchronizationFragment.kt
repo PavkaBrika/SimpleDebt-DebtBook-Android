@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -59,7 +60,10 @@ class SynchronizationFragment : Fragment() {
     private lateinit var synchronizationProgressBar: ProgressBar
     private lateinit var signInLauncher: ActivityResultLauncher<Intent>
     private var restoreDialog: BottomSheetDialog? = null
-    private var driveCopiesSheet: BottomSheetDialog? = null
+    private var restoreContent: FrameLayout? = null
+    private var driveCopiesPage: View? = null
+    private var restorePreviewPage: View? = null
+    private var renderedDriveCopies: List<SynchronizationViewModel.DriveBackup>? = null
     private var saveDriveSheet: BottomSheetDialog? = null
     private val exportFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         uri?.let(vm::exportFile)
@@ -114,18 +118,8 @@ class SynchronizationFragment : Fragment() {
             importFileLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
         }
         view.findViewById<View>(R.id.previousLocalBackupButton).setOnClickListener { vm.restorePreviousLocalBackup() }
-        vm.driveBackups.observe(viewLifecycleOwner) { copies ->
-            if (copies == null) {
-                driveCopiesSheet?.dismiss()
-                driveCopiesSheet = null
-            } else {
-                if (driveCopiesSheet?.isShowing != true) openDriveCopiesSheet()
-                renderDriveCopies()
-            }
-        }
-        vm.restorePreview.observe(viewLifecycleOwner) { preview ->
-            if (preview != null && restoreDialog?.isShowing != true) openRestoreDataDialog(preview)
-        }
+        vm.driveBackups.observe(viewLifecycleOwner) { renderRestoreSheet() }
+        vm.restorePreview.observe(viewLifecycleOwner) { renderRestoreSheet() }
         vm.operationSucceeded.observe(viewLifecycleOwner) { result ->
             if (result != null) {
                 val message = when (result) {
@@ -337,43 +331,61 @@ class SynchronizationFragment : Fragment() {
         val client = GoogleSignIn.getClient(requireActivity(), signInOptions)
 
         client.signOut().addOnCompleteListener {
+            vm.dismissDriveBackups()
             vm.setIsAuthorized(isAuthorized = false)
 
         }
     }
 
-    private fun openRestoreDataDialog(preview: SynchronizationViewModel.RestorePreview) {
-        val ownerActivity = requireActivity()
-        val bottomSheetDialog = BottomSheetDialog(ownerActivity)
-        bottomSheetDialog.setContentView(R.layout.dialog_restore_backup)
+    private fun renderRestoreSheet() {
+        val preview = vm.restorePreview.value
+        when {
+            preview != null -> openRestoreDataDialog(preview)
+            vm.driveBackups.value != null -> {
+                openDriveCopiesSheet()
+                renderDriveCopies()
+            }
+            else -> dismissRestoreSheet()
+        }
+    }
 
-        restoreDialog = bottomSheetDialog
-        bottomSheetDialog.findViewById<TextView>(R.id.dialogTitle)!!.setText(
+    /** One sheet, with list and details pages. Detached list views keep their scroll position. */
+    private fun showRestorePage(page: View) {
+        val sheet = restoreDialog ?: BottomSheetDialog(requireContext()).also { dialog ->
+            val ownerActivity = requireActivity()
+            restoreContent = FrameLayout(requireContext())
+            dialog.setContentView(restoreContent!!)
+            dialog.setOnCancelListener {
+                if (!ownerActivity.isChangingConfigurations) vm.backFromRestore()
+            }
+            restoreDialog = dialog
+        }
+        val container = requireNotNull(restoreContent)
+        if (container.getChildAt(0) !== page) {
+            container.removeAllViews()
+            container.addView(page, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        sheet.show()
+        sheet.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+    }
+
+    private fun openRestoreDataDialog(preview: SynchronizationViewModel.RestorePreview) {
+        val page = restorePreviewPage ?: layoutInflater.inflate(R.layout.dialog_restore_backup, null).also { restorePreviewPage = it }
+        page.findViewById<TextView>(R.id.dialogTitle).setText(
             if (preview.source == SynchronizationViewModel.RestoreSource.BEFORE_RESTORE)
                 R.string.backup_restore_previous_local else R.string.backup_confirm_restore_title)
         val source = preview.fileName ?: getString(sourceTitle(preview.source))
         val legacy = if (preview.legacy) "\n\n" + getString(R.string.backup_legacy_warning,
             java.util.TimeZone.getDefault().displayName, preview.legacyFinanceCurrency) else ""
-        bottomSheetDialog.findViewById<TextView>(R.id.dialogMessage)!!.text =
+        page.findViewById<TextView>(R.id.dialogMessage).text =
             source + "\n\n" + previewDetails(preview) + legacy + "\n\n" +
                 getString(R.string.recover_all_data_from_the_cloud_this_will_delete_the_current_application_data)
-
-        bottomSheetDialog.findViewById<Button>(R.id.okButton)!!.setOnClickListener {
-            vm.confirmRestore()
-            bottomSheetDialog.dismiss()
+        page.findViewById<Button>(R.id.okButton).setOnClickListener { vm.confirmRestore() }
+        page.findViewById<Button>(R.id.cancelButton).apply {
+            setText(if (vm.driveBackups.value != null) R.string.backup_back_to_copies else R.string.cancel)
+            setOnClickListener { vm.backFromRestore() }
         }
-
-        bottomSheetDialog.findViewById<Button>(R.id.cancelButton)!!.setOnClickListener {
-            vm.dismissRestorePreview()
-            bottomSheetDialog.dismiss()
-        }
-
-        bottomSheetDialog.setOnCancelListener {
-            if (!ownerActivity.isChangingConfigurations) vm.dismissRestorePreview()
-        }
-
-        bottomSheetDialog.show()
-        bottomSheetDialog.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+        showRestorePage(page)
     }
 
     private fun sourceTitle(source: SynchronizationViewModel.RestoreSource): Int = when (source) {
@@ -406,36 +418,44 @@ class SynchronizationFragment : Fragment() {
     }
 
     private fun openDriveCopiesSheet() {
-        val sheet = BottomSheetDialog(requireContext())
-        sheet.setContentView(R.layout.dialog_drive_backups)
-        sheet.findViewById<Button>(R.id.cancelButton)!!.setOnClickListener {
-            vm.dismissDriveBackups()
+        val page = driveCopiesPage ?: layoutInflater.inflate(R.layout.dialog_drive_backups, null).also {
+            it.findViewById<Button>(R.id.cancelButton).setOnClickListener { vm.dismissDriveBackups() }
+            driveCopiesPage = it
         }
-        val ownerActivity = requireActivity()
-        sheet.setOnCancelListener { if (!ownerActivity.isChangingConfigurations) vm.dismissDriveBackups() }
-        driveCopiesSheet = sheet
-        sheet.show()
-        sheet.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+        showRestorePage(page)
     }
 
     private fun renderDriveCopies() {
-        val sheet = driveCopiesSheet ?: return
+        val page = driveCopiesPage ?: return
         val copies = vm.driveBackups.value ?: return
         val loading = vm.isRestoring.value == true
-        sheet.findViewById<ProgressBar>(R.id.cloudCopiesProgress)?.visibility = if (loading) View.VISIBLE else View.GONE
-        sheet.findViewById<TextView>(R.id.cloudCopiesEmpty)?.visibility = if (!loading && copies.isEmpty()) View.VISIBLE else View.GONE
-        val list = sheet.findViewById<LinearLayout>(R.id.cloudBackupList) ?: return
-        list.removeAllViews()
-        copies.forEach { copy ->
-            val row = layoutInflater.inflate(R.layout.item_backup_choice, list, false)
-            row.findViewById<TextView>(R.id.copyTitle).setText(sourceTitle(copy.source))
-            row.findViewById<TextView>(R.id.copyDetails).text = copy.preview?.let(::previewDetails)
-                ?: getString(R.string.backup_copy_unreadable)
-            row.isEnabled = !loading && copy.preview != null
-            row.alpha = if (copy.preview != null) 1f else 0.6f
-            row.setOnClickListener { vm.chooseDriveBackup(copy) }
-            list.addView(row)
+        page.findViewById<ProgressBar>(R.id.cloudCopiesProgress).visibility = if (loading) View.VISIBLE else View.GONE
+        page.findViewById<TextView>(R.id.cloudCopiesEmpty).visibility = if (!loading && copies.isEmpty()) View.VISIBLE else View.GONE
+        val list = page.findViewById<LinearLayout>(R.id.cloudBackupList)
+        if (renderedDriveCopies !== copies) {
+            list.removeAllViews()
+            copies.forEach { copy ->
+                val row = layoutInflater.inflate(R.layout.item_backup_choice, list, false)
+                row.findViewById<TextView>(R.id.copyTitle).setText(sourceTitle(copy.source))
+                row.findViewById<TextView>(R.id.copyDetails).text = copy.preview?.let(::previewDetails)
+                    ?: getString(R.string.backup_copy_unreadable)
+                row.alpha = if (copy.preview != null) 1f else 0.6f
+                row.setOnClickListener { vm.chooseDriveBackup(copy) }
+                list.addView(row)
+            }
+            renderedDriveCopies = copies
         }
+        copies.forEachIndexed { index, copy -> list.getChildAt(index).isEnabled = !loading && copy.preview != null }
+    }
+
+    private fun dismissRestoreSheet() {
+        restoreDialog?.setOnCancelListener(null)
+        restoreDialog?.dismiss()
+        restoreDialog = null
+        restoreContent = null
+        driveCopiesPage = null
+        restorePreviewPage = null
+        renderedDriveCopies = null
     }
 
     private fun openLogOutDialog() {
@@ -467,13 +487,7 @@ class SynchronizationFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        restoreDialog?.setOnDismissListener(null)
-        restoreDialog?.setOnCancelListener(null)
-        restoreDialog?.dismiss()
-        restoreDialog = null
-        driveCopiesSheet?.setOnCancelListener(null)
-        driveCopiesSheet?.dismiss()
-        driveCopiesSheet = null
+        dismissRestoreSheet()
         saveDriveSheet?.dismiss()
         saveDriveSheet = null
         super.onDestroyView()

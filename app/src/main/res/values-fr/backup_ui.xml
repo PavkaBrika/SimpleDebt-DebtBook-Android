@@ -5,13 +5,13 @@
     <string name="backup_confirm_restore">Remplacer les données</string>
     <string name="backup_confirm_restore_title">Restaurer cette sauvegarde ?</string>
     <string name="backup_drive_choose">Choisir une sauvegarde Drive</string>
-    <string name="backup_drive_versions_hint">Drive conserve jusqu’à deux copies : la dernière et une précédente. Chaque enregistrement remplace la plus ancienne. Vous pourrez vérifier la copie avant de la restaurer.</string>
-    <string name="backup_drive_latest">Dernière sauvegarde enregistrée</string>
-    <string name="backup_drive_previous">Sauvegarde avant le dernier enregistrement</string>
+    <string name="backup_drive_versions_hint">Choisissez la dernière copie ou la précédente. Chaque enregistrement fait de la dernière copie la précédente, en remplaçant la plus ancienne. Appuyez sur une carte pour voir les détails.</string>
+    <string name="backup_drive_latest">Dernière copie</string>
+    <string name="backup_drive_previous">Copie précédente</string>
     <string name="backup_before_restore">Données avant la dernière restauration</string>
     <string name="backup_drive_empty">Aucune sauvegarde dans ce compte. Enregistrez d’abord une copie dans Google Drive.</string>
     <string name="backup_copy_unreadable">Cette sauvegarde est illisible et ne peut pas être restaurée.</string>
-    <string name="backup_drive_save_confirm">Compte : %1$s\n\nEnregistrer les données de ce téléphone dans Google Drive ? La dernière sauvegarde sera mise à jour. Une seule copie précédente est conservée ; la plus ancienne sera remplacée.\n\nLes données sur ce téléphone resteront inchangées.</string>
+    <string name="backup_drive_save_confirm">Compte : %1$s\n\nEnregistrer les données de ce téléphone dans Google Drive ? La nouvelle copie deviendra la dernière. Si une dernière copie existe déjà, elle deviendra la précédente et remplacera l’ancienne copie précédente.\n\nLes données de ce téléphone resteront inchangées.</string>
     <string name="backup_file_saved">Fichier de sauvegarde enregistré</string>
     <string name="backup_drive_saved">Sauvegarde enregistrée dans Google Drive</string>
     <string name="backup_records_restored">Données restaurées</string>
@@ -20,4 +20,5 @@
     <string name="backup_drive_retry">Réessayer la connexion</string>
     <string name="backup_drive_connection_failed">Connexion impossible. Appuyez pour réessayer.</string>
     <string name="backup_drive_save_hint">Mettre à jour la copie avec les données de ce téléphone. Une confirmation sera demandée.</string>
+    <string name="backup_back_to_copies">Retour aux copies</string>
 </resources>

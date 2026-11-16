@@ -5,13 +5,13 @@
     <string name="backup_confirm_restore">Replace records</string>
     <string name="backup_confirm_restore_title">Restore this backup?</string>
     <string name="backup_drive_choose">Choose a Drive backup</string>
-    <string name="backup_drive_versions_hint">Drive keeps up to two backups: the latest and one earlier backup. Each new save replaces the earlier one. Choosing a backup opens a preview first.</string>
-    <string name="backup_drive_latest">Latest saved backup</string>
-    <string name="backup_drive_previous">Backup before the last save</string>
+    <string name="backup_drive_versions_hint">Choose the latest or previous backup. Each new save makes the current latest backup the previous one, replacing the older previous backup. Tap a card to see backup details.</string>
+    <string name="backup_drive_latest">Latest backup</string>
+    <string name="backup_drive_previous">Previous backup</string>
     <string name="backup_before_restore">Records before the last restore</string>
     <string name="backup_drive_empty">No backups in this account yet. Save a backup to Google Drive first.</string>
     <string name="backup_copy_unreadable">This backup cannot be read. It cannot be used to restore records.</string>
-    <string name="backup_drive_save_confirm">Account: %1$s\n\nSave the records currently on this phone to Google Drive? This updates the latest backup. Only one earlier backup is kept; an older one will be replaced.\n\nRecords on this phone will stay as they are.</string>
+    <string name="backup_drive_save_confirm">Account: %1$s\n\nSave the records on this phone to Google Drive? The new backup will become the latest. If a latest backup already exists, it will become the previous backup and replace the older previous one.\n\nRecords on this phone will stay as they are.</string>
     <string name="backup_file_saved">Backup file saved</string>
     <string name="backup_drive_saved">Backup saved to Google Drive</string>
     <string name="backup_records_restored">Records restored</string>
@@ -20,4 +20,5 @@
     <string name="backup_drive_retry">Try connecting again</string>
     <string name="backup_drive_connection_failed">Could not connect. Tap to try again.</string>
     <string name="backup_drive_save_hint">Update the backup with this phone’s records. You will confirm before saving.</string>
+    <string name="backup_back_to_copies">Back to backups</string>
 </resources>

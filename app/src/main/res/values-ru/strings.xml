@@ -89,7 +89,7 @@
     <string name="this_function_will_restore_your_data_from_cloud">Выберите копию и проверьте дату и содержимое перед восстановлением.</string>
     <string name="restore_data">Восстановить из Google Drive</string>
     <string name="the_data_has_not_yet_been_synchronized">Копия в Google Drive ещё не сохранена</string>
-    <string name="recover_all_data_from_the_cloud_this_will_delete_the_current_application_data">Все текущие записи будут заменены данными из этой копии. Записи не объединяются.\n\nВернуть нынешние записи можно через «Отменить последнее восстановление» на этом телефоне — до следующего восстановления или удаления приложения. Чтобы сохранить их надолго, сначала сохраните файл.</string>
+    <string name="recover_all_data_from_the_cloud_this_will_delete_the_current_application_data">Записи в приложении будут заменены данными из этой копии.\n\nПриложение сохранит ваши текущие записи для отмены. Если захотите вернуть всё как было, выберите «Отменить последнее восстановление».\n\nПри следующем восстановлении записи для отмены будут заменены. При удалении приложения они тоже удалятся. Чтобы сохранить нынешние записи надолго, сначала сохраните их в файл.</string>
     <string name="do_you_really_want_to_log_out">Вы действительно хотите выйти?</string>
     <string name="last_synchronization">Последняя копия в Drive:</string>
     <string name="finances">Финансы</string>
@@ -179,7 +179,7 @@
     <string name="backup_export_file">Сохранить в файл</string>
     <string name="backup_import_file">Восстановить из файла</string>
     <string name="backup_restore_previous_local">Отменить последнее восстановление</string>
-    <string name="backup_restore_previous_cloud">Копия до последнего сохранения</string>
+    <string name="backup_restore_previous_cloud">Резервная копия</string>
     <string name="backup_operation_complete">Операция с резервной копией завершена</string>
     <string name="backup_unknown_date">Дата неизвестна</string>
     <string name="backup_preview">Создана: %1$s\nЗаписей: %2$d\nФото: %3$d</string>

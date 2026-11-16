@@ -133,7 +133,7 @@ class SynchronizationViewModel @Inject constructor(
 
     fun setIsAuthorized(isAuthorized: Boolean) {
         if (!isAuthorized) {
-            dismissDriveBackups()
+            // Downloaded copies belong to the open restore flow and survive reconnection.
             driveConnectionFailed.value = false
             driveReady.value = false
             _fileId.value = null
@@ -226,8 +226,10 @@ class SynchronizationViewModel @Inject constructor(
 
     fun chooseDriveBackup(backup: DriveBackup) {
         if (transferring() || driveBackups.value?.contains(backup) != true || backup.content == null) return
-        dismissDriveBackups()
-        prepareRestore(backup.source) { backup.content }
+        // The list already validated these bytes. Keep it for back navigation, without another read.
+        if (restorePreview.value != null) return
+        pendingRestore = backup.content
+        restorePreview.value = backup.preview
     }
 
     fun restoreFile(uri: Uri) = prepareRestore(RestoreSource.FILE, uri) {
@@ -274,9 +276,14 @@ class SynchronizationViewModel @Inject constructor(
 
     fun dismissRestorePreview() { pendingRestore = null; restorePreview.value = null }
 
+    fun backFromRestore() {
+        if (restorePreview.value != null) dismissRestorePreview() else dismissDriveBackups()
+    }
+
     fun confirmRestore() {
         if (transferring()) return
         val content = pendingRestore ?: return
+        dismissDriveBackups()
         dismissRestorePreview()
         _isRestoring.value = true
         _operationError.value = null

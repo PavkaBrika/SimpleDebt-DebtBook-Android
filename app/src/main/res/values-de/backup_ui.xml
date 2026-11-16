@@ -5,13 +5,13 @@
     <string name="backup_confirm_restore">Einträge ersetzen</string>
     <string name="backup_confirm_restore_title">Diese Sicherung wiederherstellen?</string>
     <string name="backup_drive_choose">Drive-Sicherung auswählen</string>
-    <string name="backup_drive_versions_hint">Drive behält bis zu zwei Sicherungen: die letzte und eine vorherige. Beim Speichern wird die ältere ersetzt. Nach der Auswahl können Sie die Sicherung zuerst prüfen.</string>
-    <string name="backup_drive_latest">Zuletzt gespeicherte Sicherung</string>
-    <string name="backup_drive_previous">Sicherung vor dem letzten Speichern</string>
+    <string name="backup_drive_versions_hint">Wählen Sie die letzte oder vorherige Sicherung. Beim Speichern wird die bisher letzte zur vorherigen Sicherung und ersetzt die ältere. Tippen Sie auf eine Karte, um Details zu sehen.</string>
+    <string name="backup_drive_latest">Letzte Sicherung</string>
+    <string name="backup_drive_previous">Vorherige Sicherung</string>
     <string name="backup_before_restore">Einträge vor der letzten Wiederherstellung</string>
     <string name="backup_drive_empty">In diesem Konto gibt es noch keine Sicherungen. Speichern Sie zuerst eine Sicherung in Google Drive.</string>
     <string name="backup_copy_unreadable">Diese Sicherung ist nicht lesbar und kann nicht wiederhergestellt werden.</string>
-    <string name="backup_drive_save_confirm">Konto: %1$s\n\nAktuelle Einträge dieses Telefons in Google Drive speichern? Die letzte Sicherung wird aktualisiert. Nur eine vorherige Sicherung bleibt erhalten; eine ältere wird ersetzt.\n\nDie Einträge auf diesem Telefon bleiben unverändert.</string>
+    <string name="backup_drive_save_confirm">Konto: %1$s\n\nAktuelle Einträge dieses Telefons in Google Drive speichern? Die neue Sicherung wird die letzte. Gibt es bereits eine letzte Sicherung, wird sie zur vorherigen und ersetzt die ältere vorherige Sicherung.\n\nDie Einträge auf diesem Telefon bleiben unverändert.</string>
     <string name="backup_file_saved">Sicherungsdatei gespeichert</string>
     <string name="backup_drive_saved">Sicherung in Google Drive gespeichert</string>
     <string name="backup_records_restored">Einträge wiederhergestellt</string>
@@ -20,4 +20,5 @@
     <string name="backup_drive_retry">Erneut verbinden</string>
     <string name="backup_drive_connection_failed">Verbindung fehlgeschlagen. Zum Wiederholen antippen.</string>
     <string name="backup_drive_save_hint">Sicherung mit den Einträgen dieses Telefons aktualisieren. Vor dem Speichern bestätigen Sie den Vorgang.</string>
+    <string name="backup_back_to_copies">Zur Sicherungsliste</string>
 </resources>

@@ -5,13 +5,13 @@
     <string name="backup_confirm_restore">Заменить записи</string>
     <string name="backup_confirm_restore_title">Восстановить эту копию?</string>
     <string name="backup_drive_choose">Выберите копию в Google Drive</string>
-    <string name="backup_drive_versions_hint">В Google Drive хранится до двух копий: последняя и одна предыдущая. При каждом сохранении более старая копия заменяется. После выбора можно проверить копию перед восстановлением.</string>
-    <string name="backup_drive_latest">Последняя сохранённая копия</string>
-    <string name="backup_drive_previous">Копия до последнего сохранения</string>
+    <string name="backup_drive_versions_hint">Здесь можно выбрать последнюю или резервную копию. При сохранении новая копия становится последней, а та, что была до неё, — резервной. Прежняя резервная копия заменяется. Нажмите на карточку, чтобы посмотреть сведения о копии.</string>
+    <string name="backup_drive_latest">Последняя копия</string>
+    <string name="backup_drive_previous">Резервная копия</string>
     <string name="backup_before_restore">Записи до последнего восстановления</string>
     <string name="backup_drive_empty">В этом аккаунте ещё нет копий. Сначала сохраните копию в Google Drive.</string>
     <string name="backup_copy_unreadable">Не удалось прочитать эту копию. Восстановить записи из неё нельзя.</string>
-    <string name="backup_drive_save_confirm">Аккаунт: %1$s\n\nСохранить текущие записи с этого телефона в Google Drive? Последняя копия обновится. Хранится только одна предыдущая копия — более старая будет заменена.\n\nЗаписи на телефоне останутся как есть.</string>
+    <string name="backup_drive_save_confirm">Аккаунт: %1$s\n\nСохранить текущие записи с этого телефона в Google Drive? Новая копия станет последней. Если последняя копия уже есть, она станет резервной и заменит прежнюю резервную копию.\n\nЗаписи на телефоне останутся как есть.</string>
     <string name="backup_file_saved">Файл с копией сохранён</string>
     <string name="backup_drive_saved">Копия сохранена в Google Drive</string>
     <string name="backup_records_restored">Записи восстановлены</string>
@@ -20,4 +20,5 @@
     <string name="backup_drive_retry">Повторить подключение</string>
     <string name="backup_drive_connection_failed">Не удалось подключиться. Нажмите, чтобы попробовать снова.</string>
     <string name="backup_drive_save_hint">Обновить копию записями с этого телефона. Перед сохранением будет подтверждение.</string>
+    <string name="backup_back_to_copies">К списку копий</string>
 </resources>

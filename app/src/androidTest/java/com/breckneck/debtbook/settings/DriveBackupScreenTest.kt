@@ -7,6 +7,7 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.matcher.RootMatchers.isDialog
@@ -61,13 +62,20 @@ class DriveBackupScreenTest {
     private class FakeDrive : BackupDrive {
         val files = linkedMapOf<String, String>()
         var writes = 0
+        var reads = 0
+        var queries = 0
         var pendingQuery: Task<FileList>? = null
         override fun createFile(name: String): Task<String> {
             writes++; files[name] = ""; return Tasks.forResult(name)
         }
-        override fun readFile(fileId: String?): Task<Pair<String, String>> = Tasks.forResult(fileId!! to files.getValue(fileId))
-        override fun queryFiles(fileName: String): Task<FileList> = pendingQuery ?: Tasks.forResult(FileList().setFiles(
-            if (files.containsKey(fileName)) listOf(com.google.api.services.drive.model.File().setId(fileName)) else emptyList()))
+        override fun readFile(fileId: String?): Task<Pair<String, String>> {
+            reads++; return Tasks.forResult(fileId!! to files.getValue(fileId))
+        }
+        override fun queryFiles(fileName: String): Task<FileList> {
+            queries++
+            return pendingQuery ?: Tasks.forResult(FileList().setFiles(
+                if (files.containsKey(fileName)) listOf(com.google.api.services.drive.model.File().setId(fileName)) else emptyList()))
+        }
         override fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?> {
             writes++; files[fileId!!] = content!!; return Tasks.forResult(null)
         }
@@ -118,15 +126,30 @@ class DriveBackupScreenTest {
         onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(scrollTo(), click())
         await { vm.restorePreview.value != null && vm.isRestoring.value == false }
         assertEquals(SynchronizationViewModel.RestoreSource.DRIVE_PREVIOUS, vm.restorePreview.value!!.source)
-        onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
+        val reads = drive.reads; val queries = drive.queries
+        val copies = vm.driveBackups.value
+        onView(withText(R.string.backup_back_to_copies)).inRoot(isDialog()).perform(click())
+        assertNull(vm.restorePreview.value)
+        assertSame("Back must retain the downloaded list", copies, vm.driveBackups.value)
         assertEquals(snapshot(990010), repo.getAllAppData())
-        onView(withId(R.id.restoreButtonLayout)).perform(scrollTo(), click())
-        await { vm.driveBackups.value?.size == 2 && vm.isRestoring.value == false }
+        onView(withText(R.string.backup_drive_latest)).inRoot(isDialog()).perform(scrollTo(), click())
+        await { vm.restorePreview.value != null }
+        // A system Back from details returns to the same list as the explicit action.
+        pressBack()
+        await { vm.restorePreview.value == null }
+        onView(withId(R.id.cancelButton)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
+        assertSame(copies, vm.driveBackups.value)
+        assertEquals(reads, drive.reads)
+        assertEquals(queries, drive.queries)
         onView(withText(R.string.backup_drive_latest)).inRoot(isDialog()).perform(scrollTo(), click())
         await { vm.restorePreview.value != null && vm.isRestoring.value == false }
         scenario.recreate()
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         assertNotNull("Downloaded preview must survive recreation", vm.restorePreview.value)
+        onView(withText(R.string.backup_back_to_copies)).inRoot(isDialog()).perform(click())
+        await { vm.restorePreview.value == null }
+        assertSame("List lost across Activity recreation", copies, vm.driveBackups.value)
+        onView(withText(R.string.backup_drive_latest)).inRoot(isDialog()).perform(scrollTo(), click())
         onView(withId(R.id.okButton)).inRoot(isDialog()).perform(click())
         await { vm.isRestoring.value == false && repo.getAllAppData() == latest }
         assertEquals(0, drive.writes)
@@ -169,6 +192,7 @@ class DriveBackupScreenTest {
         assertEquals(0, drive.writes)
         onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(scrollTo(), click())
         await { vm.restorePreview.value != null && vm.isRestoring.value == false }
+        onView(withText(R.string.backup_back_to_copies)).inRoot(isDialog()).perform(click())
         onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
         assertEquals(snapshot(990010), repo.getAllAppData())
     }
