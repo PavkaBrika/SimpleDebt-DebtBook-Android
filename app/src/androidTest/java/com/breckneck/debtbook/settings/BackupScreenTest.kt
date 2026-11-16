@@ -3,7 +3,7 @@ package com.breckneck.debtbook.settings
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
-import android.widget.Button
+import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
@@ -11,6 +11,9 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.scrollTo
+import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.ViewMatchers.isCompletelyDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.platform.app.InstrumentationRegistry
@@ -38,16 +41,24 @@ class BackupScreenTest {
         listOf(DebtDomain(id, sum.toBigDecimal(), id, null, "2026-11-15")),
         emptyList(), emptyList(), emptyList(), emptyList(),
     )
+    private fun capture(name: String) {
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        Thread.sleep(250)
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        File(context.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+    }
     @Test fun offlinePreviewCancelRecreateConfirmAndUndo() {
         val repo = AppDataRepositoryImpl(context); val original = repo.getAllAppData()
         val prefs = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
         val oldTheme = prefs.getString("app_theme", null)
         val dark = InstrumentationRegistry.getArguments().getString("r1bTheme") == "dark"
         prefs.edit().putString("app_theme", context.getString(if (dark) R.string.dark_theme else R.string.light_theme)).commit()
+        val oldRate = prefs.getInt("debts_quantity_for_app_rate_dialog_show", 0)
         val oldPin = prefs.getBoolean("pin_code_is_enabled", false)
         val oldAds = prefs.getBoolean("ads_disabled", false)
         val oldAuthorization = prefs.getBoolean("is_authorized", false)
-        prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true).putBoolean("is_authorized", false).commit()
+        prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true).putBoolean("is_authorized", false).putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         val a = snapshot(900025, "0.1"); val b = snapshot(900026, "999999999999999999.99")
         val file = File(context.cacheDir, "r1b-ui-import.json").apply { writeText(BackupCodec().encode(b)) }
         try {
@@ -62,13 +73,15 @@ class BackupScreenTest {
                 lateinit var vm: SynchronizationViewModel
                 scenario.onActivity { activity ->
                     val fragment = current(activity)
-                    assertTrue(fragment.requireView().findViewById<Button>(R.id.importBackupFileButton).isEnabled)
-                    assertTrue(fragment.requireView().findViewById<Button>(R.id.exportBackupFileButton).isEnabled)
+                    assertTrue(fragment.requireView().findViewById<View>(R.id.importBackupFileButton).isEnabled)
+                    assertTrue(fragment.requireView().findViewById<View>(R.id.exportBackupFileButton).isEnabled)
                     vm = ViewModelProvider(fragment)[SynchronizationViewModel::class.java]
                     vm.restoreFile(Uri.fromFile(file))
                 }
                 await { vm.restorePreview.value != null && vm.isRestoring.value == false }
                 assertEquals(a, repo.getAllAppData())
+                onView(withId(R.id.okButton)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
+                capture("fix-backup-preview.png")
                 onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
                 assertEquals(a, repo.getAllAppData())
                 scenario.onActivity { vm.restoreFile(Uri.fromFile(file)) }
@@ -86,7 +99,7 @@ class BackupScreenTest {
                     repo.getAllAppData().humanList.firstOrNull()?.id == 900026
                 }
                 scenario.onActivity { activity ->
-                    current(activity).requireView().findViewById<Button>(R.id.previousLocalBackupButton).performClick()
+                    current(activity).requireView().findViewById<View>(R.id.previousLocalBackupButton).performClick()
                 }
                 await { vm.restorePreview.value != null && vm.isRestoring.value == false }
                 onView(withId(R.id.okButton)).inRoot(isDialog()).perform(click())
@@ -98,7 +111,7 @@ class BackupScreenTest {
             }
         } finally {
             repo.replaceAllAppData(original); file.delete()
-            prefs.edit().putString("app_theme", oldTheme).putBoolean("pin_code_is_enabled", oldPin).putBoolean("ads_disabled", oldAds).putBoolean("is_authorized", oldAuthorization).commit()
+            prefs.edit().putString("app_theme", oldTheme).putBoolean("pin_code_is_enabled", oldPin).putBoolean("ads_disabled", oldAds).putBoolean("is_authorized", oldAuthorization).putInt("debts_quantity_for_app_rate_dialog_show", oldRate).commit()
         }
     }
 }

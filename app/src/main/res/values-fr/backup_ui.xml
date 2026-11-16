@@ -1,0 +1,23 @@
+<resources>
+    <string name="backup_export_hint">Choisissez un dossier et enregistrez un fichier avec vos données et photos des objectifs.</string>
+    <string name="backup_import_hint">Choisissez un fichier enregistré. Vous pourrez vérifier la copie avant de remplacer les données.</string>
+    <string name="backup_undo_hint">Retrouver les données présentes avant la dernière restauration sur ce téléphone.</string>
+    <string name="backup_confirm_restore">Remplacer les données</string>
+    <string name="backup_confirm_restore_title">Restaurer cette sauvegarde ?</string>
+    <string name="backup_drive_choose">Choisir une sauvegarde Drive</string>
+    <string name="backup_drive_versions_hint">Drive conserve jusqu’à deux copies : la dernière et une précédente. Chaque enregistrement remplace la plus ancienne. Vous pourrez vérifier la copie avant de la restaurer.</string>
+    <string name="backup_drive_latest">Dernière sauvegarde enregistrée</string>
+    <string name="backup_drive_previous">Sauvegarde avant le dernier enregistrement</string>
+    <string name="backup_before_restore">Données avant la dernière restauration</string>
+    <string name="backup_drive_empty">Aucune sauvegarde dans ce compte. Enregistrez d’abord une copie dans Google Drive.</string>
+    <string name="backup_copy_unreadable">Cette sauvegarde est illisible et ne peut pas être restaurée.</string>
+    <string name="backup_drive_save_confirm">Compte : %1$s\n\nEnregistrer les données de ce téléphone dans Google Drive ? La dernière sauvegarde sera mise à jour. Une seule copie précédente est conservée ; la plus ancienne sera remplacée.\n\nLes données sur ce téléphone resteront inchangées.</string>
+    <string name="backup_file_saved">Fichier de sauvegarde enregistré</string>
+    <string name="backup_drive_saved">Sauvegarde enregistrée dans Google Drive</string>
+    <string name="backup_records_restored">Données restaurées</string>
+    <string name="backup_wait">Veuillez attendre la fin de l’opération</string>
+    <string name="backup_drive_connecting">Connexion à Google Drive…</string>
+    <string name="backup_drive_retry">Réessayer la connexion</string>
+    <string name="backup_drive_connection_failed">Connexion impossible. Appuyez pour réessayer.</string>
+    <string name="backup_drive_save_hint">Mettre à jour la copie avec les données de ce téléphone. Une confirmation sera demandée.</string>
+</resources>

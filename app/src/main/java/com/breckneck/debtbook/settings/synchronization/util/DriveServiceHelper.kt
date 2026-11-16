@@ -14,12 +14,20 @@ import com.breckneck.debtbook.settings.synchronization.readTextBounded
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-class DriveServiceHelper(driveService: Drive) {
+/** Boundary shared by the backup UI and the Google Drive client. */
+interface BackupDrive {
+    fun createFile(name: String): Task<String>
+    fun readFile(fileId: String?): Task<Pair<String, String>>
+    fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?>
+    fun queryFiles(fileName: String): Task<FileList>
+}
+
+class DriveServiceHelper(driveService: Drive) : BackupDrive {
 
     private val mExecutor: Executor = Executors.newSingleThreadExecutor()
     private val mDriveService: Drive = driveService
 
-    fun createFile(name: String): Task<String> {
+    override fun createFile(name: String): Task<String> {
         val tcs = TaskCompletionSource<String>()
         mExecutor.execute {
             try {
@@ -37,7 +45,7 @@ class DriveServiceHelper(driveService: Drive) {
         return tcs.task
     }
 
-    fun readFile(fileId: String?): Task<Pair<String, String>> {
+    override fun readFile(fileId: String?): Task<Pair<String, String>> {
         val tcs = TaskCompletionSource<Pair<String, String>>()
         mExecutor.execute {
             try {
@@ -56,7 +64,7 @@ class DriveServiceHelper(driveService: Drive) {
         return tcs.task
     }
 
-    fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?> {
+    override fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?> {
         val tcs = TaskCompletionSource<Void?>()
         mExecutor.execute {
             try {
@@ -71,7 +79,7 @@ class DriveServiceHelper(driveService: Drive) {
         return tcs.task
     }
 
-    fun queryFiles(fileName: String): Task<FileList> {
+    override fun queryFiles(fileName: String): Task<FileList> {
         val tcs = TaskCompletionSource<FileList>()
         mExecutor.execute {
             try {
