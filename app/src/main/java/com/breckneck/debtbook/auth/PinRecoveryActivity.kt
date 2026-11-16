@@ -28,7 +28,9 @@ import com.breckneck.debtbook.auth.PinRecoveryViewModel.Error
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Step
 import com.breckneck.debtbook.auth.screen.ButtonsSection
 import com.breckneck.debtbook.auth.screen.PINCodeSection
+import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
 import com.breckneck.deptbook.domain.util.PINCodeEnterState
 import dagger.hilt.android.AndroidEntryPoint
@@ -124,23 +126,31 @@ class PinRecoveryActivity : AppCompatActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecoverySheet(state: PinRecoveryViewModel.State, onVerify: () -> Unit, onCancel: () -> Unit) {
-    ModalBottomSheet(
-        onDismissRequest = onCancel,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        modifier = Modifier.testTag("pinRecoverySheet")
-    ) {
+    val spacing = MaterialTheme.spacing
+    DebtBookBottomSheet(onDismiss = onCancel) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            Modifier.fillMaxWidth().testTag("pinRecoverySheet")
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = spacing.space24, vertical = spacing.space24)
         ) {
-            Text(stringResource(R.string.pin_recovery_title), style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.pin_recovery_message))
-            RecoveryError(state.error)
-            Button(onClick = onVerify, enabled = state.step != Step.VERIFYING, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.pin_recovery_verify), textAlign = TextAlign.Center)
+            Text(stringResource(R.string.pin_recovery_title), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(spacing.space12))
+            Text(stringResource(R.string.pin_recovery_message), style = MaterialTheme.typography.bodyMedium)
+            if (state.error != null) {
+                Spacer(Modifier.height(spacing.space12))
+                RecoveryError(state.error)
             }
-            TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                Text(stringResource(R.string.cancel))
+            Spacer(Modifier.height(spacing.space20))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing.space8, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+                Button(onClick = onVerify, enabled = state.step != Step.VERIFYING,
+                    modifier = Modifier.heightIn(min = spacing.space48)) {
+                    Text(stringResource(R.string.pin_recovery_verify), textAlign = TextAlign.Center)
+                }
             }
         }
     }
@@ -153,6 +163,7 @@ private fun RecoveryPinScreen(
     onBackspace: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val spacing = MaterialTheme.spacing
     Surface(Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
             // Short/landscape screens can scroll; on phones the keypad stays at the bottom.
@@ -163,22 +174,23 @@ private fun RecoveryPinScreen(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(
-                    Modifier.padding(horizontal = 24.dp, vertical = 24.dp),
+                    Modifier.padding(horizontal = spacing.space24, vertical = spacing.space24),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(spacing.space12)
                 ) {
                     Text(stringResource(if (state.step == Step.NEW_PIN) R.string.enter_new_pin else R.string.confirm_your_pin),
                         style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
                     RecoveryError(state.error)
                 }
-                PINCodeSection(Modifier.widthIn(max = 240.dp).fillMaxWidth().padding(vertical = 24.dp),
+                PINCodeSection(Modifier.widthIn(max = 240.dp).fillMaxWidth().padding(vertical = spacing.space24),
                     state.digits, PINCodeEnterState.FIRST)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    ButtonsSection(showFingerprintButton = false,
-                        onDigitButtonClick = onDigit, onBackspaceButtonClick = onBackspace)
-                    TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                    TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()
+                        .testTag("pinRecoveryCancel").padding(bottom = spacing.space8)) {
                         Text(stringResource(R.string.cancel))
                     }
+                    ButtonsSection(modifier = Modifier.testTag("pinRecoveryKeypad"), showFingerprintButton = false,
+                        onDigitButtonClick = onDigit, onBackspaceButtonClick = onBackspace)
                 }
             }
         }
@@ -193,6 +205,6 @@ private fun RecoveryError(error: Error?) {
             Error.CANCELLED -> R.string.pin_recovery_cancelled
             Error.MISMATCH -> R.string.pin_recovery_mismatch
             Error.SAVE_FAILED -> R.string.pin_save_failed_message
-        }), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        }), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
     }
 }

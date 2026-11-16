@@ -112,25 +112,43 @@ class PinRecoveryDeviceTest {
     private fun enterAppPin(pin: String) {
         pin.forEach { compose.onNodeWithText(it.toString()).performClick() }
     }
-    private fun capturePinLayout() {
+    private fun capturePinLayout(name: String = "fix-pin-layout.png") {
         // Screenshot only: production keeps FLAG_SECURE throughout this flow.
         lateinit var activity: PinRecoveryActivity
+        var windows = emptyList<Pair<android.view.View, android.view.WindowManager.LayoutParams>>()
         instrumentation.runOnMainSync {
             activity = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
                 .filterIsInstance<PinRecoveryActivity>().single()
             assertTrue(activity.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
+            // The sheet owns another window. Clear only this test process's windows for the screenshot.
+            val roots = if (android.os.Build.VERSION.SDK_INT >= 29)
+                android.view.inspector.WindowInspector.getGlobalWindowViews() else listOf(activity.window.decorView)
+            windows = roots.mapNotNull { root ->
+                val params = root.layoutParams as? android.view.WindowManager.LayoutParams ?: return@mapNotNull null
+                root to android.view.WindowManager.LayoutParams().also { it.copyFrom(params) }
+            }
             activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            windows.forEach { (root, original) ->
+                val params = android.view.WindowManager.LayoutParams().also { it.copyFrom(original) }
+                params.flags = params.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE.inv()
+                (root.context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager).updateViewLayout(root, params)
+            }
         }
         try {
             instrumentation.waitForIdleSync()
             Thread.sleep(150)
             val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return
-            File(context.getExternalFilesDir(null), "fix-pin-layout.png").outputStream().use {
+            File(context.getExternalFilesDir(null), name).outputStream().use {
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
             bitmap.recycle()
         } finally {
-            instrumentation.runOnMainSync { activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE) }
+            instrumentation.runOnMainSync {
+                windows.filter { it.first.isAttachedToWindow }.forEach { (root, params) ->
+                    (root.context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager).updateViewLayout(root, params)
+                }
+                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
         }
     }
 
@@ -146,6 +164,8 @@ class PinRecoveryDeviceTest {
             compose.onNodeWithText(context.getString(R.string.pin_recovery_title)).performClick()
             waitForText(R.string.pin_recovery_verify)
             compose.onNodeWithTag("pinRecoverySheet").assertIsDisplayed()
+            compose.onNodeWithText(context.getString(R.string.pin_recovery_verify)).assertIsDisplayed()
+            capturePinLayout("polish-pin-sheet.png")
             compose.onNodeWithText(context.getString(R.string.cancel)).performClick()
             waitForText(R.string.pin_recovery_title)
             assertUnchanged()
@@ -200,6 +220,9 @@ class PinRecoveryDeviceTest {
             for (i in keys.indices) for (j in 0 until i) {
                 assertFalse("PIN keys overlap", keys[i].overlaps(keys[j]))
             }
+            val cancel = compose.onNodeWithTag("pinRecoveryCancel").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            val keypad = compose.onNodeWithTag("pinRecoveryKeypad").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            assertTrue("Cancel must be above the entire keypad", cancel.bottom <= keypad.top)
             capturePinLayout()
             enterAppPin("5678")
             waitForText(R.string.confirm_your_pin)
