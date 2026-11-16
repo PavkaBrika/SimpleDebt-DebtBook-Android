@@ -10,6 +10,7 @@ import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.scrollTo
+import androidx.test.espresso.action.ViewActions.swipeUp
 import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.isCompletelyDisplayed
@@ -129,17 +130,32 @@ class DriveBackupScreenTest {
         capture("fix-drive-copies.png")
         assertEquals(snapshot(990010), repo.getAllAppData())
         assertEquals(0, drive.writes)
-        onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(scrollTo(), click())
+        onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(scrollTo())
+        var listScrollY = 0
+        onView(withId(R.id.cloudCopiesScroll)).inRoot(isDialog()).check { view, error ->
+            if (error != null) throw error
+            listScrollY = view.scrollY
+        }
+        onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(click())
         await { vm.restorePreview.value != null && vm.isRestoring.value == false }
         assertEquals(SynchronizationViewModel.RestoreSource.DRIVE_PREVIOUS, vm.restorePreview.value!!.source)
+        onView(withId(R.id.backupPreviewScroll)).inRoot(isDialog()).perform(swipeUp())
         val reads = drive.reads; val queries = drive.queries
         val copies = vm.driveBackups.value
         onView(withText(R.string.backup_back_to_copies)).inRoot(isDialog()).perform(click())
         assertNull(vm.restorePreview.value)
         assertSame("Back must retain the downloaded list", copies, vm.driveBackups.value)
+        onView(withId(R.id.cloudCopiesScroll)).inRoot(isDialog()).check { view, error ->
+            if (error != null) throw error
+            assertEquals("Returning to the list must keep its scroll position", listScrollY, view.scrollY)
+        }
         assertEquals(snapshot(990010), repo.getAllAppData())
         onView(withText(R.string.backup_drive_latest)).inRoot(isDialog()).perform(scrollTo(), click())
         await { vm.restorePreview.value != null }
+        onView(withId(R.id.backupPreviewScroll)).inRoot(isDialog()).check { view, error ->
+            if (error != null) throw error
+            assertEquals("Another backup must open with its date and source visible", 0, view.scrollY)
+        }
         // A system Back from details returns to the same list as the explicit action.
         pressBack()
         await { vm.restorePreview.value == null }

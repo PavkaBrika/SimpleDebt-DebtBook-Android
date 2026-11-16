@@ -386,6 +386,9 @@ class SynchronizationFragment : Fragment() {
             setText(if (vm.driveBackups.value != null) R.string.backup_back_to_copies else R.string.cancel)
             setOnClickListener { vm.backFromRestore() }
         }
+        if (restoreContent?.getChildAt(0) !== page) {
+            page.findViewById<View>(R.id.backupPreviewScroll).scrollTo(0, 0)
+        }
         showRestorePage(page)
     }
 
