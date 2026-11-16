@@ -75,7 +75,11 @@ class DebtDueDialogFragment : DialogFragment() {
             render()
         }
         content.findViewById<Button>(R.id.dueNotificationSettings).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, requireContext().packageName))
+            val settings = if (Build.VERSION.SDK_INT >= 26) {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, requireContext().packageName)
+            } else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.parse("package:${requireContext().packageName}"))
+            startActivity(settings)
         }
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { save() }

@@ -35,7 +35,7 @@ class DebtReminders private constructor(private val context: Context) {
 
     fun start() {
         channel()
-        executor.execute { db.invalidationTracker.addObserver(observer) }
+        executor.execute { safely { db.invalidationTracker.addObserver(observer) } }
         ReminderRestoreHook.afterRestore = { synchronized(this) { safely { reconcile(clear = true) } } }
         refresh()
     }
