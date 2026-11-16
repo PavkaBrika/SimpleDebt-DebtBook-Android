@@ -86,14 +86,14 @@ class PinRecoveryDeviceTest {
             runCatching { compose.onAllNodesWithText(context.getString(resource)).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
         }
     }
-    private fun credentialField(node: AccessibilityNodeInfo?): Boolean {
+    private fun credentialField(node: AccessibilityNodeInfo?, requireFocused: Boolean = false): Boolean {
         if (node == null) return false
-        if (node.isEditable && node.isPassword) return true
-        return (0 until node.childCount).any { credentialField(node.getChild(it)) }
+        if (node.isEditable && node.isPassword && (!requireFocused || node.isFocused)) return true
+        return (0 until node.childCount).any { credentialField(node.getChild(it), requireFocused) }
     }
-    private fun waitForSystemCredential() {
+    private fun waitForSystemCredential(requireFocused: Boolean = false) {
         val deadline = System.currentTimeMillis() + 15_000
-        while (!credentialField(instrumentation.uiAutomation.rootInActiveWindow)) {
+        while (!credentialField(instrumentation.uiAutomation.rootInActiveWindow, requireFocused)) {
             if (System.currentTimeMillis() > deadline) fail("Android device credential field did not appear")
             Thread.sleep(100)
         }
@@ -207,7 +207,7 @@ class PinRecoveryDeviceTest {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         run {
             openRecovery()
-            waitForSystemCredential()
+            waitForSystemCredential(requireFocused = true)
             assertUnchanged()
             shell("input text $pin")
             shell("input keyevent KEYCODE_ENTER")
