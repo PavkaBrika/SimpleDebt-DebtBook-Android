@@ -1,0 +1,100 @@
+package com.breckneck.debtbook.debt
+
+import android.content.Context
+import android.view.View
+import android.widget.EditText
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.NavHostFragment
+import androidx.recyclerview.widget.RecyclerView
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.platform.app.InstrumentationRegistry
+import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.debt.main.DebtViewModel
+import com.breckneck.deptbook.domain.model.AppDataLists
+import com.breckneck.deptbook.domain.model.HumanDomain
+import com.breckneck.deptbook.domain.util.ScreenState
+import org.junit.Assert.*
+import org.junit.Test
+import repository.AppDataRepositoryImpl
+import java.math.BigDecimal
+
+/** Run on a disposable AVD: temporarily replaces the database and restores it afterwards. */
+class DebtRefreshScreenTest {
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val repo = AppDataRepositoryImpl(context)
+    private val empty = AppDataLists(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+    private fun current(activity: MainActivity) =
+        (activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
+            .childFragmentManager.primaryNavigationFragment!!
+    private fun await(condition: () -> Boolean) {
+        val end = System.currentTimeMillis() + 15_000
+        while (!condition()) {
+            if (System.currentTimeMillis() > end) fail("Debt list did not refresh")
+            Thread.sleep(50)
+        }
+    }
+    @Test fun emptyListThenCreateThenReplaceThenEmptyRefreshWithoutRestart() {
+        val original = repo.getAllAppData()
+        val prefs = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
+        val pin = prefs.getBoolean("pin_code_is_enabled", false)
+        val ads = prefs.getBoolean("ads_disabled", false)
+        val rate = prefs.getInt("debts_quantity_for_app_rate_dialog_show", 0)
+        prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true)
+            .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
+        try {
+            repo.replaceAllAppData(empty)
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                lateinit var vm: DebtViewModel
+                scenario.onActivity { vm = ViewModelProvider(current(it))[DebtViewModel::class.java] }
+                await { vm.screenState.value == ScreenState.EMPTY }
+                scenario.onActivity { it.onAddButtonClick() }
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+                scenario.onActivity {
+                    val view = current(it).requireView()
+                    view.findViewById<EditText>(R.id.humanNameEditText).setText("Refresh test")
+                    view.findViewById<EditText>(R.id.debtSumEditText).setText("123.45")
+                    view.findViewById<View>(R.id.setFinanceButton).performClick()
+                }
+                await {
+                    var ready = false
+                    scenario.onActivity { ready = it.navController.currentDestination?.id == R.id.debtDetailsFragment }
+                    ready
+                }
+                scenario.onActivity { it.onBackButtonClick() }
+                await { vm.resultedHumanList.value?.singleOrNull()?.name == "Refresh test" && vm.screenState.value == ScreenState.SUCCESS }
+                scenario.onActivity {
+                    assertSame(vm, ViewModelProvider(current(it))[DebtViewModel::class.java])
+                    assertEquals(1, current(it).requireView().findViewById<RecyclerView>(R.id.humanRecyclerView).adapter!!.itemCount)
+                    it.navController.navigate(R.id.settingsFragment)
+                }
+                repo.replaceAllAppData(empty.copy(humanList = listOf(HumanDomain(990001, "Replaced data", BigDecimal.TEN, "EUR"))))
+                scenario.onActivity { it.onBackButtonClick() }
+                await { vm.resultedHumanList.value?.singleOrNull()?.name == "Replaced data" }
+                scenario.onActivity { it.navController.navigate(R.id.settingsFragment) }
+                repo.replaceAllAppData(empty)
+                scenario.onActivity { it.onBackButtonClick() }
+                await { vm.resultedHumanList.value?.isEmpty() == true && vm.screenState.value == ScreenState.EMPTY }
+                // A second refresh from EMPTY must not be swallowed by equal StateFlow values.
+                repo.replaceAllAppData(empty.copy(humanList = listOf(HumanDomain(990002, "After empty", BigDecimal.ONE, "EUR"))))
+                scenario.onActivity { vm.setListStateLoading() }
+                await { vm.resultedHumanList.value?.singleOrNull()?.name == "After empty" }
+                scenario.onActivity {
+                    vm.onStartSearch()
+                    vm.setSearchQuery("absent")
+                }
+                await { vm.resultedHumanList.value?.isEmpty() == true }
+                repo.replaceAllAppData(empty.copy(humanList = listOf(HumanDomain(990003, "Absent match", BigDecimal.ONE, "EUR"))))
+                scenario.onActivity { vm.setListStateLoading() }
+                await { vm.resultedHumanList.value?.singleOrNull()?.name == "Absent match" }
+                scenario.onActivity { vm.onStopSearch() }
+                assertEquals(1, vm.resultedHumanList.value!!.size)
+            }
+        } finally {
+            repo.replaceAllAppData(original)
+            prefs.edit().putBoolean("pin_code_is_enabled", pin).putBoolean("ads_disabled", ads)
+                .putInt("debts_quantity_for_app_rate_dialog_show", rate).commit()
+        }
+    }
+}

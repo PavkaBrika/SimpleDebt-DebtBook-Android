@@ -195,7 +195,7 @@ class DebtFragment : Fragment() {
 
             overallNegativeSumTextView.text = it.second
             if (it.second == "") {
-                overallNegativeSumTextView.textSize = 0F
+                overallNegativeSumTextView.visibility = View.GONE
             } else {
                 overallNegativeSumTextView.visibility = View.VISIBLE
                 overallNegativeSumTextView.text = it.second
@@ -231,30 +231,10 @@ class DebtFragment : Fragment() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-
-        //TODO THIS CODE IS UPDATING RECYCLER VIEW WITHOUT LAGGING AND GHOSTING BUT WITH SHOWING PROGRESS BAR AFTER CHANGING ORIENTATION
-//        Handler(Looper.getMainLooper()).postDelayed({
-//            vm.resultHumanList.observe(this) {
-//                if (it.isNotEmpty()) {
-//                    humanAdapter.updateHumansList(it)
-//                    Log.e(TAG, "data in adapter link success")
-//                    vm.setScreenState(ListState.RECEIVED)
-//                } else {
-//                    vm.setScreenState(ListState.EMPTY)
-//                }
-//            }
-//        }, 400)
-
-        //TODO THIS CODE IS UPDATING RECYCLER VIEW WITHOUT LAGGING BUT WITH GHOSTING OF PREVIOUS FRAGMENT
-//        vm.resultHumanList.observe(viewLifecycleOwner) {
-//            if (it.isNotEmpty()) {
-//                humanAdapter.updateHumansList(it)
-//                Log.e(TAG, "data in adapter link success")
-//                vm.onSetListState(ListState.FILLED)
-//            }
-//        }
+    override fun onStart() {
+        super.onStart()
+        // Also covers restores completed while this destination was on the back stack.
+        vm.setListStateLoading()
     }
 
     private fun showHumanSortDialog() {
