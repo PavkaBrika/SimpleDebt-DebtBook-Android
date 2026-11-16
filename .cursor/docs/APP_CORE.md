@@ -338,3 +338,7 @@ PIN изменяет `AuthorizationViewModel` после проверки; Setti
 `MainActivity` включает edge-to-edge и применяет systemBars/cutout/IME к rootLayout один раз; дочерние XML/Compose получают consumed insets. Manifest использует adjustResize, opt-out API35 удален, глобальное ограничение fontScale 1.2 снято. BottomNav не скрывается отложенным callback после уже выполненного возврата. `CustomSwitchView` не вызывает новый layout из onDraw. `DataModule` предоставляет singleton `DataTransaction → RoomDataTransaction`.
 
 Проверка R1a (14.11.2026): MainActivity применяет system bar/IME insets к корню, затем после layout прокручивает XML-форму к активному EditText. Это сохраняет видимость ввода при крупном шрифте; кнопки сохранения debt/finance не скрываются при сворачивании AppBar. CI также запускает lintDebug. Матрица и ограничения: `docs/r1a-verification-2026-11-14.md`.
+
+### R2.2 — уведомление и защищённый вход
+
+`App.onCreate` запускает `debt/reminders/DebtReminders`: Room invalidation сверяет единственное неточное RTC-напоминание на долг. `DebtReminderReceiver` обрабатывает доставку, BOOT_COMPLETED, TIMEZONE_CHANGED, TIME_SET и MY_PACKAGE_REPLACED. `ReminderEntryActivity` (не exported) проходит `ActivityAuthGate` до перехода CLEAR_TOP в Main; это сохраняет PIN и при уже открытом экране авторизации. Main повторно проверяет AuthSession, загружает актуальную запись/человека и передаёт `openDebtId` в историю. Extras не считаются подтверждением входа.

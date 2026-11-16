@@ -137,7 +137,7 @@ interface AppDao {
             require(RepaymentPolicy.remaining(previous.toDomain(), history.map { it.toDomain() }).signum() > 0)
             require(DebtReminderPolicy.trigger(requireNotNull(day), minute) > now) { "Reminder must be in the future" }
         }
-        val unchanged = previous.dueDay == day && previous.reminderMinute == minute && previous.reminderToken != null
+        val unchanged = previous.dueDay == day && previous.reminderMinute == minute && previous.reminderToken != null && !previous.reminderDelivered
         updateDebt(if (unchanged) next.copy(reminderToken = previous.reminderToken, reminderDelivered = previous.reminderDelivered) else next)
     }
 

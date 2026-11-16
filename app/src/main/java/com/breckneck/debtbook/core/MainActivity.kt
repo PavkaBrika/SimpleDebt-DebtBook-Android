@@ -2,6 +2,13 @@ package com.breckneck.debtbook.core
 
 
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.breckneck.debtbook.debt.reminders.DebtReminders
+import com.breckneck.debtbook.auth.AuthSession
+import database.AppDataBase
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -260,6 +267,54 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     override fun onStart() {
         super.onStart()
         authGate.onStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        DebtReminders.get(this).refresh()
+        openReminderWhenUnlocked()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) openReminderWhenUnlocked()
+    }
+
+    private var openingReminder = false
+    private fun openReminderWhenUnlocked() {
+        if (openingReminder || intent.action != DebtReminders.ACTION_OPEN) return
+        vm.getIsPINCodeEnabled()
+        if (!AuthSession.canAccess(vm.isPINCodeEnabled.value == true, SystemClock.elapsedRealtime(), vm.pinLockDelayMillis())) return
+        val requestedIntent = intent
+        val id = requestedIntent.getIntExtra(DebtReminders.EXTRA_DEBT, -1)
+        openingReminder = true
+        lifecycleScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val dao = AppDataBase(this@MainActivity).appDao()
+                    val row = dao.getAllDebts().firstOrNull { it.id == id && it.repaymentOfId == null }
+                    row?.let { dao.getHuman(it.idHuman) }
+                }
+                if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@launch
+                if (!AuthSession.canAccess(vm.isPINCodeEnabled.value == true, SystemClock.elapsedRealtime(), vm.pinLockDelayMillis())) return@launch
+                requestedIntent.action = null
+                requestedIntent.removeExtra(DebtReminders.EXTRA_DEBT)
+                if (result == null) Toast.makeText(this@MainActivity, R.string.due_missing, Toast.LENGTH_SHORT).show()
+                else {
+                    navController.popBackStack(R.id.mainFragment, false)
+                    navController.navigate(R.id.debtDetailsFragment, Bundle().apply {
+                        putInt("idHuman", result.id); putString("currency", result.currency)
+                        putString("name", result.name); putInt("openDebtId", id)
+                    })
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { Toast.makeText(this@MainActivity, R.string.repayment_save_failed, Toast.LENGTH_SHORT).show() }
+            finally {
+                openingReminder = false
+                if (intent !== requestedIntent && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) openReminderWhenUnlocked()
+            }
+        }
     }
 
     override fun onStop() {

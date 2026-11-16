@@ -116,3 +116,10 @@ bash ./gradlew :app:assembleDebug :domain:test :data:test :app:testDebugUnitTest
 При структурных изменениях обновлять соответствующий документ по `.cursor/rules/update-docs.mdc`. Актуальные критерии приемки и незавершенные проверки вести в плане надежности и роста.
 
 Восстановление PIN: внутренняя `auth/PinRecoveryActivity` (`exported=false`) вызывается из «Забыли PIN?»; новый PIN задаётся после системного подтверждения Android, без замены базы.
+
+### R2.2 — календарный срок и уведомления
+
+- Room 18, backup v4; чтение прежних v2/v3/legacy сохранено, старым долгам сроки не назначаются.
+- App использует Room runtime 2.8.4 для observation расписания. Manifest добавляет POST_NOTIFICATIONS и RECEIVE_BOOT_COMPLETED; exact-alarm permissions/foreground service не требуются.
+- Новая неэкспортируемая `debt.reminders.ReminderEntryActivity` → ActivityAuthGate → MainActivity → debtDetailsFragment (`openDebtId`). Неэкспортируемый receiver сверяет alarms после reboot/timezone/time/package replacement.
+- Не добавлены analytics, архив, покупка или новые Compose-экраны.

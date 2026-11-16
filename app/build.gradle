@@ -153,6 +153,7 @@ dependencies {
     //Clean Architecture
     implementation project(path: ':domain')
     implementation project(path: ':data')
+    implementation "androidx.room:room-runtime:2.8.4"
 
     //Navigation
     def nav_version = "2.9.7"

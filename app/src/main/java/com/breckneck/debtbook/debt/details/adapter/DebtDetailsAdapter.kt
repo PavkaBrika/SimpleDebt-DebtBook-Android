@@ -38,6 +38,7 @@ class DebtDetailsAdapter(
     }
 
     class DebtViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val due: TextView = itemView.findViewById(R.id.dueTextView)
         val debt: TextView = itemView.findViewById(R.id.debtTextView)
         val operation: TextView = itemView.findViewById(R.id.operationTextView)
         val remaining: TextView = itemView.findViewById(R.id.remainingTextView)
@@ -62,6 +63,19 @@ class DebtDetailsAdapter(
         val debtDomain = debtDomainList[position]
         holder.debtCardView.tag = debtDomain.id
         val context = holder.itemView.context
+        holder.due.visibility = if (debtDomain.repaymentOfId == null && debtDomain.dueDay != null) View.VISIBLE else View.GONE
+        debtDomain.dueDay?.let { day ->
+            val overdue = com.breckneck.deptbook.domain.util.DebtReminderPolicy.overdue(debtDomain, remaining(debtDomain))
+            holder.due.text = context.getString(if (overdue) R.string.due_overdue else if (day == com.breckneck.deptbook.domain.util.LedgerDate.today() && remaining(debtDomain).signum() > 0) R.string.due_today else R.string.due_date,
+                com.breckneck.deptbook.domain.util.LedgerDate.display(day)) + "\n" +
+                when {
+                    debtDomain.reminderDelivered -> context.getString(R.string.due_sent)
+                    debtDomain.reminderMinute != null -> context.getString(R.string.due_reminder_at,
+                        String.format(java.util.Locale.getDefault(), "%02d:%02d", debtDomain.reminderMinute!! / 60, debtDomain.reminderMinute!! % 60))
+                    else -> context.getString(R.string.due_off)
+                }
+            holder.due.setTextColor(if (overdue) holder.redColor else holder.operation.currentTextColor)
+        }
         holder.itemView.alpha = if (debtDomain.cancelled) 0.65f else 1f
         if (debtDomain.repaymentOfId == null) {
             holder.operation.text = context.getString(R.string.debt_record, debtDomain.id,

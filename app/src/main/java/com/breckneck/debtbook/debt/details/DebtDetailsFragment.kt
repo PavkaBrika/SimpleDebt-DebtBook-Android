@@ -257,6 +257,13 @@ class DebtDetailsFragment : Fragment() {
 
         vm.resultedDebtList.observe(viewLifecycleOwner) {
             debtDetailsAdapter.updateDebtList(it)
+            val requested = arguments?.getInt("openDebtId", -1) ?: -1
+            if (requested > 0 && savedInstanceState?.getBoolean("openedReminder") != true) {
+                vm.originalDebt(requested)?.let { debt ->
+                    arguments?.remove("openDebtId")
+                    showDebtSettings(debt, vm.humanCurrency.orEmpty(), vm.humanName.value.orEmpty())
+                }
+            }
             Log.e(TAG, "data in adapter link success")
         }
     }
@@ -332,6 +339,15 @@ class DebtDetailsFragment : Fragment() {
             repay.setOnClickListener {
                 dialog.dismiss()
                 vm.openRepayment(debtDomain)
+            }
+        }
+
+        dialog.findViewById<Button>(R.id.dueSettingsButton)!!.apply {
+            visibility = if (!isRepayment && debtDomain.sum.signum() != 0) View.VISIBLE else View.GONE
+            setOnClickListener {
+                dialog.dismiss()
+                if (childFragmentManager.findFragmentByTag(com.breckneck.debtbook.debt.reminders.DebtDueDialogFragment.TAG) == null)
+                    com.breckneck.debtbook.debt.reminders.DebtDueDialogFragment.create(debtDomain.id).show(childFragmentManager, com.breckneck.debtbook.debt.reminders.DebtDueDialogFragment.TAG)
             }
         }
 
@@ -603,6 +619,23 @@ class DebtDetailsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private val dayChanged = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) { vm.retry() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        vm.retry()
+        ContextCompat.registerReceiver(requireContext(), dayChanged, android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_DATE_CHANGED); addAction(Intent.ACTION_TIMEZONE_CHANGED); addAction(Intent.ACTION_TIME_CHANGED)
+        }, ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onPause() {
+        requireContext().unregisterReceiver(dayChanged)
+        super.onPause()
     }
 
     override fun onDestroyView() {
