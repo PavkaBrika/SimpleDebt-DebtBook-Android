@@ -4,6 +4,7 @@ import java.math.BigDecimal
 import com.breckneck.deptbook.domain.util.compareTo
 import com.breckneck.deptbook.domain.util.RepaymentPolicy
 import com.breckneck.deptbook.domain.util.MoneyPolicy
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 
 import androidx.room.*
 import entity.Debt
@@ -68,6 +69,7 @@ interface AppDao {
 
     @Transaction
     fun saveDebt(debt: Debt) {
+        DebtReminderPolicy.validate(debt.toDomain())
         val history = getAllDebts()
         if (debt.repaymentOfId != null) {
             val previous = history.firstOrNull { it.operationId == debt.operationId }
@@ -85,6 +87,13 @@ interface AppDao {
         val candidate = debt.toDomain().copy(id = if (debt.id == 0) Int.MIN_VALUE else debt.id)
         RepaymentPolicy.validate(history.map { it.toDomain() } + candidate)
         insertDebt(debt)
+        debt.repaymentOfId?.let { originalId ->
+            val rows = getAllDebts().map { it.toDomain() }
+            val original = getAllDebts().first { it.id == originalId }
+            if (RepaymentPolicy.remaining(original.toDomain(), rows).signum() == 0) {
+                updateDebt(original.copy(reminderMinute = null, reminderToken = null, reminderDelivered = false))
+            }
+        }
         addSum(debt.idHuman, BigDecimal.ZERO)
     }
 
@@ -96,7 +105,9 @@ interface AppDao {
             require(previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0) { "Debt has repayment history" }
         }
         debt.legacyDate = previous.legacyDate
-        updateDebt(debt)
+        // Ordinary amount/comment editing must preserve independently edited due settings.
+        updateDebt(debt.copy(dueDay = previous.dueDay, reminderMinute = previous.reminderMinute,
+            reminderToken = previous.reminderToken, reminderDelivered = previous.reminderDelivered))
         addSum(previous.idHuman, BigDecimal.ZERO)
         if (previous.idHuman != debt.idHuman) addSum(debt.idHuman, BigDecimal.ZERO)
     }
@@ -112,6 +123,22 @@ interface AppDao {
             deleteDebt(previous)
         }
         addSum(previous.idHuman, BigDecimal.ZERO)
+    }
+
+    @Transaction
+    fun setDebtDueDate(id: Int, day: String?, minute: Int?, token: String?, now: Long) {
+        val history = getAllDebts()
+        val previous = requireNotNull(history.firstOrNull { it.id == id })
+        require(previous.repaymentOfId == null && previous.sum.signum() != 0)
+        val next = previous.copy(dueDay = day, reminderMinute = minute,
+            reminderToken = token, reminderDelivered = false)
+        DebtReminderPolicy.validate(next.toDomain())
+        if (minute != null) {
+            require(RepaymentPolicy.remaining(previous.toDomain(), history.map { it.toDomain() }).signum() > 0)
+            require(DebtReminderPolicy.trigger(requireNotNull(day), minute) > now) { "Reminder must be in the future" }
+        }
+        val unchanged = previous.dueDay == day && previous.reminderMinute == minute && previous.reminderToken != null
+        updateDebt(if (unchanged) next.copy(reminderToken = previous.reminderToken, reminderDelivered = previous.reminderDelivered) else next)
     }
 
     //Debt

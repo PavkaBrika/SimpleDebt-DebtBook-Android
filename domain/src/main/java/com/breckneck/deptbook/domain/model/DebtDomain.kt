@@ -11,6 +11,10 @@ data class DebtDomain
      var legacyDate: String? = null,
      val repaymentOfId: Int? = null,
      val operationId: String? = null,
-     val cancelled: Boolean = false) {
+     val cancelled: Boolean = false,
+     val dueDay: String? = null,
+     val reminderMinute: Int? = null,
+     val reminderToken: String? = null,
+     val reminderDelivered: Boolean = false) {
     val effectiveSum: BigDecimal get() = if (cancelled) BigDecimal.ZERO else sum
 }

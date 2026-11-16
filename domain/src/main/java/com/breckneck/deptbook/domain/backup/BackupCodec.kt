@@ -5,6 +5,7 @@ import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.util.MoneyPolicy
 import com.breckneck.deptbook.domain.util.RepaymentPolicy
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.google.gson.*
 import java.math.BigDecimal
 import java.text.ParsePosition
@@ -53,13 +54,18 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         }
         val debts = payload.rows("debtList").map { row ->
             if (version < 3) require(listOf("repaymentOfId", "operationId", "cancelled").none { row.has(it) }) { "Repayment fields need backup v3" }
+            if (version < 4) require(listOf("dueDay", "reminderMinute", "reminderToken", "reminderDelivered").none { row.has(it) }) { "Reminder fields need backup v4" }
             val rawDate = row.string("date")
             DebtDomain(row.id(), row.money("sum", legacy), row.integer("idHuman"), row.optionalString("info"),
                 if (legacy) LedgerDate.canonical(rawDate) ?: rawDate else rawDate,
                 if (legacy) rawDate else row.optionalString("legacyDate"),
                 if (version >= 3 && row.has("repaymentOfId")) row.integer("repaymentOfId") else null,
                 if (version >= 3) row.optionalString("operationId") else null,
-                if (version >= 3) row.boolean("cancelled") else false)
+                if (version >= 3) row.boolean("cancelled") else false,
+                if (version >= 4) row.optionalDay("dueDay") else null,
+                if (version >= 4 && row.has("reminderMinute")) row.integer("reminderMinute") else null,
+                if (version >= 4) row.optionalString("reminderToken") else null,
+                if (version >= 4) row.boolean("reminderDelivered") else false)
         }
         val categories = payload.rows("financeCategoryList").map { row ->
             val color = row.string("color")
@@ -91,6 +97,7 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         val goalIds = unique(goals.map { it.id }); unique(deposits.map { it.id })
         require(debts.all { it.idHuman in humanIds } && finances.all { it.financeCategoryId in categoryIds } && deposits.all { it.goalId in goalIds }) { "Broken backup references" }
         RepaymentPolicy.validate(debts)
+        debts.forEach(DebtReminderPolicy::validate)
         val debtTotals = debts.groupBy { it.idHuman }.mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.effectiveSum } }
         val depositTotals = deposits.groupBy { it.goalId }.mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.sum } }
         humans.forEach {
@@ -213,7 +220,7 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         return Date(candidates.single())
     }
     companion object {
-        const val VERSION = 3
+        const val VERSION = 4
         const val FORMAT = "SimpleDebtBackup"
         const val MAX_CHARACTERS = 32 * 1024 * 1024
         const val MAX_PHOTO_CHARACTERS = 8 * 1024 * 1024

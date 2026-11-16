@@ -54,7 +54,15 @@ data class DebtDomain(
     var sum: BigDecimal,       // сумма (+ = дал, - = взял)
     var idHuman: Int,      // FK → HumanDomain.id
     var info: String?,     // описание
-    var date: String       // дата строкой
+    var date: String,      // дата операции ISO / неизвестная старая строка
+    var legacyDate: String? = null,
+    val repaymentOfId: Int? = null,
+    val operationId: String? = null,
+    val cancelled: Boolean = false,
+    val dueDay: String? = null,
+    val reminderMinute: Int? = null,
+    val reminderToken: String? = null,
+    val reminderDelivered: Boolean = false
 )
 ```
 
@@ -325,3 +333,7 @@ Getter/Setter пары для каждой настройки. Примеры:
 `backup/BackupCodec.kt`: версионированный JSON v2 (точные суммы строками, время epoch millis, дата/число записей/фото); строгая проверка структуры/дублей/ссылок/агрегатов, совместимый импорт старого плоского JSON. Старые даты без зоны требуют явно показанной пользователю интерпретации.
 
 `Finance.currency/calendarDay` и `Goal.goalDay` отделяют валюту/календарный день от старых Date-моментов. Вычисляемые presentationDate/presentationGoalDate используются только для UI; исходный epoch не переписывается. LedgerDate преобразует UTC-день Material DatePicker без сдвига зоны. Backup v2 сохраняет эти поля; старые JSON без валюты финансов получают явно показанную на preview текущую валюту.
+
+### R2.2 — срок и напоминание
+
+`util/DebtReminderPolicy.kt` валидирует срок исходного долга и время 0…1439, определяет просрочку по остатку, переводит местное время в instant текущей зоны и исключает доставленные/старые напоминания из перепланирования. `backup/BackupCodec.kt` пишет v4, читает legacy/v2/v3 без автоматических сроков; проверяет новые поля и отклоняет подмену версии. `RepaymentPolicy` остаётся источником остатка конкретного долга.

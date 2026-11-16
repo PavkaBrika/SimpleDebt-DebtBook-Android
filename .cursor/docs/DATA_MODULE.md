@@ -32,7 +32,7 @@ data/src/main/java/
 
 ### `AppDataBase` (`database/AppDataBase.kt`)
 
-- **Version**: 16
+- **Version**: 18
 - **Entities**: `Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`
 - **TypeConverters**: `Converters` (конвертация `Date` ↔ `Long`, `BigDecimal` ↔ десятичный `TEXT`)
 - **Singleton**: thread-safe через `synchronized` + `@Volatile`
@@ -192,3 +192,10 @@ Data-слой enum, зеркало `FinanceCategoryState` из domain. Испо�
 ### R1b — миграция 16
 
 `FinanceData.currency` закрепляет валюту за записью, `calendarDay` хранит новый выбранный день; `GoalData.goalDay` хранит календарный срок. 15→16 присваивает старым финансам действующую `finance_currency` из SharedPreferences, сохраняя суммы и моменты Date. День старого момента не угадывается: nullable metadata. Схема 16 экспортирована; forCurrency регистрирует полный путь миграций на каждом DB builder.
+
+### R2.1/R2.2 — возвраты и сроки, Room 18
+
+- `Debt`: nullable `repaymentOfId/operationId`, `cancelled=false` (16→17); nullable `dueDay/reminderMinute/reminderToken`, `reminderDelivered=false` (17→18). Старым строкам сроки не назначаются.
+- `AppDao.saveDebt/removeDebt`: транзакционные возвраты/отмена, баланс; полное погашение также выключает напоминание. `setDebtDueDate`: отдельное изменение срока/напоминания даже при наличии возвратов; проверяет остаток и будущее время. Обычный `reviseDebt` сохраняет срок.
+- `AppDataRepositoryImpl.replaceAllAppData`: после валидации выключает прошедшие/закрытые напоминания, атомарно заменяет данные; `database/ReminderRestoreHook.kt` вызывает зарегистрированную Android-сверку расписания после restore/undo.
+- Схемы 17/18 экспортированы; все builders регистрируют полный путь миграций. Контракт: `docs/r2-due-dates-reminders.md`.

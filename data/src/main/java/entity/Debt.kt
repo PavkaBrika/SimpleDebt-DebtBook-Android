@@ -19,8 +19,12 @@ data class Debt(
     var legacyDate: String? = null,
     val repaymentOfId: Int? = null,
     val operationId: String? = null,
-    @ColumnInfo(defaultValue = "0") val cancelled: Boolean = false) {
-    fun toDomain() = DebtDomain(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled)
+    @ColumnInfo(defaultValue = "0") val cancelled: Boolean = false,
+    val dueDay: String? = null,
+    val reminderMinute: Int? = null,
+    val reminderToken: String? = null,
+    @ColumnInfo(defaultValue = "0") val reminderDelivered: Boolean = false) {
+    fun toDomain() = DebtDomain(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled, dueDay, reminderMinute, reminderToken, reminderDelivered)
 }
 
-fun DebtDomain.toEntity() = Debt(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled)
+fun DebtDomain.toEntity() = Debt(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled, dueDay, reminderMinute, reminderToken, reminderDelivered)

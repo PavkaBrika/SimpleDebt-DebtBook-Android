@@ -60,7 +60,7 @@ class RepaymentPolicyTest {
         val data = snapshot(listOf(original, original.copy(id = 2, sum = BigDecimal("-20").stripTrailingZeros())))
         val root = JsonParser.parseString(codec.encode(data)).asJsonObject
         root.addProperty("formatVersion", 2)
-        root.getAsJsonObject("data").getAsJsonArray("debtList").forEach { it.asJsonObject.remove("cancelled") }
+        root.getAsJsonObject("data").getAsJsonArray("debtList").forEach { listOf("cancelled", "dueDay", "reminderMinute", "reminderToken", "reminderDelivered").forEach(it.asJsonObject::remove) }
         assertEquals(data, codec.decode(root.toString()).data)
         val linked = JsonParser.parseString(codec.encode(snapshot(listOf(original, payment(2, "-20"))))).asJsonObject
         linked.addProperty("formatVersion", 2)

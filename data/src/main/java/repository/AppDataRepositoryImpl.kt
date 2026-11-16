@@ -63,8 +63,13 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
             humans = appDataLists.humanList.map {
                 Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
             },
-            debts = appDataLists.debtList.map {
-                it.toEntity()
+            debts = appDataLists.debtList.map { debt ->
+                com.breckneck.deptbook.domain.util.DebtReminderPolicy.validate(debt)
+                val expired = debt.reminderMinute?.let { minute ->
+                    com.breckneck.deptbook.domain.util.DebtReminderPolicy.trigger(requireNotNull(debt.dueDay), minute) <= System.currentTimeMillis()
+                } ?: false
+                val closed = debt.repaymentOfId == null && com.breckneck.deptbook.domain.util.RepaymentPolicy.remaining(debt, appDataLists.debtList).signum() <= 0
+                (if (expired || closed) debt.copy(reminderMinute = null, reminderToken = null, reminderDelivered = false) else debt).toEntity()
             },
             financeCategories = appDataLists.financeCategoryList.map {
                 FinanceCategoryData(
@@ -88,5 +93,6 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
                 GoalDepositData(id = it.id, sum = it.sum, date = it.date, goalId = it.goalId)
             }
         )
+        database.ReminderRestoreHook.afterRestore?.invoke()
     }
 }
