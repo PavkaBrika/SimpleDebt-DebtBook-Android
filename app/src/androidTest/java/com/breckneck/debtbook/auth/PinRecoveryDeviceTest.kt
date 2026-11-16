@@ -10,6 +10,10 @@ import android.os.ParcelFileDescriptor
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
@@ -50,7 +54,8 @@ class PinRecoveryDeviceTest {
         originalFile = file.takeIf { it.exists() }?.readBytes()
         originalPrefs = prefs.all.toMap()
         prefs.edit().putBoolean("pin_code_is_enabled", true)
-            .putBoolean("fingerprint_auth_is_enabled", false).putBoolean("ads_disabled", true).commit()
+            .putBoolean("fingerprint_auth_is_enabled", false).putBoolean("ads_disabled", true)
+            .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         PinCodeStore(context).save("1234")
         AuthSession.lock()
     }
@@ -67,6 +72,8 @@ class PinRecoveryDeviceTest {
         listOf("pin_code_is_enabled", "fingerprint_auth_is_enabled", "ads_disabled").forEach { key ->
             if (key in originalPrefs) edit.putBoolean(key, originalPrefs[key] as Boolean) else edit.remove(key)
         }
+        val rateKey = "debts_quantity_for_app_rate_dialog_show"
+        if (rateKey in originalPrefs) edit.putInt(rateKey, originalPrefs[rateKey] as Int) else edit.remove(rateKey)
         edit.commit()
         AuthSession.lock()
     }
@@ -99,16 +106,50 @@ class PinRecoveryDeviceTest {
     private fun openRecovery() {
         compose.onNodeWithText(context.getString(R.string.pin_recovery_title)).performClick()
         waitForText(R.string.pin_recovery_verify)
+        compose.onNodeWithTag("pinRecoverySheet").assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.pin_recovery_verify)).performClick()
     }
     private fun enterAppPin(pin: String) {
         pin.forEach { compose.onNodeWithText(it.toString()).performClick() }
     }
+    private fun capturePinLayout() {
+        // Screenshot only: production keeps FLAG_SECURE throughout this flow.
+        lateinit var activity: PinRecoveryActivity
+        instrumentation.runOnMainSync {
+            activity = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                .filterIsInstance<PinRecoveryActivity>().single()
+            assertTrue(activity.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
+            activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        try {
+            instrumentation.waitForIdleSync()
+            Thread.sleep(150)
+            val bitmap = instrumentation.uiAutomation.takeScreenshot()
+            File(context.getExternalFilesDir(null), "fix-pin-layout.png").outputStream().use {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+            bitmap.recycle()
+        } finally {
+            instrumentation.runOnMainSync { activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE) }
+        }
+    }
+
     private fun assertUnchanged() {
         assertEquals("1234", file.inputStream().use { CryptoManager().decrypt(it).decodeToString() })
         assertEquals(fixture, repository.getAllAppData())
         assertTrue(prefs.getBoolean("pin_code_is_enabled", false))
         assertFalse(AuthSession.isUnlocked)
+    }
+
+    @Test fun recoverySheetCanBeDismissedWithoutChangingPinOrRecords() {
+        ActivityScenario.launch(AuthorizationActivity::class.java).use {
+            compose.onNodeWithText(context.getString(R.string.pin_recovery_title)).performClick()
+            waitForText(R.string.pin_recovery_verify)
+            compose.onNodeWithTag("pinRecoverySheet").assertIsDisplayed()
+            compose.onNodeWithText(context.getString(R.string.cancel)).performClick()
+            waitForText(R.string.pin_recovery_title)
+            assertUnchanged()
+        }
     }
 
     @Test fun recoveryActivityCannotBeStartedExternally() {
@@ -151,6 +192,15 @@ class PinRecoveryDeviceTest {
             shell("input text $pin")
             shell("input keyevent KEYCODE_ENTER")
             waitForText(R.string.enter_new_pin)
+            // Every key must be reachable without scrolling on a portrait phone.
+            val keys = ('0'..'9').map {
+                compose.onNode(hasText(it.toString()) and hasClickAction()).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            }
+            keys.forEach { key -> assertTrue("Key must retain a usable touch target: $key", key.height >= 48 * context.resources.displayMetrics.density) }
+            for (i in keys.indices) for (j in 0 until i) {
+                assertFalse("PIN keys overlap", keys[i].overlaps(keys[j]))
+            }
+            capturePinLayout()
             enterAppPin("5678")
             waitForText(R.string.confirm_your_pin)
             assertUnchanged()

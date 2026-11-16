@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Error
@@ -71,37 +72,15 @@ class PinRecoveryActivity : AppCompatActivity() {
                 }
             }
             DebtBookTheme {
-                Surface(Modifier.fillMaxSize()) {
-                    Column(Modifier.safeDrawingPadding().verticalScroll(rememberScrollState()).padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                        Text(stringResource(R.string.pin_recovery_title), style = MaterialTheme.typography.headlineSmall)
-                        Text(stringResource(when (state.step) {
-                            Step.NEW_PIN -> R.string.enter_new_pin
-                            Step.CONFIRM_PIN -> R.string.confirm_your_pin
-                            else -> R.string.pin_recovery_message
-                        }), textAlign = TextAlign.Center)
-                        state.error?.let { error ->
-                            Text(stringResource(when (error) {
-                                Error.UNAVAILABLE -> R.string.pin_recovery_unavailable
-                                Error.CANCELLED -> R.string.pin_recovery_cancelled
-                                Error.MISMATCH -> R.string.pin_recovery_mismatch
-                                Error.SAVE_FAILED -> R.string.pin_save_failed_message
-                            }), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-                        }
-                        if (state.step == Step.VERIFY_OWNER || state.step == Step.VERIFYING) {
-                            Button(onClick = ::verifyOwner, enabled = state.step != Step.VERIFYING) {
-                                Text(stringResource(R.string.pin_recovery_verify))
-                            }
-                        }
-                        if (state.step == Step.NEW_PIN || state.step == Step.CONFIRM_PIN) {
-                            PINCodeSection(Modifier.fillMaxWidth(0.6f), state.digits, PINCodeEnterState.FIRST)
-                            ButtonsSection(showFingerprintButton = false,
-                                onDigitButtonClick = { vm.enterDigit(it, PinCodeStore(this@PinRecoveryActivity)::save) },
-                                onBackspaceButtonClick = vm::backspace)
-                        }
-                        TextButton(onClick = { finish() }) { Text(stringResource(R.string.cancel)) }
-                    }
+                if (state.step == Step.NEW_PIN || state.step == Step.CONFIRM_PIN) {
+                    RecoveryPinScreen(
+                        state = state,
+                        onDigit = { vm.enterDigit(it, PinCodeStore(this@PinRecoveryActivity)::save) },
+                        onBackspace = vm::backspace,
+                        onCancel = { finish() }
+                    )
+                } else if (state.step != Step.FINISHED) {
+                    RecoverySheet(state, onVerify = ::verifyOwner, onCancel = { finish() })
                 }
             }
         }
@@ -139,5 +118,81 @@ class PinRecoveryActivity : AppCompatActivity() {
     override fun onStop() {
         if (!isChangingConfigurations) vm.onBackground()
         super.onStop()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecoverySheet(state: PinRecoveryViewModel.State, onVerify: () -> Unit, onCancel: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onCancel,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        modifier = Modifier.testTag("pinRecoverySheet")
+    ) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(stringResource(R.string.pin_recovery_title), style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.pin_recovery_message))
+            RecoveryError(state.error)
+            Button(onClick = onVerify, enabled = state.step != Step.VERIFYING, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.pin_recovery_verify), textAlign = TextAlign.Center)
+            }
+            TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecoveryPinScreen(
+    state: PinRecoveryViewModel.State,
+    onDigit: (String) -> Unit,
+    onBackspace: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Surface(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
+            // Short/landscape screens can scroll; on phones the keypad stays at the bottom.
+            Column(
+                Modifier.widthIn(max = 480.dp).fillMaxWidth()
+                    .verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(
+                    Modifier.padding(horizontal = 24.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(stringResource(if (state.step == Step.NEW_PIN) R.string.enter_new_pin else R.string.confirm_your_pin),
+                        style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                    RecoveryError(state.error)
+                }
+                PINCodeSection(Modifier.widthIn(max = 240.dp).fillMaxWidth().padding(vertical = 24.dp),
+                    state.digits, PINCodeEnterState.FIRST)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    ButtonsSection(showFingerprintButton = false,
+                        onDigitButtonClick = onDigit, onBackspaceButtonClick = onBackspace)
+                    TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecoveryError(error: Error?) {
+    error?.let {
+        Text(stringResource(when (it) {
+            Error.UNAVAILABLE -> R.string.pin_recovery_unavailable
+            Error.CANCELLED -> R.string.pin_recovery_cancelled
+            Error.MISMATCH -> R.string.pin_recovery_mismatch
+            Error.SAVE_FAILED -> R.string.pin_save_failed_message
+        }), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
     }
 }

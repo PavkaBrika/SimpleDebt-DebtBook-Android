@@ -1,10 +1,10 @@
 <resources>
     <string name="pin_recovery_title">Забыли PIN?</string>
-    <string name="pin_recovery_message">Подтвердите владельца средствами Android, затем задайте новый PIN приложения. Все записи сохранятся.</string>
+    <string name="pin_recovery_message">Подтвердите, что это вы, с помощью блокировки экрана телефона или отпечатка пальца. Затем задайте новый PIN приложения. Все записи сохранятся.</string>
     <string name="pin_unavailable">Не удалось прочитать сохранённый PIN. Используйте ранее включённый вход по отпечатку или откройте «Забыли PIN?». Ваши записи не удалены.</string>
     <string name="pin_save_failed_title">PIN не сохранён</string>
     <string name="pin_save_failed_message">Прежняя настройка PIN сохранена. Попробуйте ввести код ещё раз.</string>
-    <string name="pin_recovery_verify">Подтвердить владельца</string>
+    <string name="pin_recovery_verify">Продолжить</string>
     <string name="pin_recovery_system_description">Подтвердите, что это вы, чтобы задать новый PIN SimpleDebt без удаления записей.</string>
     <string name="pin_recovery_unavailable">Android не смог подтвердить владельца. На телефоне должна быть настроена блокировка экрана. PIN и записи не изменены.</string>
     <string name="pin_recovery_cancelled">Подтверждение отменено. PIN и записи не изменены.</string>

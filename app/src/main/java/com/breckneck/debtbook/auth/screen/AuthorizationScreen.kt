@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -440,7 +441,8 @@ fun DigitsButtonsRow(
             TextButton(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .heightIn(min = 56.dp),
                 shape = CircleShape,
                 onClick = { onDigitButtonClick(numbersList[i].toString()) }
             ) {
@@ -466,13 +468,14 @@ fun BottomButtonsSection(
 ) {
     Row(
         modifier = modifier
-            .height(48.dp)
+            .height(64.dp)
     ) {
         if (showFingerprintButton) {
             IconButton(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .heightIn(min = 56.dp),
                 onClick = onFingerprintButtonClick
             ) {
                 Icon(
@@ -492,7 +495,8 @@ fun BottomButtonsSection(
         TextButton(
             modifier = Modifier
                 .weight(1f)
-                .padding(4.dp),
+                .padding(4.dp)
+                    .heightIn(min = 56.dp),
             shape = CircleShape,
             onClick = {
                 onDigitButtonClick("0")
@@ -507,7 +511,8 @@ fun BottomButtonsSection(
         IconButton(
             modifier = Modifier
                 .weight(1f)
-                .padding(4.dp),
+                .padding(4.dp)
+                    .heightIn(min = 56.dp),
             onClick = onBackspaceButtonClick
         ) {
             Icon(
@@ -550,46 +555,47 @@ fun ButtonsSection(
     onBackspaceButtonClick: () -> Unit = {},
     showFingerprintButton: Boolean = true
 ) {
-    TopShadow(
-        modifier = Modifier.offset(y = 32.dp),
-        height = 40.dp,
-        alpha = 0.3f,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-    )
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Max),
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-    ) {
-        Column(
-            verticalArrangement = Arrangement.Bottom,
+    Box(modifier = modifier.fillMaxWidth()) {
+        TopShadow(
+            modifier = Modifier.offset(y = 32.dp),
+            height = 40.dp,
+            alpha = 0.3f,
+            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+        )
+        Surface(
             modifier = Modifier
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
-            DigitsButtonsRow(
-                modifier = Modifier,
-                numbersList = listOf(1, 2, 3),
-                onDigitButtonClick = onDigitButtonClick
-            )
-            DigitsButtonsRow(
-                modifier = Modifier,
-                numbersList = listOf(4, 5, 6),
-                onDigitButtonClick = onDigitButtonClick
-            )
-            DigitsButtonsRow(
-                modifier = Modifier,
-                numbersList = listOf(7, 8, 9),
-                onDigitButtonClick = onDigitButtonClick
-            )
-            BottomButtonsSection(
-                modifier = Modifier,
-                onFingerprintButtonClick = onFingerprintButtonClick,
-                onBackspaceButtonClick = onBackspaceButtonClick,
-                onDigitButtonClick = onDigitButtonClick,
-                showFingerprintButton = showFingerprintButton
-            )
+            Column(
+                verticalArrangement = Arrangement.Bottom,
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            ) {
+                DigitsButtonsRow(
+                    modifier = Modifier,
+                    numbersList = listOf(1, 2, 3),
+                    onDigitButtonClick = onDigitButtonClick
+                )
+                DigitsButtonsRow(
+                    modifier = Modifier,
+                    numbersList = listOf(4, 5, 6),
+                    onDigitButtonClick = onDigitButtonClick
+                )
+                DigitsButtonsRow(
+                    modifier = Modifier,
+                    numbersList = listOf(7, 8, 9),
+                    onDigitButtonClick = onDigitButtonClick
+                )
+                BottomButtonsSection(
+                    modifier = Modifier,
+                    onFingerprintButtonClick = onFingerprintButtonClick,
+                    onBackspaceButtonClick = onBackspaceButtonClick,
+                    onDigitButtonClick = onDigitButtonClick,
+                    showFingerprintButton = showFingerprintButton
+                )
+            }
         }
     }
 }

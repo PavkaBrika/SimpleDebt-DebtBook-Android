@@ -29,6 +29,7 @@
 
         <activity
             android:name=".auth.PinRecoveryActivity"
+            android:theme="@style/Theme.Debtbook.Recovery"
             android:exported="false" />
 
         <activity
