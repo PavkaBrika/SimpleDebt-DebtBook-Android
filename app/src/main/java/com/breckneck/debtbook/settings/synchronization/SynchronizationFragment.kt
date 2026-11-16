@@ -134,6 +134,7 @@ class SynchronizationFragment : Fragment() {
         val authorizationLayout: LinearLayout = view.findViewById(R.id.authorizationLayout)
         val accountLayout: LinearLayout = view.findViewById(R.id.accountLayout)
         vm.isAuthorized.observe(viewLifecycleOwner) { isAuthorized ->
+            view.findViewById<View>(R.id.logoutCard).visibility = if (isAuthorized) View.VISIBLE else View.GONE
             if (isAuthorized) {
                 authorizationLayout.visibility = View.GONE
                 accountLayout.visibility = View.VISIBLE

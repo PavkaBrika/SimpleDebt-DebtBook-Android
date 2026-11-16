@@ -83,6 +83,9 @@ class DriveBackupScreenTest {
     private fun withScreen(block: (ActivityScenario<MainActivity>, SynchronizationViewModel, FakeDrive) -> Unit) {
         val original = repo.getAllAppData()
         val prefs = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
+        val oldTheme = prefs.getString("app_theme", null)
+        val theme = InstrumentationRegistry.getArguments().getString("r1bTheme")
+        if (theme != null) prefs.edit().putString("app_theme", context.getString(if (theme == "dark") R.string.dark_theme else R.string.light_theme)).commit()
         val pin = prefs.getBoolean("pin_code_is_enabled", false)
         val ads = prefs.getBoolean("ads_disabled", false)
         val rate = prefs.getInt("debts_quantity_for_app_rate_dialog_show", 0)
@@ -109,13 +112,16 @@ class DriveBackupScreenTest {
             }
         } finally {
             repo.replaceAllAppData(original)
-            prefs.edit().putBoolean("pin_code_is_enabled", pin).putBoolean("ads_disabled", ads).putBoolean("is_authorized", auth).putInt("debts_quantity_for_app_rate_dialog_show", rate).commit()
+            prefs.edit().putString("app_theme", oldTheme).putBoolean("pin_code_is_enabled", pin).putBoolean("ads_disabled", ads).putBoolean("is_authorized", auth).putInt("debts_quantity_for_app_rate_dialog_show", rate).commit()
         }
     }
     @Test fun twoDatedCopiesPreviewCancelConfirmAndMainRefresh() = withScreen { scenario, vm, drive ->
         val latest = snapshot(990011); val previous = snapshot(990012)
         drive.files[SynchronizationViewModel.BACKUP_FILE_NAME] = BackupCodec().encode(latest)
         drive.files[SynchronizationViewModel.PREVIOUS_FILE_NAME] = BackupCodec().encode(previous)
+        capture("polish-backup-menu-top.png")
+        onView(withId(R.id.googleLogoutButtonLayout)).perform(scrollTo())
+        capture("polish-backup-menu-bottom.png")
         onView(withId(R.id.restoreButtonLayout)).perform(scrollTo(), click())
         await { vm.driveBackups.value?.size == 2 && vm.isRestoring.value == false }
         assertTrue(vm.driveBackups.value!!.all { it.preview?.createdAt != null })
