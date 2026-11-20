@@ -242,14 +242,10 @@ class GoalsFlowTest {
         awaitDestination(R.id.createGoalsFragment)
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performTextReplacement("20000")
-        if (keyboardVisible()) ordinaryBack(R.id.createGoalsFragment)
-        compose.waitUntil(10000) { !keyboardVisible() }
         node(R.string.goal_date_optional).performScrollTo().performClick()
         compose.waitUntil(10000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isNotEmpty() }
-        ordinaryBack(R.id.createGoalsFragment)
-        compose.waitUntil(10000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() }
-        if (keyboardVisible()) ordinaryBack(R.id.createGoalsFragment)
-        compose.waitUntil(10000) { !keyboardVisible() }
+        click(R.string.cancel)
+        compose.waitUntil(10000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() && !keyboardVisible() }
         swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalsComposeView, cancel = true, label = "new-goal")
         awaitDestination(R.id.createGoalsFragment)
         compose.onNodeWithText(initialName).assertIsDisplayed()
