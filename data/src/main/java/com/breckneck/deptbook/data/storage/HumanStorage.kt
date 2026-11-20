@@ -6,8 +6,6 @@ import entity.Human
 
 interface HumanStorage  {
 
-    fun getHumanById(id: Int): Human?
-
     fun getAllHumans() : List<Human>
 
     fun replaceAllHumans(humanList: List<Human>)

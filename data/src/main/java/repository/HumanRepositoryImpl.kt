@@ -9,13 +9,11 @@ import com.breckneck.deptbook.domain.repository.HumanRepository
 
 class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanRepository {
 
-    override fun getHumanById(id: Int): HumanDomain? = humanStorage.getHumanById(id)?.toDomain()
-
-    private fun Human.toDomain() = HumanDomain(id, name, sumDebt, currency, openingAdjustment)
-
     override fun getAllHumans(): List<HumanDomain> {
         val humanList: List<Human> = humanStorage.getAllHumans()
-        val humanDomainList: List<HumanDomain> = humanList.map { it.toDomain() }
+        val humanDomainList: List<HumanDomain> = humanList.map {
+            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+        }
         return humanDomainList
     }
 
@@ -28,13 +26,17 @@ class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanReposit
 
     override fun getPositiveHumans(): List<HumanDomain> {
         val humanList: List<Human> = humanStorage.getPositiveHumans()
-        val humanDomainList: List<HumanDomain> = humanList.map { it.toDomain() }
+        val humanDomainList: List<HumanDomain> = humanList.map {
+            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+        }
         return humanDomainList
     }
 
     override fun getNegativeHumans(): List<HumanDomain> {
         val humanList: List<Human> = humanStorage.getNegativeHumans()
-        val humanDomainList: List<HumanDomain> = humanList.map { it.toDomain() }
+        val humanDomainList: List<HumanDomain> = humanList.map {
+            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+        }
         return humanDomainList
     }
 

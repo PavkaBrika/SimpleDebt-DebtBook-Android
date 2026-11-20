@@ -52,7 +52,7 @@ import com.breckneck.deptbook.domain.usecase.GoalDeposit.SetGoalDeposit
 import com.breckneck.deptbook.domain.usecase.Human.AddSumUseCase
 import com.breckneck.deptbook.domain.usecase.Human.DeleteHumanUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetAllHumansUseCase
-import com.breckneck.deptbook.domain.usecase.Human.GetHumanByIdUseCase
+import com.breckneck.deptbook.domain.usecase.Human.GetHumanSumDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetLastHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Human.ReplaceAllHumans
 import com.breckneck.deptbook.domain.usecase.Human.SetHumanUseCase
@@ -116,8 +116,8 @@ object DomainModule {
         AddSumUseCase(humanRepository = humanRepository)
 
     @Provides
-    fun provideGetHumanByIdUseCase(humanRepository: HumanRepository) =
-        GetHumanByIdUseCase(humanRepository)
+    fun provideGetHumanSumDebtUseCase(humanRepository: HumanRepository) =
+        GetHumanSumDebtUseCase(humanRepository = humanRepository)
 
     @Provides
     fun provideDeleteHumanUseCase(humanRepository: HumanRepository) =
