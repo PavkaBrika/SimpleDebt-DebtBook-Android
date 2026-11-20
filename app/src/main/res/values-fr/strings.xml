@@ -77,7 +77,7 @@
     <string name="a11y_currency_picker">Devise, %1$s. Appuyez pour modifier</string>
     <string name="order_by_date">Date</string>
     <string name="loading">Chargement...</string>
-    <string name="synchronization">Sauvegarde / Restauration</string>
+    <string name="synchronization">Sauvegardes</string>
     <string name="authorize_to_avoid_losing_your_data">Sauvegardes Google Drive</string>
     <string name="authorization">Autorisation</string>
     <string name="account">Compte</string>

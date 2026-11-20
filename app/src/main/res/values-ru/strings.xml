@@ -77,7 +77,7 @@
     <string name="a11y_currency_picker">Валюта, %1$s. Нажмите, чтобы сменить</string>
     <string name="order_by_date">По дате</string>
     <string name="loading">Загрузка...</string>
-    <string name="synchronization">Резервная копия / Восстановление</string>
+    <string name="synchronization">Резервные копии</string>
     <string name="authorize_to_avoid_losing_your_data">Копии в Google Drive</string>
     <string name="authorization">Авторизация</string>
     <string name="account">Аккаунт</string>

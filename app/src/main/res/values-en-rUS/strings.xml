@@ -76,7 +76,7 @@
     <string name="a11y_currency_picker">Select currency, %1$s</string>
     <string name="order_by_date">Date</string>
     <string name="loading">Loading…</string>
-    <string name="synchronization">Backup / Restore</string>
+    <string name="synchronization">Backups</string>
     <string name="authorize_to_avoid_losing_your_data">Google Drive backup</string>
     <string name="authorization">Authorization</string>
     <string name="account">Account</string>
