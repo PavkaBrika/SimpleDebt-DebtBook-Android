@@ -190,6 +190,18 @@ class GoalsFlowTest {
         assertTrue(onMain { it.findViewById<android.view.View>(R.id.bottomNavigationView).isShown } == true)
     }
 
+    @Test fun keyboardKeepsEveryCharacterWhenMovingBetweenGoalFields() {
+        click(R.string.goal_new)
+        awaitDestination(R.id.createGoalsFragment)
+        textField(R.string.name).performClick()
+        compose.waitUntil(8000) { keyboardVisible() }
+        ParcelFileDescriptor.AutoCloseInputStream(
+            automation.executeShellCommand("input text CoverReviewTrip2026"),
+        ).use { it.readBytes() }
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_TAB)
+        compose.onNodeWithText("CoverReviewTrip2026").performScrollTo().assertIsDisplayed()
+    }
+
     @Test fun rotationPreservesFormDraftAndCurrency() {
         click(R.string.goal_new)
         awaitDestination(R.id.createGoalsFragment)
@@ -351,10 +363,17 @@ class GoalsFlowTest {
     }
     private fun awaitText(id: Int) = awaitGoal(context.getString(id))
     private fun awaitHistory() {
-        scrollToGoalContent(R.string.history)
-        awaitText(R.string.goal_withdrawal)
+        // A narrow viewport may only compose the heading. Scroll to the actual
+        // movement while waiting for the asynchronous history refresh.
+        compose.waitUntil(8000) {
+            try {
+                scrollToGoalContent(R.string.goal_withdrawal).assertIsDisplayed()
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
         scrollToGoalContent(R.string.goal_deposit).assertIsDisplayed()
-        scrollToGoalContent(R.string.goal_withdrawal).assertIsDisplayed()
     }
     private fun scrollToGoalContent(id: Int): SemanticsNodeInteraction =
         scrollToGoalContent(context.getString(id))

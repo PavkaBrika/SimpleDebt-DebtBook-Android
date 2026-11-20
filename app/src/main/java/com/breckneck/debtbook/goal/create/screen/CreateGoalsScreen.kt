@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallReceived
@@ -48,9 +50,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,7 +69,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -324,24 +323,22 @@ private fun GoalTextRow(
     onChange: (String) -> Unit,
 ) {
     val colors = bubbleColors()
-    // Keep selection and composing spans synchronous while Orbit records the draft.
-    var input by remember { mutableStateOf(TextFieldValue(value)) }
+    val input = rememberTextFieldState(initialText = value)
     BasicTextField(
-        value = input,
-        onValueChange = {
-            val changed = it.text != input.text
-            if (!changed || accepts(it.text)) {
-                input = it
-                if (changed) onChange(it.text)
+        state = input,
+        inputTransformation = {
+            val edited = asCharSequence().toString()
+            if (edited != originalText.toString()) {
+                if (accepts(edited)) onChange(edited) else revertAllChanges()
             }
         },
         modifier = Modifier.fillMaxWidth().semantics { if (errorMessage != null) error(errorMessage) },
         enabled = enabled,
-        singleLine = true,
+        lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions = keyboardOptions,
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.ink),
         cursorBrush = SolidColor(colors.ink),
-        decorationBox = { editor ->
+        decorator = { editor ->
             GoalFieldRow(icon, label) {
                 Box {
                     if (input.text.isEmpty()) Text(placeholder, color = colors.muted)
