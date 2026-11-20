@@ -1,9 +1,8 @@
 package com.breckneck.debtbook.finance.details.screen
 
-
 import android.content.res.Configuration
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleListRow
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.model.Finance
@@ -178,61 +178,57 @@ private fun FinanceRow(
     val formattedDate = remember(finance.presentationDate) { dateFormatter.format(finance.presentationDate) }
     val accessibilityDesc = "$formattedSum $currency, $formattedDate"
 
-    Row(
+    BubbleListRow(
         modifier = Modifier
-            .fillMaxWidth()
             .semantics(mergeDescendants = true) {
                 contentDescription = accessibilityDesc
                 role = Role.Button
             }
             .clickable { onClick() }
             .padding(horizontal = spacing.space16, vertical = spacing.space12),
-        verticalAlignment = Alignment.CenterVertically
+        spacing = spacing.space12,
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.space8)) {
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        },
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Row {
-                Text(
-                    text = formattedSum,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    modifier = Modifier.alignByBaseline()
-                )
-                Spacer(modifier = Modifier.width(spacing.space8))
-                Text(
-                    text = currency,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.alignByBaseline()
-                )
-            }
-            if (!finance.info.isNullOrEmpty()) {
-                Text(
-                    text = finance.info!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+        Row {
+            Text(
+                text = formattedSum,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                modifier = Modifier.alignByBaseline()
+            )
+            Spacer(modifier = Modifier.width(spacing.space8))
+            Text(
+                text = currency,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.alignByBaseline()
+            )
         }
-
-        Spacer(modifier = Modifier.width(spacing.space12))
-
-        Text(
-            text = formattedDate,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.width(spacing.space8))
-
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-            modifier = Modifier.size(16.dp)
-        )
+        if (!finance.info.isNullOrEmpty()) {
+            Text(
+                text = finance.info!!,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

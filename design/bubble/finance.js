@@ -36,7 +36,8 @@ flowViews.finance=f=>{
   const cats=ledger.categories.filter(c=>c.dir===f.financeDir&&totals.has(c.id)).sort((a,b)=>totals.get(b.id)-totals.get(a.id));
   const total=cats.reduce((s,c)=>s+totals.get(c.id),0);
   const body=heading('Финансы')+segment('finance-dir',directions,f.financeDir)+
-    '<section class="hero">'+coinArt()+'<div class="upper"><span class="eyebrow">'+f.financeDir+'</span><span class="unit-picker">'+picker('frame.financeCur',currencyCodes,f.financeCur,'Валюта финансов')+icon('down',13)+'</span></div><div class="hero-money">'+amount(total,f.financeCur)+'</div><div class="period-line">'+button('period-step','‹','-1','period-step')+button('period-pick',periodText(f,start,end),'','period-current','date')+button('period-step','›','1','period-step')+'</div></section>'+
+    balanceCard(f.financeDir, picker('frame.financeCur',currencyCodes,f.financeCur,'Валюта финансов'), amount(total,f.financeCur),
+      '<div class="period-line">'+button('period-step','‹','-1','period-step')+button('period-pick',periodText(f,start,end),'','period-current','date')+button('period-step','›','1','period-step')+'</div>')+
     titleRow('Категории',f.period)+(cats.length?'<div class="people">'+cats.map(c=>`<button class="person-row" data-act="category-view" data-value="${c.id}">${badge(c)}<span class="person-text"><strong>${escapeHtml(c.name)}</strong><small>${Math.round(totals.get(c.id)/total*100)}% от суммы</small></span><span class="money">${amount(totals.get(c.id),f.financeCur)}</span>${icon('chevron',14)}</button>`).join('')+'</div>':empty('За этот период записей нет.'))+
     (f.day===TODAY?'':button('period-today','К текущей дате','','chip spaced','date'));
   return layout(body,primary('record-new',f.financeDir==='Расходы'?'Добавить расход':'Добавить доход','plus'),nav('finance'));

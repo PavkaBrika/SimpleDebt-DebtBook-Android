@@ -130,7 +130,10 @@ function home(f) {
   const plus=balances.reduce((s,v)=>s+Math.max(0,v),0),minus=balances.reduce((s,v)=>s+Math.max(0,-v),0);
   const chips=[['all','Все'],['positive','Мне должны'],['negative','Я должен']];
   const html=heading('Долги',iconButton('search',f.search?'Закрыть поиск':'Найти человека',f.search?'close':'search'))+
-    '<section class="hero">'+coinArt()+'<div class="upper"><span class="eyebrow">Общий баланс</span><span class="unit-picker"><select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([prefs.first,prefs.second,...people.map(p=>p.cur),f.cur])],f.cur)+'</select>'+icon('down',13)+'</span></div><div class="hero-money">'+amount(plus-minus,f.cur,true)+'</div><div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+amount(plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+amount(minus,f.cur)+'</strong></div></div></section>'+
+    balanceCard('Общий баланс',
+      '<select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([prefs.first,prefs.second,...people.map(p=>p.cur),f.cur])],f.cur)+'</select>',
+      amount(plus-minus,f.cur,true),
+      '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+amount(plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+amount(minus,f.cur)+'</strong></div></div>')+
     '<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
     (f.search?'<input class="search-field" data-bind="query" aria-label="Имя человека" placeholder="Найти по имени" value="'+escapeHtml(f.query)+'">':'')+
     '<div class="people">'+peopleList(f)+'</div>';
@@ -178,7 +181,7 @@ function input(bind,value,placeholder='',type='text',extra='') {
 }
 function amountField(bind,value,cur,choose=true) {
   const currency=choose?'<select class="currency" aria-label="Валюта долга" data-bind="d.cur">'+options(Object.keys(currencySigns),cur)+'</select>':'<strong>'+cur+'</strong>';
-  return '<div class="amount-field"><span class="eyebrow">Сумма</span><div class="amount-line"><input inputmode="decimal" data-bind="'+bind+'" aria-label="Сумма" placeholder="0" value="'+escapeHtml(value)+'">'+currency+'</div></div>';
+  return amountFieldLayout('<input inputmode="decimal" data-bind="'+bind+'" aria-label="Сумма" placeholder="0" value="'+escapeHtml(value)+'">', currency);
 }
 function scheduleFields(obj,prefix,outstanding=true) {
   return '<div class="group">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+

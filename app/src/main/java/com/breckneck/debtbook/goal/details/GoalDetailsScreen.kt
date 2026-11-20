@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,8 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -51,6 +48,8 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
 import com.breckneck.debtbook.core.ui.components.BubbleIconButton
+import com.breckneck.debtbook.core.ui.components.BubbleListRow
+import com.breckneck.debtbook.core.ui.components.BubbleSectionTitle
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.components.BubbleValueRow
 import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
@@ -156,12 +155,7 @@ private fun GoalDetailsContent(
                 }
             }
             item {
-                Text(
-                    stringResource(R.string.history),
-                    Modifier.padding(top = 16.dp, bottom = 8.dp).semantics { heading() },
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                )
+                BubbleSectionTitle(stringResource(R.string.history), Modifier.padding(top = 16.dp, bottom = 8.dp))
             }
             if (state.loadFailed) {
                 item {
@@ -228,29 +222,29 @@ private fun GoalHistoryRow(row: GoalMovement, first: Boolean, last: Boolean) {
         shape = RoundedCornerShape(top, top, bottom, bottom),
     ) {
         Column {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    if (row.isDeposit) Icons.AutoMirrored.Outlined.CallReceived else Icons.AutoMirrored.Outlined.CallMade,
-                    null,
-                    Modifier.size(36.dp).background(colors.mint, CircleShape).padding(10.dp),
-                    tint = colors.onMint,
-                )
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(if (row.isDeposit) R.string.goal_deposit else R.string.goal_withdrawal),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+            BubbleListRow(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                leading = {
+                    Icon(
+                        if (row.isDeposit) Icons.AutoMirrored.Outlined.CallReceived else Icons.AutoMirrored.Outlined.CallMade,
+                        null,
+                        Modifier.size(36.dp).background(colors.mint, CircleShape).padding(10.dp),
+                        tint = colors.onMint,
                     )
-                    Text(row.date, style = MaterialTheme.typography.bodySmall, color = colors.muted)
-                    if (largeText) GoalMovementAmount(row)
-                }
-                if (!largeText) {
-                    Column(Modifier.weight(0.9f), horizontalAlignment = Alignment.End) { GoalMovementAmount(row) }
-                }
+                },
+                trailing = {
+                    if (!largeText) {
+                        Column(Modifier.weight(0.9f), horizontalAlignment = Alignment.End) { GoalMovementAmount(row) }
+                    }
+                },
+            ) {
+                Text(
+                    stringResource(if (row.isDeposit) R.string.goal_deposit else R.string.goal_withdrawal),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(row.date, style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                if (largeText) GoalMovementAmount(row)
             }
             if (!last) HorizontalDivider(color = colors.border)
         }

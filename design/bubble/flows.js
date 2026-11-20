@@ -31,8 +31,14 @@ function rowAction(action,label,value='',detail='',symbol='chevron') {
 function segment(action, options, current) {
   return '<div class="segment">'+options.map(option=>button(action,option,option,current===option?'active':'')).join('')+'</div>';
 }
+function amountFieldLayout(inputHtml, currencyHtml) {
+  return '<div class="amount-field"><span class="eyebrow">Сумма</span><div class="amount-line">'+inputHtml+currencyHtml+'</div></div>';
+}
+function balanceCard(title, currencyPicker, total, footer) {
+  return '<section class="hero">'+coinArt()+'<div class="upper"><span class="eyebrow">'+escapeHtml(title)+'</span><span class="unit-picker">'+currencyPicker+icon('down',13)+'</span></div><div class="hero-money">'+escapeHtml(total)+'</div>'+footer+'</section>';
+}
 function editAmount(scope,value,cur) {
-  return '<div class="amount-field"><span class="eyebrow">Сумма</span><div class="amount-line">'+entry(scope,value,'text','inputmode="decimal" aria-label="Сумма" placeholder="0"')+'<strong>'+escapeHtml(cur)+'</strong></div></div>';
+  return amountFieldLayout(entry(scope,value,'text','inputmode="decimal" aria-label="Сумма" placeholder="0"'), '<strong>'+escapeHtml(cur)+'</strong>');
 }
 function showDialog(i,title,content,b,submit=null,cta='Сохранить',fields={}) {
   openSheet(i,{kind:'flow',title,content,submit,cta,...fields},b);

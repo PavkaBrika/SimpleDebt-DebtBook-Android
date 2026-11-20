@@ -15,6 +15,10 @@ internal data class BubbleColors(
     val onAction: Color,
     val danger: Color,
     val selectedTab: Color,
+    val hero: Color,
+    val onHero: Color,
+    val heroMuted: Color,
+    val heroBorder: Color,
 )
 
 private val lightBubble = BubbleColors(
@@ -29,6 +33,10 @@ private val lightBubble = BubbleColors(
     onAction = Color(0xFFF6F9DF),
     danger = Color(0xFF984834),
     selectedTab = Color(0xFFD6EDB4),
+    hero = Color(0xFF164837),
+    onHero = Color(0xFFFCFFEB),
+    heroMuted = Color(0xFFC1D6BD),
+    heroBorder = Color(0xFF47735C),
 )
 
 private val darkBubble = BubbleColors(
@@ -43,6 +51,10 @@ private val darkBubble = BubbleColors(
     onAction = Color(0xFF18321D),
     danger = Color(0xFFF4B29B),
     selectedTab = Color(0xFFC5E8AC),
+    hero = Color(0xFF123D30),
+    onHero = Color(0xFFFCFFEB),
+    heroMuted = Color(0xFFC4D6B9),
+    heroBorder = Color(0xFF456953),
 )
 
 @Composable
