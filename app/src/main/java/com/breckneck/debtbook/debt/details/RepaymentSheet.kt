@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
+import com.breckneck.debtbook.core.ui.components.DebtBookOutlinedAction
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DecimalInput
@@ -90,10 +93,13 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
                     keyboardActions = KeyboardActions(onDone = { if (ready) vm.saveRepayment() })
                 )
                 if (remaining.signum() > 0) {
-                    TextButton(onClick = { vm.changeRepaymentAmount(rest) }, enabled = ready,
-                        modifier = Modifier.testTag("repaymentFullButton")) {
-                        Text(stringResource(R.string.repayment_full))
-                    }
+                    DebtBookOutlinedAction(
+                        label = stringResource(R.string.repayment_full),
+                        icon = Icons.Outlined.Calculate,
+                        onClick = { vm.changeRepaymentAmount(rest) },
+                        enabled = ready,
+                        modifier = Modifier.fillMaxWidth().testTag("repaymentFullButton")
+                    )
                 }
             }
             errorText?.let {

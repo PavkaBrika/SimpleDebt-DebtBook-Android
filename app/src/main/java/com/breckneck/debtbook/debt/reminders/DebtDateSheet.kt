@@ -10,13 +10,13 @@ import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -24,9 +24,7 @@ import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SelectableDates
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -44,13 +42,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
+import com.breckneck.debtbook.core.ui.components.DebtBookSwitchRow
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -140,28 +138,24 @@ internal fun DebtDateSheet(
                     colors = DatePickerDefaults.colors(containerColor = Color.Transparent)
                 )
             }
-            if (showReminder) {
+            AnimatedVisibility(visible = showReminder) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = spacing.space24)) {
-                    OutlinedCard(Modifier.fillMaxWidth()) {
-                        Row(
-                            Modifier.fillMaxWidth().testTag("dueReminderSwitch")
-                                .toggleable(value = enabled, enabled = !busy, role = Role.Switch) { checked ->
-                                    allowed = reminders.allowed()
-                                    enabled = checked && allowed
-                                    if (checked && !allowed && Build.VERSION.SDK_INT >= 33 &&
-                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                                        PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                }.padding(horizontal = spacing.space16, vertical = spacing.space8),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(spacing.space8)
-                        ) {
-                            Text(stringResource(R.string.due_enable), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                            Switch(checked = enabled, onCheckedChange = null, enabled = !busy)
+                    DebtBookSwitchRow(
+                        label = stringResource(R.string.due_enable),
+                        checked = enabled,
+                        modifier = Modifier.testTag("dueReminderSwitch"),
+                        enabled = !busy && showReminder,
+                        onCheckedChange = { checked ->
+                            allowed = reminders.allowed()
+                            enabled = checked && allowed
+                            if (checked && !allowed && Build.VERSION.SDK_INT >= 33 &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                PackageManager.PERMISSION_GRANTED
+                            ) {
+                                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
                         }
-                    }
+                    )
                     if (!allowed) {
                         Text(
                             stringResource(R.string.due_permission_denied),
