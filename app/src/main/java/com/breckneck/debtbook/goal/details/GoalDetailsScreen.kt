@@ -3,6 +3,7 @@ package com.breckneck.debtbook.goal.details
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,10 +21,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallMade
 import androidx.compose.material.icons.automirrored.outlined.CallReceived
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -32,6 +37,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -49,7 +57,7 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.model.GoalUi
 import com.breckneck.debtbook.goal.main.screen.GoalAdjustmentSheet
 import com.breckneck.debtbook.goal.main.screen.GoalBalanceCard
-import com.breckneck.debtbook.goal.ui.DeleteGoalDialog
+import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
 import com.breckneck.debtbook.goal.ui.GoalButton
 import com.breckneck.debtbook.goal.ui.GoalHeader
 import org.orbitmvi.orbit.compose.collectAsState
@@ -79,7 +87,7 @@ internal fun GoalDetailsScreen(vm: GoalDetailsViewModel, onBack: () -> Unit) {
         )
     }
     state.deletion?.let {
-        DeleteGoalDialog(
+        DeleteGoalSheet(
             name = goal.name,
             isDeleting = it.isDeleting,
             failed = it.failed,
@@ -107,7 +115,11 @@ private fun GoalDetailsContent(
         containerColor = colors.background,
         contentColor = colors.ink,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = { GoalHeader(goal.name, onBack, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) },
+        topBar = {
+            GoalHeader(goal.name, onBack, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                GoalActionsMenu(goal.isReached, onEdit, onDelete)
+            }
+        },
     ) { insets ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(insets),
@@ -173,23 +185,42 @@ private fun GoalDetailsContent(
             itemsIndexed(state.history, key = { _, row -> row.id }) { index, row ->
                 GoalHistoryRow(row, first = index == 0, last = index == state.history.lastIndex)
             }
-            if (!goal.isReached) {
-                item {
-                    GoalButton(
-                        onClick = onEdit,
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                        colors = secondaryColors,
-                    ) {
-                        Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp))
-                        Text(stringResource(R.string.goal_edit), Modifier.padding(start = 6.dp))
-                    }
-                }
+        }
+    }
+}
+
+@Composable
+private fun GoalActionsMenu(isReached: Boolean, onEdit: () -> Unit, onDelete: () -> Unit) {
+    val colors = bubbleColors()
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Surface(shape = CircleShape, color = colors.paper, border = BorderStroke(1.dp, colors.border)) {
+            IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.goal_actions), tint = colors.ink)
             }
-            item {
-                TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.goal_delete), color = colors.danger)
-                }
+        }
+        DropdownMenu(
+            expanded = expanded, onDismissRequest = { expanded = false },
+            shape = RoundedCornerShape(18.dp), containerColor = colors.paper,
+        ) {
+            if (!isReached) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.goal_edit), color = colors.ink) },
+                    leadingIcon = { Icon(Icons.Outlined.Edit, null, tint = colors.ink) },
+                    onClick = {
+                        expanded = false
+                        onEdit()
+                    },
+                )
             }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.goal_delete), color = colors.danger) },
+                leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = colors.danger) },
+                onClick = {
+                    expanded = false
+                    onDelete()
+                },
+            )
         }
     }
 }

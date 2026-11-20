@@ -42,7 +42,11 @@ function confirmAction(i,b,title,description,submit,label='Удалить') {
 }
 function flowDialog(f) {
   const s=f.sheet;
-  return '<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="'+escapeHtml(s.title)+'"><div class="sheet-head"><h3>'+escapeHtml(s.title)+'</h3>'+iconButton('close','Закрыть','close')+'</div>'+s.content(s)+errorText(f)+(s.submit?primary('flow-submit',s.cta,'check'):'')+'</section></div>';
+  const close=s.cancelBelow?'':iconButton('close','Закрыть','close');
+  const footer=s.cancelBelow
+    ?button('flow-submit',s.cta,'','btn destructive')+button('close','Отмена','','btn secondary')
+    :s.submit?primary('flow-submit',s.cta,'check'):'';
+  return '<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="'+escapeHtml(s.title)+'"><div class="sheet-head"><h3>'+escapeHtml(s.title)+'</h3>'+close+'</div>'+s.content(s)+errorText(f)+footer+'</section></div>';
 }
 flowActions['flow-submit']=(i)=>frames[i].sheet.submit(i,frames[i].sheet);
 function setField(event,el,i) {

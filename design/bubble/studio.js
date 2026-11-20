@@ -8,6 +8,7 @@ const currencySigns = {...Object.fromEntries(currencyCodes.map(code=>[code,code]
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const shapes = {
   edit:'<path d="m4 16-1 5 5-1L20 8l-4-4zM14 6l4 4"/>', more:'<g fill="currentColor"><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="20" cy="12" r="1.2"/></g>',
+  trash:'<path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>',
   book:'<path d="M3 5.5c3-1 6.5-.1 9 2 2.5-2.1 6-3 9-2v13c-3-1-6.5 0-9 2-2.5-2-6-3-9-2zM12 8v12"/>',
   pie:'<path d="M10 3.5a8.8 8.8 0 1 0 10.5 10H10zM14 2.5v7.4h7.4A8 8 0 0 0 14 2.5z"/>',
   flag:'<path d="M5 21V4c5-4 9 4 15 0v10c-6 4-10-4-15 0"/>',
@@ -276,12 +277,13 @@ function fail(i,message) {
 }
 function openSheet(i,s,button) {
   const f=frames[i];f.sheet={...s,opener:button.dataset.act,openerValue:button.dataset.value};f.error='';
-  render(i,true);sections[i].querySelector('.sheet button')?.focus({preventScroll:true});
+  render(i,true);sections[i].querySelector(s.cancelBelow?'.sheet [data-act=close]':'.sheet button')?.focus({preventScroll:true});
 }
 function closeSheet(i) {
   const f=frames[i],s=f.sheet;f.sheet=null;f.error='';render(i,true);
   const target=[...sections[i].querySelectorAll('[data-act]')].find(b=>b.dataset.act===s.opener&&b.dataset.value===s.openerValue);
-  target?.focus({preventScroll:true});
+  const opener=target?.closest('.goal-actions')?.querySelector('summary') || target;
+  opener?.focus({preventScroll:true});
 }
 function confirmSheet(i) {
   const f=frames[i],s=f.sheet,l=findLoan(f,s.loan);
@@ -382,9 +384,18 @@ function bind(event) {
   if(key==='s.sum')updateRemaining(i);
 }
 board.addEventListener('input',bind);board.addEventListener('change',bind);
+document.addEventListener('click',event=>{
+  for(const menu of board.querySelectorAll('.goal-actions[open]')) {
+    if(!menu.contains(event.target))menu.open=false;
+  }
+});
 document.addEventListener('keydown',event=>{
   const section=event.target.closest('.panel');if(!section)return;
   const i=Number(section.dataset.index),f=frames[i];
+  const menu=section.querySelector('.goal-actions[open]');
+  if(menu && event.key==='Escape'){
+    event.preventDefault();menu.open=false;menu.querySelector('summary').focus();return;
+  }
   if(f.sheet && event.key==='Escape'){event.preventDefault();closeSheet(i);}
   if(f.sheet && event.key==='Tab'){
     const all=[...section.querySelectorAll('.sheet button,.sheet input,.sheet select')].filter(el=>!el.disabled);

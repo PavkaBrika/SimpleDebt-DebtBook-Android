@@ -34,7 +34,7 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.GoalsAction
 import com.breckneck.debtbook.goal.main.GoalsState
 import com.breckneck.debtbook.goal.main.GoalsViewModel
-import com.breckneck.debtbook.goal.ui.DeleteGoalDialog
+import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
 import com.breckneck.debtbook.goal.ui.GoalButton
 import com.breckneck.deptbook.domain.util.ListState
 import org.orbitmvi.orbit.compose.collectAsState
@@ -117,7 +117,7 @@ private fun GoalsContent(state: GoalsState, onAction: (GoalsAction) -> Unit) {
     }
     state.deletion?.let { deletion ->
         state.goalList.firstOrNull { it.goalId == deletion.goalId }?.let { goal ->
-            DeleteGoalDialog(
+            DeleteGoalSheet(
                 name = goal.name,
                 isDeleting = deletion.isDeleting,
                 failed = deletion.failed,

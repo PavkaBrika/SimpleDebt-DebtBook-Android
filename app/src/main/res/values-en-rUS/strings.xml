@@ -193,6 +193,7 @@
     <string name="goal_edit">Edit goal</string>
     <string name="goal_delete">Delete goal</string>
     <string name="goal_delete_title">Delete this goal?</string>
+    <string name="goal_actions">Goal actions</string>
     <string name="goal_delete_message">“%1$s” and its transaction history will be deleted.</string>
     <string name="goal_reached">Goal reached</string>
     <string name="goal_due_by">By %1$s</string>

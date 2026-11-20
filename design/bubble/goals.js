@@ -23,7 +23,10 @@ flowViews.goalDetail=f=>{
   const g=goalById(f.goalId),sum=saved(g),done=sum>=g.target;
   const history=[...g.deposits].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(d=>'<div class="timeline-row"><span class="event-icon">'+icon(d.cents>=0?'take':'give',16)+'</span><span class="event-text"><strong>'+(d.cents>=0?'Пополнение':'Снятие')+'</strong><small>'+dateText(d.date)+' '+d.date.slice(0,4)+'</small></span><span class="money">'+amount(d.cents,g.cur,true)+'</span></div>').join('');
   const controls=done?'':pairButtons(button('goal-add','Пополнить',g.id,'btn secondary','plus'),button('goal-sub','Снять',g.id,'btn secondary','give'));
-  return layout(backbar(g.name)+goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+amount(Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.'))+(!done?button('goal-edit','Редактировать цель',g.id,'btn secondary spaced','edit'):'')+button('goal-delete','Удалить цель',g.id,'text-action danger'));
+  const menu='<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью">'+icon('more')+'</summary><div class="goal-menu">'
+    +(done?'':button('goal-edit','Редактировать цель',g.id,'menu-action','edit'))
+    +button('goal-delete','Удалить цель',g.id,'menu-action danger','trash')+'</div></details>';
+  return layout(backbar(g.name,menu)+goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+amount(Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.')));
 };
 function goalAdjustment(i,v,b,sign) {
   const g=goalById(Number(v));if(!g||saved(g)>=g.target)return;
@@ -70,5 +73,8 @@ flowActions['goal-save']=i=>{
 };
 flowActions['goal-delete']=(i,v,b)=>{
   const id=Number(v),g=goalById(id);
-  confirmAction(i,b,'Удалить цель?',g.name+' и история пополнений и снятий будут удалены.',()=>{savings=savings.filter(g=>g.id!==id);changed(i,'Цель удалена');});
+  showDialog(i,'Удалить цель?',()=>'<p class="note">'+escapeHtml(g.name)+' и история пополнений и снятий будут удалены.</p>',b,()=>{
+    savings=savings.filter(goal=>goal.id!==id);
+    changed(i,'Цель удалена');
+  },'Удалить',{cancelBelow:true});
 };

@@ -136,7 +136,7 @@ class GoalsFlowTest {
         openGoal(editedName)
         awaitHistory()
         assertBalance(editedName, "3200", 2)
-        scrollToGoalContent(R.string.goal_edit).performClick()
+        chooseGoalAction(R.string.goal_edit)
         awaitDestination(R.id.createGoalsFragment)
         textField(R.string.name).performTextReplacement(finalName)
         click(R.string.goal_save)
@@ -158,10 +158,14 @@ class GoalsFlowTest {
         capture("complete")
 
         openGoal(finalName)
-        scrollToGoalContent(R.string.goal_delete).performClick()
+        openGoalActions()
+        compose.onAllNodesWithText(context.getString(R.string.goal_edit)).assertCountEquals(0)
+        click(R.string.goal_delete)
+        node(R.string.goal_delete_title).assertIsDisplayed()
+        capture("delete-sheet")
         click(R.string.cancel)
         assertBalance(finalName, "20000", 3)
-        scrollToGoalContent(R.string.goal_delete).performClick()
+        chooseGoalAction(R.string.goal_delete)
         click(R.string.delete)
         awaitDestination(R.id.goalsFragment)
         awaitText(R.string.goal_empty_list)
@@ -255,7 +259,7 @@ class GoalsFlowTest {
         swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalsComposeView, label = "edit-from-list")
         awaitDestination(R.id.goalsFragment)
         openGoal(initialName)
-        scrollToGoalContent(R.string.goal_edit).performClick()
+        chooseGoalAction(R.string.goal_edit)
         awaitDestination(R.id.createGoalsFragment)
         swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalDetailsComposeView, label = "edit-from-details")
         awaitDestination(R.id.goalDetailsFragment)
@@ -337,6 +341,13 @@ class GoalsFlowTest {
         awaitGoal(name)
         compose.onNodeWithText(name).performClick()
         awaitDestination(R.id.goalDetailsFragment)
+    }
+    private fun openGoalActions() =
+        compose.onNodeWithContentDescription(context.getString(R.string.goal_actions)).performClick()
+
+    private fun chooseGoalAction(action: Int) {
+        openGoalActions()
+        node(action).assertIsDisplayed().performClick()
     }
     private fun awaitText(id: Int) = awaitGoal(context.getString(id))
     private fun awaitHistory() {

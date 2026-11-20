@@ -194,6 +194,7 @@
     <string name="goal_edit">Sparziel bearbeiten</string>
     <string name="goal_delete">Sparziel löschen</string>
     <string name="goal_delete_title">Sparziel löschen?</string>
+    <string name="goal_actions">Zielaktionen</string>
     <string name="goal_delete_message">„%1$s“ und alle zugehörigen Einzahlungen und Entnahmen werden gelöscht.</string>
     <string name="goal_reached">Sparziel erreicht</string>
     <string name="goal_due_by">Bis %1$s</string>
