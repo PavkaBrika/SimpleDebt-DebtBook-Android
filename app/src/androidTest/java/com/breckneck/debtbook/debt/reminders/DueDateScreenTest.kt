@@ -53,7 +53,7 @@ class DueDateScreenTest {
         onView(withTagValue(equalTo(id))).perform(click())
         onView(withId(R.id.dueSettingsButton)).inRoot(isDialog()).perform(scrollTo(), click())
         onView(withId(R.id.dueDateButton))
-            .inRoot(allOf(isDialog(), withDecorView(hasDescendant(withId(R.id.dueDateButton)))))
+            .inRoot(allOf(isDialog(), withDecorView(hasDescendant(allOf(withId(R.id.dueDateButton), isEnabled())))))
             .check(matches(isDisplayed()))
     }
     private fun date(year: Int, month: Int, day: Int) {
@@ -72,10 +72,15 @@ class DueDateScreenTest {
         for (sign in listOf(1, -1)) {
             dao.insertHuman(Human(id, "Due screen", BigDecimal.ZERO, "EUR"))
             dao.saveDebt(Debt(id, BigDecimal(100 * sign), id, null, "2026-11-16"))
+            // A pending reminder can expire if Android did not run the app on the due day.
+            dao.updateDebt(row().copy(dueDay = "2020-01-01", reminderMinute = 540, reminderToken = "expired-1"))
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.onHumanClick(id, "EUR", "Due screen") }
                 await("history") { try { onView(withTagValue(equalTo(id))).check(matches(isDisplayed())); true } catch (_: Exception) { false } }
-                open(); date(2099, 12, 31)
+                onView(withId(R.id.dueTextView)).check(matches(withText(containsString(context.getString(R.string.due_off)))))
+                open()
+                onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).check(matches(isNotChecked()))
+                date(2099, 12, 31)
                 onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).perform(click())
                 scenario.recreate()
                 onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).check(matches(isChecked()))

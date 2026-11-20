@@ -12,6 +12,9 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
+import com.breckneck.deptbook.domain.util.LedgerDate
+import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
@@ -63,15 +66,22 @@ class DebtDetailsAdapter(
         val debtDomain = debtDomainList[position]
         holder.debtCardView.tag = debtDomain.id
         val context = holder.itemView.context
+        val rest = if (debtDomain.repaymentOfId == null) remaining(debtDomain) else BigDecimal.ZERO
         holder.due.visibility = if (debtDomain.repaymentOfId == null && debtDomain.dueDay != null) View.VISIBLE else View.GONE
         debtDomain.dueDay?.let { day ->
-            val overdue = com.breckneck.deptbook.domain.util.DebtReminderPolicy.overdue(debtDomain, remaining(debtDomain))
-            holder.due.text = context.getString(if (overdue) R.string.due_overdue else if (day == com.breckneck.deptbook.domain.util.LedgerDate.today() && remaining(debtDomain).signum() > 0) R.string.due_today else R.string.due_date,
-                com.breckneck.deptbook.domain.util.LedgerDate.display(day)) + "\n" +
+            val today = LedgerDate.today()
+            val overdue = DebtReminderPolicy.overdue(debtDomain, rest, today)
+            val minute = debtDomain.reminderMinute
+            val dueLabel = when {
+                overdue -> R.string.due_overdue
+                day == today && rest.signum() > 0 -> R.string.due_today
+                else -> R.string.due_date
+            }
+            holder.due.text = context.getString(dueLabel, LedgerDate.display(day)) + "\n" +
                 when {
                     debtDomain.reminderDelivered -> context.getString(R.string.due_sent)
-                    debtDomain.reminderMinute != null -> context.getString(R.string.due_reminder_at,
-                        String.format(java.util.Locale.getDefault(), "%02d:%02d", debtDomain.reminderMinute!! / 60, debtDomain.reminderMinute!! % 60))
+                    minute != null && !overdue && rest.signum() > 0 -> context.getString(R.string.due_reminder_at,
+                        String.format(java.util.Locale.getDefault(), "%02d:%02d", minute / 60, minute % 60))
                     else -> context.getString(R.string.due_off)
                 }
             holder.due.setTextColor(if (overdue) holder.redColor else holder.operation.currentTextColor)
@@ -80,7 +90,6 @@ class DebtDetailsAdapter(
         if (debtDomain.repaymentOfId == null) {
             holder.operation.text = context.getString(R.string.debt_record, debtDomain.id,
                 context.getString(if (debtDomain.sum.signum() >= 0) R.string.debt_lent else R.string.debt_borrowed))
-            val rest = remaining(debtDomain)
             holder.remaining.text = context.getString(R.string.debt_repaid,
                 decimalFormat.format(debtDomain.sum.abs() - rest), currencyText) + "\n" +
                 context.getString(R.string.debt_remaining, decimalFormat.format(rest), currencyText) +

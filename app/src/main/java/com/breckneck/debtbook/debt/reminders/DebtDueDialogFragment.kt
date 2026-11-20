@@ -92,7 +92,9 @@ class DebtDueDialogFragment : DialogFragment() {
             outstanding = com.breckneck.deptbook.domain.util.RepaymentPolicy.remaining(row.toDomain(), rows.map { it.toDomain() }).signum() > 0
             day = if (savedInstanceState != null) savedInstanceState.getString("day") else row.dueDay
             minute = savedInstanceState?.getInt("minute") ?: row.reminderMinute ?: 9 * 60
-            enabled = savedInstanceState?.getBoolean("enabled") ?: (row.reminderMinute != null && !row.reminderDelivered)
+            val storedReminderPending = outstanding && row.reminderMinute != null && !row.reminderDelivered &&
+                row.dueDay?.let { it >= LedgerDate.today() } == true
+            enabled = savedInstanceState?.getBoolean("enabled") ?: storedReminderPending
             loaded = true
             render()
         }
