@@ -39,6 +39,9 @@ internal fun BubbleAmountField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     errorMessage: String? = null,
+    currencyContent: @Composable () -> Unit = {
+        Text(currency, fontSize = 16.sp, color = bubbleColors().onMint, fontWeight = FontWeight.Bold)
+    },
 ) {
     val colors = bubbleColors()
     val amountStyle = MaterialTheme.typography.displaySmall.copy(color = colors.onMint, fontWeight = FontWeight.SemiBold)
@@ -63,7 +66,7 @@ internal fun BubbleAmountField(
                         if (state.text.isEmpty()) Text("0", style = amountStyle, color = colors.onMint.copy(alpha = .65f))
                         editor()
                     }
-                    Text(currency, fontSize = 16.sp, color = colors.onMint, fontWeight = FontWeight.Bold)
+                    currencyContent()
                 }
             }
         },

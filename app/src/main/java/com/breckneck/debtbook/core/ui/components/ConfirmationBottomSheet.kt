@@ -23,11 +23,11 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 fun ConfirmationBottomSheet(
     title: String,
     message: String,
-    confirmText: String = stringResource(R.string.yes),
-    dismissText: String = stringResource(R.string.No),
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    confirmText: String = stringResource(R.string.yes),
+    dismissText: String = stringResource(R.string.No),
     enabled: Boolean = true,
     errorMessage: String? = null,
 ) {
