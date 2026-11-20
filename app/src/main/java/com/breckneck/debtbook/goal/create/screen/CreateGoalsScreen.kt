@@ -2,41 +2,41 @@ package com.breckneck.debtbook.goal.create.screen
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DisplayMode
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material.icons.automirrored.outlined.CallReceived
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.PieChartOutline
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DisplayMode
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -53,17 +53,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.error
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -105,6 +106,11 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
     val scroll = rememberScrollState()
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    fun openPicker(action: CreateGoalsAction) {
+        focus.clearFocus()
+        keyboard?.hide()
+        onAction(action)
+    }
     val hasInputError = state.nameError != null || state.sumError != null || state.savedSumError != null
     LaunchedEffect(hasInputError) {
         if (hasInputError) scroll.animateScrollTo(0)
@@ -197,16 +203,18 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                     onChange = { onAction(CreateGoalsAction.SavedSumChanged(it)) },
                 )
                 HorizontalDivider(color = colors.border)
+                val currencyDescription = stringResource(R.string.a11y_currency_picker, goal.currencyDisplayName)
                 GoalFieldRow(
                     Icons.Outlined.PieChartOutline, stringResource(R.string.goal_currency),
-                    Modifier.clickable(enabled = enabled, role = Role.Button) { onAction(CreateGoalsAction.CurrencyClick) },
+                    Modifier.clickable(enabled = enabled, role = Role.Button) { openPicker(CreateGoalsAction.CurrencyClick) }
+                        .semantics { contentDescription = currencyDescription },
                     trailing = { Icon(Icons.Outlined.ExpandMore, null, Modifier.size(18.dp)) },
                 ) { Text(goal.currency) }
                 HorizontalDivider(color = colors.border)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GoalFieldRow(
                         Icons.Outlined.CalendarMonth, stringResource(R.string.goal_date_optional),
-                        Modifier.weight(1f).clickable(enabled = enabled, role = Role.Button) { onAction(CreateGoalsAction.DateClick) },
+                        Modifier.weight(1f).clickable(enabled = enabled, role = Role.Button) { openPicker(CreateGoalsAction.DateClick) },
                     ) {
                         Text(goal.goalDate?.toDMYFormat() ?: stringResource(R.string.goal_choose_date),
                             color = if (goal.goalDate == null) colors.muted else colors.ink)
@@ -222,7 +230,7 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
             GoalFormGroup {
                 Column(
                     Modifier.fillMaxWidth().clickable(enabled = enabled, role = Role.Button) {
-                        onAction(CreateGoalsAction.PhotoCardClick)
+                        openPicker(CreateGoalsAction.PhotoCardClick)
                     }.padding(12.dp),
                 ) {
                     if (goal.hasImage) {
