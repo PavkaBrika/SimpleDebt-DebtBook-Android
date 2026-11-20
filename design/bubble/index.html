@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>SimpleDebt · Дизайн экранов</title>
+  <link rel="stylesheet" href="studio.css">
+  <script defer src="flows.js"></script>
+  <script defer src="finance.js"></script>
+  <script defer src="goals.js"></script>
+  <script defer src="account.js"></script>
+  <script defer src="debt-tools.js"></script>
+  <script defer src="studio.js"></script>
+</head>
+<body>
+  <header class="studio-head">
+    <div class="identity"><span class="book-mark" aria-hidden="true"><i></i><i></i></span><strong>SimpleDebt</strong><span class="studio-name">Дизайн экранов</span></div>
+    <div class="tools">
+      <div class="view-switch" aria-label="Версия интерфейса">
+        <button id="after" aria-pressed="true">Прототип</button><button id="before" aria-pressed="false">Сейчас</button>
+      </div>
+      <button id="theme" class="tool-button" aria-label="Тёмная тема" title="Сменить тему"></button>
+      <button id="reset" class="tool-button" aria-label="Сбросить демоданные" title="Сбросить демоданные"></button>
+    </div>
+  </header>
+  <main>
+    <nav class="mobile-switch" aria-label="Выбрать экран"></nav>
+    <div class="board" id="board"></div>
+    <footer class="studio-foot"><span>Демонстрационные записи · 20 ноября 2026</span><span>Данные прототипа сохраняются в этом браузере</span></footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,396 @@
+'use strict';
+
+const TODAY = '2026-11-20';
+const startScreens = ['home', 'finance', 'goals'];
+const screenNames = {home:'Список долгов', person:'История долгов', new:'Новый долг', finance:'Финансы', goals:'Цели', settings:'Настройки'};
+const tabs = [['home','Долги','book'],['finance','Финансы','pie'],['goals','Цели','flag'],['settings','Настройки','settings']];
+const currencySigns = {...Object.fromEntries(currencyCodes.map(code=>[code,code])), RUB:'₽', USD:'$', EUR:'€', GBP:'£', JPY:'¥'};
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const shapes = {
+  edit:'<path d="m4 16-1 5 5-1L20 8l-4-4zM14 6l4 4"/>', more:'<g fill="currentColor"><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="20" cy="12" r="1.2"/></g>',
+  book:'<path d="M3 5.5c3-1 6.5-.1 9 2 2.5-2.1 6-3 9-2v13c-3-1-6.5 0-9 2-2.5-2-6-3-9-2zM12 8v12"/>',
+  pie:'<path d="M10 3.5a8.8 8.8 0 1 0 10.5 10H10zM14 2.5v7.4h7.4A8 8 0 0 0 14 2.5z"/>',
+  flag:'<path d="M5 21V4c5-4 9 4 15 0v10c-6 4-10-4-15 0"/>',
+  settings:'<path d="M3 6h6m4 0h8M3 12h11m4 0h3M3 18h3m4 0h11"/><circle cx="11" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>', back:'<path d="m13 5-7 7 7 7M6 12h15"/>', down:'<path d="m6 9 6 6 6-6"/>',
+  give:'<path d="M5 17 17 5M8 5h9v9"/>', take:'<path d="M18 5 6 17m0-9v9h9"/>',
+  date:'<rect x="3" y="5" width="18" height="16" rx="4"/><path d="M7 3v4m10-4v4M3 10h18"/>',
+  bell:'<path d="M5 16c2-3 2-4 2-7a5 5 0 0 1 10 0c0 3 0 4 2 7l1 1H4l1-1zm5 4c1 1.4 3 1.4 4 0"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  note:'<path d="M5 3h14a2 2 0 0 1 2 2v10l-6 6H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM14 21v-6h6M7 8h10M7 12h6"/>',
+  close:'<path d="m6 6 12 12M6 18 18 6"/>', moon:'<path d="M20.5 14A8.8 8.8 0 0 1 10 3.5 9 9 0 1 0 20.5 14z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
+  reset:'<path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/>', check:'<path d="m4 12 5 5L20 6"/>',
+  history:'<path d="M3 10a9 9 0 1 1 0 5M3 4v6h6M12 7v5l4 2"/>',
+  chevron:'<path d="m9 5 7 7-7 7"/>', stack:'<path d="M4 9 12 4l8 5-8 5-8-5zm0 5 8 5 8-5"/>',
+};
+function svg(body, view='0 0 24 24', attrs='') {
+  return '<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" viewBox="'+view+'" '+attrs+'>'+body+'</svg>';
+}
+function icon(name,size=20) {
+  return svg(shapes[name],undefined,'width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"');
+}
+function motif(index) {
+  const palettes = [['#f4cebb','#a74e38'],['#d5e4f3','#45678c'],['#e5ddb8','#76682c'],['#dce5b5','#617337'],['#e7dbed','#865f92']];
+  const [bg,ink] = palettes[index%palettes.length];
+  const fill = [
+    Array.from({length:8},(_,i)=>'<ellipse cx="24" cy="14" rx="5.4" ry="9.4" transform="rotate('+i*45+' 24 24)"/>').join('')+'<circle cx="24" cy="24" r="4.6" fill="'+bg+'"/>',
+    [0,1,2,3,4,5].map(i=>'<path d="M'+(i*8-10)+' 46 26 9" transform="translate('+i*3+' 0)" stroke="'+ink+'" stroke-width="3.3" fill="none"/>').join(''),
+    '<g transform="rotate(32 24 24)">'+[0,1,2].map(i=>'<rect x="8" y="'+(10+i*10)+'" width="32" height="6" rx="2"/>').join('')+'</g>',
+    Array.from({length:9},(_,i)=>'<ellipse cx="24" cy="13" rx="2.4" ry="8.5" transform="rotate('+i*40+' 24 24)"/>').join(''),
+    '<path d="m24 4 5 14 14 6-14 5-5 15-5-15-14-5 14-6z"/>'
+  ][index%palettes.length];
+  return '<span class="motif">'+svg('<circle cx="24" cy="24" r="24" fill="'+bg+'"/><g fill="'+ink+'">'+fill+'</g>','0 0 48 48')+'</span>';
+}
+// Parallel contours give the balance its engraved coin motif. The same ellipses fit a Compose Canvas.
+function coinArt() {
+  const coins = [[24,56,30],[21,49,30],[19,42,30],[43,32,31],[41,25,31],[39,18,31]];
+  const lines = coins.map(([x,y,r])=>'<g transform="translate('+x+' '+y+')"><path d="M0 0v6a'+r+' 10 0 0 0 '+(2*r)+' 0V0" fill="var(--hero)" stroke="currentColor"/><ellipse cx="'+r+'" cy="0" rx="'+r+'" ry="10" fill="var(--hero)" stroke="currentColor"/>'+[7,12,17,22,27,32,37,42,47,52].map(i=>'<path d="M'+i+' '+(7+2*Math.sin(i/60*Math.PI))+'v4" stroke="currentColor"/>').join('')+'</g>').join('');
+  return '<div class="art">'+svg('<g transform="rotate(-20 57 42)" color="var(--canvas-pattern)" stroke-width="1.3">'+lines+'<ellipse cx="70" cy="18" rx="22" ry="6" fill="none" stroke="currentColor"/></g>','0 0 114 83')+'</div>';
+}
+function fanArt() {
+  return '<div class="art">'+svg(Array.from({length:12},(_,n)=>'<ellipse cx="50" cy="52" rx="36" ry="12" transform="rotate('+n*15+' 50 52)"/>').join(''),'0 0 100 100','fill="none" stroke="currentColor" stroke-width="1.3"')+'</div>';
+}
+const status = '<div class="status" aria-hidden="true"><span>9:41</span><div class="status-icons">'+svg('<path fill="currentColor" d="M1 11h2v3H1zm4-3h2v6H5zm4-3h2v9H9zm4-3h2v12h-2z"/>','0 0 17 16')+svg('<path fill="currentColor" d="M0 5Q8-1 16 5l-8 9z"/>','0 0 16 16')+svg('<rect x="1" y="3" width="19" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="3" y="5" width="14" height="6" rx="1" fill="currentColor"/><path d="M22 6v4" stroke="currentColor" stroke-width="2"/>','0 0 24 16')+'</div></div>';
+const gesture = '<div class="gesture" aria-hidden="true"></div>';
+function iconButton(action,label,name) {
+  return '<button class="icon-button" data-act="'+action+'" aria-label="'+label+'" title="'+label+'">'+icon(name)+'</button>';
+}
+function primary(action,label,name,secondary=false) {
+  return '<button class="btn'+(secondary?' secondary':'')+'" data-act="'+action+'">'+(name?icon(name,18):'')+label+'</button>';
+}
+function options(values,selected) {
+  return values.map(v=>'<option value="'+v+'" '+(v===selected?'selected':'')+'>'+v+'</option>').join('');
+}
+function amount(cents,cur,withSign=false) {
+  const sign=cents<0?'−':(withSign && cents>0?'+':'');
+  return sign+(Math.abs(cents)/100).toLocaleString('ru-RU',{maximumFractionDigits:2})+' '+currencySigns[cur];
+}
+function parseAmount(raw) {
+  const s=raw.replace(/[\s\u00a0]/g,'').replace(',','.');
+  if(!/^\d{1,10}([.]\d{1,2})?$/.test(s)) return 0;
+  const [whole,part='']=s.split('.');
+  return Number(whole)*100+Number(part.padEnd(2,'0'));
+}
+const dateText = day => new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(day+'T12:00:00Z')).replace(/\.$/,'');
+function freshData() {
+  const specs=[['Анна Соколова',1600000,'Поездка в Казань','2026-11-05','2026-11-21'],['Михаил Орлов',-420000,'Билеты','2026-11-07','2026-11-18'],['Елена Ким',750000,'За жильё','2026-11-10',''],['Илья Волков',260000,'Ужин','2026-11-15',''],['Дарья Ли',8000,'Книги','2026-11-12','']];
+  return specs.map(([name,principal,note,date,due],i)=>({id:i+1,name,cur:i===4?'USD':'RUB',art:i,loans:[{id:i+1,principal,note,date,due,reminder:'',returns:i===0?[{id:6,amount:360000,date:'2026-11-14',cancelled:false}]:[]}]}));
+}
+let people=freshData(), serial=10, currentPanel=0, before=false, dark=false;
+const remaining = l => Math.abs(l.principal)-l.returns.reduce((sum,r)=>sum+(r.cancelled?0:r.amount),0);
+const balance = p => p.loans.reduce((sum,l)=>sum+Math.sign(l.principal)*remaining(l),0);
+function dueLabel(l) {
+  if(remaining(l)===0) return 'Погашено';
+  if(!l.due) return 'Без срока';
+  if(l.due<TODAY) return 'Просрочен · '+dateText(l.due);
+  if(l.due===TODAY) return 'Срок сегодня';
+  if(l.due==='2026-11-21') return 'Срок завтра';
+  return 'До '+dateText(l.due);
+}
+function draft(cur='RUB') { return {name:'',note:'',sum:'',cur,dir:1,date:TODAY,due:'',remind:false,time:'09:00',fixed:0}; }
+function frame(route) {
+  const d=draft();
+  return {route,beforeScreen:route,personId:1,cur:prefs.first,filter:'all',query:'',search:false,d,back:'home',sheet:null,error:'',...featureFrame()};
+}
+ledger=freshLedger(); savings=freshGoals();
+loadDemo();
+let frames=startScreens.map(frame);
+function nav(route) {
+  const selectedColumn = tabs.findIndex(([key]) => key === route) + 1;
+  const buttons = tabs.map(([key, label, symbol], index) =>
+    `<button data-act="nav" data-value="${key}" style="grid-column:${index + 1}"
+      ${route === key ? 'aria-current="page"' : ''}>${icon(symbol, 21)}<span>${label}</span></button>`
+  ).join('');
+  return `<nav class="nav" aria-label="Разделы приложения" style="--selected-column:${selectedColumn}">
+    <span class="nav-indicator" aria-hidden="true"></span>${buttons}</nav>`;
+}
+function heading(title,action='') { return '<div class="apphead"><h2>'+title+'</h2>'+action+'</div>'; }
+function backbar(title, action = '', avatar = '') {
+  return `<header class="detailhead">
+    ${iconButton('back','Назад','back')}
+    <div class="detail-title">${avatar}<h2>${escapeHtml(title)}</h2></div>
+    ${action}
+  </header>`;
+}
+function titleRow(title,hint='') { return '<div class="section-title"><h3>'+title+'</h3><small>'+escapeHtml(hint)+'</small></div>'; }
+function peopleList(f) {
+  const pool=people.filter(p=>p.cur===f.cur && (f.filter==='all'||(f.filter==='positive'?balance(p)>0:balance(p)<0)) && p.name.toLocaleLowerCase('ru').includes(f.query.trim().toLocaleLowerCase('ru')));
+  sortPeople(pool,f.peopleOrder);
+  return pool.length?pool.map(p=>{
+    const next=p.loans.filter(l=>remaining(l)>0&&l.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
+    const sub=next?dueLabel(next):p.loans.every(l=>remaining(l)===0)?'Расчёт завершён':'Без срока';
+    return '<button class="person-row" data-act="person" data-value="'+p.id+'">'+motif(p.art)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small class="'+(next?.due<TODAY?'late':'')+'">'+sub+'</small></span><span class="money '+(balance(p)<0?'neg':'pos')+'">'+amount(balance(p),p.cur,true)+'</span></button>';
+  }).join(''):'<p class="empty">'+(f.query?'Никого не нашли. Попробуйте другое имя.':'Здесь пока нет записей для этого фильтра.')+'</p>';
+}
+function home(f) {
+  const balances=people.filter(p=>p.cur===f.cur).map(balance);
+  const plus=balances.reduce((s,v)=>s+Math.max(0,v),0),minus=balances.reduce((s,v)=>s+Math.max(0,-v),0);
+  const chips=[['all','Все'],['positive','Мне должны'],['negative','Я должен']];
+  const html=heading('Долги',iconButton('search',f.search?'Закрыть поиск':'Найти человека',f.search?'close':'search'))+
+    '<section class="hero">'+coinArt()+'<div class="upper"><span class="eyebrow">Общий баланс</span><span class="unit-picker"><select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([prefs.first,prefs.second,...people.map(p=>p.cur),f.cur])],f.cur)+'</select>'+icon('down',13)+'</span></div><div class="hero-money">'+amount(plus-minus,f.cur,true)+'</div><div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+amount(plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+amount(minus,f.cur)+'</strong></div></div></section>'+
+    '<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
+    (f.search?'<input class="search-field" data-bind="query" aria-label="Имя человека" placeholder="Найти по имени" value="'+escapeHtml(f.query)+'">':'')+
+    '<div class="people">'+peopleList(f)+'</div>';
+  return layout(html,primary('new','Новый долг','plus'),nav('home'));
+}
+function layout(body,action='',navigation='') {
+  return status+'<div class="scroll">'+body+'</div>'+(action?'<div class="sticky-action">'+action+'</div>':'')+navigation+gesture;
+}
+function loanCard(l,p) {
+  const left=remaining(l), paid=Math.abs(l.principal)-left;
+  const tagClass=left===0?'ok':(l.due && l.due<TODAY?'late':'');
+  return '<article class="loan"><div class="loan-top"><div><h4>'+escapeHtml(l.note||'Долг')+'</h4><span class="subtle">'+dateText(l.date)+' · '+(l.principal>0?'Я дал':'Я взял')+'</span></div><button class="tag '+tagClass+'" data-act="due" data-value="'+l.id+'" aria-label="Срок и напоминание: '+dueLabel(l)+'">'+icon('date',13)+dueLabel(l)+'</button></div><div class="track"><i style="width:'+(100*paid/Math.abs(l.principal))+'%"></i></div><div class="loan-numbers"><span>Возвращено '+amount(paid,p.cur)+'</span><span>из '+amount(Math.abs(l.principal),p.cur)+'</span></div><p class="subtle">Остаток по записи · <strong>'+amount(left,p.cur)+'</strong>'+(l.reminder?' · Напомнить в '+l.reminder:'')+'</p>'+button('loan-actions','Действия с записью',l.id,'text-action','more')+(left?'<button class="btn secondary" data-act="repay" data-value="'+l.id+'">'+icon('take',17)+'Учесть возврат</button>':'')+'</article>';
+}
+function history(p,f) {
+  const entries=[];
+  for (const l of p.loans) {
+    entries.push({id:l.id,date:l.date,label:l.principal>0?'Дал в долг':'Взял в долг',cents:l.principal});
+    for(const r of l.returns) entries.push({id:r.id,loan:l.id,date:r.date,label:r.cancelled?'Возврат отменён':(l.principal>0?'Получен возврат':'Вернул долг'),cents:-Math.sign(l.principal)*r.amount,cancelled:r.cancelled});
+  }
+  return orderedHistory(entries,p,f).map(e=>{
+    const click=e.loan&&!e.cancelled;
+    const tag=click?'button':'div';
+    return '<'+tag+' class="timeline-row" '+(click?'data-act="undo" data-value="'+e.id+'"':'')+'><span class="event-icon '+(e.loan?'return':'')+'">'+icon(e.loan?'take':'give',16)+'</span><span class="event-text"><strong>'+e.label+'</strong><small>'+dateText(e.date)+'</small></span><span class="money"'+(e.cancelled?' style="text-decoration:line-through"':'')+'>'+amount(e.cents,p.cur,true)+'</span></'+tag+'>';
+  }).join('');
+}
+function person(f) {
+  const p=people.find(p=>p.id===f.personId), sum=balance(p), active=p.loans.filter(l=>remaining(l)>0), settled=p.loans.filter(l=>remaining(l)===0);
+  return layout(backbar(p.name,iconButton('new','Добавить долг этому человеку','plus'),motif(p.art))+
+    '<section class="balance">'+fanArt()+'<div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+amount(Math.abs(sum),p.cur)+'</div></section>'+
+    '<div class="history-actions">'+button('person-menu','Управление','','chip','more')+button('person-share','Поделиться','','chip','give')+'</div>'+
+    (active.length?titleRow('Открытые долги',String(active.length))+active.map(l=>loanCard(l,p)).join(''):'')+
+    (settled.length?titleRow('Погашенные долги',String(settled.length))+settled.map(l=>loanCard(l,p)).join(''):'')+
+    '<div class="section-title"><h3>История</h3>'+button('history-sort','Фильтр','','chip','settings')+'</div><div class="activity">'+(history(p,f)||empty('Записей нет.'))+'</div>');
+}
+function field(iconName,label,control) {
+  return '<div class="field"><span class="field-icon">'+icon(iconName,17)+'</span><label class="field-body"><span class="label">'+label+'</span>'+control+'</label></div>';
+}
+function input(bind,value,placeholder='',type='text',extra='') {
+  return '<input type="'+type+'" data-bind="'+bind+'" value="'+escapeHtml(value)+'" placeholder="'+placeholder+'" '+extra+'>';
+}
+function amountField(bind,value,cur,choose=true) {
+  const currency=choose?'<select class="currency" aria-label="Валюта долга" data-bind="d.cur">'+options(Object.keys(currencySigns),cur)+'</select>':'<strong>'+cur+'</strong>';
+  return '<div class="amount-field"><span class="eyebrow">Сумма</span><div class="amount-line"><input inputmode="decimal" data-bind="'+bind+'" aria-label="Сумма" placeholder="0" value="'+escapeHtml(value)+'">'+currency+'</div></div>';
+}
+function scheduleFields(obj,prefix,outstanding=true) {
+  return '<div class="group">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+
+    '<label class="field"><span class="field-icon">'+icon('bell',17)+'</span><span class="field-body">Напомнить мне</span><input data-bind="'+prefix+'remind" type="checkbox" '+(obj.remind?'checked':'')+' '+(!obj.due||!outstanding?'disabled':'')+'></label>'+
+    (obj.remind?field('bell','Время в день срока',input(prefix+'time',obj.time,'','time')):'')+'</div>'+permissionPrompt(obj,prefix);
+}
+function newDebt(f) {
+  const d=f.d;
+  return layout(backbar(d.editId?'Редактировать долг':screenNames.new)+'<div class="segment">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
+    amountField('d.sum',d.sum,d.cur,!d.fixed)+'<div class="group">'+field('user','Человек',input('d.name',d.name,'Имя или название','text',d.fixed?'readonly':'maxlength="80"'))+
+    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+'</div>'+(!d.fixed?button('contacts','Выбрать из контактов','','text-action','user'):'')+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),primary('save','Сохранить долг','check'));
+}
+function findLoan(f,id) { return people.find(p=>p.id===f.personId).loans.find(l=>l.id===id); }
+function sheet(f) {
+  if(f.sheet.kind==='flow')return flowDialog(f);
+  const s=f.sheet, p=people.find(p=>p.id===f.personId), l=findLoan(f,s.loan);
+  const name={repay:'Учесть возврат',due:'Срок и напоминание',undo:'Отменить возврат?'}[s.kind];
+  let body='<div class="sheet-head"><h3>'+name+'</h3>'+iconButton('close','Закрыть','close')+'</div><p class="note">'+escapeHtml(p.name)+' · '+escapeHtml(l.note||'Долг')+'</p>';
+  if(s.kind==='repay') {
+    body+='<div class="setting group"><span>Остаток по записи</span><strong>'+amount(remaining(l),p.cur)+'</strong></div>'+amountField('s.sum',s.sum,p.cur,false)+
+      '<button class="chip" data-act="full">Весь остаток</button><p class="note" data-live="remaining"></p>';
+  } else if(s.kind==='due') {
+    body+=scheduleFields(s,'s.',remaining(l)>0);
+  } else {
+    const r=l.returns.find(r=>r.id===s.returnId);
+    body+='<p class="note">После отмены сумма '+amount(r.amount,p.cur)+' вернётся в остаток этого долга. Запись об отмене останется в истории.</p>';
+  }
+  if(f.error) body+='<p class="error" role="alert">'+f.error+'</p>';
+  body+=primary('confirm',s.kind==='repay'?'Записать возврат':s.kind==='due'?'Сохранить':'Отменить возврат',s.kind==='undo'?'reset':'check');
+  return '<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="'+name+'">'+body+'</section></div>';
+}
+const board=document.querySelector('#board');
+const mobile=document.querySelector('.mobile-switch');
+const sections=[];
+for(let i=0;i<3;i++) {
+  const section=document.createElement('section');
+  section.className='panel'; section.dataset.index=i; board.appendChild(section); sections.push(section);
+  const button=document.createElement('button'); button.textContent=['Долги','Финансы','Цели'][i];button.onclick=()=>{currentPanel=i;updateTools()};mobile.appendChild(button);
+}
+function updateTools() {
+  document.documentElement.dataset.dark=String(dark);
+  document.querySelector('#after').setAttribute('aria-pressed',String(!before));
+  document.querySelector('#before').setAttribute('aria-pressed',String(before));
+  const theme=document.querySelector('#theme');
+  theme.innerHTML=icon(dark?'sun':'moon',17);theme.setAttribute('aria-label',dark?'Светлая тема':'Тёмная тема');theme.disabled=before;
+  document.querySelector('#reset').innerHTML=icon('reset',17);
+  sections.forEach((s,i)=>{s.classList.toggle('chosen',i===currentPanel);mobile.children[i].setAttribute('aria-pressed',String(i===currentPanel));});
+}
+function updateRemaining(i) {
+  const f=frames[i], area=sections[i].querySelector('[data-live=remaining]');
+  if(!area||f.sheet?.kind!=='repay')return;
+  const p=people.find(p=>p.id===f.personId), max=remaining(findLoan(f,f.sheet.loan)),n=parseAmount(f.sheet.sum);
+  area.textContent=n>max?'Сумма больше остатка.':'После возврата останется '+amount(Math.max(0,max-n),p.cur)+'.';
+}
+function render(i,keepScroll=false) {
+  const f=frames[i],target=sections[i], y=keepScroll?(target.querySelector('.scroll')?.scrollTop||0):0;
+  if(before) {
+    const select='<select class="compare-select" data-bind="beforeScreen" aria-label="Снимок текущего приложения">'+Object.entries(screenNames).map(([k,v])=>'<option value="'+k+'" '+(f.beforeScreen===k?'selected':'')+'>'+v+'</option>').join('')+'</select>';
+    target.innerHTML='<div class="panel-heading">'+select+'</div><div class="phone before"><img class="thumb" src="before/'+f.beforeScreen+'.webp" alt="Текущий экран: '+screenNames[f.beforeScreen]+'"></div><div class="before-mobile">'+select+'</div>';
+    return;
+  }
+  const listState=listStateControl(f);
+  const html=listState&&f.listState&&f.listState!=='Данные'?reviewList(f):f.route==='home'?home(f):f.route==='person'?person(f):f.route==='new'?newDebt(f):flowViews[f.route](f);
+  target.innerHTML='<div class="panel-heading">'+(screenNames[f.route]||flowNames[f.route])+listState+'</div><div class="phone">'+html+(f.sheet?sheet(f):'')+'</div>';
+  target.querySelector('.scroll').scrollTop=y;
+  if(f.sheet) {
+    for(const element of target.querySelector('.phone').children) if(!element.classList.contains('overlay'))element.inert=true;
+    updateRemaining(i);
+  }
+}
+function renderAll(keep=false) { updateTools();frames.forEach((_,i)=>render(i,keep)); }
+function toast(i,message) {
+  const phone=sections[i].querySelector('.phone'), t=document.createElement('div');
+  t.className='toast';t.setAttribute('role','status');t.textContent=message;phone.appendChild(t);
+  setTimeout(()=>t.remove(),2400);
+}
+function toggleTheme() {dark=!dark;prefs.theme=dark?'Тёмная':'Светлая';persistDemo();renderAll(true);}
+document.querySelector('#theme').onclick=toggleTheme;
+document.querySelector('#before').onclick=()=>{before=true;frames.forEach(f=>f.beforeScreen=screenNames[f.route]?f.route:baseRoute(f.route));renderAll();};
+document.querySelector('#after').onclick=()=>{before=false;renderAll();};
+document.querySelector('#reset').onclick=()=>{
+  const i=currentPanel;
+  if(before){before=false;renderAll();}
+  confirmAction(i,document.querySelector('#reset'),'Сбросить демоданные?','Записи этого прототипа будут заменены исходными примерами.',()=>{
+    resetDemo();frames=startScreens.map(frame);currentPanel=0;before=false;persistDemo();renderAll();toast(0,'Демоданные восстановлены');
+  },'Сбросить');
+};
+function setRoute(f,to) {f.route=to;f.sheet=null;f.error='';f.listState='Данные';}
+function refreshData(i,message) {
+  changed(i,message);
+}
+function validSchedule(s) {
+  if(s.askNotify)return 'Выберите, разрешать ли уведомления.';
+  if(!s.remind) return '';
+  if(!s.due || !s.time) return 'Укажите день и время напоминания.';
+  if(s.due+'T'+s.time<=TODAY+'T09:41') return 'Выберите будущее время или выключите напоминание.';
+  return '';
+}
+function fail(i,message) {
+  const f=frames[i];f.error=message;render(i,true);sections[i].querySelector('.error')?.scrollIntoView({block:'nearest'});
+}
+function openSheet(i,s,button) {
+  const f=frames[i];f.sheet={...s,opener:button.dataset.act,openerValue:button.dataset.value};f.error='';
+  render(i,true);sections[i].querySelector('.sheet button')?.focus({preventScroll:true});
+}
+function closeSheet(i) {
+  const f=frames[i],s=f.sheet;f.sheet=null;f.error='';render(i,true);
+  const target=[...sections[i].querySelectorAll('[data-act]')].find(b=>b.dataset.act===s.opener&&b.dataset.value===s.openerValue);
+  target?.focus({preventScroll:true});
+}
+function confirmSheet(i) {
+  const f=frames[i],s=f.sheet,l=findLoan(f,s.loan);
+  let message='';
+  if(s.kind==='repay') {
+    const n=readMoney(s.sum,people.find(p=>p.id===f.personId).cur);
+    if(!n||n>remaining(l)) return fail(i,'Введите сумму больше нуля в пределах остатка.');
+    l.returns.push({id:serial++,amount:n,date:TODAY,cancelled:false});
+    if(!remaining(l))l.reminder='';
+    message='Возврат записан';
+  } else if(s.kind==='due') {
+    const issue=validSchedule(s);if(issue)return fail(i,issue);
+    l.due=s.due;l.reminder=remaining(l)&&s.remind?s.time:'';message='Срок и напоминание сохранены в макете';
+  } else {
+    l.returns.find(r=>r.id===s.returnId).cancelled=true;message='Возврат отменён';
+  }
+  f.sheet=null;f.error='';refreshData(i,message);
+}
+function saveDebt(i) {
+  const f=frames[i],d=f.d,n=readMoney(d.sum,d.cur),name=d.name.trim();
+  if(!n||!name||!d.date) return fail(i,'Введите имя, положительную сумму и дату записи.');
+  const issue=validSchedule(d);if(issue)return fail(i,issue);
+  if(d.editId)return updateEditedDebt(i,n);
+  let p=d.fixed?people.find(p=>p.id===d.fixed):people.find(p=>p.cur===d.cur&&p.name.toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru'));
+  if(!p){p={id:serial++,name,art:people.length,cur:d.cur,loans:[]};people.unshift(p);}
+  p.loans.unshift({id:serial++,principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:'',returns:[]});
+  f.cur=p.cur;f.personId=p.id;setRoute(f,'person');refreshData(i,'Долг сохранён');
+}
+board.addEventListener('click',event=>{
+  const target=event.target.closest('.panel');if(!target)return;
+  const i=Number(target.dataset.index),f=frames[i],b=event.target.closest('[data-act]');
+  if(event.target.classList.contains('overlay'))return closeSheet(i);
+  if(!b)return;
+  const action=b.dataset.act,value=b.dataset.value;
+  if(Object.hasOwn(flowActions,action))return flowActions[action](i,value,b);
+  switch(action) {
+    case 'theme':return toggleTheme();
+    case 'nav': {
+      if (f.route === value) return;
+      const previousLeft = target.querySelector('.nav-indicator').getBoundingClientRect().left;
+      f.trail=[];setRoute(f, value);
+      render(i);
+      target.querySelector('.nav [aria-current=page]').focus({preventScroll:true});
+      if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+        const indicator = target.querySelector('.nav-indicator');
+        const distance = previousLeft - indicator.getBoundingClientRect().left;
+        indicator.animate(
+          [{transform:`translateX(${distance}px)`}, {transform:'translateX(0)'}],
+          {duration:240, easing:'cubic-bezier(.2,.8,.2,1)'}
+        );
+      }
+      return;
+    }
+    case 'search':f.search=!f.search;f.query='';render(i,true);if(f.search)target.querySelector('[data-bind=query]').focus();return;
+    case 'filter':f.filter=value;render(i,true);return;
+    case 'person':f.personId=Number(value);setRoute(f,'person');break;
+    case 'back':if(f.trail.length)return pop(i);setRoute(f,f.route==='new'?f.back:'home');break;
+    case 'new':{
+      f.back=f.route;f.d=draft(prefs.defaultCur);
+      if(f.route==='person'){const p=people.find(p=>p.id===f.personId);Object.assign(f.d,{fixed:p.id,name:p.name,cur:p.cur});}
+      setRoute(f,'new');break;
+    }
+    case 'direction':f.d.dir=Number(value);render(i,true);return;
+    case 'save':return saveDebt(i);
+    case 'repay':return openSheet(i,{kind:'repay',loan:Number(value),sum:''},b);
+    case 'due':{
+      const l=findLoan(f,Number(value));
+      return openSheet(i,{kind:'due',loan:l.id,due:l.due,remind:!!l.reminder,time:l.reminder||'09:00'},b);
+    }
+    case 'undo':{
+      const p=people.find(p=>p.id===f.personId),l=p.loans.find(l=>l.returns.some(r=>r.id===Number(value)));
+      return openSheet(i,{kind:'undo',loan:l.id,returnId:Number(value)},b);
+    }
+    case 'full':{
+      const s=f.sheet;s.sum=String(remaining(findLoan(f,s.loan))/100).replace('.',',');render(i,true);return;
+    }
+    case 'confirm':return confirmSheet(i);
+    case 'close':return closeSheet(i);
+    case 'finance-dir':f.financeDir=value;render(i,true);return;
+    default:return;
+  }
+  render(i);
+});
+function bind(event) {
+  const el=event.target;
+  if(el.hasAttribute('data-list-state')){if(event.type==='change'){const i=Number(el.closest('.panel').dataset.index);frames[i].listState=el.value;render(i);}return;}
+  if(el.dataset.field)return setField(event,el,Number(el.closest('.panel').dataset.index));
+  if(el.dataset.file&&event.type==='change'&&el.files?.length){const i=Number(el.closest('.panel').dataset.index);return el.dataset.file==='goal-photo'?selectPhoto(i,el.files[0]):readBackupFile(i,el.files[0]);}
+  const key=el.dataset.bind;if(!key)return;
+  const i=Number(el.closest('.panel').dataset.index),f=frames[i];
+  if(key==='beforeScreen'||key==='cur') {if(event.type==='change'){f[key]=el.value;render(i,true);}return;}
+  if(key==='query'){f.query=el.value;sections[i].querySelector('.people').innerHTML=peopleList(f);return;}
+  const [scope,prop]=key.split('.'),obj=scope==='s'?f.sheet:f.d;
+  obj[prop]=el.type==='checkbox'?el.checked:el.value;
+  if(!obj.due)obj.remind=false;
+  if(prop==='remind'||prop==='due')obj.askNotify=!!obj.remind&&notificationAccess!=='granted';
+  if(event.type==='change'&&['due','remind','cur'].includes(prop))render(i,true);
+  if(key==='s.sum')updateRemaining(i);
+}
+board.addEventListener('input',bind);board.addEventListener('change',bind);
+document.addEventListener('keydown',event=>{
+  const section=event.target.closest('.panel');if(!section)return;
+  const i=Number(section.dataset.index),f=frames[i];
+  if(f.sheet && event.key==='Escape'){event.preventDefault();closeSheet(i);}
+  if(f.sheet && event.key==='Tab'){
+    const all=[...section.querySelectorAll('.sheet button,.sheet input,.sheet select')].filter(el=>!el.disabled);
+    const first=all[0],last=all[all.length-1];
+    if(event.shiftKey&&event.target===first){event.preventDefault();last.focus();}
+    if(!event.shiftKey&&event.target===last){event.preventDefault();first.focus();}
+  }
+});
+renderAll();
