@@ -108,12 +108,14 @@ tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
     dependsOn verifyReleaseSigning
 }
 
+base {
+    archivesName = "SimpleDebtBook-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode})"
+}
+
 androidComponents {
-    onVariants(selector().all()) { variant ->
+    onVariants(selector().withBuildType('debug')) { variant ->
         variant.outputs.forEach { output ->
-            output.outputFileName.set(
-                "SimpleDebtBook-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode}).apk"
-            )
+            output.outputFileName.set(base.archivesName.map { "${it}.apk" })
         }
     }
 }
