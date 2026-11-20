@@ -1,33 +1,35 @@
 package com.breckneck.debtbook.debt.details
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.compose.ui.semantics.Role
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.theme.spacing
@@ -76,8 +78,7 @@ internal fun DebtActionsSheet(
                     Text(context.originalDebtLabel(it, currency), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (!debt.cancelled) {
-                    HorizontalDivider()
-                    DebtActionRow(stringResource(R.string.repayment_cancel), "deleteButton", onRemove)
+                    DebtActionButton(stringResource(R.string.repayment_cancel), "deleteButton", onRemove)
                 }
             } else {
                 if (hasRepayments) {
@@ -89,24 +90,27 @@ internal fun DebtActionsSheet(
                         Text(stringResource(if (debt.sum.signum() > 0) R.string.repayment_received else R.string.repayment_paid))
                     }
                 }
-                if (debt.sum.signum() != 0 || !hasRepayments) {
-                    HorizontalDivider()
-                    Column {
-                        if (debt.sum.signum() != 0) {
-                            DebtActionRow(stringResource(R.string.due_settings), "dueSettingsButton", onDue)
-                        }
-                        if (!hasRepayments) {
-                            DebtActionRow(stringResource(R.string.edit), "editButton", onEdit)
-                        }
-                    }
+                if (debt.sum.signum() != 0) {
+                    DebtActionButton(stringResource(R.string.due_settings), "dueSettingsButton", onDue, Icons.Outlined.DateRange)
                 }
+                if (!hasRepayments) {
+                    DebtActionButton(stringResource(R.string.edit), "editButton", onEdit, Icons.Outlined.Edit)
+                }
+            }
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).testTag("debtActionsCancel")) {
+                Text(stringResource(R.string.cancel))
             }
         }
     }
 }
 
 @Composable
-private fun DebtActionRow(title: String, tag: String, onClick: () -> Unit) {
-    ListItem(headlineContent = { Text(title) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.testTag(tag).clickable(role = Role.Button, onClick = onClick))
+private fun DebtActionButton(title: String, tag: String, onClick: () -> Unit, icon: ImageVector? = null) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().testTag(tag)) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null)
+            Spacer(Modifier.width(MaterialTheme.spacing.space8))
+        }
+        Text(title)
+    }
 }
