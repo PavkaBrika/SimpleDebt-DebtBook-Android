@@ -1,6 +1,7 @@
 package com.breckneck.deptbook.domain.repository
 
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.model.DebtDueChange
 
 interface DebtRepository {
 
@@ -14,7 +15,7 @@ interface DebtRepository {
 
     fun deleteDebt(debtDomain: DebtDomain)
 
-    fun editDebt(debtDomain: DebtDomain)
+    fun editDebt(debtDomain: DebtDomain, due: DebtDueChange? = null)
 
     fun deleteDebtsByHumanId(id: Int)
 

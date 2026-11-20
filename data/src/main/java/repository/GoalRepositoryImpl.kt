@@ -1,5 +1,6 @@
 package repository
 
+
 import com.breckneck.deptbook.data.storage.GoalStorage
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.repository.GoalRepository
@@ -15,7 +16,7 @@ class GoalRepositoryImpl(private val goalStorage: GoalStorage) : GoalRepository 
                 sum = goalData.sum,
                 savedSum = goalData.savedSum,
                 creationDate = goalData.creationDate,
-                goalDate = goalData.goalDate,
+                goalDate = goalData.goalDate, openingAdjustment = goalData.openingAdjustment, goalDay = goalData.goalDay,
                 currency = goalData.currency,
                 photoPath = goalData.photoPath
             )
@@ -30,7 +31,7 @@ class GoalRepositoryImpl(private val goalStorage: GoalStorage) : GoalRepository 
                 sum = goal.sum,
                 savedSum = goal.savedSum,
                 creationDate = goal.creationDate,
-                goalDate = goal.goalDate,
+                goalDate = goal.goalDate, openingAdjustment = goal.openingAdjustment, goalDay = goal.goalDay,
                 currency = goal.currency,
                 photoPath = goal.photoPath
             )
@@ -45,7 +46,7 @@ class GoalRepositoryImpl(private val goalStorage: GoalStorage) : GoalRepository 
                 sum = goal.sum,
                 savedSum = goal.savedSum,
                 creationDate = goal.creationDate,
-                goalDate = goal.goalDate,
+                goalDate = goal.goalDate, openingAdjustment = goal.openingAdjustment, goalDay = goal.goalDay,
                 currency = goal.currency,
                 photoPath = goal.photoPath
             )
@@ -60,7 +61,7 @@ class GoalRepositoryImpl(private val goalStorage: GoalStorage) : GoalRepository 
                 sum = goal.sum,
                 savedSum = goal.savedSum,
                 creationDate = goal.creationDate,
-                goalDate = goal.goalDate,
+                goalDate = goal.goalDate, openingAdjustment = goal.openingAdjustment, goalDay = goal.goalDay,
                 currency = goal.currency,
                 photoPath = goal.photoPath
             )
@@ -77,7 +78,7 @@ class GoalRepositoryImpl(private val goalStorage: GoalStorage) : GoalRepository 
                 currency = it.currency,
                 photoPath = it.photoPath,
                 creationDate = it.creationDate,
-                goalDate = it.goalDate
+                goalDate = it.goalDate, openingAdjustment = it.openingAdjustment, goalDay = it.goalDay
             )
         })
     }

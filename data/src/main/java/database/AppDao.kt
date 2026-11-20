@@ -1,5 +1,13 @@
 package database
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+import com.breckneck.deptbook.domain.util.RepaymentPolicy
+import com.breckneck.deptbook.domain.util.MoneyPolicy
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
+import com.breckneck.deptbook.domain.model.DebtDueChange
+import java.util.UUID
+
 import androidx.room.*
 import entity.Debt
 import entity.FinanceCategoryData
@@ -21,23 +29,30 @@ interface AppDao {
     @Query("DELETE FROM human")
     fun deleteAllHumans()
 
-    @Query("SELECT * FROM human WHERE sumDebt >= 0")
+    @Query("SELECT * FROM human WHERE CAST(sumDebt AS NUMERIC) >= 0")
     fun getPositiveHumans(): List<Human>
 
-    @Query("SELECT * FROM human WHERE sumDebt <= 0")
+    @Query("SELECT * FROM human WHERE CAST(sumDebt AS NUMERIC) <= 0")
     fun getNegativeHumans(): List<Human>
 
     @Query("SELECT id FROM human ORDER BY id DESC LIMIT 1")
     fun getLastHumanId() : Int
 
-    @Query("UPDATE human SET sumDebt = sumDebt + :sum WHERE id = :humanId")
-    fun addSum(humanId: Int, sum: Double)
+    @Query("SELECT * FROM human WHERE id = :humanId")
+    fun getHuman(humanId: Int): Human?
+
+    @Transaction
+    fun addSum(humanId: Int, sum: BigDecimal) {
+        val human = requireNotNull(getHuman(humanId))
+        human.sumDebt = getAllDebtsById(humanId).fold(human.openingAdjustment) { total, debt -> total + debt.toDomain().effectiveSum }
+        updateHuman(human)
+    }
 
     @Query("SELECT sumDebt from human WHERE currency = :currency")
-    fun getAllDebtsSum(currency: String): List<Double>
+    fun getAllDebtsSum(currency: String): List<BigDecimal>
 
     @Query("SELECT sumDebt from human WHERE id = :humanId")
-    fun getHumanSumDebt(humanId: Int): Double
+    fun getHumanSumDebt(humanId: Int): BigDecimal
 
     @Query("DELETE FROM human WHERE id = :id")
     fun deleteHumanById(id: Int)
@@ -53,6 +68,103 @@ interface AppDao {
 
     @Update
     fun updateHuman(human: Human)
+
+    @Transaction
+    fun saveDebt(debt: Debt) {
+        DebtReminderPolicy.validate(debt.toDomain())
+        val history = getAllDebts()
+        if (debt.repaymentOfId != null) {
+            val previous = history.firstOrNull { it.operationId == debt.operationId }
+            if (previous != null) {
+                require(previous.repaymentOfId == debt.repaymentOfId && previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0) { "Repayment request reused" }
+                return // Includes cancelled requests: retry must never resurrect a repayment.
+            }
+            require(!debt.cancelled && debt.id == 0) { "Invalid new repayment" }
+            val original = requireNotNull(history.firstOrNull { it.id == debt.repaymentOfId }) { "Missing original debt" }
+            val remaining = RepaymentPolicy.remaining(original.toDomain(), history.map { it.toDomain() })
+            val currency = requireNotNull(getHuman(original.idHuman)).currency
+            require(debt.sum.abs().compareTo(remaining) == 0 || MoneyPolicy.parse(debt.sum.abs().toPlainString(), currency) != null) { "Invalid repayment precision" }
+        }
+        // A synthetic unused ID allows validation before Room assigns the real primary key.
+        val candidate = debt.toDomain().copy(id = if (debt.id == 0) Int.MIN_VALUE else debt.id)
+        RepaymentPolicy.validate(history.map { it.toDomain() } + candidate)
+        insertDebt(debt)
+        debt.repaymentOfId?.let { originalId ->
+            val rows = getAllDebts().map { it.toDomain() }
+            val original = getAllDebts().first { it.id == originalId }
+            if (RepaymentPolicy.remaining(original.toDomain(), rows).signum() == 0) {
+                updateDebt(original.copy(reminderMinute = null, reminderToken = null, reminderDelivered = false))
+            }
+        }
+        addSum(debt.idHuman, BigDecimal.ZERO)
+    }
+
+    @Transaction
+    fun reviseDebt(debt: Debt, due: DebtDueChange? = null) {
+        val history = getAllDebts()
+        val previous = history.firstOrNull { it.id == debt.id } ?: error("Missing debt")
+        require(previous.repaymentOfId == null && debt.repaymentOfId == null && debt.operationId == null && !debt.cancelled) {
+            "Cancel a repayment instead of editing"
+        }
+        if (history.any { it.repaymentOfId == previous.id }) {
+            require(previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0 && previous.date == debt.date) {
+                "Debt has repayment history"
+            }
+        }
+        val updated = debt.copy(legacyDate = previous.legacyDate, dueDay = previous.dueDay,
+            reminderMinute = previous.reminderMinute, reminderToken = previous.reminderToken,
+            reminderDelivered = previous.reminderDelivered)
+        val next = if (due != null) {
+            val minute = if (due.remind) {
+                previous.reminderMinute.takeIf { due.day == previous.dueDay && !previous.reminderDelivered }
+                    ?: DebtReminderPolicy.DEFAULT_MINUTE
+            } else null
+            withDueSettings(updated, history, due.day, minute,
+                minute?.let { UUID.randomUUID().toString() }, System.currentTimeMillis())
+        } else {
+            if (debt.date != previous.date) {
+                previous.dueDay?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }
+            }
+            updated
+        }
+        updateDebt(next)
+        addSum(previous.idHuman, BigDecimal.ZERO)
+        if (previous.idHuman != debt.idHuman) addSum(debt.idHuman, BigDecimal.ZERO)
+    }
+
+    @Transaction
+    fun removeDebt(debt: Debt) {
+        val previous = getAllDebts().firstOrNull { it.id == debt.id } ?: return
+        if (previous.repaymentOfId != null) {
+            if (previous.cancelled) return
+            updateDebt(previous.copy(cancelled = true))
+        } else {
+            require(getAllDebts().none { it.repaymentOfId == previous.id }) { "Debt has repayment history" }
+            deleteDebt(previous)
+        }
+        addSum(previous.idHuman, BigDecimal.ZERO)
+    }
+
+    @Transaction
+    fun setDebtDueDate(id: Int, day: String?, minute: Int?, token: String?, now: Long) {
+        val history = getAllDebts()
+        val previous = requireNotNull(history.firstOrNull { it.id == id })
+        updateDebt(withDueSettings(previous, history, day, minute, token, now))
+    }
+
+    private fun withDueSettings(debt: Debt, history: List<Debt>, day: String?, minute: Int?, token: String?, now: Long): Debt {
+        require(debt.repaymentOfId == null && debt.sum.signum() != 0)
+        val next = debt.copy(dueDay = day, reminderMinute = minute, reminderToken = token, reminderDelivered = false)
+        val original = next.toDomain()
+        DebtReminderPolicy.validate(original)
+        day?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }
+        if (minute != null) {
+            require(RepaymentPolicy.remaining(original, history.map { it.toDomain() }).signum() > 0)
+            require(DebtReminderPolicy.canSchedule(requireNotNull(day), now)) { "Reminder day has passed" }
+        }
+        val unchanged = debt.dueDay == day && debt.reminderMinute == minute && debt.reminderToken != null && !debt.reminderDelivered
+        return if (unchanged) next.copy(reminderToken = debt.reminderToken) else next
+    }
 
     //Debt
     @Query("SELECT * FROM debt")
@@ -139,6 +251,24 @@ interface AppDao {
 
     //GOAL
 
+    @Transaction
+    fun updateGoalDetails(goal: GoalData) {
+        val totalDeposits = getGoalDepositsByGoalId(goal.id).fold(BigDecimal.ZERO) { total, row -> total + row.sum }
+        goal.openingAdjustment = goal.savedSum - totalDeposits
+        updateGoal(goal)
+    }
+
+    @Query("SELECT * FROM GoalData WHERE id = :id")
+    fun getGoal(id: Int): GoalData?
+
+    @Transaction
+    fun addGoalDeposit(deposit: GoalDepositData) {
+        val goal = requireNotNull(getGoal(deposit.goalId))
+        insertGoalDeposit(deposit)
+        goal.savedSum = getGoalDepositsByGoalId(goal.id).fold(goal.openingAdjustment) { total, row -> total + row.sum }
+        updateGoal(goal)
+    }
+
     @Query("SELECT * FROM GoalData")
     fun getAllGoals(): List<GoalData>
 
@@ -193,6 +323,7 @@ interface AppDao {
         goals: List<GoalData>,
         goalDeposits: List<GoalDepositData>
     ) {
+        RepaymentPolicy.validate(debts.map { it.toDomain() })
         // Delete children before parents to respect FK constraints
         deleteAllFinances()
         deleteAllGoalDeposits()

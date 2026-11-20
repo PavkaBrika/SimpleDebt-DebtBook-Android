@@ -19,7 +19,7 @@ class DataBaseGoalStorageImpl(context: Context): GoalStorage {
     }
 
     override fun updateGoal(goalData: GoalData) {
-        db.appDao().updateGoal(goalData = goalData)
+        db.appDao().updateGoalDetails(goalData)
     }
 
     override fun deleteGoal(goalData: GoalData) {

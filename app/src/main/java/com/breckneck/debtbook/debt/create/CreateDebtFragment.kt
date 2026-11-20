@@ -1,13 +1,18 @@
 package com.breckneck.debtbook.debt.create
 
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.DatePickerDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.*
 import android.provider.ContactsContract
+import android.text.method.DigitsKeyListener
+import com.breckneck.deptbook.domain.util.DecimalInput
+import kotlinx.coroutines.CancellationException
 import android.text.Editable
 import android.text.TextWatcher
 import android.transition.TransitionInflater
@@ -18,6 +23,11 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.cardview.widget.CardView
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
+import com.breckneck.debtbook.debt.reminders.DebtReminders
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.core.widget.addTextChangedListener
@@ -36,6 +46,7 @@ import com.breckneck.deptbook.domain.usecase.Human.SetHumanUseCase
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputLayout
 import androidx.lifecycle.lifecycleScope
@@ -63,7 +74,7 @@ class CreateDebtFragment: Fragment() {
     val decimalFormat = DecimalFormat("#.##")
 
     interface OnButtonClickListener{
-        fun DebtDetailsNewHuman(currency: String, name: String)
+        fun DebtDetailsNewHuman(idHuman: Int, currency: String, name: String)
         fun DebtDetailsExistHuman(idHuman: Int, currency: String, name: String)
         fun onBackButtonClick()
         fun onSetButtonClick()
@@ -86,14 +97,6 @@ class CreateDebtFragment: Fragment() {
 
     private val vm by viewModels<CreateDebtViewModel>()
 
-    @Inject lateinit var setHumanUseCase: SetHumanUseCase
-    @Inject lateinit var getLastHumanIdUseCase: GetLastHumanIdUseCase
-    @Inject lateinit var addSumUseCase: AddSumUseCase
-
-    @Inject lateinit var setDebtUseCase: SetDebtUseCase
-    @Inject lateinit var editDebtUseCase: EditDebtUseCase
-    @Inject lateinit var updateCurrentSumUseCase: UpdateCurrentSumUseCase
-
     @SuppressLint("Range")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_create_human_debt, container, false)
@@ -111,7 +114,7 @@ class CreateDebtFragment: Fragment() {
         val idHuman =  arguments?.getInt("idHuman")
         val idDebt = arguments?.getInt("idDebt")
         val currency = arguments?.getString("currency")
-        val sumArgs = arguments?.getFloat("sum")
+        val sumArgs = arguments?.getString("sum")?.toBigDecimalOrNull() ?: BigDecimal.ZERO
         val dateArgs = arguments?.getString("date")
         val infoArgs = arguments?.getString("info")
         val nameArgs = arguments?.getString("name")
@@ -120,8 +123,19 @@ class CreateDebtFragment: Fragment() {
         val humanNameEditText: EditText = view.findViewById(R.id.humanNameEditText)
         val contactsLayout: RelativeLayout = view.findViewById(R.id.contactsLayout)
         val infoEditText: EditText = view.findViewById(R.id.debtInfoEditText)
-        val debtDateTextView: TextView = view.findViewById(R.id.debtDateTextView)
-        val debtDateCardView: CardView = view.findViewById(R.id.debtDateCardView)
+        val commentCard = view.findViewById<View>(R.id.debtInfoTextInput).parent as MaterialCardView
+        val form = commentCard.parent as LinearLayout
+        // The gap belongs inside the Compose host so the last card can draw its shadow into it.
+        commentCard.layoutParams = (commentCard.layoutParams as LinearLayout.LayoutParams).apply { topMargin = 0 }
+        form.addView(ComposeView(requireContext()).apply {
+            id = R.id.debtDueForm
+            clipChildren = false
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                DebtBookTheme { CreateDebtDates(vm, commentCard) }
+            }
+        }, form.indexOfChild(commentCard),
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         val debtSumEditText : EditText = view.findViewById(R.id.debtSumEditText)
         val currencyTextView: TextView = view.findViewById(R.id.debtCurrencyTextView)
         val collapsed: CollapsingToolbarLayout = view.findViewById(R.id.collapsNewDebt)
@@ -172,43 +186,15 @@ class CreateDebtFragment: Fragment() {
             buttonClickListener.onTickVibration()
         }
 
-        debtSumEditText.addTextChangedListener { object: TextWatcher {
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+        debtSumEditText.keyListener = DigitsKeyListener.getInstance("0123456789.,")
+
+        if (idDebt != null && idDebt > 0) { //EXIST HUMAN EDIT DEBT LAYOUT CHANGES
+            debtSumEditText.setText(DecimalInput.format(sumArgs.abs(), currency = currency))
+            customSwitch.setChecked(sumArgs >= BigDecimal.ZERO)
+            if (vm.hasRepayments) {
+                customSwitch.isEnabled = false
+                debtSumEditText.isEnabled = false
             }
-
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-            }
-
-            override fun afterTextChanged(editable: Editable?) {
-                val str = editable.toString()
-                val position = str.indexOf(".")
-                if (position != -1) {
-                    val subStr = str.substring(position)
-                    val subStrStart = str.substring(0, position)
-                    if ((subStr.length > 3) || (subStrStart.length == 0))
-                        editable?.delete(editable.length - 1, editable.length)
-                }
-            }
-        } }
-
-        vm.date.observe(viewLifecycleOwner) { date ->
-            debtDateTextView.text = "$date ${getString(R.string.year)}"
-        }
-
-        val dateSetListener = DatePickerDialog.OnDateSetListener{view, year, month, day ->
-            vm.setCurrentDate(year = year, month = month, day = day)
-        }
-        debtDateCardView.setOnClickListener{
-            val calendar = Calendar.getInstance()
-            DatePickerDialog(view.context, dateSetListener,
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)).show()
-        }
-
-        if (sumArgs != 0.0.toFloat()) { //EXIST HUMAN EDIT DEBT LAYOUT CHANGES
-            debtSumEditText.setText(decimalFormat.format(sumArgs))
-            debtDateTextView.text = dateArgs
             infoEditText.setText(infoArgs)
             collapsed.title = getString(R.string.editdebtcollaps)
             currencyTextView.isClickable = false
@@ -216,7 +202,7 @@ class CreateDebtFragment: Fragment() {
             currencyTextView.isEnabled = false
         }
 
-        if (idHuman != -1) {
+        if (idHuman != null && idHuman > 0) {
             humanNameCardView.visibility = View.GONE
             currencyTextView.isClickable = false
             currencyTextView.isFocusable = false
@@ -226,117 +212,55 @@ class CreateDebtFragment: Fragment() {
         val humanNameTextInput: TextInputLayout = view.findViewById(R.id.humanNameTextInput)
         val debtSumTextInput: TextInputLayout = view.findViewById(R.id.debtSumTextInput)
         val setButton : FloatingActionButton = view.findViewById(R.id.setFinanceButton)
-        setButton.setOnClickListener{
-            setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
-            buttonClickListener.onSetButtonClick()
-            val name = humanNameEditText.text.toString()
-            var sum = debtSumEditText.text.toString()
-            val date = debtDateTextView.text.toString()
-            val info = infoEditText.text.toString()
-            val currency = vm.currency.value!!
-            try {
-                when (getDebtState(idHuman = idHuman, idDebt = idDebt)) {
-                    DebtState.NewHumanDebt -> {
-                        if ((name.trim().isNotEmpty()) && (sum.trim().isNotEmpty())) { //user check if user is not bad
-                            if (!customSwitch.isChecked())
-                                sum = (sum.toDouble() * (-1.0)).toString()
-                            if (sum.toDouble() != 0.0) {
-                                lifecycleScope.launch {
-                                    try {
-                                        withContext(Dispatchers.IO) {
-                                            setHumanUseCase.execute(name = name, sumDebt = sum.toDouble(), currency = currency)
-                                            val lastId = getLastHumanIdUseCase.exectute()
-                                            if (info.trim().isEmpty())
-                                                setDebtUseCase.execute(sum = sum.toDouble(), idHuman = lastId, info = null, date = date)
-                                            else
-                                                setDebtUseCase.execute(sum = sum.toDouble(), idHuman = lastId, info = info, date = date)
-                                            Log.e(TAG, "Human id = $lastId set success")
-                                        }
-                                        buttonClickListener.onAddDebt()
-                                        buttonClickListener.DebtDetailsNewHuman(currency = currency, name = name)
-                                    } catch (e: Exception) {
-                                        showErrorToast(e)
-                                    }
-                                }
-                            } else {
-                                debtSumTextInput.error = getString(R.string.zerodebt)
-                            }
-                        } else { //user check if user is bad
-                            if (name.trim().isEmpty())
-                                humanNameTextInput.error = getString(R.string.youmustentername)
-                            else
-                                humanNameTextInput.error = ""
-                            if (sum.trim().isEmpty())
-                                debtSumTextInput.error = getString(R.string.youmustentername)
-                            else
-                                debtSumTextInput.error = ""
-                        }
-                    }
-                    DebtState.ExistHumanDebt -> {
-                        if (sum.trim().isNotEmpty()) { // user check if user not bad
-                            if (!customSwitch.isChecked())
-                                sum = (sum.toDouble() * (-1.0)).toString()
-                            if (sum.toDouble() != 0.0) {
-                                lifecycleScope.launch {
-                                    try {
-                                        withContext(Dispatchers.IO) {
-                                            if (info.trim().isEmpty())
-                                                setDebtUseCase.execute(sum = sum.toDouble(), idHuman = idHuman!!, info = null, date = date)
-                                            else
-                                                setDebtUseCase.execute(sum = sum.toDouble(), idHuman = idHuman!!, info = info, date = date)
-                                            addSumUseCase.execute(humanId = idHuman, sum = sum.toDouble())
-                                            Log.e(TAG, "New Debt in humanid = $idHuman set success")
-                                        }
-                                        buttonClickListener.onAddDebt()
-                                        buttonClickListener.DebtDetailsExistHuman(idHuman = idHuman!!, currency = currency, name = nameArgs!!)
-                                    } catch (e: Exception) {
-                                        showErrorToast(e)
-                                    }
-                                }
-                            } else {
-                                debtSumTextInput.error = getString(R.string.zerodebt)
-                            }
-                        } else { //if user is bad
-                            if (sum.trim().isEmpty())
-                                debtSumTextInput.error = getString(R.string.youmustentername)
-                        }
-                    }
-                    DebtState.EditDebt -> {
-                        if (sum.trim().isNotEmpty()) { // user check if user not bad
-                            if (!customSwitch.isChecked())
-                                sum = (sum.toDouble() * (-1.0)).toString()
-                            if (sum.toDouble() != 0.0) {
-                                lifecycleScope.launch {
-                                    try {
-                                        withContext(Dispatchers.IO) {
-                                            val pastSum = arguments?.getFloat("sum")
-                                            val currentSum = updateCurrentSumUseCase.execute(sum.toDouble(), pastSum!!.toDouble())
-                                            if (info.trim().isEmpty())
-                                                editDebtUseCase.execute(id = idDebt!!, sum = sum.toDouble(), idHuman = idHuman!!, info = null, date = date)
-                                            else
-                                                editDebtUseCase.execute(id = idDebt!!, sum = sum.toDouble(), idHuman = idHuman!!, info = info, date = date)
-                                            addSumUseCase.execute(humanId = idHuman, sum = currentSum)
-                                            Log.e(TAG, "New Debt in humanid = $idHuman set success")
-                                        }
-                                        buttonClickListener.onAddDebt()
-                                        buttonClickListener.DebtDetailsExistHuman(idHuman = idHuman!!, currency = currency, name = name)
-                                    } catch (e: Exception) {
-                                        showErrorToast(e)
-                                    }
-                                }
-                            } else {
-                                debtSumTextInput.error = getString(R.string.zerodebt)
-                            }
-                        } else { //if user is bad
-                            if (sum.trim().isEmpty())
-                                debtSumTextInput.error = getString(R.string.youmustentername)
-                        }
-                    }
-                }
-            } catch (e: NumberFormatException) {
-                e.printStackTrace()
-                debtSumTextInput.error = getString(R.string.something_went_wrong)
+        vm.isSaving.observe(viewLifecycleOwner) { setButton.isEnabled = !it }
+        vm.saveError.observe(viewLifecycleOwner) { error ->
+            if (error) debtSumTextInput.error = getString(R.string.something_went_wrong)
+        }
+        vm.savedHumanId.observe(viewLifecycleOwner) { savedId ->
+            if (savedId != null) {
+                vm.consumeSaveResult()
+                setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
+                buttonClickListener.onAddDebt()
+                buttonClickListener.DebtDetailsExistHuman(savedId, vm.currency.value!!,
+                    nameArgs ?: humanNameEditText.text.toString().trim())
             }
+        }
+        setButton.setOnClickListener {
+            val name = humanNameEditText.text.toString().trim()
+            val parsed = if (vm.hasRepayments) sumArgs.abs() else {
+                DecimalInput.parse(debtSumEditText.text.toString(), vm.currency.value, sumArgs.abs().takeIf { (idDebt ?: 0) > 0 })
+            }
+            humanNameTextInput.error = null
+            debtSumTextInput.error = null
+            if ((idHuman == null || idHuman <= 0) && name.isEmpty()) {
+                humanNameTextInput.error = getString(R.string.youmustentername)
+                return@setOnClickListener
+            }
+            if (parsed == null || parsed < BigDecimal.ZERO) {
+                debtSumTextInput.error = getString(R.string.invalid_decimal_amount)
+                return@setOnClickListener
+            }
+            if (parsed.signum() == 0) {
+                debtSumTextInput.error = getString(R.string.zerodebt)
+                return@setOnClickListener
+            }
+            val day = vm.dueDay.value
+            if (day != null && vm.hasDueChange && vm.remind.value == true) {
+                    val reminders = DebtReminders.get(requireContext())
+                val warning = when {
+                    !reminders.allowed() -> R.string.due_permission_denied
+                    !DebtReminderPolicy.canSchedule(day) -> R.string.due_future_required
+                    else -> null
+                }
+                if (warning != null) {
+                    Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+            }
+            buttonClickListener.onSetButtonClick()
+            vm.saveDebt(idHuman ?: -1, idDebt ?: -1, name,
+                if (vm.hasRepayments) sumArgs else if (customSwitch.isChecked()) parsed else -parsed,
+                (vm.date.value ?: dateArgs ?: com.breckneck.deptbook.domain.util.LedgerDate.today()), infoEditText.text.toString())
         }
 
         fun showContacts() {
@@ -345,7 +269,7 @@ class CreateDebtFragment: Fragment() {
             val contacts = requireActivity().contentResolver.query(uri, null, null, null, null)
             if (contacts != null) {
                 while (contacts.moveToNext()) {
-                    contactNameList.add(contacts.getString(contacts.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)))
+                    contactNameList.add(contacts.getString(contacts.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME)))
                 }
                 contacts.close()
             }

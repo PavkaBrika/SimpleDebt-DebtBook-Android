@@ -10,15 +10,24 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.Collections
+import com.breckneck.debtbook.settings.synchronization.readTextBounded
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-class DriveServiceHelper(driveService: Drive) {
+/** Boundary shared by the backup UI and the Google Drive client. */
+interface BackupDrive {
+    fun createFile(name: String): Task<String>
+    fun readFile(fileId: String?): Task<Pair<String, String>>
+    fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?>
+    fun queryFiles(fileName: String): Task<FileList>
+}
+
+class DriveServiceHelper(driveService: Drive) : BackupDrive {
 
     private val mExecutor: Executor = Executors.newSingleThreadExecutor()
     private val mDriveService: Drive = driveService
 
-    fun createFile(name: String): Task<String> {
+    override fun createFile(name: String): Task<String> {
         val tcs = TaskCompletionSource<String>()
         mExecutor.execute {
             try {
@@ -36,15 +45,15 @@ class DriveServiceHelper(driveService: Drive) {
         return tcs.task
     }
 
-    fun readFile(fileId: String?): Task<Pair<String, String>> {
+    override fun readFile(fileId: String?): Task<Pair<String, String>> {
         val tcs = TaskCompletionSource<Pair<String, String>>()
         mExecutor.execute {
             try {
                 val metadata = mDriveService.files()[fileId].execute()
                 val name = metadata.name
                 val contents = mDriveService.files()[fileId].executeMediaAsInputStream().use { stream ->
-                    BufferedReader(InputStreamReader(stream)).use { reader ->
-                        reader.readText()
+                    BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
+                        reader.readTextBounded(com.breckneck.deptbook.domain.backup.BackupCodec.MAX_CHARACTERS)
                     }
                 }
                 tcs.setResult(Pair(name, contents))
@@ -55,7 +64,7 @@ class DriveServiceHelper(driveService: Drive) {
         return tcs.task
     }
 
-    fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?> {
+    override fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?> {
         val tcs = TaskCompletionSource<Void?>()
         mExecutor.execute {
             try {
@@ -70,13 +79,14 @@ class DriveServiceHelper(driveService: Drive) {
         return tcs.task
     }
 
-    fun queryFiles(fileName: String): Task<FileList> {
+    override fun queryFiles(fileName: String): Task<FileList> {
         val tcs = TaskCompletionSource<FileList>()
         mExecutor.execute {
             try {
                 val result = mDriveService.files().list()
                     .setSpaces("appDataFolder")
-                    .setQ("name = '$fileName'")
+                    .setOrderBy("modifiedTime desc")
+                    .setQ("name = '$fileName' and trashed = false")
                     .execute()
                 tcs.setResult(result)
             } catch (e: Exception) {

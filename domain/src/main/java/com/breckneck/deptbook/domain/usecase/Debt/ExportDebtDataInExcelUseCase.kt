@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.Debt
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.google.gson.Gson
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
@@ -11,7 +13,7 @@ import java.text.DecimalFormat
 class ExportDebtDataInExcelUseCase {
 
     fun execute(debtList: List<DebtDomain>, sheetName: String, rootFolder: File, sheetTitles: Array<String>): File {
-        val decimalFormat = DecimalFormat("###,###,###.##")
+        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
 
         val classTitles = arrayOf("date", "sum", "info")
         val gson = Gson()
@@ -41,7 +43,7 @@ class ExportDebtDataInExcelUseCase {
                     cell = row1.createCell(i)
                     try {
                         if (i == 1) {
-                            var sumString = decimalFormat.format(jsonObject.get(value).asDouble)
+                            var sumString = decimalFormat.format(jsonObject.get(value).asBigDecimal)
                             if (!sumString.contains("-"))
                                 sumString = "+$sumString"
                             cell.setCellValue(sumString)

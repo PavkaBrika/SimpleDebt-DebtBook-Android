@@ -1,0 +1,38 @@
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/CardViewStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="4dp"
+    android:layout_marginVertical="8dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:strokeColor="?attr/colorControlNormal"
+    app:strokeWidth="1dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="72dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView android:id="@+id/copyTitle" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:id="@+id/copyDetails" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:textSize="16sp" />
+        </LinearLayout>
+        <ImageView
+            style="@style/imageViewButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="12dp"
+            android:rotation="180"
+            android:importantForAccessibility="no"
+            android:src="@drawable/baseline_arrow_24" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

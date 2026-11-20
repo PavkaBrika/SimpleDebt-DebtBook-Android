@@ -1,5 +1,6 @@
 package repository
 
+
 import com.breckneck.deptbook.data.storage.FinanceCategoryStorage
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.model.FinanceCategory
@@ -32,7 +33,7 @@ class FinanceCategoryRepositoryImpl(private val financeCategoryStorage: FinanceC
                             sum = financeData.sum,
                             info = financeData.info,
                             financeCategoryId = financeData.financeCategoryId,
-                            date = financeData.date
+                            date = financeData.date, currency = financeData.currency, calendarDay = financeData.calendarDay
                         )
                     }.toMutableList()
                 )

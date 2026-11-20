@@ -6,6 +6,12 @@ import java.util.Date
 
 class Converters {
     @TypeConverter
+    fun amountToText(value: java.math.BigDecimal): String = com.breckneck.deptbook.domain.util.MoneyPolicy.stored(value)
+
+    @TypeConverter
+    fun textToAmount(value: String): java.math.BigDecimal = java.math.BigDecimal(value)
+
+    @TypeConverter
     fun fromTimestamp(value: Long?): Date? {
         return value?.let { Date(it) }
     }

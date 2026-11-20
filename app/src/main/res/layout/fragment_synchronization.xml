@@ -26,7 +26,7 @@
                 app:expandedTitleGravity="bottom"
                 app:layout_scrollFlags="scroll|exitUntilCollapsed"
                 app:maxLines="3"
-                app:title="@string/authorization"
+                app:title="@string/synchronization"
                 app:titleCollapseMode="scale"
                 app:titleEnabled="true">
 
@@ -66,18 +66,21 @@
             app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
             <LinearLayout
+                android:id="@+id/backupMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="36dp"
+                android:layout_marginTop="16dp"
                 android:clipToPadding="false"
                 android:orientation="vertical"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="8dp">
 
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/driveBackupCard"
                     style="@style/CardViewStyle"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp">
 
                     <LinearLayout
                         android:id="@+id/authorizationLayout"
@@ -88,6 +91,7 @@
                         android:visibility="gone">
 
                         <TextView
+                            android:id="@+id/driveHintTextView"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="12dp"
@@ -220,6 +224,7 @@
 
                             <TextView
                                 android:id="@+id/synchronizeTextView"
+                                android:textSize="16sp"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="16dp"
@@ -269,6 +274,7 @@
 
                             <TextView
                                 android:id="@+id/restoreTextView"
+                                android:textSize="16sp"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="16dp"
@@ -291,7 +297,6 @@
                                 app:layout_constraintTop_toBottomOf="@+id/restoreTextView" />
 
                         </androidx.constraintlayout.widget.ConstraintLayout>
-
 
                         <TextView
                             android:layout_width="match_parent"
@@ -319,6 +324,7 @@
 
                             <TextView
                                 android:id="@+id/logOutTextView"
+                                android:textSize="16sp"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="16dp"
@@ -333,20 +339,142 @@
                     </LinearLayout>
 
                 </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/fileBackupCard"
+                    style="@style/CardViewStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                <LinearLayout
+                    android:id="@+id/exportBackupFileButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="72dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:padding="16dp"
+                    android:orientation="horizontal">
+                    <ImageView
+                        style="@style/imageViewButton"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/baseline_save_file_24" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/backup_export_file"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/backup_export_hint"
+                            android:textColor="@color/darkgray"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <View style="@style/Divider" android:layout_marginHorizontal="16dp" />
+                <LinearLayout
+                    android:id="@+id/importBackupFileButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="72dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:padding="16dp"
+                    android:orientation="horizontal">
+                    <ImageView
+                        style="@style/imageViewButton"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/baseline_restore_24" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/backup_import_file"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/backup_import_hint"
+                            android:textColor="@color/darkgray"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/previousLocalBackupCard"
+                    style="@style/CardViewStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/previousLocalBackupButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="72dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:padding="16dp"
+                    android:orientation="horizontal">
+                    <ImageView
+                        style="@style/imageViewButton"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/baseline_restore_24" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/backup_restore_previous_local"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/backup_undo_hint"
+                            android:textColor="@color/darkgray"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
 
         </androidx.core.widget.NestedScrollView>
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/setFinanceButton"
-            style="@style/fabTheme"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="24dp"
-            android:src="@drawable/ic_baseline_check_24"
-            app:layout_anchor="@id/app_bar"
-            app:layout_anchorGravity="bottom|end" />
 
         <ProgressBar
             android:id="@+id/synchronizationProgressBar"

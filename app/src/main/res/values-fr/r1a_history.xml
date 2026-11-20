@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_load_failed">Impossible de charger cet historique. Réessayez ou choisissez un autre tri. Si le problème persiste, revenez à la liste des dettes et rouvrez cet historique.</string>
+    <string name="history_retry">Réessayer</string>
+    <string name="history_change_failed">La modification a échoué. Vérifiez le résultat dans le détail de la dette avant de réessayer.</string>
+    <string name="backup_transfer_failed">Échec de la sauvegarde. Vérifiez les accès au fichier, le stockage disponible ou la connexion Drive puis réessayez. Les sauvegardes endommagées, incomplètes ou non prises en charge ne peuvent pas être restaurées.</string>
+</resources>

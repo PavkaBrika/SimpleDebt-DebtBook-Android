@@ -5,7 +5,7 @@
 - **Тип**: Android Library (`com.android.library`)
 - **Namespace**: `com.breckneck.data`
 - **Пакеты в коде**: `com.breckneck.deptbook.data.storage` (интерфейсы), `database`, `entity`, `repository`, `sharedprefs`, `util` (flat-пакеты)
-- **SDK**: compileSdk 34, minSdk 21, targetSdk 34
+- **SDK**: compileSdk 36, minSdk 23, targetSdk 35
 - **Java target**: 17
 - **Зависимости**: Room 2.8.4 + KSP, зависимость на `:domain`
 
@@ -32,9 +32,9 @@ data/src/main/java/
 
 ### `AppDataBase` (`database/AppDataBase.kt`)
 
-- **Version**: 14
+- **Version**: 18
 - **Entities**: `Human`, `Debt`, `FinanceData`, `FinanceCategoryData`, `GoalData`, `GoalDepositData`
-- **TypeConverters**: `Converters` (конвертация `Date` ↔ `Long` и др.)
+- **TypeConverters**: `Converters` (конвертация `Date` ↔ `Long`, `BigDecimal` ↔ десятичный `TEXT`)
 - **Singleton**: thread-safe через `synchronized` + `@Volatile`
 - **Database name**: определено в `util/ConstantsData.kt`
 
@@ -49,7 +49,7 @@ data/src/main/java/
 | `getPositiveHumans()` | `WHERE sumDebt >= 0` |
 | `getNegativeHumans()` | `WHERE sumDebt <= 0` |
 | `getLastHumanId()` | `ORDER BY id DESC LIMIT 1` |
-| `addSum(humanId, sum)` | `UPDATE human SET sumDebt = sumDebt + :sum WHERE id = :humanId` |
+| `addSum(humanId, sum)` | Транзакционный пересчет: openingAdjustment + точная сумма Debt |
 | `getAllDebtsSum(currency)` | `SELECT sumDebt WHERE currency = :currency` |
 | `getHumanSumDebt(humanId)` | `SELECT sumDebt WHERE id = :humanId` |
 | `deleteHumanById(id)` | `DELETE FROM human WHERE id = :id` |
@@ -154,7 +154,8 @@ data/src/main/java/
 Все настройки приложения хранятся в SharedPreferences:
 - Валюты (first/second main, default, finance)
 - Тема, сортировка, флаги
-- PIN-код (зашифрованный), fingerprint enable
+- Флаг PIN, legacy PIN, fingerprint enable; актуальный зашифрованный PIN хранится отдельно в AtomicFile, см. `APP_CORE.md`
+- `pin_lock_delay_millis` (Long, по умолчанию 0): интервал блокировки. `SettingsRepositoryImpl` → `SettingsStorage.get/setPinLockDelayMillis` → SharedPreferences. Состояние авторизации и время ухода в фон не записываются.
 - User data (JSON через Gson)
 - Last sync date, isAuthorized
 
@@ -179,3 +180,22 @@ Data-слой enum, зеркало `FinanceCategoryState` из domain. Испо�
 - `ExampleInstrumentedTest.kt` — placeholder
 
 Тесты data-модуля минимальны (шаблонные).
+
+## R1a — граница транзакции
+
+`repository/RoomDataTransaction.kt` реализует domain `DataTransaction` через `AppDataBase.runInTransaction` на том же singleton DB, что используют storage. Схема v14 не менялась. Создание/изменение/удаление долга и баланс, удаление человека и его долгов выполняются атомарно. Instrumented `DebtReliabilityTest` проверяет откат исключения; `BackupRoomTest` — restore B → snapshot B на настоящей Room-базе (без обращения к Drive).
+
+### R1b — точные суммы и миграция 15
+
+`DatabaseMigrations` регистрирует пути 5→11→12→13→14→15 при любом открытии БД; `schemas/database.AppDataBase/{14,15}.json` — экспортированные схемы. Миграция сохраняет ID, последовательности, связи, исходные суммы без округления, старые даты (`Debt.legacyDate`). `Human.openingAdjustment` и `GoalData.openingAdjustment` сохраняют расхождение прежнего итога с историей. `saveDebt/reviseDebt/removeDebt/addGoalDeposit/updateGoalDetails` — транзакционные команды; арифметика выполняется BigDecimal в Kotlin. SQL SUM/сложение над TEXT не используется.
+
+### R1b — миграция 16
+
+`FinanceData.currency` закрепляет валюту за записью, `calendarDay` хранит новый выбранный день; `GoalData.goalDay` хранит календарный срок. 15→16 присваивает старым финансам действующую `finance_currency` из SharedPreferences, сохраняя суммы и моменты Date. День старого момента не угадывается: nullable metadata. Схема 16 экспортирована; forCurrency регистрирует полный путь миграций на каждом DB builder.
+
+### R2.1/R2.2 — возвраты и сроки, Room 18
+
+- `Debt`: nullable `repaymentOfId/operationId`, `cancelled=false` (16→17); nullable `dueDay/reminderMinute/reminderToken`, `reminderDelivered=false` (17→18). Старым строкам сроки не назначаются.
+- `AppDao.saveDebt/removeDebt`: транзакционные возвраты/отмена, баланс; полное погашение также выключает напоминание. `setDebtDueDate`: отдельное изменение срока/напоминания даже при наличии возвратов; проверяет остаток и будущее время. Обычный `reviseDebt` сохраняет срок.
+- `AppDataRepositoryImpl.replaceAllAppData`: после валидации выключает прошедшие/закрытые напоминания, атомарно заменяет данные; `database/ReminderRestoreHook.kt` вызывает зарегистрированную Android-сверку расписания после restore/undo.
+- Схемы 17/18 экспортированы; все builders регистрируют полный путь миграций. Контракт: `docs/r2-due-dates-reminders.md`.

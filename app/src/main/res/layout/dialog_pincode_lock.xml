@@ -122,6 +122,32 @@
                     </LinearLayout>
 
                     <LinearLayout
+                        android:id="@+id/pinLockDelayLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:padding="12dp">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/pin_lock_delay_title"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:id="@+id/pinLockDelayText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="14sp" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/pin_lock_delay_explanation"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
                         android:id="@+id/unlockFingerprintLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

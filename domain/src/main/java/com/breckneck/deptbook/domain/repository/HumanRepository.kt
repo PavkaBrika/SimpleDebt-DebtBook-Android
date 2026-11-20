@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.repository
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.HumanDomain
 
 interface HumanRepository {
@@ -16,11 +18,11 @@ interface HumanRepository {
 
     fun getLastHumanId() : Int
 
-    fun addSum(humanId: Int,sum: Double)
+    fun addSum(humanId: Int,sum: BigDecimal)
 
-    fun getAllDebtsSum(currency: String): List<Double>
+    fun getAllDebtsSum(currency: String): List<BigDecimal>
 
-    fun getHumanSumDebt(humanId: Int): Double
+    fun getHumanSumDebt(humanId: Int): BigDecimal
 
     fun deleteHuman(id: Int)
 

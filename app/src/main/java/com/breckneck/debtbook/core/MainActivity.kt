@@ -1,5 +1,24 @@
 package com.breckneck.debtbook.core
 
+
+import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.breckneck.debtbook.debt.reminders.DebtReminders
+import com.breckneck.debtbook.auth.AuthSession
+import database.AppDataBase
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.core.view.doOnNextLayout
+import android.graphics.Rect
+import android.widget.EditText
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.ui.onNavDestinationSelected
+import com.breckneck.debtbook.auth.ActivityAuthGate
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.*
@@ -33,6 +52,7 @@ import com.breckneck.debtbook.goal.main.GoalsFragment
 import com.breckneck.debtbook.settings.main.SettingsFragment
 import com.breckneck.debtbook.settings.synchronization.SynchronizationFragment
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.util.CLICKS_QUANTITY_FOR_AD_SHOW
@@ -71,10 +91,19 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     private val interstitialTAG = "INTERSTITIAL AD"
 
     private val vm by viewModels<MainViewModel>()
+    private val authGate = ActivityAuthGate(this,
+        pinEnabled = {
+            vm.getIsPINCodeEnabled()
+            vm.isPINCodeEnabled.value == true
+        },
+        lockDelayMillis = { vm.pinLockDelayMillis() }
+    )
     lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        authGate.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 //        val config = resources.configuration
 //        val lang = "fr" // your language code
 //        val locale = Locale(lang)
@@ -84,6 +113,24 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 //        else
 //            config.locale = locale
         setContentView(R.layout.activity_main)
+        // One inset owner for the mixed XML/Compose NavHost. Consume here so the
+        // legacy fitsSystemWindows children do not apply the bars a second time.
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.rootLayout)) { root, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val revealInput = ime.bottom > bars.bottom && root.paddingBottom != ime.bottom
+            root.updatePadding(left = bars.left, top = bars.top, right = bars.right,
+                bottom = maxOf(bars.bottom, ime.bottom))
+            if (revealInput) root.doOnNextLayout {
+                // Legacy scrolling forms must reveal the focused field after the
+                // inset changes their viewport, including with a large system font.
+                (root.findFocus() as? EditText)?.let { input ->
+                    input.requestRectangleOnScreen(Rect(0, 0, input.width, input.height), true)
+                }
+            }
+            WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(findViewById(R.id.rootLayout))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager =
@@ -103,14 +150,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 vm.debtQuantityForAppRateDialogShow.value!! <= DEBT_QUANTITY_FOR_LAST_SHOW_APP_RATE_DIALOG
             ) {
                 showAppRateDialog(false)
-            }
-        }
-
-        vm.adClicksCounter.observe(this) { counter ->
-            if (vm.adsDisabled.value != true && counter > CLICKS_QUANTITY_FOR_AD_SHOW) {
-                if (interstitialAd != null) {
-                    showInterstitialAd()
-                }
             }
         }
 
@@ -211,25 +250,85 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val bottomNavBar = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
         bottomNavBar.setupWithNavController(navController)
 
-        vm.isBottomNavViewVisible.observe(this) { isVisible ->
-            if (isVisible) {
-                if (bottomNavBar.visibility == View.GONE) { //SHOW NAV BAR
-                    bottomNavBar.clearAnimation()
-                    bottomNavBar.animate().translationY(0F).setDuration(300)
-                    bottomNavBar.visibility = View.VISIBLE
+        bottomNavBar.setOnItemSelectedListener { item ->
+            val from = navController.currentDestination?.id
+            val navigated = item.onNavDestinationSelected(navController)
+            if (navigated && from != item.itemId && from in TOP_LEVEL_DESTINATIONS) {
+                maybeShowInterstitial()
+            }
+            navigated
+        }
+        vm.isBottomNavViewVisible.observe(this) { visible ->
+            bottomNavBar.clearAnimation()
+            bottomNavBar.translationY = 0f
+            bottomNavBar.visibility = if (visible) View.VISIBLE else View.GONE
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        authGate.onStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        DebtReminders.get(this).refresh()
+        openReminderWhenUnlocked()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) openReminderWhenUnlocked()
+    }
+
+    private var openingReminder = false
+    private fun openReminderWhenUnlocked() {
+        if (openingReminder || intent.action != DebtReminders.ACTION_OPEN) return
+        vm.getIsPINCodeEnabled()
+        if (!AuthSession.canAccess(vm.isPINCodeEnabled.value == true, SystemClock.elapsedRealtime(), vm.pinLockDelayMillis())) return
+        val requestedIntent = intent
+        val id = requestedIntent.getIntExtra(DebtReminders.EXTRA_DEBT, -1)
+        openingReminder = true
+        lifecycleScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val dao = AppDataBase(this@MainActivity).appDao()
+                    val row = dao.getAllDebts().firstOrNull { it.id == id && it.repaymentOfId == null }
+                    row?.let { dao.getHuman(it.idHuman) }
                 }
-            } else {
-                if (bottomNavBar.visibility == View.VISIBLE) { //HIDE NAV BAR
-                    bottomNavBar.clearAnimation()
-                    bottomNavBar.animate()
-                        .translationY(bottomNavBar.height.toFloat() + bannerAd.height.toFloat())
-                        .setDuration(300)
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        bottomNavBar.visibility = View.GONE
-                    }, 350)
+                if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@launch
+                if (!AuthSession.canAccess(vm.isPINCodeEnabled.value == true, SystemClock.elapsedRealtime(), vm.pinLockDelayMillis())) return@launch
+                requestedIntent.action = null
+                requestedIntent.removeExtra(DebtReminders.EXTRA_DEBT)
+                if (result == null) Toast.makeText(this@MainActivity, R.string.due_missing, Toast.LENGTH_SHORT).show()
+                else {
+                    navController.popBackStack(R.id.mainFragment, false)
+                    navController.navigate(R.id.debtDetailsFragment, Bundle().apply {
+                        putInt("idHuman", result.id); putString("currency", result.currency)
+                        putString("name", result.name); putInt("openDebtId", id)
+                    })
                 }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { Toast.makeText(this@MainActivity, R.string.repayment_save_failed, Toast.LENGTH_SHORT).show() }
+            finally {
+                openingReminder = false
+                if (intent !== requestedIntent && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) openReminderWhenUnlocked()
             }
         }
+    }
+
+    override fun onStop() {
+        authGate.onStop()
+        super.onStop()
+    }
+
+    private fun maybeShowInterstitial() {
+        if (vm.adsDisabled.value == true || interstitialAd == null ||
+            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
+            navController.currentDestination?.id !in TOP_LEVEL_DESTINATIONS ||
+            vm.isAppRateDialogShow.value == true || vm.isAppReviewDialogShow.value == true) return
+        if (adPolicy.tryStart(SystemClock.elapsedRealtime())) showInterstitialAd()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -251,10 +350,14 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
                 override fun onAdFailedToShow(p0: AdError) {
                     Log.e(interstitialTAG, "Interstitial ad failed to show")
+                    adPolicy.finish()
+                    destroyInterstitialAd()
+                    loadInterstitialAd()
                 }
 
                 override fun onAdDismissed() {
                     Log.e(interstitialTAG, "Interstitial ad dismissed")
+                    adPolicy.finish()
                     interstitialAd?.setAdEventListener(null)
                     interstitialAd = null
                     loadInterstitialAd()
@@ -277,6 +380,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         interstitialAdLoader?.setAdLoadListener(null)
         interstitialAdLoader = null
         destroyInterstitialAd()
+        adPolicy.finish()
     }
 
     private fun startTickVibration() {
@@ -311,7 +415,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putBoolean("Change state", true)
+        authGate.onSaveInstanceState(outState)
     }
 
     //MainFragment interfaces
@@ -346,9 +450,9 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         startTickVibration()
     }
 
-    override fun DebtDetailsNewHuman(currency: String, name: String) {
+    override fun DebtDetailsNewHuman(idHuman: Int, currency: String, name: String) {
         val args = Bundle()
-        args.putBoolean("newHuman", true)
+        args.putInt("idHuman", idHuman)
         args.putString("currency", currency)
         args.putString("name", name)
         navController.navigate(R.id.action_newDebtFragment_to_debtDetailsFragment, args)
@@ -378,12 +482,18 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         vm.onActionClick()
     }
 
-    override fun editDebt(debtDomain: DebtDomain, currency: String, name: String) {
+    override fun editDebt(debtDomain: DebtDomain, currency: String, name: String, hasRepayments: Boolean, canRemind: Boolean) {
         val args = Bundle()
         args.putInt("idDebt", debtDomain.id)
         args.putInt("idHuman", debtDomain.idHuman)
-        args.putFloat("sum", debtDomain.sum.toFloat())
+        args.putString("sum", debtDomain.sum.toPlainString())
         args.putString("date", debtDomain.date)
+        args.putString("dueDayOnEdit", debtDomain.dueDay)
+        args.putBoolean("hasRepayments", hasRepayments)
+        args.putBoolean("canRemind", canRemind)
+        val pending = canRemind && debtDomain.reminderMinute != null && !debtDomain.reminderDelivered &&
+            debtDomain.dueDay?.let { DebtReminderPolicy.canSchedule(it) } == true
+        args.putBoolean("remindOnEdit", pending)
         if (debtDomain.info == null)
             args.putString("info", "")
         else
@@ -750,16 +860,9 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         lowRateBottomSheetDialog.show()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (resultCode == RESULT_OK) {
-            when (data!!.getStringExtra("PINCodeState")) {
-                PINCodeAction.ENABLE.toString() -> vm.setIsPINCodeEnabled(true)
-                PINCodeAction.DISABLE.toString() -> {
-                    vm.setIsPINCodeEnabled(false)
-                    vm.setIsFingerprintEnabled(false)
-                }
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data)
+    companion object {
+        private val adPolicy = InterstitialPolicy(SystemClock.elapsedRealtime())
+        private val TOP_LEVEL_DESTINATIONS = setOf(R.id.mainFragment, R.id.financeFragment,
+            R.id.goalsFragment, R.id.settingsFragment)
     }
 }

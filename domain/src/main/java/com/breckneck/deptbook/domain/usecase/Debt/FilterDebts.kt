@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.Debt
 
+import com.breckneck.deptbook.domain.util.compareTo
+
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.Filter
 

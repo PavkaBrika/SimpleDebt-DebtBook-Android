@@ -1,0 +1,9 @@
+<resources>
+    <!-- The PIN entry screen remains visible behind the recovery bottom sheet. -->
+    <style name="Theme.Debtbook.Recovery" parent="Theme.Debtbook">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+</resources>

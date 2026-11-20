@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.goal.create.screen
 
+
 import android.content.res.Configuration
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
@@ -54,6 +55,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -117,8 +119,8 @@ internal fun CreateGoalsContent(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { onAction(CreateGoalsAction.SaveClick) }) {
-                Icon(
+            FloatingActionButton(onClick = { if (!state.isSaving) onAction(CreateGoalsAction.SaveClick) }) {
+                if (state.isSaving) CircularProgressIndicator() else Icon(
                     imageVector = Icons.Filled.Check,
                     contentDescription = stringResource(R.string.save),
                 )
@@ -133,6 +135,12 @@ internal fun CreateGoalsContent(
                 .padding(horizontal = spacing.space8, vertical = spacing.space8),
             verticalArrangement = Arrangement.spacedBy(spacing.space8),
         ) {
+            if (state.saveFailed) {
+                Text(stringResource(R.string.save_failed_retry), color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { onAction(CreateGoalsAction.SaveClick) }, enabled = !state.isSaving) {
+                    Text(stringResource(R.string.form_retry))
+                }
+            }
             NameCard(
                 name = state.goal.name,
                 nameError = state.nameError,
@@ -179,9 +187,9 @@ internal fun CreateGoalsContent(
 
     if (state.isDatePickerVisible) {
         GoalDatePickerDialog(
-            currentDateMs = state.goal.goalDate?.time,
+            currentDateMs = state.goal.goalDate?.let { com.breckneck.deptbook.domain.util.LedgerDate.pickerMillis(com.breckneck.deptbook.domain.util.LedgerDate.fromDate(it)) },
             onDateSelected = { ms ->
-                if (ms != null) onAction(CreateGoalsAction.DateSelected(Date(ms)))
+                if (ms != null) onAction(CreateGoalsAction.DateSelected(com.breckneck.deptbook.domain.util.LedgerDate.fromPickerMillis(ms)))
                 else onAction(CreateGoalsAction.DismissDatePicker)
             },
             onDismiss = { onAction(CreateGoalsAction.DismissDatePicker) },
@@ -198,13 +206,7 @@ private fun GoalDatePickerDialog(
 ) {
     // DatePicker передаёт utcTimeMillis → граница тоже должна быть в UTC
     val minSelectableMillis = remember {
-        Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
-            add(Calendar.DAY_OF_YEAR, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        com.breckneck.deptbook.domain.util.LedgerDate.pickerMillis(com.breckneck.deptbook.domain.util.LedgerDate.today()) + 86_400_000L
     }
 
     val selectableDates = remember(minSelectableMillis) {

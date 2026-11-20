@@ -1,0 +1,24 @@
+<resources>
+    <string name="backup_export_hint">Ordner wählen und eine Datei mit Einträgen und Zielfotos speichern.</string>
+    <string name="backup_import_hint">Gespeicherte Datei wählen. Vor dem Ersetzen können Sie die Sicherung prüfen.</string>
+    <string name="backup_undo_hint">Die Einträge vor der letzten Wiederherstellung auf diesem Telefon zurückholen.</string>
+    <string name="backup_confirm_restore">Einträge ersetzen</string>
+    <string name="backup_confirm_restore_title">Diese Sicherung wiederherstellen?</string>
+    <string name="backup_drive_choose">Drive-Sicherung auswählen</string>
+    <string name="backup_drive_versions_hint">Wählen Sie die letzte oder vorherige Sicherung. Beim Speichern wird die bisher letzte zur vorherigen Sicherung und ersetzt die ältere. Tippen Sie auf eine Karte, um Details zu sehen.</string>
+    <string name="backup_drive_latest">Letzte Sicherung</string>
+    <string name="backup_drive_previous">Vorherige Sicherung</string>
+    <string name="backup_before_restore">Einträge vor der letzten Wiederherstellung</string>
+    <string name="backup_drive_empty">In diesem Konto gibt es noch keine Sicherungen. Speichern Sie zuerst eine Sicherung in Google Drive.</string>
+    <string name="backup_copy_unreadable">Diese Sicherung ist nicht lesbar und kann nicht wiederhergestellt werden.</string>
+    <string name="backup_drive_save_confirm">Konto: %1$s\n\nAktuelle Einträge dieses Telefons in Google Drive speichern? Die neue Sicherung wird die letzte. Gibt es bereits eine letzte Sicherung, wird sie zur vorherigen und ersetzt die ältere vorherige Sicherung.\n\nDie Einträge auf diesem Telefon bleiben unverändert.</string>
+    <string name="backup_file_saved">Sicherungsdatei gespeichert</string>
+    <string name="backup_drive_saved">Sicherung in Google Drive gespeichert</string>
+    <string name="backup_records_restored">Einträge wiederhergestellt</string>
+    <string name="backup_wait">Bitte warten Sie, bis der Vorgang abgeschlossen ist</string>
+    <string name="backup_drive_connecting">Verbindung zu Google Drive wird hergestellt…</string>
+    <string name="backup_drive_retry">Erneut verbinden</string>
+    <string name="backup_drive_connection_failed">Verbindung fehlgeschlagen. Zum Wiederholen antippen.</string>
+    <string name="backup_drive_save_hint">Sicherung mit den Einträgen dieses Telefons aktualisieren. Vor dem Speichern bestätigen Sie den Vorgang.</string>
+    <string name="backup_back_to_copies">Zur Sicherungsliste</string>
+</resources>

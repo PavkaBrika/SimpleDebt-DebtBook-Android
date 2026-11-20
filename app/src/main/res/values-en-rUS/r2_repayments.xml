@@ -1,0 +1,18 @@
+<resources>
+    <string name="repayment_received">Received repayment</string>
+    <string name="repayment_paid">I repaid</string>
+    <string name="repayment_cancel">Cancel repayment</string>
+    <string name="repayment_cancelled">Repayment cancelled · excluded from balance</string>
+    <string name="debt_lent">Owed to me</string>
+    <string name="debt_borrowed">I owe</string>
+    <string name="debt_remaining">Remaining: %1$s %2$s</string>
+    <string name="debt_repaid">Repaid: %1$s %2$s</string>
+    <string name="repayment_context">Original debt: %1$s %2$s (%3$s)</string>
+    <string name="repayment_full">Repay remaining amount</string>
+    <string name="repayment_invalid">Enter an amount greater than zero using the currency’s decimal places.</string>
+    <string name="repayment_over">The repayment exceeds the remaining %1$s %2$s. Enter a smaller amount.</string>
+    <string name="repayment_save_failed">Could not save the repayment. Please retry.</string>
+    <string name="repayment_closed">Fully repaid</string>
+    <string name="repayment_cancel_confirm">Cancel the repayment of %1$s %2$s? The amount will be added back to the remaining debt; the repayment will stay in history.</string>
+    <string name="repayment_amount">Repayment amount</string>
+</resources>

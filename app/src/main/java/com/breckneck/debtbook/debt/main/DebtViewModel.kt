@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.main
 
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -12,7 +14,6 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
-import com.breckneck.deptbook.domain.util.DebtLogicListState
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
 import com.breckneck.deptbook.domain.util.ScreenState
 import kotlinx.coroutines.Dispatchers
@@ -20,10 +21,9 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -45,8 +45,7 @@ class DebtViewModel @Inject constructor(
     private val _screenState = MutableLiveData(ScreenState.LOADING)
     val screenState: LiveData<ScreenState>
         get() = _screenState
-    private val _listState: MutableStateFlow<DebtLogicListState> =
-        MutableStateFlow(DebtLogicListState.Loading)
+    private var refreshJob: Job? = null
 
     private val _mainSums = MutableLiveData<Pair<String, String>>()
     val mainSums: LiveData<Pair<String, String>>
@@ -82,54 +81,35 @@ class DebtViewModel @Inject constructor(
     private val _isSearching = MutableLiveData(false)
     val isSearching: LiveData<Boolean>
         get() = _isSearching
-    private val _resultHumanListCopyForSearching = MutableLiveData<List<HumanDomain>>()
     private val _searchQuery = MutableStateFlow("")
 
     init {
-        Log.e(TAG, "MainFragment VM created")
-
+        getHumanOrder()
+        setListStateLoading()
         viewModelScope.launch {
-            _listState.collectLatest { state ->
-                when (state) {
-                    is DebtLogicListState.Loading -> {
-                        _screenState.value = ScreenState.LOADING
-                        getHumanOrder()
-                        getMainSums()
-                        getHumans()
-                    }
-
-                    is DebtLogicListState.Received -> {
-                        _screenState.value = ScreenState.LOADING
-                        sortHumans(state = state)
-                    }
-
-                    is DebtLogicListState.Sorted -> {
-                        _resultedHumanList.value = _sortedHumanList.value
-                        _screenState.value = ScreenState.SUCCESS
-                    }
-                }
-            }
+            _searchQuery.debounce(500).collectLatest { publishHumans() }
         }
     }
 
+    /** A refresh is a request, including when the previous result was empty. */
     fun setListStateLoading() {
-        _listState.value = DebtLogicListState.Loading
-    }
-
-    private fun getHumans() {
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            _screenState.value = ScreenState.LOADING
             try {
-                val humans = withContext(Dispatchers.IO) { getAllHumansUseCase.execute() }
-                if (humans.isNotEmpty()) {
-                    _initialHumanList.value = humans
-                    _sortedHumanList.value = humans
-                    _listState.value = DebtLogicListState.Received(needToSetFilter = true)
-                    Log.e(TAG, "humans loaded in VM")
-                } else {
-                    _screenState.value = ScreenState.EMPTY
+                val (humans, sums) = withContext(Dispatchers.IO) {
+                    getAllHumansUseCase.execute() to getAllDebtsSumUseCase.execute(
+                        getFirstMainCurrency.execute(), getSecondMainCurrency.execute()
+                    )
                 }
+                _initialHumanList.value = humans
+                _mainSums.value = sums
+                publishHumans()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.e(TAG, e.stackTraceToString())
+                Log.e(TAG, "Could not refresh debts", e)
+                publishHumans()
             }
         }
     }
@@ -169,44 +149,19 @@ class DebtViewModel @Inject constructor(
         )
     }
 
-    private suspend fun sortHumans(state: DebtLogicListState) {
-        try {
-            val sorted = withContext(Dispatchers.Default) {
-                var list = _sortedHumanList.value
-                if (state.needToSetFilter == true) {
-                    list = filterHumans(list!!)
-                    Log.e(TAG, "FILTERED")
-                }
-                list = orderHumans(list!!)
-                Log.e(TAG, "SORTED")
-                list
-            }
-            Log.e(TAG, "RECEIVED")
-            if (sorted.isNotEmpty()) {
-                _sortedHumanList.value = sorted
-                _listState.value = DebtLogicListState.Sorted
-            } else {
-                _screenState.value = ScreenState.EMPTY
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, e.stackTraceToString())
-        }
+    private fun publishHumans() {
+        val sorted = orderHumans(filterHumans(_initialHumanList.value.orEmpty()))
+        _sortedHumanList.value = sorted
+        val query = if (_isSearching.value == true) _searchQuery.value.trim() else ""
+        val visible = sorted.filter { it.name.contains(query, ignoreCase = true) }
+        _resultedHumanList.value = visible
+        _screenState.value = if (visible.isEmpty()) ScreenState.EMPTY else ScreenState.SUCCESS
     }
 
     fun onSetHumanSort(filter: Filter, order: Pair<HumanOrderAttribute, Boolean>) {
-        if (humanFilter.value!! != filter && humanOrder.value!! == order) {
-            _humanFilter.value = filter
-            _sortedHumanList.value = _initialHumanList.value
-            _listState.value = DebtLogicListState.Received(needToSetFilter = true)
-        } else if (humanFilter.value!! == filter && humanOrder.value!! != order) {
-            _humanOrder.value = order
-            _listState.value = DebtLogicListState.Received(needToSetFilter = false)
-        } else if (humanFilter.value!! != filter && humanOrder.value!! != order) {
-            _humanFilter.value = filter
-            _humanOrder.value = order
-            _sortedHumanList.value = _initialHumanList.value
-            _listState.value = DebtLogicListState.Received(needToSetFilter = true)
-        }
+        _humanFilter.value = filter
+        _humanOrder.value = order
+        publishHumans()
     }
 
     fun saveHumanOrder(order: Pair<HumanOrderAttribute, Boolean>) {
@@ -249,29 +204,17 @@ class DebtViewModel @Inject constructor(
     }
 
     fun onStartSearch() {
-        _searchQuery
-            .debounce(500)
-            .onStart {
-                _resultHumanListCopyForSearching.value = _resultedHumanList.value
-                Log.e(TAG, "SEARCH FLOW STARTED")
-            }
-            .onEach { query ->
-                _resultedHumanList.value =
-                    _resultHumanListCopyForSearching.value!!.filter { human ->
-                        human.name.lowercase().trim().contains(query.lowercase().trim())
-                    }
-                Log.e(TAG, "SEARCH")
-            }.launchIn(viewModelScope)
+        setIsSearching(true)
     }
 
     fun onStopSearch() {
-        if (_resultHumanListCopyForSearching.value != null)
-            _resultedHumanList.value = _resultHumanListCopyForSearching.value
-        Log.e(TAG, "RESULT")
+        _searchQuery.value = ""
+        setIsSearching(false)
     }
 
     fun setIsSearching(isSearching: Boolean) {
         _isSearching.value = isSearching
+        publishHumans()
     }
 
     override fun onCleared() {

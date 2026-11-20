@@ -60,6 +60,10 @@ interface SettingsStorage {
 
     fun getPINCodeEnabled(): Boolean
 
+    fun getPinLockDelayMillis(): Long
+
+    fun setPinLockDelayMillis(delayMillis: Long)
+
     fun setPINCode(PINCode: String)
 
     fun getPINCode(): String

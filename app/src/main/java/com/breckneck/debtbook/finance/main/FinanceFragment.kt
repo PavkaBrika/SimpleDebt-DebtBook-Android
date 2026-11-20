@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.finance.main
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Typeface
@@ -37,8 +38,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.util.Calendar
 
 @AndroidEntryPoint
@@ -85,10 +84,6 @@ class FinanceFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val decimalFormat = DecimalFormat("###,###,###.##")
-        val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
 
         val collaps: CollapsingToolbarLayout = view.findViewById(R.id.collaps)
         collaps.apply {
@@ -104,6 +99,7 @@ class FinanceFragment : Fragment() {
         val onCurrencySettingsClickListener = object : SettingsAdapter.OnClickListener {
             override fun onClick(setting: String, position: Int) {
                 vm.setCurrency(setting.substring(setting.lastIndexOf(" ") + 1))
+                com.google.android.material.snackbar.Snackbar.make(view, R.string.finance_currency_filter_hint, com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
             }
         }
 
@@ -183,7 +179,8 @@ class FinanceFragment : Fragment() {
 
         val overallSumTextView: TextView = view.findViewById(R.id.overallSumTextView)
         vm.overallSum.observe(viewLifecycleOwner) { sum ->
-            overallSumTextView.text = "${decimalFormat.format(sum)} ${vm.currency.value}"
+            val currency = vm.currency.value.orEmpty()
+            overallSumTextView.text = "${MoneyDisplay.format(sum, currency)} $currency"
         }
 
         val noNotesTextView: TextView = view.findViewById(R.id.noNotesTextView)

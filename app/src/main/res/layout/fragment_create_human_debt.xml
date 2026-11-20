@@ -219,28 +219,6 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/debtDateCardView"
-                        style="@style/CardViewStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginHorizontal="8dp"
-                        android:layout_marginTop="8dp"
-                        android:clickable="true"
-                        android:focusable="true">
-
-                        <TextView
-                            android:id="@+id/debtDateTextView"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:paddingHorizontal="4dp"
-                            android:paddingVertical="16dp"
-                            android:text="date"
-                            android:textAlignment="center"
-                            android:textSize="26sp" />
-
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <com.google.android.material.card.MaterialCardView
                         style="@style/CardViewStyle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -276,11 +254,14 @@
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/setFinanceButton"
+            android:contentDescription="@string/save"
             style="@style/fabTheme"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="24dp"
             android:src="@drawable/ic_baseline_check_24"
+            app:behavior_autoHide="false"
+            app:layout_behavior="com.google.android.material.floatingactionbutton.FloatingActionButton$Behavior"
             app:elevation="11dp"
             app:layout_anchor="@id/app_bar"
             app:layout_anchorGravity="bottom|end" />

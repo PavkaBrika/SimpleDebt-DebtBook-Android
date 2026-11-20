@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.settings.main
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.breckneck.deptbook.domain.util.PinLockDelay
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -35,8 +37,6 @@ import com.breckneck.debtbook.auth.AuthorizationActivity
 import com.breckneck.deptbook.domain.util.PINCodeAction
 import com.breckneck.debtbook.core.adapter.SettingsAdapter
 import com.breckneck.debtbook.core.MainViewModel
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import androidx.fragment.app.activityViewModels
@@ -86,7 +86,11 @@ class SettingsFragment : Fragment() {
             if (bundle.getBoolean("isListModified"))
                 mainActivityVM.setIsNeedUpdateDebtData(true)
         }
-        startActivityForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+        startActivityForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            // Auth writes settings after verification; result extras are not credentials.
+            mainActivityVM.getIsPINCodeEnabled()
+            vm.getIsFingerprintAuthEnabled()
+        }
         return inflater.inflate(R.layout.fragment_settings, container, false)
     }
 
@@ -94,17 +98,8 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         Log.e(TAG, "onViewCreated")
 
-        if (vm.isSynchronizationAvailable.value == null) {
-            checkIsSynchronizationAvailable()
-        }
-
-        val synchronizationCardView: CardView = view.findViewById(R.id.synchronizationCardView)
-        vm.isSynchronizationAvailable.observe(viewLifecycleOwner) { isAvailable ->
-            if (isAvailable)
-                synchronizationCardView.visibility = View.VISIBLE
-            else
-                synchronizationCardView.visibility = View.GONE
-        }
+        // File backup is available even without Google Play services.
+        view.findViewById<CardView>(R.id.synchronizationCardView).visibility = View.VISIBLE
 
         val authorizationLayout: LinearLayout = view.findViewById(R.id.authorizationLayout)
         val accountInfoLayout: ConstraintLayout = view.findViewById(R.id.accountInfoLayout)
@@ -336,6 +331,23 @@ class SettingsFragment : Fragment() {
                 }
             }
 
+            val lockDelayText: TextView = dialog.findViewById(R.id.pinLockDelayText)!!
+            val delayLabels = listOf(R.string.pin_lock_immediately, R.string.pin_lock_30_seconds,
+                R.string.pin_lock_1_minute, R.string.pin_lock_5_minutes).map(::getString)
+            vm.pinLockDelay.observe(viewLifecycleOwner) { delay ->
+                lockDelayText.text = delayLabels[PinLockDelay.entries.indexOf(delay).coerceAtLeast(0)]
+            }
+            dialog.findViewById<View>(R.id.pinLockDelayLayout)!!.setOnClickListener {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.pin_lock_delay_title)
+                    .setSingleChoiceItems(delayLabels.toTypedArray(),
+                        PinLockDelay.entries.indexOf(vm.pinLockDelay.value).coerceAtLeast(0)) { picker, index ->
+                        vm.setPinLockDelay(PinLockDelay.entries[index])
+                        picker.dismiss()
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
             val biometricManager = BiometricManager.from(requireActivity())
             when (biometricManager.canAuthenticate(BIOMETRIC_STRONG)) {
                 BiometricManager.BIOMETRIC_SUCCESS -> {
@@ -363,7 +375,20 @@ class SettingsFragment : Fragment() {
                                 BIOMETRIC_STRONG
                             )
                         }
-                        startActivity(enrollIntent)
+                        // Opening PIN settings must not leave the app. Enrolment is
+                        // only requested when the user explicitly chooses fingerprint.
+                        unlockFingerprintSwitch.isChecked = false
+                        unlockFingerprintLayout.setOnClickListener {
+                            dialog.dismiss()
+                            startActivity(enrollIntent)
+                        }
+                        unlockFingerprintSwitch.setOnCheckedChangeListener { button, _ ->
+                            if (button.isPressed) {
+                                unlockFingerprintSwitch.isChecked = false
+                                dialog.dismiss()
+                                startActivity(enrollIntent)
+                            }
+                        }
                     } else {
                         unlockFingerprintLayout.visibility = View.GONE
                     }
@@ -374,7 +399,7 @@ class SettingsFragment : Fragment() {
             changePINCodeLayout.setOnClickListener {
                 Intent(requireActivity(), AuthorizationActivity::class.java).also {
                     it.putExtra("PINCodeState", PINCodeAction.CHANGE.toString())
-                    startActivity(it)
+                    startActivityForResult.launch(it)
                 }
             }
 
@@ -405,7 +430,7 @@ class SettingsFragment : Fragment() {
 
         val privacyPolicyLayout: LinearLayout = view.findViewById(R.id.privacyPolicyLayout)
         privacyPolicyLayout.setOnClickListener {
-            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://simpledebtbook-privacy-policy.ucoz.net/"))
+            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.privacy_policy_url)))
             startActivity(browserIntent)
         }
 
@@ -463,14 +488,6 @@ class SettingsFragment : Fragment() {
             settingsSelectListener = onSettingsSelectListener
         )
         dialog.show()
-    }
-
-    private fun checkIsSynchronizationAvailable() {
-        val isAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(requireContext())
-        if (isAvailable == ConnectionResult.SUCCESS)
-            vm.setIsSynchronizationAvailable(true)
-        else
-            vm.setIsSynchronizationAvailable(false)
     }
 
     override fun onPause() {

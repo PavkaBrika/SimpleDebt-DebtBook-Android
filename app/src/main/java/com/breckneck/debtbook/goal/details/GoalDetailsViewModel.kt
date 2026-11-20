@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.details
 
+import java.math.BigDecimal
+
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -40,8 +42,8 @@ class GoalDetailsViewModel @Inject constructor(
     private var _isGoalDepositListNeedToUpdate = false
     val isGoalDepositListNeedToUpdate: Boolean
         get() = _isGoalDepositListNeedToUpdate
-    private val _goalSavedSum = MutableLiveData<Double>()
-    val goalSavedSum: LiveData<Double>
+    private val _goalSavedSum = MutableLiveData<BigDecimal>()
+    val goalSavedSum: LiveData<BigDecimal>
         get() = _goalSavedSum
     private val _goal = MutableLiveData<Goal>()
     val goal: LiveData<Goal>
@@ -79,8 +81,10 @@ class GoalDetailsViewModel @Inject constructor(
                 }
                 if (list.isEmpty()) {
                     _goalDepositListState.value = ListState.EMPTY
+                    _goalDepositList.value = emptyList()
                 } else {
                     _goalDepositList.value = list
+                    _goalDepositListState.value = ListState.RECEIVED
                 }
                 _isGoalDepositListNeedToUpdate = false
                 Log.e(TAG, "Goal deposit list loaded")
@@ -90,30 +94,26 @@ class GoalDetailsViewModel @Inject constructor(
         }
     }
 
-    fun updateGoalSum(sum: Double) {
-        viewModelScope.launch {
-            try {
-                val goal = _goal.value!!
-                goal.savedSum = goal.savedSum + sum
-                withContext(Dispatchers.IO) {
-                    updateGoal.execute(goal = goal)
-                }
-                _goalSavedSum.value = goal.savedSum
-                Log.e(TAG, "Goal updated")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
-            }
-        }
-    }
+    val isSaving = MutableLiveData(false)
+    val operationError = MutableLiveData(false)
 
     fun setGoalDeposit(goalDeposit: GoalDeposit) {
+        if (isSaving.value == true) return
+        isSaving.value = true
+        operationError.value = false
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { setGoalDeposit.execute(goalDeposit = goalDeposit) }
-                Log.e(TAG, "Goal deposit added")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
-            }
+                withContext(Dispatchers.IO) { setGoalDeposit.execute(goalDeposit) }
+                val current = requireNotNull(_goal.value)
+                val updated = current.copy(savedSum = current.savedSum + goalDeposit.sum)
+                _goal.value = updated
+                _goalSavedSum.value = updated.savedSum
+                getGoalDepositList()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                operationError.value = true
+            } finally { isSaving.value = false }
         }
     }
 

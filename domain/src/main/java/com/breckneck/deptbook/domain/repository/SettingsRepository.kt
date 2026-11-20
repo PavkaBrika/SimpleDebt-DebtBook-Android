@@ -62,6 +62,10 @@ interface SettingsRepository {
 
     fun getPINCodeEnabled(): Boolean
 
+    fun getPinLockDelayMillis(): Long
+
+    fun setPinLockDelayMillis(delayMillis: Long)
+
     fun getPINCode(): String
 
     fun setPINCode(PINCode: String)

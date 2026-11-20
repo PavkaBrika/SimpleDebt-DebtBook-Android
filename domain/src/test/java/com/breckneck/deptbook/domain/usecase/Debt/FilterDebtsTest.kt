@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.domain.usecase.Debt
 
+import java.math.BigDecimal
+
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.Filter
 import org.junit.jupiter.api.Assertions
@@ -8,16 +10,16 @@ import org.junit.jupiter.api.Test
 class FilterDebtsTest {
 
     val debtList = listOf(
-        DebtDomain(id = 0, sum = 100.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = -200.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = 300.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = -400.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = 500.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = -600.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = 0.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = -0.0, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = -0.00000001, idHuman = 0, info = "", date = ""),
-        DebtDomain(id = 0, sum = 0.0000000001, idHuman = 0, info = "", date = "")
+        DebtDomain(id = 0, sum = "100.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = -"200.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = "300.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = -"400.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = "500.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = -"600.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = "0.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = -"0.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = -"0.00000001".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+        DebtDomain(id = 0, sum = "0.0000000001".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = "")
         )
 
     @Test
@@ -37,12 +39,12 @@ class FilterDebtsTest {
 
         val actual = useCase.execute(debtList = debtList, filter = testFilter)
         val expected = listOf(
-            DebtDomain(id = 0, sum = -200.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = -400.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = -600.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = 0.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = -0.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = -0.00000001, idHuman = 0, info = "", date = "")
+            DebtDomain(id = 0, sum = -"200.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = -"400.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = -"600.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = "0.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = -"0.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = -"0.00000001".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = "")
         )
         Assertions.assertEquals(expected, actual)
     }
@@ -54,12 +56,12 @@ class FilterDebtsTest {
 
         val actual = useCase.execute(debtList = debtList, filter = testFilter)
         val expected = listOf(
-            DebtDomain(id = 0, sum = 100.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = 300.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = 500.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = 0.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = -0.0, idHuman = 0, info = "", date = ""),
-            DebtDomain(id = 0, sum = 0.0000000001, idHuman = 0, info = "", date = "")
+            DebtDomain(id = 0, sum = "100.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = "300.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = "500.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = "0.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = -"0.0".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = ""),
+            DebtDomain(id = 0, sum = "0.0000000001".toBigDecimal().stripTrailingZeros(), idHuman = 0, info = "", date = "")
         )
         Assertions.assertEquals(expected, actual)
     }

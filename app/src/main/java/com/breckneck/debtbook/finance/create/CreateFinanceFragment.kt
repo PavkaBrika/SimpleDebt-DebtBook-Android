@@ -1,12 +1,14 @@
 package com.breckneck.debtbook.finance.create
 
+import java.math.BigDecimal
+
 import android.app.DatePickerDialog
 import android.content.Context
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
+import android.text.InputType
+import android.text.method.DigitsKeyListener
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,7 +19,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.os.bundleOf
-import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.setFragmentResultListener
@@ -28,6 +29,7 @@ import com.breckneck.debtbook.core.customview.CustomSwitchView
 import com.breckneck.debtbook.finance.util.GetFinanceCategoryNameInLocalLanguage
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.model.FinanceCategory
+import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.CreateFragmentState
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.breckneck.deptbook.domain.util.SWITCH_STATE_INCOMES
@@ -35,10 +37,10 @@ import com.breckneck.deptbook.domain.util.SWITCH_STATE_REVENUES
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
-import java.text.DecimalFormat
 import java.util.Calendar
 
 @AndroidEntryPoint
@@ -105,6 +107,8 @@ class CreateFinanceFragment : Fragment() {
 
         val customSwitch: CustomSwitchView = view.findViewById(R.id.customSwitch)
         val financeSumEditText: EditText = view.findViewById(R.id.financeSumEditText)
+        financeSumEditText.keyListener = DigitsKeyListener.getInstance("0123456789.,")
+        financeSumEditText.setRawInputType(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
         val financeSumTextInput: TextInputLayout = view.findViewById(R.id.financeSumTextInput)
         val financeInfoEditText: EditText = view.findViewById(R.id.financeInfoEditText)
         val categoryLinearLayout: LinearLayout = view.findViewById(R.id.categoryLinearLayout)
@@ -128,15 +132,14 @@ class CreateFinanceFragment : Fragment() {
                 }
 
                 CreateFragmentState.EDIT -> {
-                    val decimalFormat = DecimalFormat("#.##")
                     val financeEdit = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         arguments?.getSerializable("financeEdit", Finance::class.java)
                     } else {
                         arguments?.getSerializable("financeEdit") as Finance?
                     }
                     vm.setFinanceEdit(finance = financeEdit!!)
-                    vm.setDayInMillis(dayInMillis = financeEdit.date.time)
-                    financeSumEditText.setText(decimalFormat.format(financeEdit.sum))
+                    vm.setDayInMillis(dayInMillis = financeEdit.presentationDate.time)
+                    financeSumEditText.setText(DecimalInput.format(financeEdit.sum, currency = financeEdit.currency))
                     financeInfoEditText.setText(financeEdit.info)
                     categoryLinearLayout.visibility = View.GONE
                     customSwitch.visibility = View.GONE
@@ -171,27 +174,6 @@ class CreateFinanceFragment : Fragment() {
         val backButtonImageView: ImageView = view.findViewById(R.id.backButton)
         backButtonImageView.setOnClickListener {
             onClickListener!!.onBackButtonClick()
-        }
-
-        financeSumEditText.addTextChangedListener {
-            object : TextWatcher {
-                override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                }
-
-                override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                }
-
-                override fun afterTextChanged(editable: Editable?) {
-                    val str = editable.toString()
-                    val position = str.indexOf(".")
-                    if (position != -1) {
-                        val subStr = str.substring(position)
-                        val subStrStart = str.substring(0, position)
-                        if ((subStr.length > 3) || (subStrStart.length == 0))
-                            editable?.delete(editable.length - 1, editable.length)
-                    }
-                }
-            }
         }
 
         val financeCurrencyTextView: TextView = view.findViewById(R.id.financeCurrencyTextView)
@@ -259,22 +241,13 @@ class CreateFinanceFragment : Fragment() {
         fun isAllFieldsFilledRight(): Boolean {
             var isFilledRight = true
 
-            if (financeSumEditText.text.toString().trim().isEmpty()) {
-                financeSumTextInput.error = getString(R.string.youmustentername)
-                isFilledRight = false
-            } else {
-                financeSumTextInput.error = ""
-                try {
-                    if (financeSumEditText.text.toString().trim().replace(" ", "").toDouble() == 0.0) {
-                        financeSumTextInput.error = getString(R.string.zerodebt)
-                        isFilledRight = false
-                    } else
-                        financeSumTextInput.error = ""
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    financeSumTextInput.error = getString(R.string.something_went_wrong)
-                }
+            val sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)
+            financeSumTextInput.error = when {
+                sum == null -> getString(R.string.something_went_wrong)
+                sum <= BigDecimal.ZERO -> getString(R.string.zerodebt)
+                else -> null
             }
+            if (sum == null || sum <= BigDecimal.ZERO) isFilledRight = false
 
             if (vm.createFragmentState.value == CreateFragmentState.CREATE) {
                 if (vm.checkedFinanceCategory.value == null) {
@@ -290,16 +263,33 @@ class CreateFinanceFragment : Fragment() {
         }
 
         val setFinanceButton: FloatingActionButton = view.findViewById(R.id.setFinanceButton)
+        vm.saveState.observe(viewLifecycleOwner) { state ->
+            setFinanceButton.isEnabled = state != CreateFinanceViewModel.SaveState.SAVING &&
+                state != CreateFinanceViewModel.SaveState.SAVED
+            when (state) {
+                CreateFinanceViewModel.SaveState.SAVED -> {
+                    setFragmentResult("financeDetailsKey", bundleOf("isListModified" to true))
+                    setFragmentResult("financeFragmentKey", bundleOf("isListModified" to true))
+                    onClickListener?.onBackButtonClick()
+                }
+                CreateFinanceViewModel.SaveState.ERROR -> Snackbar.make(
+                    view, R.string.save_failed_retry, Snackbar.LENGTH_INDEFINITE
+                ).setAction(R.string.form_retry) { setFinanceButton.performClick() }.show()
+                else -> Unit
+            }
+        }
         setFinanceButton.setOnClickListener {
             if (isAllFieldsFilledRight()) {
                 when (vm.createFragmentState.value!!) {
                     CreateFragmentState.CREATE -> {
                         vm.setFinance(
                             Finance(
-                                sum = financeSumEditText.text.toString().toDouble(),
+                                sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)!!,
                                 info = financeInfoEditText.text.toString(),
                                 financeCategoryId = vm.checkedFinanceCategory.value!!.id,
-                                date = vm.date.value!!
+                                date = vm.date.value!!,
+                                currency = vm.financeEdit.value?.currency ?: vm.currency.value!!,
+                                calendarDay = com.breckneck.deptbook.domain.util.LedgerDate.fromDate(vm.date.value!!)
                             )
                         )
                     }
@@ -308,17 +298,16 @@ class CreateFinanceFragment : Fragment() {
                         vm.editFinance(
                             Finance(
                                 id = vm.financeEdit.value!!.id,
-                                sum = financeSumEditText.text.toString().toDouble(),
+                                sum = DecimalInput.parse(financeSumEditText.text.toString(), vm.currency.value, vm.financeEdit.value?.sum)!!,
                                 info = financeInfoEditText.text.toString(),
                                 financeCategoryId = vm.financeEdit.value!!.financeCategoryId,
-                                date = vm.date.value!!
+                                date = vm.date.value!!,
+                                currency = vm.financeEdit.value?.currency ?: vm.currency.value!!,
+                                calendarDay = com.breckneck.deptbook.domain.util.LedgerDate.fromDate(vm.date.value!!)
                             )
                         )
-                        setFragmentResult("financeDetailsKey", bundleOf("isListModified" to true))
                     }
                 }
-                setFragmentResult("financeFragmentKey", bundleOf("isListModified" to true))
-                onClickListener!!.onBackButtonClick()
             }
         }
     }

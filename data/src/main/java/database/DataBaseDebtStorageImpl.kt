@@ -3,6 +3,7 @@ package database
 import android.content.Context
 import androidx.room.Room
 import com.breckneck.deptbook.data.storage.DebtStorage
+import com.breckneck.deptbook.domain.model.DebtDueChange
 import entity.Debt
 import util.DATA_BASE_NAME
 
@@ -24,19 +25,19 @@ class DataBaseDebtStorageImpl(context: Context): DebtStorage {
     }
 
     override fun setDebt(debt: Debt) {
-        db.appDao().insertDebt(debt)
+        db.appDao().saveDebt(debt)
     }
 
     override fun deleteDebt(debt: Debt) {
-        db.appDao().deleteDebt(debt)
+        db.appDao().removeDebt(debt)
     }
 
-    override fun editDebt(debt: Debt) {
-        db.appDao().updateDebt(debt)
+    override fun editDebt(debt: Debt, due: DebtDueChange?) {
+        db.appDao().reviseDebt(debt, due)
     }
 
     override fun deleteDebtsByHumanId(id: Int) {
-        db.appDao().deleteHumanById(id = id)
+        db.appDao().deleteDebtsByHumanId(id = id)
     }
 
     override fun getDebtQuantity(): Int {

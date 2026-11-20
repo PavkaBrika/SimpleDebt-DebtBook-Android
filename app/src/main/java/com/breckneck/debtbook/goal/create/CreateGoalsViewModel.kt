@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.create
 
+import java.math.BigDecimal
+
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -8,12 +10,14 @@ import androidx.lifecycle.ViewModel
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.goal.create.mapper.toCreateGoalUi
 import com.breckneck.debtbook.goal.create.mapper.toDomain
+import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.usecase.Goal.SetGoal
 import com.breckneck.deptbook.domain.usecase.Goal.UpdateGoal
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.orbitmvi.orbit.ContainerHost
@@ -105,13 +109,13 @@ class CreateGoalsViewModel @Inject constructor(
     }
 
     private fun onSumChanged(value: String) = intent {
-        if (isValidDecimalInput(value)) {
+        if (DecimalInput.isEditable(value)) {
             reduce { state.copy(goal = state.goal.copy(sum = value), sumError = null) }
         }
     }
 
     private fun onSavedSumChanged(value: String) = intent {
-        if (isValidDecimalInput(value)) {
+        if (DecimalInput.isEditable(value)) {
             reduce { state.copy(goal = state.goal.copy(savedSum = value), savedSumError = null) }
         }
     }
@@ -183,15 +187,16 @@ class CreateGoalsViewModel @Inject constructor(
     }
 
     private fun onSaveClick() = intent {
+        if (state.isSaving) return@intent
         val goal = state.goal
         val name = goal.name.trim()
-        val sumText = goal.sum.trim().replace(" ", "")
-        val savedSumText = goal.savedSum.trim().replace(" ", "")
+        val sumText = goal.sum.trim()
+        val savedSumText = goal.savedSum.trim()
 
         val nameError = CreateGoalsFormValidation.validateName(name)
-        val (sumDouble, sumError) = CreateGoalsFormValidation.validateSum(sumText)
+        val (sumDouble, sumError) = CreateGoalsFormValidation.validateSum(sumText, goal.currency, originalGoal?.sum)
         val (savedSumDouble, savedSumError) =
-            CreateGoalsFormValidation.validateSavedSum(savedSumText, sumDouble)
+            CreateGoalsFormValidation.validateSavedSum(savedSumText, sumDouble, goal.currency, originalGoal?.savedSum)
 
         if (nameError != null || sumError != null || savedSumError != null) {
             reduce {
@@ -204,44 +209,34 @@ class CreateGoalsViewModel @Inject constructor(
             return@intent
         }
 
-        reduce { state.copy(nameError = null, sumError = null, savedSumError = null) }
-
-        if (state.isEditMode) {
-            saveEdit(sumDouble!!, savedSumDouble ?: 0.0)
-        } else {
-            saveCreate(sumDouble!!, savedSumDouble ?: 0.0)
+        reduce {
+            state.copy(nameError = null, sumError = null, savedSumError = null,
+                isSaving = true, saveFailed = false)
         }
-    }
-
-    private fun saveCreate(sum: Double, savedSum: Double) = intent {
-        val photoPath = savePhotoToInternalStorage(state.goal.imageUri)
-        val newGoal = state.goal.toDomain(sum = sum, savedSum = savedSum, photoPath = photoPath)
+        val isEdit = state.isEditMode
         try {
-            withContext(Dispatchers.IO) { setGoal.execute(goal = newGoal) }
-            Log.d(TAG, "Goal added")
-            postSideEffect(CreateGoalsSideEffect.NavigateBack(saved = true))
-        } catch (e: Exception) {
-            Log.e(TAG, e.message.toString())
-        }
-    }
-
-    private fun saveEdit(sum: Double, savedSum: Double) = intent {
-        val goal = state.goal
-        val original = originalGoal ?: return@intent
-        val photoPath = if (goal.imagePath != null) original.photoPath
-        else savePhotoToInternalStorage(goal.imageUri)
-        val editedGoal = goal.toDomain(
-            sum = sum,
-            savedSum = savedSum,
-            photoPath = photoPath,
-            originalGoal = original,
-        )
-        try {
-            withContext(Dispatchers.IO) { updateGoal.execute(goal = editedGoal) }
-            Log.d(TAG, "Goal updated")
-            postSideEffect(CreateGoalsSideEffect.NavigateBack(editedGoal = editedGoal, saved = true))
-        } catch (e: Exception) {
-            Log.e(TAG, e.message.toString())
+            val savedGoal = withContext(Dispatchers.IO) {
+                val original = if (isEdit) checkNotNull(originalGoal) else null
+                val photoPath = if (isEdit && goal.imagePath != null) original?.photoPath
+                else savePhotoToInternalStorage(goal.imageUri)
+                val savingGoal = goal.toDomain(
+                    sum = sumDouble!!,
+                    savedSum = savedSumDouble ?: BigDecimal.ZERO,
+                    photoPath = photoPath,
+                    originalGoal = original,
+                )
+                if (isEdit) updateGoal.execute(savingGoal) else setGoal.execute(savingGoal)
+                savingGoal
+            }
+            // Keep the save guard until this screen is removed, including rapid repeated taps.
+            postSideEffect(CreateGoalsSideEffect.NavigateBack(
+                editedGoal = savedGoal.takeIf { isEdit }, saved = true,
+            ))
+        } catch (cancelled: CancellationException) {
+            reduce { state.copy(isSaving = false) }
+            throw cancelled
+        } catch (_: Exception) {
+            reduce { state.copy(isSaving = false, saveFailed = true) }
         }
     }
 
@@ -276,12 +271,4 @@ class CreateGoalsViewModel @Inject constructor(
         container.stateFlow.value.currencyNames.indexOfFirst { it.contains(currency) }
             .coerceAtLeast(0)
 
-    private fun isValidDecimalInput(value: String): Boolean {
-        if (value.isEmpty()) return true
-        val dotIndex = value.indexOf('.')
-        if (dotIndex == -1) return true
-        val afterDot = value.substring(dotIndex + 1)
-        val beforeDot = value.substring(0, dotIndex)
-        return beforeDot.isNotEmpty() && afterDot.length <= 2
-    }
 }

@@ -26,6 +26,7 @@ private const val LAST_SYNC_DATE = "last_sync_date"
 private const val FINANCE_CURRENCY = "finance_currency"
 private const val PIN_CODE_IS_ENABLED = "pin_code_is_enabled"
 private const val PIN_CODE = "pin_code"
+private const val PIN_LOCK_DELAY = "pin_lock_delay_millis"
 private const val FINGERPRINT_AUTH_IS_ENABLED = "fingerprint_auth_is_enabled"
 private const val ADS_DISABLED = "ads_disabled"
 
@@ -158,6 +159,12 @@ class SharedPrefsSettingsStorageImpl(val context: Context): SettingsStorage {
 
     override fun getPINCodeEnabled(): Boolean {
         return sharedPreferences.getBoolean(PIN_CODE_IS_ENABLED, false)
+    }
+
+    override fun getPinLockDelayMillis(): Long = sharedPreferences.getLong(PIN_LOCK_DELAY, 0L)
+
+    override fun setPinLockDelayMillis(delayMillis: Long) {
+        sharedPreferences.edit().putLong(PIN_LOCK_DELAY, delayMillis).apply()
     }
 
     override fun setPINCode(PINCode: String) {

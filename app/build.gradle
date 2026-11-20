@@ -5,6 +5,27 @@ plugins {
     id 'com.google.dagger.hilt.android'
 }
 
+// Use the existing release/upload key. Never fall back to the debug identity.
+def releaseSigningProperties = new Properties()
+def releaseSigningFile = rootProject.file('keystore.properties')
+if (releaseSigningFile.isFile()) {
+    releaseSigningFile.withInputStream { releaseSigningProperties.load(it) }
+}
+def releaseSigningValues = [
+    storeFile: providers.environmentVariable('SIMPLEDEBT_KEYSTORE_FILE').orNull ?: releaseSigningProperties.getProperty('storeFile'),
+    storePassword: providers.environmentVariable('SIMPLEDEBT_KEYSTORE_PASSWORD').orNull ?: releaseSigningProperties.getProperty('storePassword'),
+    keyAlias: providers.environmentVariable('SIMPLEDEBT_KEY_ALIAS').orNull ?: releaseSigningProperties.getProperty('keyAlias'),
+    keyPassword: providers.environmentVariable('SIMPLEDEBT_KEY_PASSWORD').orNull ?: releaseSigningProperties.getProperty('keyPassword')
+]
+// Android Studio's Generate Signed Bundle/APK wizard passes a complete override to AGP.
+def studioSigningValues = [
+    storeFile: providers.gradleProperty('android.injected.signing.store.file').orNull,
+    storePassword: providers.gradleProperty('android.injected.signing.store.password').orNull,
+    keyAlias: providers.gradleProperty('android.injected.signing.key.alias').orNull,
+    keyPassword: providers.gradleProperty('android.injected.signing.key.password').orNull
+]
+def effectiveReleaseSigning = studioSigningValues.values().every { it != null } ? studioSigningValues : releaseSigningValues
+
 android {
     namespace "com.breckneck.debtbook"
     compileSdk 36
@@ -12,17 +33,32 @@ android {
     defaultConfig {
         applicationId "com.breckneck.debtbook"
         minSdk 23
-        targetSdk 35
-        versionCode 42
+        targetSdk 36
+        versionCode 43
         versionName "4.6.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            if (releaseSigningValues.storeFile) {
+                storeFile rootProject.file(releaseSigningValues.storeFile)
+            }
+            storePassword releaseSigningValues.storePassword
+            keyAlias releaseSigningValues.keyAlias
+            keyPassword releaseSigningValues.keyPassword
+        }
+    }
+
+    sourceSets {
+        androidTest.assets.srcDirs += ["$rootDir/data/schemas"]
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
     buildFeatures{
@@ -53,12 +89,33 @@ android {
     }
 }
 
+def verifyReleaseSigning = tasks.register('verifyReleaseSigning') {
+    group = 'verification'
+    description = 'Require an explicitly configured existing release/upload key.'
+    doLast {
+        if (effectiveReleaseSigning.values().any { !it }) {
+            throw new GradleException('Release signing is not configured. Use Generate Signed Bundle/APK in Android Studio, set SIMPLEDEBT_* signing variables, or use an untracked keystore.properties; see docs/release-build.md.')
+        }
+        if (!rootProject.file(effectiveReleaseSigning.storeFile).isFile()) {
+            throw new GradleException('The configured release keystore does not exist; see docs/release-build.md.')
+        }
+        if (effectiveReleaseSigning.keyAlias.equalsIgnoreCase('androiddebugkey')) {
+            throw new GradleException('The Android debug key cannot be used for a release.')
+        }
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    dependsOn verifyReleaseSigning
+}
+
+base {
+    archivesName = "SimpleDebtBook-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode})"
+}
+
 androidComponents {
-    onVariants(selector().all()) { variant ->
+    onVariants(selector().withBuildType('debug')) { variant ->
         variant.outputs.forEach { output ->
-            output.outputFileName.set(
-                "SimpleDebtBook-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode}).apk"
-            )
+            output.outputFileName.set(base.archivesName.map { "${it}.apk" })
         }
     }
 }
@@ -85,6 +142,7 @@ dependencies {
     testImplementation 'androidx.arch.core:core-testing:2.2.0'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.room:room-runtime:2.8.4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
 //    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
@@ -105,6 +163,7 @@ dependencies {
     //Clean Architecture
     implementation project(path: ':domain')
     implementation project(path: ':data')
+    implementation "androidx.room:room-runtime:2.8.4"
 
     //Navigation
     def nav_version = "2.9.7"

@@ -12,6 +12,8 @@ class App: Application() {
     override fun onCreate() {
         super.onCreate()
 
+        com.breckneck.debtbook.debt.reminders.DebtReminders.get(this).start()
+
         MobileAds.initialize(this, object: InitializationListener {
             override fun onInitializationCompleted() {
                 Log.e("TAG", "Yandex initialized")

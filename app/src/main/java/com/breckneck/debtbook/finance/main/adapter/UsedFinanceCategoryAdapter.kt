@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.finance.main.adapter
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.view.LayoutInflater
@@ -11,16 +12,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.finance.util.GetFinanceCategoryNameInLocalLanguage
 import com.breckneck.deptbook.domain.model.FinanceCategoryWithFinances
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 
 class UsedFinanceCategoryAdapter(
     private val onUsedFinanceCategoryClickListener: OnUsedFinanceCategoryClickListener,
     private var currency: String
 ) : RecyclerView.Adapter<UsedFinanceCategoryAdapter.UsedFinanceCategoryViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##")
-    private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val usedFinanceCategoryList: MutableList<FinanceCategoryWithFinances> = mutableListOf()
     val getFinanceCategoryNameInLocalLanguage = GetFinanceCategoryNameInLocalLanguage()
 
@@ -53,8 +50,6 @@ class UsedFinanceCategoryAdapter(
         parent: ViewGroup,
         viewType: Int
     ): UsedFinanceCategoryViewHolder {
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
         val itemView =
             LayoutInflater.from(parent.context).inflate(R.layout.item_used_category, parent, false)
         return UsedFinanceCategoryViewHolder(itemView)
@@ -69,7 +64,7 @@ class UsedFinanceCategoryAdapter(
             context = holder.itemView.context
         )
 
-        holder.sumTextView.text = decimalFormat.format(usedFinanceCategory.categorySum)
+        holder.sumTextView.text = MoneyDisplay.format(usedFinanceCategory.categorySum, currency)
         holder.percent.text = "${usedFinanceCategory.categoryPercentage}%"
         holder.currency.text = currency
         holder.backgroundCardView.setCardBackgroundColor(Color.parseColor(usedFinanceCategory.financeCategory.color))

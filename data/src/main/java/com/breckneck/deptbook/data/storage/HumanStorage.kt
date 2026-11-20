@@ -1,5 +1,7 @@
 package com.breckneck.deptbook.data.storage
 
+import java.math.BigDecimal
+
 import entity.Human
 
 interface HumanStorage  {
@@ -16,11 +18,11 @@ interface HumanStorage  {
 
     fun getLastHumanId() : Int
 
-    fun addSum(humanId: Int,sum: Double)
+    fun addSum(humanId: Int,sum: BigDecimal)
 
-    fun getAllDebtsSum(currency: String): List<Double>
+    fun getAllDebtsSum(currency: String): List<BigDecimal>
 
-    fun getHumanSumDebtUseCase(humanId: Int): Double
+    fun getHumanSumDebtUseCase(humanId: Int): BigDecimal
 
     fun deleteHumanById(id: Int)
 

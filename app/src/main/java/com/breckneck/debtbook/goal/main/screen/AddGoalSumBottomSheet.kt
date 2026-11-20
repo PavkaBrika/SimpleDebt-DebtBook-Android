@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.goal.main.screen
 
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,6 +41,7 @@ fun AddGoalSumBottomSheet(
     val spacing = MaterialTheme.spacing
     val errorMessage = when (inputError) {
         AddDepositPopup.DepositInputError.EMPTY -> stringResource(R.string.youmustentername)
+        AddDepositPopup.DepositInputError.SAVE_FAILED -> stringResource(R.string.something_went_wrong)
         AddDepositPopup.DepositInputError.ZERO_OR_INVALID -> stringResource(R.string.zerodebt)
         null -> null
     }

@@ -99,15 +99,22 @@ ModalBottomSheet(
 }
 ```
 
+### Control affordance and motion
+
+- Use `DebtBookOutlinedAction` for secondary actions that sit next to a form field or beside a primary button. Its outline establishes the hit area. When an icon makes the action easier to recognize, place it before the label and let the label provide the accessible name.
+- Use `DebtBookSwitchRow` for a setting with a short label and an on/off state. The whole outlined row toggles one accessible control. The Material switch provides the thumb and track animation.
+- Reveal settings with `AnimatedVisibility` when they become relevant. Keep confirmation and dismissal controls reachable while the scrollable body changes size. Let Material components manage their own internal transitions, such as switching between calendar and keyboard date entry. Use `animateContentSize` on the content wrapper when an in-place height change needs its own animation.
+- Check compact screens with a large font, both themes, and the keyboard open where relevant. In hybrid layouts, include space for the final elevated card to draw its shadow inside the Compose host.
+
 ### Lists & data scan
-- Use `LazyColumn` with clear scanable rows.
+- Use `LazyColumn` with clear scanable rows. Group related metadata, such as the operation date and due date, so it can wrap independently of the main value.
 - Provide:
   - LOADING skeleton (`ShimmerListPlaceholder`)
   - EMPTY state (`EmptyListPlaceholder`) with a clear next step (CTA or navigation hint)
   - RECEIVED state (content)
 
 ### Secondary actions (Edit / Delete / Cancel)
-- Compose: use `ExtraFunctionsBottomSheet`.
+- Use `ExtraFunctionsBottomSheet` for simple edit/delete menus. For a sheet with a primary task, use `DebtBookOutlinedAction` for secondary actions and put the explicit dismissal in the footer.
 - XML legacy equivalent: `dialog_extra_functions.xml` (historical pattern).
 
 **Guideline (calm & trust)**:

@@ -1,5 +1,6 @@
 package repository
 
+
 import com.breckneck.deptbook.data.storage.GoalDepositStorage
 import com.breckneck.deptbook.domain.model.GoalDeposit
 import com.breckneck.deptbook.domain.repository.GoalDepositRepository

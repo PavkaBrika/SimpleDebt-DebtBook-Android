@@ -1,0 +1,8 @@
+<resources>
+    <string name="pin_lock_delay_title">Verrouiller après avoir quitté l’application</string>
+    <string name="pin_lock_immediately">Immédiatement</string>
+    <string name="pin_lock_30_seconds">Après 30 secondes</string>
+    <string name="pin_lock_1_minute">Après 1 minute</string>
+    <string name="pin_lock_5_minutes">Après 5 minutes</string>
+    <string name="pin_lock_delay_explanation">Si Android ferme l’application en arrière-plan, le code PIN sera à nouveau demandé.</string>
+</resources>

@@ -257,6 +257,7 @@
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/addHumanButton"
+            android:contentDescription="@string/add"
             style="@style/fabTheme"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

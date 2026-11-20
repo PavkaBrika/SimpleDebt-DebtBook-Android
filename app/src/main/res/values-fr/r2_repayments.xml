@@ -1,0 +1,18 @@
+<resources>
+    <string name="repayment_received">Remboursement reçu</string>
+    <string name="repayment_paid">J’ai remboursé</string>
+    <string name="repayment_cancel">Annuler le remboursement</string>
+    <string name="repayment_cancelled">Remboursement annulé · exclu du solde</string>
+    <string name="debt_lent">On me doit</string>
+    <string name="debt_borrowed">Je dois</string>
+    <string name="debt_remaining">Reste à rembourser : %1$s %2$s</string>
+    <string name="debt_repaid">Remboursé : %1$s %2$s</string>
+    <string name="repayment_context">Dette initiale : %1$s %2$s (%3$s)</string>
+    <string name="repayment_full">Rembourser tout le reste</string>
+    <string name="repayment_invalid">Saisissez un montant supérieur à zéro avec les décimales de la devise.</string>
+    <string name="repayment_over">Le remboursement dépasse le reste de %1$s %2$s. Saisissez un montant inférieur.</string>
+    <string name="repayment_save_failed">Impossible d’enregistrer le remboursement. Veuillez réessayer.</string>
+    <string name="repayment_closed">Entièrement remboursé</string>
+    <string name="repayment_cancel_confirm">Annuler le remboursement de %1$s %2$s ? Le montant sera ajouté au reste dû ; le remboursement restera dans l’historique.</string>
+    <string name="repayment_amount">Montant du remboursement</string>
+</resources>

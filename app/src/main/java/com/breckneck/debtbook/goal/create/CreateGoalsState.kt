@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.goal.create
 
+
 import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.debtbook.goal.create.model.NameError
 import com.breckneck.debtbook.goal.create.model.SavedSumError
@@ -15,6 +16,8 @@ data class CreateGoalsState(
     val isCurrencySheetVisible: Boolean,
     val isDatePickerVisible: Boolean,
     val isEditMode: Boolean,
+    val isSaving: Boolean = false,
+    val saveFailed: Boolean = false,
 ) {
     companion object {
         fun initial() = CreateGoalsState(

@@ -22,6 +22,8 @@ import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doNothing
 import org.mockito.kotlin.doThrow
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.times
 import org.orbitmvi.orbit.test.TestSettings
 import org.orbitmvi.orbit.test.test
 
@@ -109,7 +111,11 @@ class CreateGoalsViewModelTest {
             expectState(containerHost.container.stateFlow.value)
             vm.onAction(CreateGoalsAction.SaveClick)
             scope.advanceUntilIdle()
+            expectState { copy(isSaving = true) }
             expectSideEffect(CreateGoalsSideEffect.NavigateBack(saved = true))
+            vm.onAction(CreateGoalsAction.SaveClick)
+            scope.advanceUntilIdle()
+            verify(setGoal, times(1)).execute(any())
         }
     }
 
@@ -128,6 +134,14 @@ class CreateGoalsViewModelTest {
             expectState(containerHost.container.stateFlow.value)
             vm.onAction(CreateGoalsAction.SaveClick)
             scope.advanceUntilIdle()
+            expectState { copy(isSaving = true) }
+            expectState { copy(isSaving = false, saveFailed = true) }
+            doNothing().`when`(setGoal).execute(any())
+            vm.onAction(CreateGoalsAction.SaveClick)
+            scope.advanceUntilIdle()
+            expectState { copy(isSaving = true, saveFailed = false) }
+            expectSideEffect(CreateGoalsSideEffect.NavigateBack(saved = true))
+            verify(setGoal, times(2)).execute(any())
         }
     }
 

@@ -41,7 +41,7 @@ domain/src/main/java/com/breckneck/deptbook/domain/
 data class HumanDomain(
     var id: Int,
     var name: String,
-    var sumDebt: Double,   // суммарный долг (+ = мне должны, - = я должен)
+    var sumDebt: BigDecimal,   // суммарный долг (+ = мне должны, - = я должен)
     var currency: String   // код валюты
 )
 ```
@@ -51,10 +51,18 @@ data class HumanDomain(
 ```kotlin
 data class DebtDomain(
     var id: Int,
-    var sum: Double,       // сумма (+ = дал, - = взял)
+    var sum: BigDecimal,       // сумма (+ = дал, - = взял)
     var idHuman: Int,      // FK → HumanDomain.id
     var info: String?,     // описание
-    var date: String       // дата строкой
+    var date: String,      // дата операции ISO / неизвестная старая строка
+    var legacyDate: String? = null,
+    val repaymentOfId: Int? = null,
+    val operationId: String? = null,
+    val cancelled: Boolean = false,
+    val dueDay: String? = null,
+    val reminderMinute: Int? = null,
+    val reminderToken: String? = null,
+    val reminderDelivered: Boolean = false
 )
 ```
 
@@ -63,7 +71,7 @@ data class DebtDomain(
 ```kotlin
 data class Finance(
     var id: Int = 0,
-    var sum: Double,
+    var sum: BigDecimal,
     var date: Date,
     var info: String?,
     var financeCategoryId: Int  // FK → FinanceCategory.id
@@ -92,8 +100,8 @@ data class FinanceCategory(
 data class Goal(
     val id: Int = 0,
     var name: String,
-    var sum: Double,          // целевая сумма
-    var savedSum: Double,     // накопленная сумма
+    var sum: BigDecimal,          // целевая сумма
+    var savedSum: BigDecimal,     // накопленная сумма
     var currency: String,
     var photoPath: String?,   // путь к фото цели
     var creationDate: Date,
@@ -106,7 +114,7 @@ data class Goal(
 ```kotlin
 data class GoalDeposit(
     var id: Int = 0,
-    var sum: Double,
+    var sum: BigDecimal,
     var date: Date,
     var goalId: Int  // FK → Goal.id
 )
@@ -184,7 +192,7 @@ Key-value хранилище настроек:
 - Валюты: `firstMainCurrency`, `secondMainCurrency`, `defaultCurrency`, `financeCurrency`
 - Тема: `appTheme`
 - Сортировка: `debtOrder` (Pair<DebtOrderAttribute, Boolean>), `humanOrder`
-- Безопасность: `PINCodeEnabled`, `PINCode`, `isFingerprintAuthEnabled`
+- Безопасность: `PINCodeEnabled`, `PINCode`, `isFingerprintAuthEnabled`, `get/setPinLockDelayMillis` (Long)
 - Синхронизация: `isAuthorized`, `userData` (User), `lastSyncDate`
 - UI: `addSumInShareText`, `debtQuantityForAppRateDialogShow`, `appIsRated`
 
@@ -245,6 +253,8 @@ CRUD + `GetGoalDepositsByGoalId`, `DeleteGoalDepositsByGoalId`, `ReplaceAllGoals
 Getter/Setter пары для каждой настройки. Примеры:
 `GetFirstMainCurrency` / `SetFirstMainCurrency`, `GetPINCode` / `SetPINCode`, `GetAppTheme` / `SetAppTheme` и т.д.
 
+`GetPinLockDelay` / `SetPinLockDelay` преобразуют значение хранилища в `PinLockDelay`: IMMEDIATE (0), SECONDS_30 (30 000), MINUTE_1 (60 000), MINUTES_5 (300 000). Неизвестное значение читается как IMMEDIATE. Настройка не сохраняет авторизованную сессию.
+
 ### `usecase/Ad/` (2 use cases)
 `GetClicksUseCase`, `SaveClicksUseCase`.
 
@@ -269,6 +279,7 @@ Getter/Setter пары для каждой настройки. Примеры:
 | `HumanOrderAttribute` (enum) | DATE, SUM, NAME | Сортировка людей |
 | `PINCodeAction` (enum) | ENABLE, DISABLE, CHANGE, CHECK | Действие с PIN |
 | `PINCodeEnterState` (enum) | FIRST, CONFIRMATION, INCORRECT | Этап ввода PIN |
+| `PinLockDelay` (enum) | IMMEDIATE, SECONDS_30, MINUTE_1, MINUTES_5 | Задержка блокировки в миллисекундах, безопасное значение по умолчанию |
 | `CreateFragmentState` (enum) | LOADING, READY | Состояние создания |
 | `DebtLogicListState` (sealed class) | Loading, Received(needToSetFilter: Boolean), Sorted | State machine для списков долгов/людей |
 | `ChangeGoalSavedSumDialogState` (enum) | — | Состояние диалога цели |
@@ -306,3 +317,23 @@ Getter/Setter пары для каждой настройки. Примеры:
 | `SettingsUseCasesTest.kt` | Все 30 Settings use cases (Get/Set для всех настроек) |
 | `AdUseCasesTest.kt` | GetClicks, SaveClicks |
 | `SortUtilTest.kt` | sortHumans (Date asc/desc, Sum asc/desc), sortDebts (CreationDate, Sum, Date asc/desc) |
+
+## R1a — локальная надежность (14.11.2026)
+
+- `repository/DataTransaction.kt`: общая атомарная граница связанных локальных операций, `fun <T> run(block: () -> T): T`; вызывается на IO.
+- `util/DecimalInput.kt`: полный разбор точки или запятой (до 2 дробных знаков), без группировки/экспоненты/NaN; форматирование редактируемой суммы без разделителей тысяч. Это правила текущих форм, не новая денежная модель.
+- `DecimalInputTest`: round trip RU/EN/DE/FR, недопустимые/неполные/неоднозначные строки. Точные деньги и независимые от языка даты остаются R1b.
+
+### R1b — правила точных данных
+
+`util/MoneyPolicy.kt`: точные десятичные суммы, допустимый ввод и явное HALF_EVEN; `util/LedgerDate.kt`: календарный ISO-день, строгое распознавание старых строк, отображение и стабильная сортировка без зависимости от зоны. Инварианты: `docs/r1b-data-contract.md`.
+
+Все денежные поля и контракты HumanRepository/AddSum/GetHumanSumDebt/SetDebt/EditDebt/FormatDebtSum теперь `BigDecimal`; DecimalInput парсит напрямую из строки и валидирует точность валюты. HumanDomain/Goal включают `openingAdjustment`, DebtDomain — `legacyDate`. GetCurrentDate/SetDate возвращают календарный ISO-день; sortDebts использует LedgerDate и сохраняет неизвестные даты.
+
+`backup/BackupCodec.kt`: версионированный JSON v2 (точные суммы строками, время epoch millis, дата/число записей/фото); строгая проверка структуры/дублей/ссылок/агрегатов, совместимый импорт старого плоского JSON. Старые даты без зоны требуют явно показанной пользователю интерпретации.
+
+`Finance.currency/calendarDay` и `Goal.goalDay` отделяют валюту/календарный день от старых Date-моментов. Вычисляемые presentationDate/presentationGoalDate используются только для UI; исходный epoch не переписывается. LedgerDate преобразует UTC-день Material DatePicker без сдвига зоны. Backup v2 сохраняет эти поля; старые JSON без валюты финансов получают явно показанную на preview текущую валюту.
+
+### R2.2 — срок и напоминание
+
+`util/DebtReminderPolicy.kt` валидирует срок исходного долга и время 0…1439, определяет просрочку по остатку, переводит местное время в instant текущей зоны и исключает доставленные/старые напоминания из перепланирования. `backup/BackupCodec.kt` пишет v4, читает legacy/v2/v3 без автоматических сроков; проверяет новые поля и отклоняет подмену версии. `RepaymentPolicy` остаётся источником остатка конкретного долга.

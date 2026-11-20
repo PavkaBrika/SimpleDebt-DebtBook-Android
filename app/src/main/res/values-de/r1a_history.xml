@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_load_failed">Der Verlauf konnte nicht geladen werden. Versuchen Sie es erneut oder wählen Sie eine andere Sortierung. Falls der Fehler bleibt, öffnen Sie den Verlauf erneut aus der Schuldenliste.</string>
+    <string name="history_retry">Erneut versuchen</string>
+    <string name="history_change_failed">Die Änderung konnte nicht abgeschlossen werden. Prüfen Sie vor einem erneuten Versuch den Verlauf.</string>
+    <string name="backup_transfer_failed">Sicherung fehlgeschlagen. Dateizugriff, freien Speicher oder Drive-Verbindung prüfen und erneut versuchen. Beschädigte, unvollständige oder nicht unterstützte Sicherungen können nicht wiederhergestellt werden.</string>
+</resources>

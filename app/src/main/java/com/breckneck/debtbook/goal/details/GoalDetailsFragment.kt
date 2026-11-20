@@ -1,5 +1,11 @@
 package com.breckneck.debtbook.goal.details
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
+import android.widget.Toast
+
+import java.math.BigDecimal
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -33,6 +39,9 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.goal.details.GoalDepositAdapter
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.model.GoalDeposit
+import android.text.InputType
+import android.text.method.DigitsKeyListener
+import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.ChangeGoalSavedSumDialogState
 import com.breckneck.deptbook.domain.util.ListState
 import com.bumptech.glide.Glide
@@ -47,8 +56,6 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -105,11 +112,10 @@ class GoalDetailsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val decimalFormat = DecimalFormat("###,###,###.##")
-        val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
+        vm.operationError.observe(viewLifecycleOwner) { failed ->
+            if (failed) Toast.makeText(requireContext(), R.string.something_went_wrong, Toast.LENGTH_LONG).show()
+        }
         val sdf = SimpleDateFormat("d MMM yyyy")
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
 
         if (vm.isChangeSavedSumDialogOpened == true) {
             openChangeSavedGoalSumDialog(state = vm.changeDialogState!!)
@@ -199,7 +205,7 @@ class GoalDetailsFragment : Fragment() {
 
         vm.goal.observe(viewLifecycleOwner) { goal ->
             collaps.title = goal.name
-            goalSumTextView.text = decimalFormat.format(goal.sum)
+            goalSumTextView.text = MoneyDisplay.format(goal.sum, goal.currency)
             goalCreationDateTextView.text = sdf.format(goal.creationDate)
 
             goalSavedMoneyCurrencyTextView.text = goal.currency
@@ -238,8 +244,9 @@ class GoalDetailsFragment : Fragment() {
         }
 
         vm.goalSavedSum.observe(viewLifecycleOwner) { savedSum ->
-            goalSavedMoneyTextView.text = decimalFormat.format(savedSum)
-            val sum = vm.goal.value!!.sum
+            val goal = vm.goal.value!!
+            goalSavedMoneyTextView.text = MoneyDisplay.format(savedSum, goal.currency)
+            val sum = goal.sum
             if (sum - savedSum <= 0) { // if goal is reached
                 editGoalButton.visibility = View.GONE
                 goalRemainingSumLayout.visibility = View.GONE
@@ -270,15 +277,15 @@ class GoalDetailsFragment : Fragment() {
                 }
             } else {
                 editGoalButton.visibility = View.VISIBLE
-                goalRemainingMoneyTextView.text = decimalFormat.format(sum - savedSum)
-                if (vm.goal.value!!.goalDate != null) {
+                goalRemainingMoneyTextView.text = MoneyDisplay.format(sum - savedSum, goal.currency)
+                if (vm.goal.value!!.presentationGoalDate != null) {
                     goalDateLayout.visibility = View.VISIBLE
-                    if (vm.goal.value!!.goalDate!!.before(Date())) {
+                    if (vm.goal.value!!.isPastGoalDay) {
                         goalDateTextView.text = requireActivity().getString(R.string.overdue)
                         goalDateTextView.setTextColor(Color.RED)
                         goalDateImageView.setColorFilter(Color.RED)
                     } else {
-                        goalDateTextView.text = sdf.format(vm.goal.value!!.goalDate!!)
+                        goalDateTextView.text = sdf.format(vm.goal.value!!.presentationGoalDate!!)
                     }
                 } else {
                     goalDateLayout.visibility = View.GONE
@@ -306,7 +313,6 @@ class GoalDetailsFragment : Fragment() {
                 if (goalDepositList.isNotEmpty()) {
                     goalDepositAdapter.updateGoalDepositList(goalDepositList)
                     Log.e(TAG, "data in adapter link success")
-                    vm.setGoalListState(state = ListState.RECEIVED)
                 } else {
                     vm.setGoalListState(ListState.EMPTY)
                 }
@@ -328,45 +334,32 @@ class GoalDetailsFragment : Fragment() {
             ChangeGoalSavedSumDialogState.SUBTRACT -> requireActivity().getString(R.string.subtract)
         }
 
-        goalSumEditText.addTextChangedListener {
-            object : TextWatcher {
-                override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-
-                override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-
-                override fun afterTextChanged(editable: Editable?) {
-                    val str = editable.toString()
-                    val position = str.indexOf(".")
-                    if (position != -1) {
-                        val subStr = str.substring(position)
-                        val subStrStart = str.substring(0, position)
-                        if ((subStr.length > 3) || (subStrStart.length == 0))
-                            editable?.delete(editable.length - 1, editable.length)
-                    }
-                }
-            }
-        }
+        goalSumEditText.keyListener = DigitsKeyListener.getInstance("0123456789.,")
+        goalSumEditText.setRawInputType(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
 
         dialog.findViewById<Button>(R.id.confirmButton)!!.setOnClickListener {
+            if (vm.isSaving.value == true) return@setOnClickListener
             val savedSum = goalSumEditText.text.toString().trim()
             if (savedSum.isEmpty())
                 goalSumTextInput.error = getString(R.string.youmustentername)
             else {
-                val savedSumDouble = when (state) {
-                    ChangeGoalSavedSumDialogState.ADD -> savedSum.toDouble()
-                    ChangeGoalSavedSumDialogState.SUBTRACT -> savedSum.toDouble() * (-1)
+                val parsed = DecimalInput.parse(savedSum, vm.goal.value?.currency)
+                if (parsed == null || parsed <= BigDecimal.ZERO) {
+                    goalSumTextInput.error = getString(R.string.something_went_wrong)
+                    return@setOnClickListener
                 }
-                if (savedSumDouble == 0.0) {
+                val savedSumDouble = when (state) {
+                    ChangeGoalSavedSumDialogState.ADD -> parsed
+                    ChangeGoalSavedSumDialogState.SUBTRACT -> -parsed
+                }
+                if (savedSumDouble.signum() == 0) {
                     goalSumTextInput.error = getString(R.string.zerodebt)
                 } else {
-                    vm.updateGoalSum(sum = savedSumDouble)
                     val goalDeposit = GoalDeposit(
                         sum = savedSumDouble,
                         date = Date(),
                         goalId = vm.goal.value!!.id
                     )
-                    goalDepositAdapter.addGoalDeposit(goalDeposit = goalDeposit)
-                    vm.setGoalListState(state = ListState.RECEIVED)
                     vm.setGoalDeposit(goalDeposit = goalDeposit)
                     dialog.dismiss()
                 }

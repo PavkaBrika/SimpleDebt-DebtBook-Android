@@ -16,6 +16,7 @@ app/src/main/java/com/breckneck/debtbook/settings/
 └── synchronization/
     ├── util/
     │   └── DriveServiceHelper.kt      # Хелпер Google Drive API
+    ├── BackupTransfer.kt              # Свежий snapshot перед upload; проверка JSON до restore
     ├── SynchronizationFragment.kt     # Экран синхронизации
     └── SynchronizationViewModel.kt    # VM синхронизации
 ```
@@ -27,6 +28,7 @@ app/src/main/java/com/breckneck/debtbook/settings/
 - `fragment_synchronization.xml` — экран синхронизации
 - `dialog_setting.xml` — диалог выбора значения настройки
 - `item_setting.xml` — элемент настройки (radio button)
+- `dialog_pincode_lock.xml` — PIN, смена PIN, задержка блокировки и отпечаток
 
 ---
 
@@ -43,6 +45,7 @@ VM экрана настроек.
 - `GetIsAuthorized` — авторизован ли для Google Drive
 - `GetUserData` — данные пользователя (имя, email)
 - `Get/SetIsFingerprintAuthEnabled` — включение биометрии
+- `Get/SetPinLockDelay` — интервал повторного запроса PIN после ухода в фон
 
 ### State
 | Поле | Тип | Описание |
@@ -55,6 +58,7 @@ VM экрана настроек.
 | `isAuthorized` | `LiveData<Boolean>` | Авторизация Google |
 | `userName` / `emailAddress` | `LiveData<String>` | Данные пользователя |
 | `isFingerprintAuthEnabled` | `LiveData<Boolean>` | Биометрия |
+| `pinLockDelay` | `LiveData<PinLockDelay>` | Сразу / 30 секунд / 1 минута / 5 минут |
 | `isSynchronizationAvailable` | `LiveData<Boolean>` | Доступна ли синхронизация |
 
 ### Ключевая логика
@@ -62,6 +66,8 @@ VM экрана настроек.
 - Изменение настройки мгновенно сохраняется через соответствующий use case
 - Диалог настроек: универсальный `dialog_setting.xml` с `SettingsAdapter` (radio-кнопки)
 - Тема применяется через `AppCompatDelegate.setDefaultNightMode()` в Fragment
+- В диалоге PIN настройка «Блокировка после ухода из приложения» появляется при включённом PIN. Выбор сохраняется сразу, по умолчанию — сразу. После завершения процесса вход требуется независимо от выбранной задержки.
+- Если отпечаток ещё не зарегистрирован, открытие диалога PIN не запускает системные настройки. Регистрация открывается только при явном нажатии на отпечаток (API30+).
 
 ---
 
@@ -71,19 +77,17 @@ VM экрана синхронизации с Google Drive.
 
 ### Зависимости
 - `GetIsAuthorized` / `SetIsAuthorized` — статус авторизации
-- `GetAllDebts` / `GetAllHumansUseCase` — все долги/люди для бэкапа
-- `GetAllFinances` / `GetAllFinanceCategories` — все финансы/категории
-- `GetAllGoals` / `GetAllGoalDeposits` — все цели/депозиты
-- `ReplaceAllDebts` / `ReplaceAllHumans` — восстановление долгов
-- `ReplaceAllFinances` / `ReplaceAllFinanceCategories` — восстановление финансов
-- `ReplaceAllGoals` / `ReplaceAllGoalDeposits` — восстановление целей
+- `GetAllAppData` — актуальный snapshot всех таблиц в транзакции чтения
+- `ReplaceAllAppData` — полное восстановление через существующую Room-транзакцию
 - `SetUserData` — сохранение данных пользователя
 - `SetDateUseCase` — форматирование даты
 - `Set/GetLastSyncDate` — дата последней синхронизации
 
 ### Ключевая логика
-- **Бэкап**: сериализация `AppDataLists` (все данные) → JSON → upload на Google Drive
-- **Восстановление**: download JSON → десериализация → `replaceAll*` (полная замена данных)
+- **Бэкап**: `uploadBackup()` читает актуальный `AppDataLists` непосредственно перед JSON/upload; snapshot при открытии экрана не кэшируется.
+- **Восстановление**: `restoreBackup()` → download JSON → проверка обязательных списков/полей → `ReplaceAllAppData`; ошибка разбора не достигает записи в БД.
+- **Состояния**: `isSynchronizing`, `isRestoring` взаимно исключают операции; завершаются в `finally`, сохраняются при пересоздании view. `operationError` отображается с возможностью повторить действие.
+- `BackupTransfer` не меняет формат backup и Room schema. Полная совместимость старых форматов/версионирование и хранение предыдущей копии относятся к R1b.
 - **Авторизация**: Google Sign-In + Google Drive scope
 - **DriveServiceHelper**: обёртка над Google Drive API v3 (upload/download файлов)
 
@@ -115,6 +119,7 @@ VM экрана синхронизации с Google Drive.
 | Add Sum In Share Text | Включать сумму в шаринг | Boolean |
 | PIN Code Enabled | PIN-замок включён | Boolean |
 | PIN Code | Зашифрованный PIN-код | String |
+| PIN Lock Delay | Задержка блокировки при уходе в фон; по умолчанию 0 | Long, миллисекунды |
 | Fingerprint Auth Enabled | Биометрия включена | Boolean |
 | Is Authorized | Авторизован в Google | Boolean |
 | User Data | Имя + email | User (JSON) |
@@ -128,3 +133,7 @@ VM экрана синхронизации с Google Drive.
 - Auth (PIN/биометрия): см. `APP_CORE.md` → раздел «Auth»
 - Полная карта навигации: см. `PROJECT_OVERVIEW.md` → «Экраны и переходы»
 - Настройки domain-модели: см. `DOMAIN_MODULE.md` → `SettingsRepository`
+
+### R1b — резервная копия / восстановление
+
+Раздел всегда доступен, включая устройства без Google Play Services. `SynchronizationViewModel` координирует SAF-файлы и Drive через `BackupTransfer`: предварительная проверка и preview (дата/число записей/фото) → явное подтверждение → атомарная замена. `BackupFiles` хранит страховочную копию в AtomicFile и переносит фото байтами. После восстановления можно вернуть предыдущие локальные данные; перед перезаписью Drive сохраняется предыдущая проверенная версия отдельным файлом. Новый прокручиваемый `dialog_restore_backup.xml` поддерживает крупный текст. Формат/ограничения — `docs/r1b-data-contract.md`.

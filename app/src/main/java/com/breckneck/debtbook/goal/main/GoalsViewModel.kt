@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.main
 
+import java.math.BigDecimal
+
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -14,6 +16,7 @@ import com.breckneck.deptbook.domain.usecase.Goal.UpdateGoal
 import com.breckneck.deptbook.domain.usecase.GoalDeposit.DeleteGoalDepositsByGoalId
 import com.breckneck.deptbook.domain.usecase.GoalDeposit.SetGoalDeposit
 import com.breckneck.deptbook.domain.util.ListState
+import com.breckneck.deptbook.domain.util.DecimalInput
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -87,15 +90,7 @@ class GoalsViewModel @Inject constructor(
     }
 
     private fun updateDepositSum(text: String) = intent {
-        val dotIndex = text.indexOf('.')
-        val isValid = if (dotIndex != -1) {
-            val beforeDot = text.substring(0, dotIndex)
-            val afterDot = text.substring(dotIndex + 1)
-            beforeDot.isNotEmpty() && afterDot.length <= 2
-        } else {
-            true
-        }
-        if (isValid) {
+        if (DecimalInput.isEditable(text)) {
             reduce {
                 state.copy(
                     addDepositPopup = state.addDepositPopup.copy(
@@ -126,10 +121,11 @@ class GoalsViewModel @Inject constructor(
     }
 
     private fun addGoalDeposit() = intent {
+        if (!state.addDepositPopup.isVisible || state.addDepositPopup.isSaving) return@intent
         val goalId = state.addDepositPopup.selectedGoalId ?: return@intent
         val goal = domainGoals.firstOrNull { it.id == goalId } ?: return@intent
         val sumText = state.addDepositPopup.sumText.trim()
-        val parsed = sumText.toDoubleOrNull()
+        val parsed = DecimalInput.parse(sumText, goal.currency)
         when {
             sumText.isEmpty() -> {
                 reduce {
@@ -142,7 +138,7 @@ class GoalsViewModel @Inject constructor(
                 return@intent
             }
 
-            parsed == null || parsed == 0.0 -> {
+            parsed == null || parsed <= BigDecimal.ZERO -> {
                 reduce {
                     state.copy(
                         addDepositPopup = state.addDepositPopup.copy(
@@ -153,10 +149,10 @@ class GoalsViewModel @Inject constructor(
                 return@intent
             }
         }
+        reduce { state.copy(addDepositPopup = state.addDepositPopup.copy(isSaving = true)) }
         val updatedGoal = goal.copy(savedSum = goal.savedSum + parsed)
         try {
             withContext(Dispatchers.IO) {
-                updateGoal.execute(goal = updatedGoal)
                 setGoalDeposit.execute(
                     goalDeposit = GoalDeposit(sum = parsed, date = Date(), goalId = goal.id)
                 )
@@ -177,7 +173,7 @@ class GoalsViewModel @Inject constructor(
             }
             Log.e(TAG, "Goal deposit added")
         } catch (e: Exception) {
-            Log.e(TAG, e.message.toString())
+            reduce { state.copy(addDepositPopup = state.addDepositPopup.copy(isSaving = false, inputError = AddDepositPopup.DepositInputError.SAVE_FAILED)) }
         }
     }
 

@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.finance.details.screen
 
+
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -38,8 +40,6 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.model.Finance
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -55,12 +55,11 @@ internal fun FinanceDetailsList(
     val spacing = MaterialTheme.spacing
     val monthFormatter = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val rowDateFormatter = remember { SimpleDateFormat("d MMM", Locale.getDefault()) }
-    val decimalFormat = remember {
-        val symbols = DecimalFormatSymbols().apply { groupingSeparator = ' ' }
-        DecimalFormat("###,###,###.##", symbols)
-    }
-    val groupedFinances = remember(financeList) {
-        financeList.groupBy { monthFormatter.format(it.date) }
+    val zoneId = java.util.TimeZone.getDefault().id
+    monthFormatter.timeZone = java.util.TimeZone.getDefault()
+    rowDateFormatter.timeZone = java.util.TimeZone.getDefault()
+    val groupedFinances = remember(financeList, zoneId) {
+        financeList.groupBy { monthFormatter.format(it.presentationDate) }
     }
     val hintText = stringResource(R.string.details_recycler_view_hint)
 
@@ -85,7 +84,6 @@ internal fun FinanceDetailsList(
                     finance = finance,
                     currency = currency,
                     dateFormatter = rowDateFormatter,
-                    decimalFormat = decimalFormat,
                     onClick = { onFinanceClick(finance) }
                 )
                 HorizontalDivider(
@@ -166,12 +164,11 @@ private fun FinanceRow(
     finance: Finance,
     currency: String,
     dateFormatter: SimpleDateFormat,
-    decimalFormat: DecimalFormat,
     onClick: () -> Unit
 ) {
     val spacing = MaterialTheme.spacing
-    val formattedSum = remember(finance.sum) { decimalFormat.format(finance.sum) }
-    val formattedDate = remember(finance.date) { dateFormatter.format(finance.date) }
+    val formattedSum = remember(finance.sum, currency) { MoneyDisplay.format(finance.sum, currency) }
+    val formattedDate = remember(finance.presentationDate) { dateFormatter.format(finance.presentationDate) }
     val accessibilityDesc = "$formattedSum $currency, $formattedDate"
 
     Row(
@@ -247,9 +244,9 @@ private fun FinanceDetailsListFilledPreview() {
                 isExpenses = true,
                 currency = "USD",
                 financeList = listOf(
-                    Finance(id = 1, sum = 1500.0, date = april, info = "Lunch at restaurant", financeCategoryId = 1),
-                    Finance(id = 2, sum = 250.50, date = aprilEarly, info = null, financeCategoryId = 1),
-                    Finance(id = 3, sum = 89.99, date = march, info = "Coffee & snacks", financeCategoryId = 1)
+                    Finance(id = 1, sum = "1500.0".toBigDecimal(), date = april, info = "Lunch at restaurant", financeCategoryId = 1),
+                    Finance(id = 2, sum = "250.50".toBigDecimal(), date = aprilEarly, info = null, financeCategoryId = 1),
+                    Finance(id = 3, sum = "89.99".toBigDecimal(), date = march, info = "Coffee & snacks", financeCategoryId = 1)
                 ),
                 onFinanceClick = {}
             )
@@ -271,8 +268,8 @@ private fun FinanceDetailsListIncomePreview() {
                 isExpenses = false,
                 currency = "EUR",
                 financeList = listOf(
-                    Finance(id = 4, sum = 3200.0, date = date, info = "April salary", financeCategoryId = 2),
-                    Finance(id = 5, sum = 150.0, date = date, info = null, financeCategoryId = 2)
+                    Finance(id = 4, sum = "3200.0".toBigDecimal(), date = date, info = "April salary", financeCategoryId = 2),
+                    Finance(id = 5, sum = "150.0".toBigDecimal(), date = date, info = null, financeCategoryId = 2)
                 ),
                 onFinanceClick = {}
             )

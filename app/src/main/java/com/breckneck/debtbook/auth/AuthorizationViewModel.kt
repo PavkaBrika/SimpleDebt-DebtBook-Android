@@ -1,19 +1,18 @@
 package com.breckneck.debtbook.auth
 
-import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.breckneck.debtbook.auth.util.CryptoManager
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnabled
 import com.breckneck.deptbook.domain.util.PINCodeAction
 import com.breckneck.deptbook.domain.util.PINCodeEnterState
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCode
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.SetPINCode
+import com.breckneck.deptbook.domain.usecase.Settings.SetIsFingerprintAuthEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.SetPINCodeEnabled
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,16 +25,14 @@ class AuthorizationViewModel @Inject constructor(
     private val setPINCodeEnabled: SetPINCodeEnabled,
     private val setPINCode: SetPINCode,
     private val getPINCode: GetPINCode,
-    private val getIsFingerprintAuthEnabled: GetIsFingerprintAuthEnabled
+    private val getIsFingerprintAuthEnabled: GetIsFingerprintAuthEnabled,
+    private val setIsFingerprintAuthEnabled: SetIsFingerprintAuthEnabled
 ): ViewModel() {
 
     val TAG = "AuthorizationVM"
 
-    val cryptoManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        CryptoManager()
-    } else {
-        null
-    }
+    var pinReadFailed = mutableStateOf(false)
+        private set
 
     private val _enteredPINCode = MutableStateFlow("") // variable for current entered pin by user
     val enteredPINCode: StateFlow<String>
@@ -71,7 +68,8 @@ class AuthorizationViewModel @Inject constructor(
     }
 
     fun setDecryptedPINCode(code: String) {
-        _currentPINCode.value = code
+        _currentPINCode.value = code.takeIf { it.length == 4 && it.all(Char::isDigit) } ?: ""
+        pinReadFailed.value = _isPINCodeEnabled.value == true && _currentPINCode.value.isEmpty()
     }
 
     fun getPINCodeEnabled() {
@@ -79,7 +77,7 @@ class AuthorizationViewModel @Inject constructor(
     }
 
     fun changeEnteredPINCode(PINCode: String) {
-        _enteredPINCode.value = PINCode
+        if (PINCode.length <= 4 && PINCode.all(Char::isDigit)) _enteredPINCode.value = PINCode
     }
 
     fun setPINCode() {
@@ -88,6 +86,7 @@ class AuthorizationViewModel @Inject constructor(
 
     fun enablePINCode() {
         setPINCodeEnabled.execute(true)
+        AuthSession.unlock()
     }
 
     fun setPastPINCode() {
@@ -103,6 +102,8 @@ class AuthorizationViewModel @Inject constructor(
     fun turnOffPINCode() {
         setPINCode.execute("")
         setPINCodeEnabled.execute(false)
+        setIsFingerprintAuthEnabled.execute(false)
+        AuthSession.unlock()
     }
 
     fun setPINCodeAction(action: PINCodeAction) {

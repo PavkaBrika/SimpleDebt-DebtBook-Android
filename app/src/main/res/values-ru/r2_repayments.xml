@@ -1,0 +1,18 @@
+<resources>
+    <string name="repayment_received">Получен возврат</string>
+    <string name="repayment_paid">Я вернул</string>
+    <string name="repayment_cancel">Отменить возврат</string>
+    <string name="repayment_cancelled">Возврат отменён · не влияет на баланс</string>
+    <string name="debt_lent">Мне должны</string>
+    <string name="debt_borrowed">Я должен</string>
+    <string name="debt_remaining">Осталось: %1$s %2$s</string>
+    <string name="debt_repaid">Возвращено: %1$s %2$s</string>
+    <string name="repayment_context">Долг от %3$s на %1$s %2$s</string>
+    <string name="repayment_full">Вернуть весь остаток</string>
+    <string name="repayment_invalid">Введите сумму больше нуля с допустимым числом знаков для валюты.</string>
+    <string name="repayment_over">Возврат превышает остаток %1$s %2$s. Укажите меньшую сумму.</string>
+    <string name="repayment_save_failed">Не удалось сохранить возврат. Повторите попытку.</string>
+    <string name="repayment_closed">Погашено</string>
+    <string name="repayment_cancel_confirm">Отменить возврат %1$s %2$s? Сумма снова войдёт в остаток долга, а возврат останется в истории.</string>
+    <string name="repayment_amount">Сумма возврата</string>
+</resources>

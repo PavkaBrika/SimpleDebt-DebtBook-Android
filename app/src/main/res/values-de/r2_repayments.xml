@@ -1,0 +1,18 @@
+<resources>
+    <string name="repayment_received">Rückzahlung erhalten</string>
+    <string name="repayment_paid">Ich habe zurückgezahlt</string>
+    <string name="repayment_cancel">Rückzahlung stornieren</string>
+    <string name="repayment_cancelled">Rückzahlung storniert · ohne Saldoänderung</string>
+    <string name="debt_lent">Mir geschuldet</string>
+    <string name="debt_borrowed">Ich schulde</string>
+    <string name="debt_remaining">Offen: %1$s %2$s</string>
+    <string name="debt_repaid">Zurückgezahlt: %1$s %2$s</string>
+    <string name="repayment_context">Ursprüngliche Schuld: %1$s %2$s (%3$s)</string>
+    <string name="repayment_full">Restbetrag zurückzahlen</string>
+    <string name="repayment_invalid">Gib einen Betrag größer als null mit den Dezimalstellen der Währung ein.</string>
+    <string name="repayment_over">Die Rückzahlung übersteigt den Restbetrag von %1$s %2$s. Gib einen kleineren Betrag ein.</string>
+    <string name="repayment_save_failed">Die Rückzahlung konnte nicht gespeichert werden. Bitte erneut versuchen.</string>
+    <string name="repayment_closed">Vollständig zurückgezahlt</string>
+    <string name="repayment_cancel_confirm">Rückzahlung von %1$s %2$s stornieren? Der Betrag wird wieder zum Restbetrag addiert; die Rückzahlung bleibt im Verlauf.</string>
+    <string name="repayment_amount">Rückzahlungsbetrag</string>
+</resources>

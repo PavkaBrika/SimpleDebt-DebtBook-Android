@@ -1,43 +1,16 @@
 package com.breckneck.deptbook.domain.usecase.Debt
 
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.util.Locale
 
 class FormatDebtSumTest {
-
-    val testDataList = listOf(
-        0.0,
-        -0.0,
-        0.0,
-        -0.005,
-        -0.05,
-        -0.5,
-        -0.55,
-        -0.5555,
-        10000000.0,
-        10000000.9999,
-    )
-
-    val formattedExpectedList = listOf(
-        "0",
-        "-0",
-        "0",
-        "-0,01",
-        "-0,05",
-        "-0,5",
-        "-0,55",
-        "-0,56",
-        "10 000 000",
-        "10 000 001",
-    )
-
-    @Test
-    fun `should return correct formatted by hand value`() {
-        val useCase = FormatDebtSum()
-        for (i in testDataList.indices) {
-            val actual = useCase.execute(testDataList[i])
-            val expected = formattedExpectedList[i]
-            Assertions.assertEquals(expected, actual)
-        }
+    @Test fun `format retains exact fractional digits and normalizes zero`() {
+        val previous = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.US)
+            val cases = mapOf("-0.0" to "0", "0.000000000000000000000001" to "0.000000000000000000000001", "-0.005" to "-0.005", "-0.5555" to "-0.5555", "10000000.9999" to "10,000,000.9999")
+            for ((value, expected) in cases) assertEquals(expected, FormatDebtSum().execute(value.toBigDecimal()))
+        } finally { Locale.setDefault(previous) }
     }
 }

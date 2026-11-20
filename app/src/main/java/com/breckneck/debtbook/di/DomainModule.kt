@@ -69,6 +69,8 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnable
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsAuthorized
 import com.breckneck.deptbook.domain.usecase.Settings.GetLastSyncDate
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCode
+import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
+import com.breckneck.deptbook.domain.usecase.Settings.SetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetUserData
@@ -138,6 +140,10 @@ object DomainModule {
         GetAllDebtsSumUseCase(humanRepository = humanRepository)
 
     // ── DEBT ─────────────────────────────────────────────────────────────────
+
+    @Provides
+    fun provideRecordRepaymentUseCase(debtRepository: DebtRepository, transaction: com.breckneck.deptbook.domain.repository.DataTransaction) =
+        com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase(debtRepository, transaction)
 
     @Provides
     fun provideGetAllDebts(debtRepository: DebtRepository) =
@@ -477,4 +483,9 @@ object DomainModule {
     @Provides
     fun provideReplaceAllAppData(appDataRepository: AppDataRepository) =
         ReplaceAllAppData(appDataRepository = appDataRepository)
+    @Provides
+    fun provideGetPinLockDelay(repository: SettingsRepository) = GetPinLockDelay(repository)
+
+    @Provides
+    fun provideSetPinLockDelay(repository: SettingsRepository) = SetPinLockDelay(repository)
 }

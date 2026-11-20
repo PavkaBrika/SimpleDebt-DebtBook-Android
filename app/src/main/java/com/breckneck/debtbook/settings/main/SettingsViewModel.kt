@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.settings.main
 
+import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
+import com.breckneck.deptbook.domain.usecase.Settings.SetPinLockDelay
+import com.breckneck.deptbook.domain.util.PinLockDelay
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -36,8 +39,18 @@ class SettingsViewModel @Inject constructor(
     private val getIsAuthorized: GetIsAuthorized,
     private val getUserData: GetUserData,
     private val setIsFingerprintAuthEnabled: SetIsFingerprintAuthEnabled,
-    private val getIsFingerprintAuthEnabled: GetIsFingerprintAuthEnabled
+    private val getIsFingerprintAuthEnabled: GetIsFingerprintAuthEnabled,
+    private val getPinLockDelay: GetPinLockDelay,
+    private val setPinLockDelay: SetPinLockDelay
 ) : ViewModel() {
+
+    private val _pinLockDelay = MutableLiveData(getPinLockDelay.execute())
+    val pinLockDelay: LiveData<PinLockDelay> = _pinLockDelay
+
+    fun setPinLockDelay(delay: PinLockDelay) {
+        setPinLockDelay.execute(delay)
+        _pinLockDelay.value = delay
+    }
 
     private val TAG = "SettingsFragmentViewModel"
 

@@ -1,0 +1,8 @@
+<resources>
+    <string name="pin_lock_delay_title">Lock after leaving the app</string>
+    <string name="pin_lock_immediately">Immediately</string>
+    <string name="pin_lock_30_seconds">After 30 seconds</string>
+    <string name="pin_lock_1_minute">After 1 minute</string>
+    <string name="pin_lock_5_minutes">After 5 minutes</string>
+    <string name="pin_lock_delay_explanation">If Android closes the app in the background, you will need your PIN again.</string>
+</resources>

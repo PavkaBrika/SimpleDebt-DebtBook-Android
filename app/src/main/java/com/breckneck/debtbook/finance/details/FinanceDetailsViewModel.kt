@@ -1,9 +1,10 @@
 package com.breckneck.debtbook.finance.details
 
+
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.breckneck.debtbook.common.format
 import com.breckneck.debtbook.common.toDMYFormat
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.usecase.Finance.DeleteFinance
@@ -65,7 +66,7 @@ class FinanceDetailsViewModel @Inject constructor(
     }
 
     private fun openFinanceSheet(finance: Finance) = intent {
-        val title = "${finance.date.toDMYFormat()} : ${finance.sum.format()} ${state.currency}"
+        val title = "${finance.presentationDate.toDMYFormat()} : ${MoneyDisplay.format(finance.sum, state.currency)} ${state.currency}"
         reduce {
             state.copy(
                 bottomSheet = state.bottomSheet.copy(
@@ -104,7 +105,7 @@ class FinanceDetailsViewModel @Inject constructor(
 
         reduce { state.copy(financeListState = ListState.LOADING) }
 
-        val finances = getFinanceByCategoryIdUseCase.execute(categoryId = categoryId)
+        val finances = getFinanceByCategoryIdUseCase.execute(categoryId = categoryId).filter { it.currency == state.currency }
         reduce {
             state.copy(
                 financeList = finances,

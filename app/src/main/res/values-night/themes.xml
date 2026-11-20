@@ -51,9 +51,9 @@
     </style>
 
     <style name="fabTheme">
-        <item name="android:backgroundTint">@color/nightCollapsLine</item>
+        <item name="backgroundTint">@color/nightCollapsLine</item>
         <item name="borderWidth">0dp</item>
-        <item name="android:tint">@color/white</item>
+        <item name="tint">@color/white</item>
         <item name="fabCustomSize">70dp</item>
         <item name="maxImageSize">35dp</item>
     </style>

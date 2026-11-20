@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources><string name="invalid_decimal_amount">Enter a valid amount using a dot or comma and the precision allowed by this currency.</string></resources>

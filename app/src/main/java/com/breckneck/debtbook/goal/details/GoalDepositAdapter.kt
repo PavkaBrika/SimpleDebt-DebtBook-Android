@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.goal.details
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
+import com.breckneck.deptbook.domain.util.compareTo
+
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
@@ -9,8 +12,6 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
 import com.breckneck.deptbook.domain.model.GoalDeposit
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 
 class GoalDepositAdapter(
@@ -18,9 +19,7 @@ class GoalDepositAdapter(
     private val currency: String
 ): RecyclerView.Adapter<GoalDepositAdapter.GoalDepositViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##")
     private val sdf = SimpleDateFormat("d MMM yyyy")
-    private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val goalDepositList: MutableList<GoalDeposit> = goalDepositListImmutable.toMutableList()
 
     @SuppressLint("NotifyDataSetChanged")
@@ -45,8 +44,6 @@ class GoalDepositAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GoalDepositViewHolder {
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
         val itemView =
             LayoutInflater.from(parent.context).inflate(R.layout.item_goal_transaction, parent, false)
         return GoalDepositViewHolder(itemView)
@@ -55,11 +52,11 @@ class GoalDepositAdapter(
     override fun onBindViewHolder(holder: GoalDepositViewHolder, position: Int) {
         val goalDeposit = goalDepositList[position]
         if (goalDeposit.sum > 0) {
-            holder.transactionSumTextView.text = "+${decimalFormat.format(goalDeposit.sum)}"
+            holder.transactionSumTextView.text = "+${MoneyDisplay.format(goalDeposit.sum, currency)}"
             holder.transactionSumTextView.setTextColor(holder.greenColor)
             holder.transactionCurrencyTextVew.setTextColor(holder.greenColor)
         } else {
-            holder.transactionSumTextView.text = decimalFormat.format(goalDeposit.sum)
+            holder.transactionSumTextView.text = MoneyDisplay.format(goalDeposit.sum, currency)
             holder.transactionSumTextView.setTextColor(holder.redColor)
             holder.transactionCurrencyTextVew.setTextColor(holder.redColor)
         }

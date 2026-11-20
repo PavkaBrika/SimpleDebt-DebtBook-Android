@@ -1,0 +1,12 @@
+<resources>
+    <string name="pin_recovery_title">Code PIN oublié ?</string>
+    <string name="pin_recovery_message">Confirmez votre identité avec Android, puis définissez un nouveau code PIN. Vos données seront conservées.</string>
+    <string name="pin_unavailable">Le code PIN enregistré est illisible. Utilisez une empreinte déjà activée ou ouvrez « Code PIN oublié ? ». Vos enregistrements n’ont pas été supprimés.</string>
+    <string name="pin_save_failed_title">Code PIN non enregistré</string>
+    <string name="pin_save_failed_message">Le réglage précédent du PIN est conservé. Saisissez à nouveau le code.</string>
+    <string name="pin_recovery_verify">Confirmer mon identité</string>
+    <string name="pin_recovery_system_description">Confirmez votre identité pour définir un nouveau code PIN SimpleDebt sans supprimer vos données.</string>
+    <string name="pin_recovery_unavailable">Android ne peut pas confirmer votre identité. Configurez le verrouillage de cet appareil. Votre code PIN et vos données restent inchangés.</string>
+    <string name="pin_recovery_cancelled">Confirmation annulée. Votre code PIN et vos données restent inchangés.</string>
+    <string name="pin_recovery_mismatch">Les codes ne correspondent pas. Saisissez un nouveau code PIN.</string>
+</resources>

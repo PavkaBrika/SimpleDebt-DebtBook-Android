@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.goal.create.model
 
+
 import android.net.Uri
 import com.breckneck.debtbook.common.empty
 import java.util.Date

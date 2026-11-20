@@ -1,5 +1,6 @@
 package repository
 
+
 import com.breckneck.deptbook.data.storage.FinanceStorage
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.repository.FinanceRepository
@@ -16,7 +17,7 @@ class FinanceRepositoryImpl(private val financeStorage: FinanceStorage) : Financ
                 sum = finance.sum,
                 info = finance.info,
                 financeCategoryId = finance.financeCategoryId,
-                date = finance.date
+                date = finance.date, currency = finance.currency, calendarDay = finance.calendarDay
             )
         )
     }
@@ -28,7 +29,7 @@ class FinanceRepositoryImpl(private val financeStorage: FinanceStorage) : Financ
                 sum = financeData.sum,
                 info = financeData.info,
                 financeCategoryId = financeData.financeCategoryId,
-                date = financeData.date
+                date = financeData.date, currency = financeData.currency, calendarDay = financeData.calendarDay
             )
         }
     }
@@ -42,9 +43,9 @@ class FinanceRepositoryImpl(private val financeStorage: FinanceStorage) : Financ
                 sum = financeData.sum,
                 info = financeData.info,
                 financeCategoryId = financeData.financeCategoryId,
-                date = financeData.date
+                date = financeData.date, currency = financeData.currency, calendarDay = financeData.calendarDay
             )
-        }
+        }.sortedWith(compareByDescending<Finance> { it.calendarDay ?: com.breckneck.deptbook.domain.util.LedgerDate.fromDate(it.date) }.thenByDescending { it.id })
     }
 
     override suspend fun deleteFinance(finance: Finance) = withContext(Dispatchers.IO) {
@@ -52,7 +53,7 @@ class FinanceRepositoryImpl(private val financeStorage: FinanceStorage) : Financ
             financeData = FinanceData(
                 id = finance.id,
                 sum = finance.sum,
-                date = finance.date,
+                date = finance.date, currency = finance.currency, calendarDay = finance.calendarDay,
                 info = finance.info,
                 financeCategoryId = finance.financeCategoryId
             )
@@ -64,7 +65,7 @@ class FinanceRepositoryImpl(private val financeStorage: FinanceStorage) : Financ
             financeData = FinanceData(
                 id = finance.id,
                 sum = finance.sum,
-                date = finance.date,
+                date = finance.date, currency = finance.currency, calendarDay = finance.calendarDay,
                 info = finance.info,
                 financeCategoryId = finance.financeCategoryId
             )
@@ -81,7 +82,7 @@ class FinanceRepositoryImpl(private val financeStorage: FinanceStorage) : Financ
                 FinanceData(
                     id = finance.id,
                     sum = finance.sum,
-                    date = finance.date,
+                    date = finance.date, currency = finance.currency, calendarDay = finance.calendarDay,
                     info = finance.info,
                     financeCategoryId = finance.financeCategoryId
                 )

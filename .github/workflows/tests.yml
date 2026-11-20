@@ -1,15 +1,23 @@
-name: Unit Tests
+name: Build and Unit Tests
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, develop_main, 'roadmap/**', 'codex/**' ]
   pull_request:
-    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    name: Run Unit Tests
+    name: Build debug and run unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -22,17 +30,11 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Run domain unit tests
-        run: ./gradlew :domain:test --no-daemon
-
-      - name: Run app unit tests
-        run: ./gradlew :app:testDebugUnitTest --no-daemon
-
-      - name: Run data unit tests
-        run: ./gradlew :data:test --no-daemon
+      - name: Build and test
+        run: bash ./gradlew :app:assembleDebug :domain:test :data:test :app:testDebugUnitTest :app:lintDebug --continue --no-daemon
 
       - name: Upload test results
         if: always()
@@ -43,4 +45,8 @@ jobs:
             domain/build/reports/tests/
             app/build/reports/tests/
             data/build/reports/tests/
+            domain/build/test-results/
+            app/build/test-results/
+            data/build/test-results/
+            app/build/reports/lint-results-debug.*
           retention-days: 7
