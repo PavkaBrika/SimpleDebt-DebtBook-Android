@@ -48,10 +48,23 @@ class DueDateRoomTest {
             assertEquals(0, BigDecimal("80").compareTo(RepaymentPolicy.remaining(rows.first(), rows)))
             assertNull(rows.first().reminderToken)
             dao.setDebtDueDate(1, "2099-12-30", 610, "token-3", System.currentTimeMillis())
-            dao.setDebtDueDate(1, "2020-01-01", null, null, System.currentTimeMillis())
-            assertTrue(DebtReminderPolicy.overdue(dao.getAllDebts().first().toDomain(), BigDecimal("80")))
-            try { dao.setDebtDueDate(1, "2020-01-01", 540, "token-4", System.currentTimeMillis()); fail("past accepted") }
-            catch (_: IllegalArgumentException) { }
+            val operationDay = "2026-11-16"
+            val afternoon = DebtReminderPolicy.trigger(operationDay, 18 * 60)
+            try {
+                dao.setDebtDueDate(1, "2026-11-15", null, null, afternoon)
+                fail("Due date before the debt was accepted")
+            } catch (_: IllegalArgumentException) { }
+            assertEquals("2099-12-30", dao.getAllDebts().first().dueDay)
+
+            dao.setDebtDueDate(1, operationDay, DebtReminderPolicy.DEFAULT_MINUTE, "same-day", afternoon)
+            assertEquals("same-day", dao.getAllDebts().first().reminderToken)
+            val nextDay = DebtReminderPolicy.trigger("2026-11-17", 0)
+            dao.setDebtDueDate(1, operationDay, null, null, nextDay)
+            assertTrue(DebtReminderPolicy.overdue(dao.getAllDebts().first().toDomain(), BigDecimal("80"), "2026-11-17"))
+            try {
+                dao.setDebtDueDate(1, operationDay, 540, "token-4", nextDay)
+                fail("Past reminder day was accepted")
+            } catch (_: IllegalArgumentException) { }
             assertNull(dao.getAllDebts().first().reminderToken)
         }
     }

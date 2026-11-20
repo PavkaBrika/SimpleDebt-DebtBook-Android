@@ -104,6 +104,9 @@ interface AppDao {
         if (getAllDebts().any { it.repaymentOfId == previous.id }) {
             require(previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0) { "Debt has repayment history" }
         }
+        if (debt.date != previous.date) {
+            previous.dueDay?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }
+        }
         debt.legacyDate = previous.legacyDate
         // Ordinary amount/comment editing must preserve independently edited due settings.
         updateDebt(debt.copy(dueDay = previous.dueDay, reminderMinute = previous.reminderMinute,
@@ -133,9 +136,10 @@ interface AppDao {
         val next = previous.copy(dueDay = day, reminderMinute = minute,
             reminderToken = token, reminderDelivered = false)
         DebtReminderPolicy.validate(next.toDomain())
+        day?.let { require(DebtReminderPolicy.canSetDueDay(previous.date, it)) { "Due day precedes the debt" } }
         if (minute != null) {
             require(RepaymentPolicy.remaining(previous.toDomain(), history.map { it.toDomain() }).signum() > 0)
-            require(DebtReminderPolicy.trigger(requireNotNull(day), minute) > now) { "Reminder must be in the future" }
+            require(DebtReminderPolicy.canSchedule(requireNotNull(day), now)) { "Reminder day has passed" }
         }
         val unchanged = previous.dueDay == day && previous.reminderMinute == minute && previous.reminderToken != null && !previous.reminderDelivered
         updateDebt(if (unchanged) next.copy(reminderToken = previous.reminderToken, reminderDelivered = previous.reminderDelivered) else next)

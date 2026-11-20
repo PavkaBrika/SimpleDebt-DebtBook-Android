@@ -27,10 +27,9 @@ class SetDebtUseCase(val debtRepository: DebtRepository) {
             reminderToken = reminderMinute?.let { UUID.randomUUID().toString() }
         )
         DebtReminderPolicy.validate(debt)
+        dueDay?.let { require(DebtReminderPolicy.canSetDueDay(date, it)) { "Due day precedes the debt" } }
         if (reminderMinute != null) {
-            require(DebtReminderPolicy.trigger(requireNotNull(dueDay), reminderMinute) > System.currentTimeMillis()) {
-                "Reminder must be in the future"
-            }
+            require(DebtReminderPolicy.canSchedule(requireNotNull(dueDay))) { "Reminder day has passed" }
         }
         debtRepository.setDebt(debt)
     }
