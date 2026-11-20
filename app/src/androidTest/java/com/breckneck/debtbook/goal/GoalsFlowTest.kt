@@ -194,9 +194,8 @@ class GoalsFlowTest {
         textField(R.string.already_saved_sum).performTextReplacement("1000")
         if (keyboardVisible()) ordinaryBack(R.id.createGoalsFragment)
         compose.waitUntil(10000) { !keyboardVisible() }
-        val rub = context.getString(R.string.rub)
         val yen = context.getString(R.string.jpy)
-        compose.onNodeWithText(context.getString(R.string.a11y_currency_picker, rub)).performScrollTo().performClick()
+        compose.onNodeWithText("RUB").performScrollTo().performClick()
         compose.onNodeWithText(yen).performScrollTo().performClick()
         compose.waitUntil(10000) {
             compose.onAllNodesWithText(context.getString(R.string.select_currency)).fetchSemanticsNodes().isEmpty()
@@ -208,7 +207,7 @@ class GoalsFlowTest {
             compose.onNodeWithText(initialName).performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("20000").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("1000").performScrollTo().assertIsDisplayed()
-            compose.onNodeWithText(context.getString(R.string.a11y_currency_picker, yen)).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("JPY").performScrollTo().assertIsDisplayed()
             capture("rotated-draft")
             assertTrue(dao.getAllGoals().none { it.name == initialName })
         } finally {

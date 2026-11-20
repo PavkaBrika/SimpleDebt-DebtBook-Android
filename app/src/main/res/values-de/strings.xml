@@ -187,6 +187,9 @@
     <string name="backup_settings_hint">Einträge in einer Datei oder in Google Drive sichern oder eine Sicherung wiederherstellen.</string>
     <string name="backup_drive_unavailable">Google Drive ist auf diesem Gerät nicht verfügbar. Eine Sicherungsdatei verwenden.</string>
     <string name="finance_currency_filter_hint">Die ausgewählte Währung filtert die Finanzeinträge.</string>
+    <string name="goal_name_hint">Wofür sparst du?</string>
+    <string name="goal_currency">Währung</string>
+    <string name="goal_choose_date">Datum wählen</string>
     <string name="goal_new">Neues Sparziel</string>
     <string name="goal_edit">Sparziel bearbeiten</string>
     <string name="goal_delete">Sparziel löschen</string>

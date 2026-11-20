@@ -131,7 +131,7 @@
     <string name="add_new_goal">Добавить новую цель</string>
     <string name="there_are_no_goals_yet_click_the_button_below_to_add">Пока нет целей. Нажмите на кнопку ниже, чтобы добавить.</string>
     <string name="remaining">осталось</string>
-    <string name="already_saved_sum">Уже накопленная сумма</string>
+    <string name="already_saved_sum">Уже накоплено</string>
     <string name="overdue">Просрочено</string>
     <string name="congratulations_you_have_reached_your_goal">&#x1F389;&#x1F389;&#x1F389;\nПоздравляем! Вы достигли своей цели!</string>
     <string name="achieved_in_days">Достигнуто за %1$d дней</string>
@@ -187,6 +187,9 @@
     <string name="backup_settings_hint">Сохраните записи в файл или Google Drive либо восстановите сохранённую копию.</string>
     <string name="backup_drive_unavailable">Google Drive недоступен на этом устройстве. Используйте резервную копию в файле.</string>
     <string name="finance_currency_filter_hint">Выбранная валюта фильтрует финансовые записи.</string>
+    <string name="goal_name_hint">На что копим?</string>
+    <string name="goal_currency">Валюта</string>
+    <string name="goal_choose_date">Выбрать дату</string>
     <string name="goal_new">Новая цель</string>
     <string name="goal_edit">Редактировать цель</string>
     <string name="goal_delete">Удалить цель</string>

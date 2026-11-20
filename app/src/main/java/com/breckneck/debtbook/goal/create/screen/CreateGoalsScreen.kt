@@ -4,7 +4,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +29,16 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.automirrored.outlined.CallReceived
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.PieChartOutline
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
@@ -36,7 +51,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -138,85 +158,89 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             GoalFormGroup {
-                // Keep cursor and edit updates synchronous while Orbit records the draft.
-                var name by remember {
-                    mutableStateOf(TextFieldValue(goal.name))
-                }
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = {
-                        val changed = it.text != name.text
-                        if (!changed || it.text.length <= CreateGoalsFormValidation.MAX_NAME_LENGTH) {
-                            name = it
-                            if (changed) onAction(CreateGoalsAction.NameChanged(it.text))
-                        }
-                    },
-                    label = { Text(stringResource(R.string.name)) },
+                GoalTextRow(
+                    icon = Icons.Outlined.Flag,
+                    label = stringResource(R.string.name),
+                    value = goal.name,
+                    placeholder = stringResource(R.string.goal_name_hint),
                     enabled = enabled,
-                    singleLine = true,
-                    isError = state.nameError != null,
-                    supportingText = if (state.nameError == null) null else { { Text(stringResource(R.string.youmustentername)) } },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    modifier = Modifier.fillMaxWidth(),
+                    errorMessage = state.nameError?.let { stringResource(R.string.youmustentername) },
+                    accepts = { it.length <= CreateGoalsFormValidation.MAX_NAME_LENGTH },
+                    onChange = { onAction(CreateGoalsAction.NameChanged(it)) },
                 )
-                GoalFormAmount(
-                    value = goal.sum,
-                    onChange = { onAction(CreateGoalsAction.SumChanged(it)) },
+                HorizontalDivider(color = colors.border)
+                GoalTextRow(
+                    icon = Icons.Outlined.Layers,
                     label = stringResource(R.string.goal_target_amount),
-                    currency = goal.currency,
+                    value = goal.sum,
+                    placeholder = "0",
                     enabled = enabled,
-                    action = ImeAction.Next,
-                    error = state.sumError?.let { stringResource(R.string.goal_amount_invalid) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                    errorMessage = state.sumError?.let { stringResource(R.string.goal_amount_invalid) },
+                    accepts = { DecimalInput.isEditable(it, goal.currency) },
+                    onChange = { onAction(CreateGoalsAction.SumChanged(it)) },
                 )
-                GoalFormAmount(
-                    value = goal.savedSum,
-                    onChange = { onAction(CreateGoalsAction.SavedSumChanged(it)) },
+                HorizontalDivider(color = colors.border)
+                GoalTextRow(
+                    icon = Icons.AutoMirrored.Outlined.CallReceived,
                     label = stringResource(R.string.already_saved_sum),
-                    currency = goal.currency,
+                    value = goal.savedSum,
+                    placeholder = "0",
                     enabled = enabled,
-                    action = ImeAction.Done,
-                    error = when (state.savedSumError) {
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    errorMessage = when (state.savedSumError) {
                         SavedSumError.GREATER_THAN_SUM -> stringResource(R.string.goal_invalid_saved_amount)
                         SavedSumError.INVALID, SavedSumError.NEGATIVE -> stringResource(R.string.goal_amount_invalid)
                         null -> null
                     },
+                    accepts = { DecimalInput.isEditable(it, goal.currency) },
+                    onChange = { onAction(CreateGoalsAction.SavedSumChanged(it)) },
                 )
-                TextButton(
-                    onClick = { onAction(CreateGoalsAction.CurrencyClick) },
-                    enabled = enabled,
-                ) {
-                    Text(stringResource(R.string.a11y_currency_picker, goal.currencyDisplayName))
-                }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { onAction(CreateGoalsAction.DateClick) }, enabled = enabled) {
-                        Text(goal.goalDate?.toDMYFormat()?.let { "${stringResource(R.string.goal_deadline)} · $it" }
-                            ?: stringResource(R.string.goal_date_optional))
+                HorizontalDivider(color = colors.border)
+                GoalFieldRow(
+                    Icons.Outlined.PieChartOutline, stringResource(R.string.goal_currency),
+                    Modifier.clickable(enabled = enabled, role = Role.Button) { onAction(CreateGoalsAction.CurrencyClick) },
+                    trailing = { Icon(Icons.Outlined.ExpandMore, null, Modifier.size(18.dp)) },
+                ) { Text(goal.currency) }
+                HorizontalDivider(color = colors.border)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GoalFieldRow(
+                        Icons.Outlined.CalendarMonth, stringResource(R.string.goal_date_optional),
+                        Modifier.weight(1f).clickable(enabled = enabled, role = Role.Button) { onAction(CreateGoalsAction.DateClick) },
+                    ) {
+                        Text(goal.goalDate?.toDMYFormat() ?: stringResource(R.string.goal_choose_date),
+                            color = if (goal.goalDate == null) colors.muted else colors.ink)
                     }
                     if (goal.goalDate != null) {
-                        TextButton(onClick = { onAction(CreateGoalsAction.ClearDate) }, enabled = enabled) {
-                            Text(stringResource(R.string.goal_clear_date))
+                        IconButton(onClick = { onAction(CreateGoalsAction.ClearDate) }, enabled = enabled) {
+                            Icon(Icons.Outlined.Close, stringResource(R.string.goal_clear_date))
                         }
                     }
                 }
-                if (state.dateInvalid) Text(stringResource(R.string.goal_date_future), color = colors.danger)
+                if (state.dateInvalid) Text(stringResource(R.string.goal_date_future), Modifier.padding(12.dp), color = colors.danger)
             }
             GoalFormGroup {
-                if (goal.hasImage) {
-                    AsyncImage(
-                        model = goal.imagePath ?: goal.imageUri,
-                        contentDescription = stringResource(R.string.goal_s_photo),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth().height(152.dp).clip(RoundedCornerShape(16.dp)),
-                    )
-                }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { onAction(CreateGoalsAction.PhotoCardClick) }, enabled = enabled) {
+                Column(
+                    Modifier.fillMaxWidth().clickable(enabled = enabled, role = Role.Button) {
+                        onAction(CreateGoalsAction.PhotoCardClick)
+                    }.padding(12.dp),
+                ) {
+                    if (goal.hasImage) {
+                        AsyncImage(
+                            model = goal.imagePath ?: goal.imageUri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(15.dp)),
+                        )
+                    }
+                    Box(Modifier.fillMaxWidth().heightIn(min = 36.dp), contentAlignment = Alignment.Center) {
                         Text(stringResource(if (goal.hasImage) R.string.goal_photo_replace else R.string.goal_photo_choose))
                     }
-                    if (goal.hasImage) {
-                        TextButton(onClick = { onAction(CreateGoalsAction.DeleteImage) }, enabled = enabled) {
-                            Text(stringResource(R.string.goal_photo_remove))
-                        }
+                }
+                if (goal.hasImage) {
+                    HorizontalDivider(color = colors.border)
+                    TextButton(onClick = { onAction(CreateGoalsAction.DeleteImage) }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.goal_photo_remove), color = colors.danger)
                     }
                 }
             }
@@ -250,37 +274,74 @@ private fun GoalFormGroup(content: @Composable () -> Unit) {
         contentColor = colors.ink,
         border = BorderStroke(1.dp, colors.border),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { content() }
+        Column { content() }
     }
 }
 
 @Composable
-private fun GoalFormAmount(
-    value: String,
-    onChange: (String) -> Unit,
+private fun GoalFieldRow(
+    icon: ImageVector,
     label: String,
-    currency: String,
-    enabled: Boolean,
-    action: ImeAction,
-    error: String?,
+    modifier: Modifier = Modifier,
+    trailing: @Composable () -> Unit = {},
+    content: @Composable () -> Unit,
 ) {
+    val colors = bubbleColors()
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 58.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(Modifier.size(34.dp).background(colors.background, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(18.dp), tint = colors.muted)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.muted)
+            content()
+        }
+        trailing()
+    }
+}
+
+@Composable
+private fun GoalTextRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    placeholder: String,
+    enabled: Boolean,
+    errorMessage: String?,
+    keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+    accepts: (String) -> Boolean,
+    onChange: (String) -> Unit,
+) {
+    val colors = bubbleColors()
+    // Keep selection and composing spans synchronous while Orbit records the draft.
     var input by remember { mutableStateOf(TextFieldValue(value)) }
-    OutlinedTextField(
+    BasicTextField(
         value = input,
         onValueChange = {
             val changed = it.text != input.text
-            if (!changed || DecimalInput.isEditable(it.text, currency)) {
+            if (!changed || accepts(it.text)) {
                 input = it
                 if (changed) onChange(it.text)
             }
         },
+        modifier = Modifier.fillMaxWidth().semantics { if (errorMessage != null) error(errorMessage) },
         enabled = enabled,
-        label = { Text(label) },
-        isError = error != null,
-        supportingText = error?.let { { Text(it) } },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = action),
-        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = keyboardOptions,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.ink),
+        cursorBrush = SolidColor(colors.ink),
+        decorationBox = { editor ->
+            GoalFieldRow(icon, label) {
+                Box {
+                    if (input.text.isEmpty()) Text(placeholder, color = colors.muted)
+                    editor()
+                }
+                if (errorMessage != null) Text(errorMessage, color = colors.danger, style = MaterialTheme.typography.bodySmall)
+            }
+        },
     )
 }
 

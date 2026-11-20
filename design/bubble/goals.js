@@ -41,8 +41,10 @@ flowActions['goal-edit']=(i,v)=>{
 };
 flowViews.goalForm=f=>{
   const d=f.goalDraft;
-  const photo=d.photo?'<img class="goal-photo" alt="Фото цели" src="'+escapeHtml(d.photo)+'">'+button('goal-photo-clear','Убрать фото','','text-action'):'';
-  return layout(backbar(d.id?'Редактировать цель':'Новая цель')+'<div class="group">'+field('flag','Название',entry('goalDraft.name',d.name,'text','maxlength="100" placeholder="На что копим?"'))+field('stack','Целевая сумма',entry('goalDraft.target',d.target,'text','inputmode="decimal" placeholder="0"'))+field('take','Уже накоплено',entry('goalDraft.saved',d.saved,'text','inputmode="decimal" placeholder="0"'))+field('pie','Валюта',picker('goalDraft.cur',currencyCodes,d.cur,'Валюта цели'))+field('date','Срок · необязательно',entry('goalDraft.due',d.due,'date','min="'+addDays(TODAY,1)+'"'))+'</div><div class="group spaced photo-picker">'+photo+'<label class="chip">Выбрать фото<input type="file" accept="image/*" data-file="goal-photo"></label></div>'+errorText(f),primary('goal-save','Сохранить цель','check'));
+  const preview=d.photo?'<img class="goal-photo" alt="" src="'+escapeHtml(d.photo)+'">':'';
+  const photo='<label>'+preview+'<span>'+(d.photo?'Заменить фото':'Выбрать фото')+'</span><input type="file" accept="image/*" data-file="goal-photo"></label>'
+    +(d.photo?button('goal-photo-clear','Убрать фото','','text-action danger'):'');
+  return layout(backbar(d.id?'Редактировать цель':'Новая цель')+'<div class="group">'+field('flag','Название',entry('goalDraft.name',d.name,'text','maxlength="100" placeholder="На что копим?"'))+field('stack','Целевая сумма',entry('goalDraft.target',d.target,'text','inputmode="decimal" placeholder="0"'))+field('take','Уже накоплено',entry('goalDraft.saved',d.saved,'text','inputmode="decimal" placeholder="0"'))+field('pie','Валюта',picker('goalDraft.cur',currencyCodes,d.cur,'Валюта цели'))+field('date','Срок · необязательно',entry('goalDraft.due',d.due,'date','min="'+addDays(TODAY,1)+'"'))+'</div><div class="group spaced photo-picker">'+photo+'</div>'+errorText(f),primary('goal-save','Сохранить цель','check'));
 };
 flowActions['goal-photo-clear']=i=>{frames[i].goalDraft.photo='';render(i,true);};
 async function selectPhoto(i,file) {

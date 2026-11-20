@@ -187,6 +187,9 @@
     <string name="backup_settings_hint">Enregistrez vos données dans un fichier ou Google Drive, ou restaurez une copie.</string>
     <string name="backup_drive_unavailable">Google Drive est indisponible sur cet appareil. Utilisez un fichier de sauvegarde.</string>
     <string name="finance_currency_filter_hint">La devise sélectionnée filtre les éléments financiers.</string>
+    <string name="goal_name_hint">Pour quoi épargnez-vous ?</string>
+    <string name="goal_currency">Devise</string>
+    <string name="goal_choose_date">Choisir une date</string>
     <string name="goal_new">Nouvel objectif</string>
     <string name="goal_edit">Modifier l’objectif</string>
     <string name="goal_delete">Supprimer l’objectif</string>
