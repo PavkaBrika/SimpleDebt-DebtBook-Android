@@ -169,6 +169,7 @@ class GoalsFlowTest {
         compose.onAllNodesWithText(context.getString(R.string.goal_top_up)).assertCountEquals(0)
         compose.onAllNodesWithText(context.getString(R.string.goal_withdraw)).assertCountEquals(0)
         compose.onAllNodesWithText(context.getString(R.string.goal_edit)).assertCountEquals(0)
+        compose.waitUntil(10000) { onMain { it.hasWindowFocus() } == true && !keyboardVisible() }
         ordinaryBack(R.id.goalsFragment)
         node(R.string.goal_reached).assertIsDisplayed()
         capture("complete")
@@ -291,8 +292,9 @@ class GoalsFlowTest {
         click(R.string.goal_new)
         awaitDestination(R.id.createGoalsFragment)
         textField(R.string.name).performTextReplacement(initialName)
-        textField(R.string.goal_target_amount).performTextReplacement("20000")
-        node(R.string.goal_date_optional).performScrollTo().performClick()
+        textField(R.string.goal_target_amount).performScrollTo().performClick().performTextReplacement("20000")
+        compose.waitUntil(10000) { keyboardVisible() }
+        node(R.string.goal_date_optional).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitUntil(10000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isNotEmpty() }
         click(R.string.cancel)
         compose.waitUntil(10000) {
