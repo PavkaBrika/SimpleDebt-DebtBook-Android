@@ -51,19 +51,23 @@ class ReminderPinNavigationTest {
                 .putLong("pin_lock_delay_millis", 0L).putBoolean("ads_disabled", true).commit()
             PinCodeStore(context).save("1234"); AuthSession.lock()
             fun notification() = notifications.activeNotifications.firstOrNull { it.tag == DebtReminders.TAG && it.id == id }
+            fun waitForPinKeypad() = compose.waitUntil(15_000) {
+                compose.onAllNodesWithText("9").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+            }
             run {
                 context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                compose.waitUntil(10_000) { compose.onAllNodesWithText("9").fetchSemanticsNodes().isNotEmpty() }
+                waitForPinKeypad()
                 compose.waitUntil(5000) { notification() != null }
                 checkNotNull(notification()).notification.contentIntent.send()
-                compose.onNodeWithText("9").assertExists()
+                waitForPinKeypad()
                 assertFalse(AuthSession.isUnlocked)
                 "9999".forEach { compose.onNodeWithText(it.toString()).performClick() }
                 assertFalse(AuthSession.isUnlocked)
                 "1234".forEach { compose.onNodeWithText(it.toString()).performClick() }
                 compose.waitUntil(15000) { AuthSession.isUnlocked }
                 compose.waitUntil(15_000) {
-                    compose.onAllNodesWithText("100 EUR", substring = true).fetchSemanticsNodes().isNotEmpty()
+                    compose.onAllNodesWithText("100 EUR", substring = true)
+                        .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
                 }
                 compose.onNodeWithText("100 EUR", substring = true).assertExists()
             }

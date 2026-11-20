@@ -60,6 +60,7 @@ class DebtDetailsViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     private val _initialDebtList = MutableLiveData<List<DebtDomain>>()
+    val history: LiveData<List<DebtDomain>> get() = _initialDebtList
     private val _resultedDebtList = MutableLiveData<List<DebtDomain>>()
     val resultedDebtList: LiveData<List<DebtDomain>>
         get() = _resultedDebtList
@@ -96,8 +97,6 @@ class DebtDetailsViewModel @Inject constructor(
     fun selectDebtAction(id: Int?) {
         debtActionId.value = id
     }
-
-    fun historyDebt(id: Int): DebtDomain? = _initialDebtList.value?.firstOrNull { it.id == id }
 
     private val _debtOrder = MutableLiveData<Pair<DebtOrderAttribute, Boolean>>()
     val debtOrder: LiveData<Pair<DebtOrderAttribute, Boolean>> = _debtOrder

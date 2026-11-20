@@ -327,13 +327,11 @@ class DebtDetailsFragment : Fragment() {
                 DebtBookTheme {
                     val repaymentId by vm.repaymentDebtId.observeAsState()
                     val debtId by vm.debtActionId.observeAsState()
-                    val screen by vm.screenState.observeAsState()
-                    val visibleHistory by vm.resultedDebtList.observeAsState()
-                    val debt = if (screen == DebtDetailsState.SUCCESS && visibleHistory != null) {
-                        debtId?.let(vm::historyDebt)
-                    } else null
-                    if (repaymentId != null) {
-                        RepaymentSheet(vm)
+                    val history by vm.history.observeAsState()
+                    val selected = repaymentId ?: debtId
+                    val debt = history?.firstOrNull { it.id == selected }
+                    if (debt != null && repaymentId != null) {
+                        RepaymentSheet(vm, debt)
                     } else if (debt != null) key(debt.id) {
                         var sheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
                         val rest = vm.remaining(debt)

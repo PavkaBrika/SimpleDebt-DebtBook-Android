@@ -75,7 +75,8 @@ class DeniedReminderScreenTest {
                 bitmap.recycle()
                 assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
                 compose.waitUntil(15_000) {
-                    compose.onAllNodesWithTag("dueReminderSwitch").fetchSemanticsNodes().isNotEmpty()
+                    compose.onAllNodesWithTag("dueReminderSwitch")
+                        .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
                 }
                 if (allow) compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
                 else {

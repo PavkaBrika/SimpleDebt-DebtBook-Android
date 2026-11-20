@@ -31,20 +31,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.theme.spacing
+import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DecimalInput
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RepaymentSheet(vm: DebtDetailsViewModel) {
-    val debtId by vm.repaymentDebtId.observeAsState()
+internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
     val screen by vm.screenState.observeAsState()
     val amount by vm.repaymentAmount.observeAsState("")
     val remaining by vm.repaymentRemaining.observeAsState(BigDecimal.ZERO)
     val error by vm.repaymentError.observeAsState()
     val busy by vm.isDeleting.observeAsState(false)
     val ready = screen == DebtDetailsState.SUCCESS && !busy
-    val debt = debtId?.let(vm::originalDebt) ?: return
     val rest = DecimalInput.format(remaining)
     val currency = vm.humanCurrency.orEmpty()
     val spacing = MaterialTheme.spacing
