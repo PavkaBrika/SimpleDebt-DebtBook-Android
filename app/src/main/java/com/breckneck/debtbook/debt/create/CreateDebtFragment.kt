@@ -24,6 +24,11 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.cardview.widget.CardView
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
+import com.breckneck.debtbook.debt.reminders.DebtReminders
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.core.widget.addTextChangedListener
@@ -120,6 +125,17 @@ class CreateDebtFragment: Fragment() {
         val infoEditText: EditText = view.findViewById(R.id.debtInfoEditText)
         val debtDateTextView: TextView = view.findViewById(R.id.debtDateTextView)
         val debtDateCardView: CardView = view.findViewById(R.id.debtDateCardView)
+        if ((idDebt ?: 0) <= 0) {
+            val form = debtDateCardView.parent as LinearLayout
+            form.addView(ComposeView(requireContext()).apply {
+                id = R.id.debtDueForm
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+                setContent {
+                    DebtBookTheme { CreateDebtDueField(vm) }
+                }
+            }, form.indexOfChild(debtDateCardView) + 1,
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
         val debtSumEditText : EditText = view.findViewById(R.id.debtSumEditText)
         val currencyTextView: TextView = view.findViewById(R.id.debtCurrencyTextView)
         val collapsed: CollapsingToolbarLayout = view.findViewById(R.id.collapsNewDebt)
@@ -238,6 +254,22 @@ class CreateDebtFragment: Fragment() {
             if (parsed.signum() == 0) {
                 debtSumTextInput.error = getString(R.string.zerodebt)
                 return@setOnClickListener
+            }
+            if ((idDebt ?: 0) <= 0) {
+                val day = vm.dueDay.value
+                val minute = vm.reminderMinute.value
+                if (day != null && minute != null) {
+                    val reminders = DebtReminders.get(requireContext())
+                    val warning = when {
+                        !reminders.allowed() -> R.string.due_permission_denied
+                        DebtReminderPolicy.trigger(day, minute) <= System.currentTimeMillis() -> R.string.due_future_required
+                        else -> null
+                    }
+                    if (warning != null) {
+                        Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
+                        return@setOnClickListener
+                    }
+                }
             }
             buttonClickListener.onSetButtonClick()
             vm.saveDebt(idHuman ?: -1, idDebt ?: -1, name,

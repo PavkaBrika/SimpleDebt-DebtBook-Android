@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.breckneck.deptbook.domain.usecase.Human.*
 import com.breckneck.deptbook.domain.usecase.Debt.*
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -32,18 +33,28 @@ class CreateDebtViewModel @Inject constructor(
     private val getDebts: GetAllDebtsByIdUseCase,
     private val addSum: AddSumUseCase,
     private val transaction: DataTransaction,
-    private val setDateUseCase: SetDateUseCase
+    private val setDateUseCase: SetDateUseCase,
+    private val savedState: SavedStateHandle
 ) : ViewModel() {
 
     val isSaving = MutableLiveData(false)
     val saveError = MutableLiveData(false)
     val savedHumanId = MutableLiveData<Int?>()
+    val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", null)
+    val reminderMinute: LiveData<Int?> = savedState.getLiveData("reminderMinute", null)
+
+    fun setDueDraft(day: String?, minute: Int?) {
+        savedState["dueDay"] = day
+        savedState["reminderMinute"] = minute
+    }
 
     fun consumeSaveResult() { savedHumanId.value = null }
 
     fun saveDebt(humanId: Int, debtId: Int, name: String, sum: BigDecimal,
                  date: String, info: String) {
         if (isSaving.value == true || savedHumanId.value != null) return
+        val selectedDay = dueDay.value
+        val selectedMinute = reminderMinute.value
         isSaving.value = true
         saveError.value = false
         viewModelScope.launch {
@@ -58,7 +69,7 @@ class CreateDebtViewModel @Inject constructor(
                         editDebt.execute(debtId, sum, id, info.ifBlank { null }, date)
                         addSum.execute(id, sum - previous.sum)
                     } else {
-                        setDebt.execute(sum, id, info.ifBlank { null }, date)
+                        setDebt.execute(sum, id, info.ifBlank { null }, date, selectedDay, selectedMinute)
                         addSum.execute(id, sum)
                     }
                     id
