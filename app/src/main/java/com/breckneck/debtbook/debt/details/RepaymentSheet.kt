@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.res.stringResource
@@ -79,12 +80,12 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
                 OutlinedTextField(
                     value = amount,
                     onValueChange = vm::changeRepaymentAmount,
-                    modifier = Modifier.fillMaxWidth().testTag("repaymentAmountInput"),
+                    modifier = Modifier.fillMaxWidth().testTag("repaymentAmountInput")
+                        .semantics { if (errorText != null) error(errorText) },
                     label = { Text(stringResource(R.string.repayment_amount)) },
                     enabled = !busy,
                     singleLine = true,
                     isError = errorText != null,
-                    supportingText = errorText?.let { { Text(it) } },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { if (ready) vm.saveRepayment() })
                 )
@@ -94,6 +95,9 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
                         Text(stringResource(R.string.repayment_full))
                     }
                 }
+            }
+            errorText?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.space8, Alignment.End)) {
                 TextButton(onClick = vm::closeRepayment, enabled = !busy) { Text(stringResource(R.string.cancel)) }
