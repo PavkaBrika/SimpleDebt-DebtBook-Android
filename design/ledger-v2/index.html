@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Долги · Книга долгов</title>
+  <link rel="stylesheet" href="../bubble/studio.css">
+  <link rel="stylesheet" href="ledger.css">
+  <script defer src="../bubble/flows.js"></script>
+  <script defer src="../bubble/finance.js"></script>
+  <script defer src="../bubble/goals.js"></script>
+  <script defer src="../bubble/account.js"></script>
+  <script defer src="../bubble/debt-tools.js"></script>
+  <script defer src="../bubble/studio.js"></script>
+  <script defer src="ledger.js"></script>
+</head>
+<body>
+  <main class="folio">
+    <div class="proof-tools" aria-label="Просмотр макета">
+      <a href="../bubble/index.html">Первая версия <span aria-hidden="true">↗</span></a>
+      <button id="theme" type="button" aria-label="Сменить тему"></button>
+    </div>
+    <div class="board" id="board"></div>
+  </main>
+  <!-- The shared prototype also binds controls for its multi-screen review board. -->
+  <div hidden><button id="before"></button><button id="after"></button><button id="reset"></button><div class="mobile-switch"></div></div>
+</body>
+</html>
