@@ -14,6 +14,7 @@ import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -30,6 +31,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.view.ViewCompat
@@ -42,6 +45,8 @@ import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.goal.main.mapper.formatGoalMoney
+import entity.GoalData
+import java.util.Date
 import database.AppDataBase
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -63,7 +68,8 @@ class GoalsFlowTest {
     private val initialName = "Bubble QA · Trip"
     private val editedName = "Bubble QA · Renamed"
     private val finalName = "Bubble QA · Details"
-    private val goalNames = listOf(initialName, editedName, finalName)
+    private val scrollGoals = (1..7).map { "Bubble QA · Plan $it" }
+    private val goalNames = listOf(initialName, editedName, finalName) + scrollGoals
     private lateinit var oldPrefs: Map<String, *>
 
     @Before fun launch() {
@@ -109,12 +115,22 @@ class GoalsFlowTest {
         capture("active")
 
         click(R.string.goal_top_up)
-        textField(R.string.sum).performTextReplacement("2500")
+        node(R.string.goal_add_money).assertIsDisplayed()
+        capture("deposit-sheet")
+        textField(R.string.sum).performTextReplacement("99")
+        compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
+        assertBalance(initialName, "1000", 0)
+        click(R.string.goal_top_up)
+        textField(R.string.sum).performClick().performTextReplacement("2500")
+        compose.onNodeWithTag("goal_adjustment_confirm").performScrollTo().assertIsDisplayed()
+        capture("deposit-entry")
         compose.onNodeWithTag("goal_adjustment_confirm").performClick()
         compose.waitUntil(8000) { dao.getAllGoals().any { it.name == initialName && it.savedSum.compareTo("3500".toBigDecimal()) == 0 } }
         openGoal(initialName)
 
         click(R.string.goal_withdraw)
+        node(R.string.goal_withdraw_money).assertIsDisplayed()
+        capture("withdraw-sheet")
         textField(R.string.sum).performTextReplacement("3501")
         compose.onNodeWithTag("goal_adjustment_confirm").performClick()
         node(R.string.goal_overdrawn).performScrollTo().assertIsDisplayed()
@@ -172,6 +188,39 @@ class GoalsFlowTest {
         assertTrue(dao.getAllGoals().none { it.name == finalName })
     }
 
+    @Test fun goalListScrollsUnderTheBarsAndClearsTheLastAction() {
+        click(R.string.goal_new)
+        awaitDestination(R.id.createGoalsFragment)
+        dao.insertAllGoals(scrollGoals.mapIndexed { index, name ->
+            GoalData(0, name, "20000".toBigDecimal(), (1000 * (index + 1)).toBigDecimal(), "RUB", null, Date(), null)
+        })
+        textField(R.string.name).performTextReplacement(initialName)
+        textField(R.string.goal_target_amount).performTextReplacement("20000")
+        click(R.string.goal_save)
+        awaitDestination(R.id.goalsFragment)
+        val list = compose.onNode(hasScrollToIndexAction())
+        val viewport = list.fetchSemanticsNode().boundsInRoot
+        val screenHeight = checkNotNull(onMain { it.window.decorView.height })
+        assertEquals(0f, viewport.top, 1f)
+        assertEquals(screenHeight.toFloat(), viewport.bottom, 1f)
+        val createButton = node(R.string.goal_new).fetchSemanticsNode().boundsInRoot
+        list.performScrollToIndex(3)
+        val statusHeight = checkNotNull(onMain { activity ->
+            ViewCompat.getRootWindowInsets(activity.window.decorView)!!.getInsets(WindowInsetsCompat.Type.statusBars()).top
+        })
+        list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, statusHeight + 60f) }
+        compose.waitForIdle()
+        val card = compose.onNodeWithText(scrollGoals[2]).fetchSemanticsNode().boundsInRoot
+        assertTrue("A card should scroll behind the system clock", card.top < statusHeight && card.bottom > statusHeight)
+        assertEquals(createButton, node(R.string.goal_new).fetchSemanticsNode().boundsInRoot)
+        capture("list-under-bars")
+        list.performScrollToIndex(scrollGoals.size + 1)
+        list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, screenHeight.toFloat()) }
+        val lastEdit = compose.onAllNodesWithText(context.getString(R.string.goal_edit_action)).fetchSemanticsNodes().last()
+        assertTrue("Last edit action must clear the fixed button", lastEdit.boundsInRoot.bottom <= createButton.top)
+        capture("list-end")
+    }
+
     @Test fun tabSelectionAndSystemInsetsFollowNavHost() {
         for ((title, id) in listOf(
             R.string.debts to R.id.mainFragment, R.string.finances to R.id.financeFragment,
@@ -207,8 +256,9 @@ class GoalsFlowTest {
         awaitDestination(R.id.createGoalsFragment)
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performTextReplacement("20000")
-        textField(R.string.already_saved_sum).performTextReplacement("1000")
-        if (keyboardVisible()) ordinaryBack(R.id.createGoalsFragment)
+        textField(R.string.already_saved_sum).performScrollTo().performClick().performTextReplacement("1000")
+        compose.waitUntil(10000) { keyboardVisible() }
+        ordinaryBack(R.id.createGoalsFragment)
         compose.waitUntil(10000) { !keyboardVisible() }
         val yen = context.getString(R.string.jpy)
         compose.onNodeWithText("RUB").performScrollTo().performClick()
@@ -245,7 +295,10 @@ class GoalsFlowTest {
         node(R.string.goal_date_optional).performScrollTo().performClick()
         compose.waitUntil(10000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isNotEmpty() }
         click(R.string.cancel)
-        compose.waitUntil(10000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() && !keyboardVisible() }
+        compose.waitUntil(10000) {
+            compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() &&
+                onMain { it.hasWindowFocus() } == true && !keyboardVisible()
+        }
         swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalsComposeView, cancel = true, label = "new-goal")
         awaitDestination(R.id.createGoalsFragment)
         compose.onNodeWithText(initialName).assertIsDisplayed()
