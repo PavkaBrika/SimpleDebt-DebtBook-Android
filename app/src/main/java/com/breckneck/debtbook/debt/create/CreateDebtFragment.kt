@@ -5,7 +5,6 @@ import com.breckneck.deptbook.domain.util.compareTo
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.DatePickerDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Typeface
@@ -47,6 +46,7 @@ import com.breckneck.deptbook.domain.usecase.Human.SetHumanUseCase
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputLayout
 import androidx.lifecycle.lifecycleScope
@@ -123,19 +123,16 @@ class CreateDebtFragment: Fragment() {
         val humanNameEditText: EditText = view.findViewById(R.id.humanNameEditText)
         val contactsLayout: RelativeLayout = view.findViewById(R.id.contactsLayout)
         val infoEditText: EditText = view.findViewById(R.id.debtInfoEditText)
-        val debtDateTextView: TextView = view.findViewById(R.id.debtDateTextView)
-        val debtDateCardView: CardView = view.findViewById(R.id.debtDateCardView)
-        if ((idDebt ?: 0) <= 0) {
-            val form = debtDateCardView.parent as LinearLayout
-            form.addView(ComposeView(requireContext()).apply {
-                id = R.id.debtDueForm
-                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-                setContent {
-                    DebtBookTheme { CreateDebtDueField(vm) }
-                }
-            }, form.indexOfChild(debtDateCardView) + 1,
-                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
+        val commentCard = view.findViewById<View>(R.id.debtInfoTextInput).parent as MaterialCardView
+        val form = commentCard.parent as LinearLayout
+        form.addView(ComposeView(requireContext()).apply {
+            id = R.id.debtDueForm
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                DebtBookTheme { CreateDebtDates(vm, commentCard, newDebt = (idDebt ?: 0) <= 0) }
+            }
+        }, form.indexOfChild(commentCard),
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         val debtSumEditText : EditText = view.findViewById(R.id.debtSumEditText)
         val currencyTextView: TextView = view.findViewById(R.id.debtCurrencyTextView)
         val collapsed: CollapsingToolbarLayout = view.findViewById(R.id.collapsNewDebt)
@@ -188,26 +185,9 @@ class CreateDebtFragment: Fragment() {
 
         debtSumEditText.keyListener = DigitsKeyListener.getInstance("0123456789.,")
 
-        vm.date.observe(viewLifecycleOwner) { date ->
-            debtDateTextView.text = com.breckneck.deptbook.domain.util.LedgerDate.display(date)
-        }
-
-        val dateSetListener = DatePickerDialog.OnDateSetListener{view, year, month, day ->
-            vm.setCurrentDate(year = year, month = month, day = day)
-        }
-        debtDateCardView.setOnClickListener{
-            val calendar = Calendar.getInstance()
-            DatePickerDialog(view.context, dateSetListener,
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)).show()
-        }
-
         if (idDebt != null && idDebt > 0) { //EXIST HUMAN EDIT DEBT LAYOUT CHANGES
             debtSumEditText.setText(DecimalInput.format(com.breckneck.deptbook.domain.util.abs(sumArgs)))
             customSwitch.setChecked(sumArgs >= BigDecimal.ZERO)
-            debtDateTextView.text = dateArgs?.let { com.breckneck.deptbook.domain.util.LedgerDate.display(it) }
-            vm.setStoredDate(dateArgs ?: com.breckneck.deptbook.domain.util.LedgerDate.today())
             infoEditText.setText(infoArgs)
             collapsed.title = getString(R.string.editdebtcollaps)
             currencyTextView.isClickable = false
@@ -257,12 +237,11 @@ class CreateDebtFragment: Fragment() {
             }
             if ((idDebt ?: 0) <= 0) {
                 val day = vm.dueDay.value
-                val minute = vm.reminderMinute.value
-                if (day != null && minute != null) {
+                if (day != null && vm.remind.value == true) {
                     val reminders = DebtReminders.get(requireContext())
                     val warning = when {
                         !reminders.allowed() -> R.string.due_permission_denied
-                        DebtReminderPolicy.trigger(day, minute) <= System.currentTimeMillis() -> R.string.due_future_required
+                        !DebtReminderPolicy.canSchedule(day) -> R.string.due_future_required
                         else -> null
                     }
                     if (warning != null) {

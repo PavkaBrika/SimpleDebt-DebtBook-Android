@@ -40,7 +40,7 @@ class CreateDebtViewModelTest {
         whenever(latest.exectute()).thenReturn(7)
     }
     @After fun teardown() = Dispatchers.resetMain()
-    private fun vm() = CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum, transaction, mock(), SavedStateHandle())
+    private fun vm() = CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum, transaction, SavedStateHandle())
 
     @Test fun `duplicate save is ignored and navigation waits for persistence`() {
         val started = CountDownLatch(1)

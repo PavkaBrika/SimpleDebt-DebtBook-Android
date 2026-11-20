@@ -487,6 +487,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         args.putInt("idHuman", debtDomain.idHuman)
         args.putString("sum", debtDomain.sum.toPlainString())
         args.putString("date", debtDomain.date)
+        args.putString("dueDayOnEdit", debtDomain.dueDay)
         if (debtDomain.info == null)
             args.putString("info", "")
         else

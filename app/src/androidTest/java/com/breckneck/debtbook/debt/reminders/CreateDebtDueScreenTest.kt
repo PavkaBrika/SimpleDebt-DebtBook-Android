@@ -1,10 +1,12 @@
 package com.breckneck.debtbook.debt.reminders
 
 import android.content.Context
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
@@ -21,6 +23,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.time.LocalDate
 
 class CreateDebtDueScreenTest {
     @get:Rule val compose = createEmptyComposeRule()
@@ -41,10 +44,20 @@ class CreateDebtDueScreenTest {
                 onView(withId(R.id.humanNameEditText)).perform(replaceText(name), closeSoftKeyboard())
                 onView(withId(R.id.debtSumEditText)).perform(replaceText("125"), closeSoftKeyboard())
                 onView(withId(R.id.debtDueForm)).perform(scrollTo())
+                val today = LocalDate.now()
+                compose.onNodeWithTag("createDebtDate").performClick()
+                compose.enterDebtDate(scenario, today.plusDays(1))
+                compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
+                compose.enterDebtDate(scenario, today)
+                compose.onNodeWithTag("dueSaveButton").performClick()
+
                 compose.onNodeWithTag("createDebtDue").performClick()
+                compose.onNodeWithTag("dueDatePicker").assertExists()
                 compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
-                compose.selectDueDay(scenario, 2099, 11, 29)
-                compose.onNodeWithTag("dueReminderSwitch").performClick()
+                compose.enterDebtDate(scenario, today.minusDays(1))
+                compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
+                compose.enterDebtDate(scenario, LocalDate.of(2099, 11, 29))
+                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
                 scenario.recreate()
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
                 compose.onNodeWithTag("dueSaveButton").performClick()
@@ -54,6 +67,7 @@ class CreateDebtDueScreenTest {
                 compose.waitUntil(15_000) { newPerson() != null }
                 val person = checkNotNull(newPerson())
                 val first = dao.getAllDebtsById(person.id).single()
+                assertEquals(today.toString(), first.date)
                 assertEquals("2099-11-29", first.dueDay)
                 assertEquals(540, first.reminderMinute)
                 assertNotNull(first.reminderToken)
@@ -62,7 +76,7 @@ class CreateDebtDueScreenTest {
                 onView(withId(R.id.debtSumEditText)).perform(replaceText("25"), closeSoftKeyboard())
                 onView(withId(R.id.debtDueForm)).perform(scrollTo())
                 compose.onNodeWithTag("createDebtDue").performClick()
-                compose.selectDueDay(scenario, 2099, 12, 1)
+                compose.enterDebtDate(scenario, LocalDate.of(2099, 12, 1))
                 compose.onNodeWithTag("dueSaveButton").performClick()
                 compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
                 onView(withId(R.id.setFinanceButton)).perform(click())

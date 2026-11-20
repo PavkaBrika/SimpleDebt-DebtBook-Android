@@ -17,7 +17,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.breckneck.deptbook.domain.usecase.Debt.GetCurrentDateUseCase
-import com.breckneck.deptbook.domain.usecase.Debt.SetDateUseCase
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
+import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -33,7 +34,6 @@ class CreateDebtViewModel @Inject constructor(
     private val getDebts: GetAllDebtsByIdUseCase,
     private val addSum: AddSumUseCase,
     private val transaction: DataTransaction,
-    private val setDateUseCase: SetDateUseCase,
     private val savedState: SavedStateHandle
 ) : ViewModel() {
 
@@ -41,11 +41,12 @@ class CreateDebtViewModel @Inject constructor(
     val saveError = MutableLiveData(false)
     val savedHumanId = MutableLiveData<Int?>()
     val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", null)
-    val reminderMinute: LiveData<Int?> = savedState.getLiveData("reminderMinute", null)
+    val remind: LiveData<Boolean> = savedState.getLiveData("remind", false)
+    val existingDueDay = savedState.get<String>("dueDayOnEdit")?.let(LedgerDate::canonical)
 
-    fun setDueDraft(day: String?, minute: Int?) {
+    fun setDueDraft(day: String, remind: Boolean) {
         savedState["dueDay"] = day
-        savedState["reminderMinute"] = minute
+        savedState["remind"] = remind
     }
 
     fun consumeSaveResult() { savedHumanId.value = null }
@@ -54,7 +55,7 @@ class CreateDebtViewModel @Inject constructor(
                  date: String, info: String) {
         if (isSaving.value == true || savedHumanId.value != null) return
         val selectedDay = dueDay.value
-        val selectedMinute = reminderMinute.value
+        val selectedMinute = DebtReminderPolicy.DEFAULT_MINUTE.takeIf { remind.value == true }
         isSaving.value = true
         saveError.value = false
         viewModelScope.launch {
@@ -97,14 +98,13 @@ class CreateDebtViewModel @Inject constructor(
     private val _isCurrencyDialogOpened = MutableLiveData<Boolean>()
     val isCurrencyDialogOpened: LiveData<Boolean>
         get() = _isCurrencyDialogOpened
-    private val _date = MutableLiveData<String>()
-    val date: LiveData<String>
-        get() = _date
+    val date: LiveData<String> = savedState.getLiveData(
+        "selectedDebtDate", savedState.get<String>("date") ?: getCurrentDateUseCase.execute()
+    )
 
     init {
         Log.e(TAG, "NewDebtFragmentViewModel created")
         getDefaultCurrency()
-        getCurrentDate()
     }
 
     override fun onCleared() {
@@ -129,13 +129,7 @@ class CreateDebtViewModel @Inject constructor(
         _currency.value = getDefaultCurrency.execute()
     }
 
-    fun setStoredDate(date: String) { _date.value = date }
-
-    fun getCurrentDate() {
-        _date.value = getCurrentDateUseCase.execute()
-    }
-
-    fun setCurrentDate(year: Int, month: Int, day: Int) {
-        _date.value = setDateUseCase.execute(year = year, month = month, day = day)
+    fun setStoredDate(date: String) {
+        savedState["selectedDebtDate"] = date
     }
 }

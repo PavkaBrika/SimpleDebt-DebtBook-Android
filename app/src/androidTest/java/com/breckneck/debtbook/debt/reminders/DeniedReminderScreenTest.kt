@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
@@ -27,6 +28,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import java.math.BigDecimal
+import java.time.LocalDate
 
 /** Run separately after pm revoke + clear-permission-flags, API33+. */
 class DeniedReminderScreenTest {
@@ -57,8 +59,8 @@ class DeniedReminderScreenTest {
                 onView(withTagValue(equalTo(id))).perform(click())
                 compose.onNodeWithTag("dueSettingsButton").performClick()
                 compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
-                compose.selectDueDay(scenario, 2099, 12, 31)
-                compose.onNodeWithTag("dueReminderSwitch").performClick()
+                compose.enterDebtDate(scenario, LocalDate.of(2099, 12, 31))
+                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
                 val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
                 automation.serviceInfo = automation.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
                 var button: AccessibilityNodeInfo? = null

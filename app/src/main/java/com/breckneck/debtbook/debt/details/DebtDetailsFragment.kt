@@ -44,8 +44,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.debt.reminders.DebtDueDraft
-import com.breckneck.debtbook.debt.reminders.DebtDueSheet
+import com.breckneck.debtbook.debt.reminders.DebtDateSheet
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.debtbook.debt.reminders.DebtReminders
 import database.AppDataBase
 import kotlinx.coroutines.Dispatchers
@@ -349,15 +349,20 @@ class DebtDetailsFragment : Fragment() {
                             DebtSheet.DUE -> {
                                 val pending = rest.signum() > 0 && !debt.reminderDelivered &&
                                     debt.dueDay?.let { it >= LedgerDate.today() } == true
-                                DebtDueSheet(
-                                    initial = DebtDueDraft(debt.dueDay, debt.reminderMinute.takeIf { pending }),
-                                    allowReminder = rest.signum() > 0,
+                                DebtDateSheet(
+                                    title = stringResource(R.string.due_settings),
+                                    initialDay = debt.dueDay,
+                                    minDay = LedgerDate.canonical(debt.date),
+                                    initialReminder = (pending && debt.reminderMinute != null).takeIf { rest.signum() > 0 },
                                     onDismiss = close
-                                ) { draft ->
+                                ) { day, remind ->
+                                    val minute = if (remind) {
+                                        debt.reminderMinute.takeIf { pending && day == debt.dueDay }
+                                            ?: DebtReminderPolicy.DEFAULT_MINUTE
+                                    } else null
                                     withContext(Dispatchers.IO) {
                                         AppDataBase(appContext).appDao().setDebtDueDate(
-                                            debt.id, draft.day, draft.reminderMinute,
-                                            draft.reminderMinute?.let { UUID.randomUUID().toString() }, System.currentTimeMillis()
+                                            debt.id, day, minute, minute?.let { UUID.randomUUID().toString() }, System.currentTimeMillis()
                                         )
                                     }
                                     DebtReminders.get(appContext).refresh()

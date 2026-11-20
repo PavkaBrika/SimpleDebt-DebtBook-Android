@@ -1,26 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="due_settings">Due date and reminder</string>
-    <string name="due_choose_date">Choose a due date</string>
     <string name="due_date">Due: %1$s</string>
     <string name="due_overdue">Overdue since %1$s</string>
     <string name="due_today">Due today · %1$s</string>
-    <string name="due_clear">Remove due date</string>
     <string name="due_enable">Remind me</string>
     <string name="due_permission_denied">Allow notifications to get reminders.</string>
     <string name="due_notification_settings">Notification settings</string>
-    <string name="due_future_required">Choose a future date and time, or turn the reminder off.</string>
-    <string name="due_reminder_at">Reminder: %1$s</string>
+    <string name="due_future_required">Choose today or a future date to turn on the reminder.</string>
     <string name="due_sent">Reminder already sent</string>
     <string name="due_off">Reminder off</string>
     <string name="due_channel">Personal debt reminders</string>
     <string name="due_notification_title">Check your debt</string>
     <string name="due_notification_text">A debt is due. Tap to open it.</string>
     <string name="due_missing">This debt was deleted</string>
-    <string name="due_choose_time">Reminder time</string>
-    <string name="due_select">Select</string>
     <string name="due_apply">Apply</string>
     <string name="due_save_failed">Could not save this due date. Try again.</string>
     <string name="debt_delete_question">Delete this debt?</string>
     <string name="due_optional">Optional</string>
+    <string name="debt_entry_date">Debt date</string>
+    <string name="due_reminder_on">Reminder on</string>
 </resources>

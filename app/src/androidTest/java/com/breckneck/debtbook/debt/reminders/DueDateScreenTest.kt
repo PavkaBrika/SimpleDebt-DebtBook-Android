@@ -1,12 +1,14 @@
 package com.breckneck.debtbook.debt.reminders
 
 import android.content.Context
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
@@ -26,6 +28,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.math.BigDecimal
+import java.time.LocalDate
 
 class DueDateScreenTest {
     @get:Rule val compose = createEmptyComposeRule()
@@ -70,55 +73,62 @@ class DueDateScreenTest {
         waitForHistory()
         onView(withTagValue(equalTo(id))).perform(click())
         compose.onNodeWithTag("dueSettingsButton").performClick()
-        compose.onNodeWithTag("dueDateButton").assertExists()
+        compose.onNodeWithTag("dueDatePicker").assertExists()
     }
 
     private fun save() { compose.onNodeWithTag("dueSaveButton").performClick() }
 
-    @Test fun dueDateReminderEditDisableAndRemoveSurviveRecreationBothDirections() {
+    @Test fun editAndDisableReminderWithoutAnExtraDateStep() {
         assertTrue("Grant notifications before running", DebtReminders.get(context).allowed())
         for (sign in listOf(1, -1)) {
             dao.insertHuman(Human(id, "Due screen", BigDecimal.ZERO, "EUR"))
             dao.saveDebt(Debt(id, BigDecimal(100 * sign), id, null, "2026-11-16"))
-            // A pending reminder can expire if Android did not run the app on the due day.
-            dao.updateDebt(row().copy(dueDay = "2020-01-01", reminderMinute = 540, reminderToken = "expired-1"))
+            dao.setDebtDueDate(id, "2099-12-31", 600, "legacy-token", System.currentTimeMillis())
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.onHumanClick(id, "EUR", "Due screen") }
                 waitForHistory()
-                onView(withId(R.id.dueTextView)).check(matches(withText(containsString(context.getString(R.string.due_off)))))
+                onView(withId(R.id.dueTextView)).check(matches(withText(containsString(scenario.screenString(R.string.due_reminder_on)))))
+
+                onView(withTagValue(equalTo(id))).perform(click())
+                compose.onNodeWithTag("editButton").assertExists()
+                compose.onNodeWithTag("debtActionsCancel").performClick()
+                compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
+
                 open()
-                compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
+                compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
                 compose.onNodeWithTag("dueTimeButton").assertDoesNotExist()
-                compose.onNodeWithTag("dueDateButton").performClick()
+                compose.onNodeWithTag("dueClearButton").assertDoesNotExist()
+                compose.enterDebtDate(scenario, LocalDate.of(2026, 11, 15))
+                compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
+                compose.onNodeWithTag("dueCancelButton").performClick()
+                assertEquals("2099-12-31", row().dueDay)
+                assertEquals(600, row().reminderMinute)
+                assertEquals("legacy-token", row().reminderToken)
+
+                open()
                 pressBack()
-                compose.onNodeWithTag("dueDateButton").assertExists()
-                compose.selectDueDay(scenario, 2099, 12, 31)
-                compose.onNodeWithTag("dueReminderSwitch").performClick()
+                compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
+                open()
+                save()
+                waitForHistory()
+                assertEquals(600, row().reminderMinute)
+                assertEquals("legacy-token", row().reminderToken)
+
+                open()
+                compose.enterDebtDate(scenario, LocalDate.of(2099, 12, 30))
                 scenario.recreate()
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
                 save()
-                await("due save") { row().dueDay == "2099-12-31" && row().reminderToken != null }
-                assertEquals("2099-12-31", row().dueDay)
-                val token = row().reminderToken
-                open(); compose.selectDueDay(scenario, 2099, 12, 30)
-                compose.selectMorningTime(scenario, 10, 15)
-                save(); await("reschedule") { row().reminderMinute == 615 }
-                assertNotEquals(token, row().reminderToken)
-                open(); compose.selectDueDay(scenario, 2020, 1, 1); save()
-                compose.onNodeWithTag("dueError").assertExists()
-                assertEquals("2099-12-30", row().dueDay)
-                compose.onNodeWithTag("dueReminderSwitch").performClick()
-                save(); await("disable") { row().reminderToken == null }
-                assertEquals("2020-01-01", row().dueDay)
-                waitForHistory()
-                onView(withId(R.id.dueTextView)).check(matches(withText(containsString(context.getString(R.string.due_overdue, com.breckneck.deptbook.domain.util.LedgerDate.display("2020-01-01"))))))
+                await("reschedule") { row().dueDay == "2099-12-30" }
+                assertNotEquals("legacy-token", row().reminderToken)
+                assertEquals(540, row().reminderMinute)
+
                 open()
-                compose.onNodeWithTag("dueClearButton").performClick()
-                compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
-                compose.onNodeWithTag("dueTimeButton").assertDoesNotExist()
+                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
+                compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
                 save()
-                await("clear due") { row().dueDay == null }
-                assertNull(row().reminderToken)
+                await("disable") { row().reminderToken == null }
+                assertEquals("2099-12-30", row().dueDay)
             }
             clean()
         }

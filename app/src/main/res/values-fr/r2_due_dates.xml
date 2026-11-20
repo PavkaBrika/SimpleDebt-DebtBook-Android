@@ -1,26 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="due_settings">Échéance et rappel</string>
-    <string name="due_choose_date">Choisir une échéance</string>
     <string name="due_date">Échéance : %1$s</string>
     <string name="due_overdue">En retard · échéance : %1$s</string>
     <string name="due_today">Échéance aujourd’hui · %1$s</string>
-    <string name="due_clear">Supprimer l’échéance</string>
     <string name="due_enable">Me rappeler</string>
     <string name="due_permission_denied">Autorisez les notifications pour recevoir les rappels.</string>
     <string name="due_notification_settings">Paramètres des notifications</string>
-    <string name="due_future_required">Choisissez une date et une heure futures, ou désactivez le rappel.</string>
-    <string name="due_reminder_at">Rappel à %1$s</string>
+    <string name="due_future_required">Choisissez aujourd’hui ou une date ultérieure pour activer le rappel.</string>
     <string name="due_sent">Rappel déjà envoyé</string>
     <string name="due_off">Rappel désactivé</string>
     <string name="due_channel">Rappels personnels de dettes</string>
     <string name="due_notification_title">Vérifiez votre dette</string>
     <string name="due_notification_text">Une dette arrive à échéance. Touchez pour l’ouvrir.</string>
     <string name="due_missing">Cette dette a été supprimée</string>
-    <string name="due_choose_time">Heure du rappel</string>
-    <string name="due_select">Choisir</string>
     <string name="due_apply">Appliquer</string>
     <string name="due_save_failed">Impossible d’enregistrer cette échéance. Réessayez.</string>
     <string name="debt_delete_question">Supprimer cette dette ?</string>
     <string name="due_optional">Facultatif</string>
+    <string name="debt_entry_date">Date de la dette</string>
+    <string name="due_reminder_on">Rappel activé</string>
 </resources>
