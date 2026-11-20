@@ -80,10 +80,10 @@ class DebtReminders private constructor(private val context: Context) {
         db.runInTransaction {
             val history = db.appDao().getAllDebts().map { it.toDomain() }
             val known = prefs.getStringSet("ids", emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.toSet()
-            val rows = history.filter { it.repaymentOfId == null }
+            // Debts without configured reminders need no OS calls unless they were scheduled before.
+            val rows = history.filter { it.repaymentOfId == null && it.reminderToken != null }
             val ids = rows.map { it.id }.toSet()
-            (known - ids).forEach(::cancel)
-            if (clear) (known + ids).forEach(::cancel)
+            (if (clear) known + ids else known - ids).forEach(::cancel)
             rows.forEach { stored ->
                 val remembered = stored.reminderToken?.let { prefs.getBoolean("sent-${stored.id}-$it", false) } == true
                 val row = if (remembered && !stored.reminderDelivered) stored.copy(reminderDelivered = true) else stored
@@ -131,7 +131,8 @@ class DebtReminders private constructor(private val context: Context) {
             true
         }
         if (!claimed) return false
-        prefs.edit().putBoolean("sent-$id-$token", true).commit()
+        val known = prefs.getStringSet("ids", emptySet()).orEmpty()
+        prefs.edit().putStringSet("ids", known + id.toString()).putBoolean("sent-$id-$token", true).commit()
         // Claim is committed before posting: process death here may lose a reminder, never replay it.
         db.runInTransaction {
             val history = db.appDao().getAllDebts().map { it.toDomain() }
