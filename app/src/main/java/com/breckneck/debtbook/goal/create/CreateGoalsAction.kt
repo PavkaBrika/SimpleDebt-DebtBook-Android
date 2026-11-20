@@ -10,6 +10,7 @@ sealed interface CreateGoalsAction {
     data object CurrencyClick : CreateGoalsAction
     data class CurrencySelected(val index: Int) : CreateGoalsAction
     data object DismissCurrencySheet : CreateGoalsAction
+    data object ClearDate : CreateGoalsAction
     data object DateClick : CreateGoalsAction
     data object DismissDatePicker : CreateGoalsAction
     data class DateSelected(val date: Date) : CreateGoalsAction

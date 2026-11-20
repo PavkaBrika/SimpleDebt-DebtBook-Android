@@ -1,160 +1,166 @@
 package com.breckneck.debtbook.goal.details
 
-import java.math.BigDecimal
-
-import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import com.breckneck.debtbook.common.toDMYFormat
+import com.breckneck.debtbook.goal.main.GoalAdjustment
+import com.breckneck.debtbook.goal.main.GoalDeletion
+import com.breckneck.debtbook.goal.main.mapper.formatGoalMoney
+import com.breckneck.debtbook.goal.main.mapper.toUi
+import com.breckneck.debtbook.goal.main.model.GoalUi
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.model.GoalDeposit
 import com.breckneck.deptbook.domain.usecase.Goal.DeleteGoal
-import com.breckneck.deptbook.domain.usecase.Goal.UpdateGoal
-import com.breckneck.deptbook.domain.usecase.GoalDeposit.DeleteGoalDepositsByGoalId
 import com.breckneck.deptbook.domain.usecase.GoalDeposit.GetGoalDepositsByGoalId
 import com.breckneck.deptbook.domain.usecase.GoalDeposit.SetGoalDeposit
-import com.breckneck.deptbook.domain.util.ChangeGoalSavedSumDialogState
-import com.breckneck.deptbook.domain.util.ListState
+import com.breckneck.deptbook.domain.util.DecimalInput
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.orbitmvi.orbit.ContainerHost
+import org.orbitmvi.orbit.syntax.Syntax
+import org.orbitmvi.orbit.viewmodel.container
+import java.util.Date
 import javax.inject.Inject
+
+data class GoalDetailsState(
+    val goal: GoalUi? = null,
+    val history: List<GoalMovement> = emptyList(),
+    val isLoading: Boolean = true,
+    val loadFailed: Boolean = false,
+    val adjustment: GoalAdjustment? = null,
+    val withdraw: Boolean = false,
+    val deletion: GoalDeletion? = null,
+)
+
+data class GoalMovement(val id: Int, val amount: String, val date: String, val isDeposit: Boolean)
+
+sealed interface GoalDetailsEffect {
+    data class Edit(val goal: Goal) : GoalDetailsEffect
+    data class BalanceChanged(val goal: Goal) : GoalDetailsEffect
+    data object Deleted : GoalDetailsEffect
+}
 
 @HiltViewModel
 class GoalDetailsViewModel @Inject constructor(
-    private val updateGoal: UpdateGoal,
+    private val savedState: SavedStateHandle,
     private val setGoalDeposit: SetGoalDeposit,
     private val getGoalDepositsByGoalId: GetGoalDepositsByGoalId,
     private val deleteGoal: DeleteGoal,
-    private val deleteGoalDepositsByGoalId: DeleteGoalDepositsByGoalId
-): ViewModel() {
+) : ViewModel(), ContainerHost<GoalDetailsState, GoalDetailsEffect> {
 
-    private val TAG = "GoalDetailsFragmentVM"
+    private var currentGoal: Goal = checkNotNull(savedState["goal"])
+    private var deposits: List<GoalDeposit> = emptyList()
+    private var historyLoad = 0
 
-    private val _goalDepositList = MutableLiveData<List<GoalDeposit>>()
-    val goalDepositList: LiveData<List<GoalDeposit>>
-        get() = _goalDepositList
-    private val _goalDepositListState = MutableLiveData(ListState.LOADING)
-    val goalDepositListState: LiveData<ListState>
-        get() = _goalDepositListState
-    private var _isGoalDepositListNeedToUpdate = false
-    val isGoalDepositListNeedToUpdate: Boolean
-        get() = _isGoalDepositListNeedToUpdate
-    private val _goalSavedSum = MutableLiveData<BigDecimal>()
-    val goalSavedSum: LiveData<BigDecimal>
-        get() = _goalSavedSum
-    private val _goal = MutableLiveData<Goal>()
-    val goal: LiveData<Goal>
-        get() = _goal
-    private var _isChangeSavedSumDialogOpened = false
-    val isChangeSavedSumDialogOpened: Boolean
-        get() = _isChangeSavedSumDialogOpened
-    private var _changeDialogState: ChangeGoalSavedSumDialogState? = null
-    val changeDialogState: ChangeGoalSavedSumDialogState?
-        get() = _changeDialogState
-    private var _isEditOptionsDialogOpened = false
-    val isEditOptionsDialogOpened: Boolean
-        get() = _isEditOptionsDialogOpened
+    override val container = container<GoalDetailsState, GoalDetailsEffect>(
+        initialState = GoalDetailsState(goal = currentGoal.toUi()),
+        onCreate = { retryHistory() },
+    )
 
-    init {
-        Log.e(TAG, "Created")
+    fun retryHistory() = intent { loadHistory() }
+
+    fun onEdited(goal: Goal) = intent {
+        if (currentGoal.id == goal.id) {
+            currentGoal = goal
+            savedState["goal"] = goal
+            reduce { state.copy(goal = goal.toUi(), history = formatHistory(goal.currency)) }
+        }
     }
 
-    fun getGoalFromDB(id: Int) {
-
+    fun edit() = intent {
+        if (currentGoal.savedSum < currentGoal.sum) postSideEffect(GoalDetailsEffect.Edit(currentGoal))
     }
 
-    fun setGoal(goal: Goal) {
-        _goal.value = goal
-        _goalSavedSum.value = goal.savedSum
-        getGoalDepositList()
+    fun openAdjustment(withdraw: Boolean) = intent {
+        if (currentGoal.savedSum < currentGoal.sum) {
+            reduce { state.copy(adjustment = GoalAdjustment(currentGoal.id), withdraw = withdraw) }
+        }
     }
 
-    fun getGoalDepositList() {
-        _goalDepositListState.value = ListState.LOADING
-        viewModelScope.launch {
-            try {
-                val list = withContext(Dispatchers.IO) {
-                    getGoalDepositsByGoalId.execute(goalId = _goal.value!!.id)
-                }
-                if (list.isEmpty()) {
-                    _goalDepositListState.value = ListState.EMPTY
-                    _goalDepositList.value = emptyList()
-                } else {
-                    _goalDepositList.value = list
-                    _goalDepositListState.value = ListState.RECEIVED
-                }
-                _isGoalDepositListNeedToUpdate = false
-                Log.e(TAG, "Goal deposit list loaded")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
+    fun dismissAdjustment() = intent {
+        if (state.adjustment?.isSaving != true) reduce { state.copy(adjustment = null) }
+    }
+
+    fun changeAmount(text: String) = intent {
+        val adjustment = state.adjustment?.takeUnless { it.isSaving } ?: return@intent
+        if (DecimalInput.isEditable(text, currentGoal.currency)) {
+            reduce { state.copy(adjustment = adjustment.copy(sumText = text, error = null)) }
+        }
+    }
+
+    fun confirmAdjustment() = intent {
+        val adjustment = state.adjustment?.takeUnless { it.isSaving } ?: return@intent
+        val goal = currentGoal
+        val amount = DecimalInput.parse(adjustment.sumText, goal.currency)
+        val error = when {
+            amount == null || amount.signum() <= 0 -> GoalAdjustment.Error.INVALID_AMOUNT
+            state.withdraw && amount > goal.savedSum -> GoalAdjustment.Error.EXCEEDS_BALANCE
+            else -> null
+        }
+        if (error != null) {
+            reduce { state.copy(adjustment = adjustment.copy(error = error)) }
+            return@intent
+        }
+
+        val amountChange = checkNotNull(amount).let { if (state.withdraw) -it else it }
+        reduce { state.copy(adjustment = adjustment.copy(isSaving = true, error = null)) }
+        try {
+            withContext(Dispatchers.IO) {
+                setGoalDeposit.execute(GoalDeposit(sum = amountChange, date = Date(), goalId = goal.id))
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            reduce { state.copy(adjustment = adjustment.copy(error = GoalAdjustment.Error.SAVE_FAILED)) }
+            return@intent
+        }
+        val updated = goal.copy(savedSum = goal.savedSum + amountChange)
+        currentGoal = updated
+        savedState["goal"] = updated
+        reduce { state.copy(goal = updated.toUi(), adjustment = null) }
+        postSideEffect(GoalDetailsEffect.BalanceChanged(updated))
+        loadHistory()
+    }
+
+    fun openDelete() = intent { reduce { state.copy(deletion = GoalDeletion(currentGoal.id)) } }
+
+    fun dismissDelete() = intent {
+        if (state.deletion?.isDeleting != true) reduce { state.copy(deletion = null) }
+    }
+
+    fun confirmDelete() = intent {
+        val deletion = state.deletion?.takeUnless { it.isDeleting } ?: return@intent
+        reduce { state.copy(deletion = deletion.copy(isDeleting = true, failed = false)) }
+        try {
+            withContext(Dispatchers.IO) { deleteGoal.execute(currentGoal) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            reduce { state.copy(deletion = deletion.copy(failed = true)) }
+            return@intent
+        }
+        postSideEffect(GoalDetailsEffect.Deleted)
+    }
+
+    private suspend fun Syntax<GoalDetailsState, GoalDetailsEffect>.loadHistory() {
+        val request = ++historyLoad
+        reduce { state.copy(isLoading = true, loadFailed = false) }
+        try {
+            val goalId = currentGoal.id
+            val rows = withContext(Dispatchers.IO) { getGoalDepositsByGoalId.execute(goalId) }
+            if (request != historyLoad) return
+            deposits = rows.sortedWith(compareByDescending<GoalDeposit> { it.date }.thenByDescending { it.id })
+            reduce { state.copy(history = formatHistory(currentGoal.currency), isLoading = false) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            if (request == historyLoad) reduce { state.copy(isLoading = false, loadFailed = true) }
         }
     }
 
-    val isSaving = MutableLiveData(false)
-    val operationError = MutableLiveData(false)
-
-    fun setGoalDeposit(goalDeposit: GoalDeposit) {
-        if (isSaving.value == true) return
-        isSaving.value = true
-        operationError.value = false
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) { setGoalDeposit.execute(goalDeposit) }
-                val current = requireNotNull(_goal.value)
-                val updated = current.copy(savedSum = current.savedSum + goalDeposit.sum)
-                _goal.value = updated
-                _goalSavedSum.value = updated.savedSum
-                getGoalDepositList()
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                operationError.value = true
-            } finally { isSaving.value = false }
-        }
-    }
-
-    fun deleteGoal(goal: Goal) {
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    deleteGoal.execute(goal = goal)
-                    deleteGoalDepositsByGoalId.execute(goalId = goal.id)
-                }
-                Log.e(TAG, "Goal deleted")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
-            }
-        }
-    }
-
-    fun setGoalListState(state: ListState) {
-        _goalDepositListState.value = state
-    }
-
-    fun onOpenChangeSavedSumChangeDialog(state: ChangeGoalSavedSumDialogState) {
-        _isChangeSavedSumDialogOpened = true
-        _changeDialogState = state
-    }
-
-    fun onCloseChangeSumChangeDialog() {
-        _isChangeSavedSumDialogOpened = false
-        _changeDialogState = null
-    }
-
-    fun onOpenEditOptionsDialog() {
-        _isEditOptionsDialogOpened = true
-    }
-
-    fun onCloseEditOptionsDialog() {
-        _isEditOptionsDialogOpened = false
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.e(TAG, "Cleared")
+    private fun formatHistory(currency: String): List<GoalMovement> = deposits.map {
+        GoalMovement(it.id, it.sum.formatGoalMoney(currency, showPlus = true), it.date.toDMYFormat(), it.sum.signum() > 0)
     }
 }

@@ -117,6 +117,23 @@ class ExactDataRoomTest {
         }
     }
 
+    @Test fun excessiveGoalWithdrawalLeavesBalanceAndHistoryUntouched() {
+        Room.inMemoryDatabaseBuilder(context, AppDataBase::class.java).build().use { db ->
+            val dao = db.appDao()
+            val date = Date()
+            dao.insertGoal(GoalData(1, "Trip", amount("100"), amount("10"), "RUB", null, date, null))
+            dao.addGoalDeposit(GoalDepositData(0, amount("5"), date, 1))
+            assertThrows(IllegalArgumentException::class.java) {
+                dao.addGoalDeposit(GoalDepositData(0, amount("-15.01"), date, 1))
+            }
+            assertAmount("15", dao.getGoal(1)!!.savedSum)
+            assertAmount("5", dao.getGoalDepositsByGoalId(1).single().sum)
+            dao.addGoalDeposit(GoalDepositData(0, amount("-15"), date, 1))
+            assertAmount("0", dao.getGoal(1)!!.savedSum)
+            assertEquals(2, dao.getGoalDepositsByGoalId(1).size)
+        }
+    }
+
     @Test fun failedMigrationLeavesOldSchemaAndRecordsAvailableForRetry() {
         val name = "r1b-failed-migration"
         legacy(name, 14)

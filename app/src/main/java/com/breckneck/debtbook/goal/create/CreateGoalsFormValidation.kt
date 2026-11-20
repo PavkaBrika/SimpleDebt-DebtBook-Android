@@ -12,6 +12,7 @@ import com.breckneck.deptbook.domain.util.DecimalInput
  * Pure validation for create/edit goal form. Used by [CreateGoalsViewModel] and unit-tested directly.
  */
 object CreateGoalsFormValidation {
+    const val MAX_NAME_LENGTH = 100
 
     fun validateName(name: String): NameError? =
         if (name.isEmpty()) NameError.EMPTY else null

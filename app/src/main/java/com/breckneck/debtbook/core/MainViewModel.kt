@@ -75,9 +75,6 @@ class MainViewModel @Inject constructor(
     private val _isNeedUpdateDebtSums = MutableLiveData<Boolean>(false)
     val isNeedUpdateDebtSums: LiveData<Boolean>
         get() = _isNeedUpdateDebtSums
-    private val _isBottomNavViewVisible = MutableLiveData<Boolean>(true)
-    val isBottomNavViewVisible: LiveData<Boolean>
-        get() = _isBottomNavViewVisible
     private val _isPINCodeEnabled = MutableLiveData<Boolean>(false)
     val isPINCodeEnabled: LiveData<Boolean>
         get() = _isPINCodeEnabled
@@ -166,10 +163,6 @@ class MainViewModel @Inject constructor(
 
     fun setIsNeedUpdateDebtSums(isNeedUpdate: Boolean) {
         _isNeedUpdateDebtSums.value = isNeedUpdate
-    }
-
-    fun setIsBottomNavBarVisible(isVisible: Boolean) {
-        _isBottomNavViewVisible.value = isVisible
     }
 
     fun setIsPINCodeEnabled(enabled: Boolean) {

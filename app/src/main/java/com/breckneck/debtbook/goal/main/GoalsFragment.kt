@@ -8,9 +8,11 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.os.BundleCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
+import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.launchOnLifecycleStarted
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.goal.main.screen.GoalsScreen
@@ -25,6 +27,7 @@ class GoalsFragment : Fragment() {
     interface OnClickListener {
         fun onAddGoalButtonClick()
         fun onGoalClick(goal: Goal)
+        fun onEditGoalButtonClick(goal: Goal)
     }
 
     private var onButtonClickListener: OnClickListener? = null
@@ -42,14 +45,13 @@ class GoalsFragment : Fragment() {
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
         setFragmentResultListener("goalsFragmentKey") { _, bundle ->
-            vm.onAction(
-                GoalsAction.RefreshAfterNavigation(
-                    wasModified = bundle.getBoolean("isListModified")
-                )
-            )
+            if (bundle.getBoolean("isListModified")) {
+                vm.onAction(GoalsAction.RefreshAfterNavigation(BundleCompat.getSerializable(bundle, "goal", Goal::class.java)))
+            }
         }
 
         return ComposeView(requireContext()).apply {
+            id = R.id.goalsComposeView
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
@@ -67,6 +69,8 @@ class GoalsFragment : Fragment() {
                 when (effect) {
                     GoalsSideEffect.NavigateToAddGoal ->
                         onButtonClickListener?.onAddGoalButtonClick()
+                    is GoalsSideEffect.NavigateToEditGoal ->
+                        onButtonClickListener?.onEditGoalButtonClick(effect.goal)
                     is GoalsSideEffect.NavigateToGoalDetails ->
                         onButtonClickListener?.onGoalClick(effect.goal)
                 }

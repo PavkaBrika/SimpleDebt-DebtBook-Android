@@ -31,11 +31,16 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.widget.PopupMenu
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.setupWithNavController
+import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
+import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
 import com.breckneck.deptbook.domain.util.PINCodeAction
@@ -57,7 +62,6 @@ import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.util.CLICKS_QUANTITY_FOR_AD_SHOW
 import com.breckneck.deptbook.domain.util.DEBT_QUANTITY_FOR_LAST_SHOW_APP_RATE_DIALOG
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.textfield.TextInputEditText
@@ -236,31 +240,29 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
         navController = navHostFragment.navController
 
+        val bottomNavBar = findViewById<ComposeView>(R.id.bottomNavigationView)
+        val selectedTab = mutableIntStateOf(0)
+        // Reuse NavigationUI's tab options, including the saved back stack for each tab.
+        val tabMenu = PopupMenu(this, bottomNavBar).apply { inflate(R.menu.menu_bottom_nav) }.menu
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            when (destination.id) {
-                R.id.mainFragment -> vm.setIsBottomNavBarVisible(isVisible = true)
-                R.id.settingsFragment -> vm.setIsBottomNavBarVisible(isVisible = true)
-                R.id.financeFragment -> vm.setIsBottomNavBarVisible(isVisible = true)
-                R.id.goalsFragment -> vm.setIsBottomNavBarVisible(isVisible = true)
-                else -> vm.setIsBottomNavBarVisible(isVisible = false)
-            }
+            selectedTab.intValue = destination.id
+            bottomNavBar.visibility = if (destination.id in TOP_LEVEL_DESTINATIONS) View.VISIBLE else View.GONE
         }
-
-        val bottomNavBar = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
-        bottomNavBar.setupWithNavController(navController)
-
-        bottomNavBar.setOnItemSelectedListener { item ->
-            val from = navController.currentDestination?.id
-            val navigated = item.onNavDestinationSelected(navController)
-            if (navigated && from != item.itemId && from in TOP_LEVEL_DESTINATIONS) {
-                maybeShowInterstitial()
+        bottomNavBar.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        bottomNavBar.setContent {
+            DebtBookTheme {
+                BubbleBottomBar(
+                    destination = selectedTab.intValue,
+                    onDestinationSelected = { id ->
+                        val from = navController.currentDestination?.id
+                        if (from in TOP_LEVEL_DESTINATIONS && from != id &&
+                            tabMenu.findItem(id)?.onNavDestinationSelected(navController) == true
+                        ) {
+                            maybeShowInterstitial()
+                        }
+                    },
+                )
             }
-            navigated
-        }
-        vm.isBottomNavViewVisible.observe(this) { visible ->
-            bottomNavBar.clearAnimation()
-            bottomNavBar.translationY = 0f
-            bottomNavBar.visibility = if (visible) View.VISIBLE else View.GONE
         }
     }
 
@@ -562,24 +564,31 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     //goals interface
 
     override fun onAddGoalButtonClick() {
+        if (navController.currentDestination?.id != R.id.goalsFragment) return
         navController.navigate(R.id.action_goalsFragment_to_createGoalsFragment)
         vm.onActionClick()
     }
 
     override fun onGoalClick(goal: Goal) {
+        if (navController.currentDestination?.id != R.id.goalsFragment) return
         val args = Bundle()
         args.putSerializable("goal", goal)
         navController.navigate(R.id.action_goalsFragment_to_goalDetailsFragment, args)
         vm.onActionClick()
     }
 
-    //goal details interface
-
     override fun onEditGoalButtonClick(goal: Goal) {
-        val args = Bundle()
-        args.putSerializable("goal", goal)
-        args.putBoolean("isEditGoal", true)
-        navController.navigate(R.id.action_goalDetailsFragment_to_createGoalsFragment, args)
+        val action = when (navController.currentDestination?.id) {
+            R.id.goalsFragment -> R.id.action_goalsFragment_to_createGoalsFragment
+            R.id.goalDetailsFragment -> R.id.action_goalDetailsFragment_to_createGoalsFragment
+            else -> return
+        }
+        val args = Bundle().apply {
+            putSerializable("goal", goal)
+            putBoolean("isEditGoal", true)
+            putBoolean("returnToGoalDetails", action == R.id.action_goalDetailsFragment_to_createGoalsFragment)
+        }
+        navController.navigate(action, args)
         vm.onActionClick()
     }
 

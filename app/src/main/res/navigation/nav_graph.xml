@@ -180,22 +180,21 @@
     <fragment
         android:id="@+id/goalsFragment"
         android:name="com.breckneck.debtbook.goal.main.GoalsFragment"
-        android:label="GoalsFragment"
-        tools:layout="@layout/fragment_goal">
+        android:label="GoalsFragment">
         <action
             android:id="@+id/action_goalsFragment_to_createGoalsFragment"
             app:destination="@id/createGoalsFragment"
-            app:enterAnim="@anim/slide_up"
-            app:exitAnim="@anim/fade_out"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_down" />
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
         <action
             android:id="@+id/action_goalsFragment_to_goalDetailsFragment"
             app:destination="@id/goalDetailsFragment"
-            app:enterAnim="@anim/slide_in"
-            app:exitAnim="@anim/fade_out"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_out" />
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
     </fragment>
     <fragment
         android:id="@+id/createGoalsFragment"
@@ -204,14 +203,13 @@
     <fragment
         android:id="@+id/goalDetailsFragment"
         android:name="com.breckneck.debtbook.goal.details.GoalDetailsFragment"
-        android:label="GoalDetailsFragment"
-        tools:layout="@layout/fragment_goal_details">
+        android:label="GoalDetailsFragment">
         <action
             android:id="@+id/action_goalDetailsFragment_to_createGoalsFragment"
             app:destination="@id/createGoalsFragment"
-            app:enterAnim="@anim/slide_up"
-            app:exitAnim="@anim/fade_out"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_down" />
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
     </fragment>
 </navigation>

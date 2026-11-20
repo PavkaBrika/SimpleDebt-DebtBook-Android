@@ -3,6 +3,7 @@ package com.breckneck.debtbook.goal.create
 import java.math.BigDecimal
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
@@ -11,6 +12,7 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.goal.create.mapper.toCreateGoalUi
 import com.breckneck.debtbook.goal.create.mapper.toDomain
 import com.breckneck.deptbook.domain.util.DecimalInput
+import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.usecase.Goal.SetGoal
 import com.breckneck.deptbook.domain.usecase.Goal.UpdateGoal
@@ -22,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
+import java.io.File
+import java.io.IOException
 import java.util.Date
 import javax.inject.Inject
 
@@ -67,6 +71,9 @@ class CreateGoalsViewModel @Inject constructor(
         is CreateGoalsAction.CurrencySelected -> onCurrencySelected(action.index)
         CreateGoalsAction.DismissCurrencySheet -> onDismissCurrencySheet()
         CreateGoalsAction.DateClick -> onDateClick()
+        CreateGoalsAction.ClearDate -> intent {
+            reduce { state.copy(goal = state.goal.copy(goalDate = null), dateInvalid = false) }
+        }
         CreateGoalsAction.DismissDatePicker -> onDismissDatePicker()
         is CreateGoalsAction.DateSelected -> onDateSelected(action.date)
         is CreateGoalsAction.ImagePicked -> onImagePicked(action.uri)
@@ -87,6 +94,7 @@ class CreateGoalsViewModel @Inject constructor(
             state.copy(
                 goal = goal.toCreateGoalUi(currencyDisplayNameFor(goal.currency)),
                 selectedCurrencyIndex = currencyIndexOf(goal.currency),
+                isInitialized = true,
             )
         }
     }
@@ -100,22 +108,23 @@ class CreateGoalsViewModel @Inject constructor(
                     currencyDisplayName = currencyDisplayNameFor(defaultCurrency),
                 ),
                 selectedCurrencyIndex = currencyIndexOf(defaultCurrency),
+                isInitialized = true,
             )
         }
     }
 
     private fun onNameChanged(value: String) = intent {
-        reduce { state.copy(goal = state.goal.copy(name = value), nameError = null) }
+        reduce { state.copy(goal = state.goal.copy(name = value.take(CreateGoalsFormValidation.MAX_NAME_LENGTH)), nameError = null) }
     }
 
     private fun onSumChanged(value: String) = intent {
-        if (DecimalInput.isEditable(value)) {
+        if (DecimalInput.isEditable(value, state.goal.currency)) {
             reduce { state.copy(goal = state.goal.copy(sum = value), sumError = null) }
         }
     }
 
     private fun onSavedSumChanged(value: String) = intent {
-        if (DecimalInput.isEditable(value)) {
+        if (DecimalInput.isEditable(value, state.goal.currency)) {
             reduce { state.copy(goal = state.goal.copy(savedSum = value), savedSumError = null) }
         }
     }
@@ -156,6 +165,7 @@ class CreateGoalsViewModel @Inject constructor(
             state.copy(
                 goal = state.goal.copy(goalDate = date),
                 isDatePickerVisible = false,
+                dateInvalid = false,
             )
         }
     }
@@ -167,6 +177,7 @@ class CreateGoalsViewModel @Inject constructor(
                     imageUri = uri,
                     imagePath = null,
                 ),
+                photoFailed = false,
             )
         }
     }
@@ -178,6 +189,7 @@ class CreateGoalsViewModel @Inject constructor(
                     imageUri = null,
                     imagePath = null,
                 ),
+                photoFailed = false,
             )
         }
     }
@@ -194,16 +206,21 @@ class CreateGoalsViewModel @Inject constructor(
         val savedSumText = goal.savedSum.trim()
 
         val nameError = CreateGoalsFormValidation.validateName(name)
-        val (sumDouble, sumError) = CreateGoalsFormValidation.validateSum(sumText, goal.currency, originalGoal?.sum)
-        val (savedSumDouble, savedSumError) =
-            CreateGoalsFormValidation.validateSavedSum(savedSumText, sumDouble, goal.currency, originalGoal?.savedSum)
+        val originalInCurrency = originalGoal?.takeIf { it.currency == goal.currency }
+        val (target, sumError) = CreateGoalsFormValidation.validateSum(sumText, goal.currency, originalInCurrency?.sum)
+        val (saved, savedSumError) =
+            CreateGoalsFormValidation.validateSavedSum(savedSumText, target, goal.currency, originalInCurrency?.savedSum)
 
-        if (nameError != null || sumError != null || savedSumError != null) {
+        val deadline = goal.goalDate?.let(LedgerDate::fromDate)
+        val originalDeadline = originalGoal?.presentationGoalDate?.let(LedgerDate::fromDate)
+        val dateInvalid = deadline != null && deadline != originalDeadline && deadline <= LedgerDate.today()
+        if (nameError != null || sumError != null || savedSumError != null || dateInvalid) {
             reduce {
                 state.copy(
                     nameError = nameError,
                     sumError = sumError,
-                    savedSumError = savedSumError
+                    savedSumError = savedSumError,
+                    dateInvalid = dateInvalid,
                 )
             }
             return@intent
@@ -211,22 +228,26 @@ class CreateGoalsViewModel @Inject constructor(
 
         reduce {
             state.copy(nameError = null, sumError = null, savedSumError = null,
-                isSaving = true, saveFailed = false)
+                isSaving = true, saveFailed = false, photoFailed = false, dateInvalid = false)
         }
         val isEdit = state.isEditMode
         try {
             val savedGoal = withContext(Dispatchers.IO) {
                 val original = if (isEdit) checkNotNull(originalGoal) else null
-                val photoPath = if (isEdit && goal.imagePath != null) original?.photoPath
-                else savePhotoToInternalStorage(goal.imageUri)
-                val savingGoal = goal.toDomain(
-                    sum = sumDouble!!,
-                    savedSum = savedSumDouble ?: BigDecimal.ZERO,
-                    photoPath = photoPath,
-                    originalGoal = original,
-                )
-                if (isEdit) updateGoal.execute(savingGoal) else setGoal.execute(savingGoal)
-                savingGoal
+                val newPhoto = goal.imageUri?.let(::savePhotoToInternalStorage)
+                try {
+                    val savingGoal = goal.toDomain(
+                        sum = checkNotNull(target),
+                        savedSum = saved ?: BigDecimal.ZERO,
+                        photoPath = newPhoto?.absolutePath ?: goal.imagePath,
+                        originalGoal = original,
+                    )
+                    if (isEdit) updateGoal.execute(savingGoal) else setGoal.execute(savingGoal)
+                    savingGoal
+                } catch (failure: Exception) {
+                    newPhoto?.delete()
+                    throw failure
+                }
             }
             // Keep the save guard until this screen is removed, including rapid repeated taps.
             postSideEffect(CreateGoalsSideEffect.NavigateBack(
@@ -235,40 +256,43 @@ class CreateGoalsViewModel @Inject constructor(
         } catch (cancelled: CancellationException) {
             reduce { state.copy(isSaving = false) }
             throw cancelled
+        } catch (_: GoalPhotoException) {
+            reduce { state.copy(isSaving = false, photoFailed = true) }
         } catch (_: Exception) {
             reduce { state.copy(isSaving = false, saveFailed = true) }
         }
     }
 
     private fun onBackClick() = intent {
-        postSideEffect(CreateGoalsSideEffect.NavigateBack())
+        if (!state.isSaving) postSideEffect(CreateGoalsSideEffect.NavigateBack())
     }
 
-    private fun savePhotoToInternalStorage(uri: Uri?): String? {
-        if (uri == null) return null
-        return try {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val fileName = "${uri.pathSegments.last()}.jpg"
-            val outputStream = context.openFileOutput(fileName, Context.MODE_PRIVATE)
-            inputStream?.use { input ->
-                outputStream.use { output ->
-                    input.copyTo(output)
-                }
-            }
-            "${context.filesDir.absolutePath}/$fileName"
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to save photo: ${e.message}")
-            null
+    private fun savePhotoToInternalStorage(uri: Uri): File {
+        var photo: File? = null
+        try {
+            val destination = File.createTempFile("goal-photo-", ".img", context.filesDir)
+            photo = destination
+            val input = context.contentResolver.openInputStream(uri) ?: throw IOException("Missing photo")
+            input.use { source -> destination.outputStream().use { source.copyTo(it) } }
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(destination.path, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw IOException("Invalid image")
+            return destination
+        } catch (failure: Exception) {
+            photo?.delete()
+            throw GoalPhotoException(failure)
         }
     }
 
+    private class GoalPhotoException(cause: Exception) : IOException(cause)
+
     private fun currencyDisplayNameFor(currency: String): String =
         //todo fix this - remove currencyNames. Store currency in ENUM.
-        container.stateFlow.value.currencyNames.firstOrNull { it.contains(currency) } ?: currency
+        container.stateFlow.value.currencyNames.firstOrNull { it.substringAfterLast(" ") == currency } ?: currency
 
     private fun currencyIndexOf(currency: String): Int =
         //todo fix this - remove currencyNames. Store currency in ENUM.
-        container.stateFlow.value.currencyNames.indexOfFirst { it.contains(currency) }
+        container.stateFlow.value.currencyNames.indexOfFirst { it.substringAfterLast(" ") == currency }
             .coerceAtLeast(0)
 
 }

@@ -1,0 +1,5 @@
+<resources>
+    <item name="goalsComposeView" type="id"/>
+    <item name="createGoalComposeView" type="id"/>
+    <item name="goalDetailsComposeView" type="id"/>
+</resources>

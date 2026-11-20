@@ -1,205 +1,148 @@
 package com.breckneck.debtbook.goal.main
 
-import java.math.BigDecimal
-
-import android.content.Context
-import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.breckneck.debtbook.common.empty
 import com.breckneck.debtbook.goal.main.mapper.toUi
-import com.breckneck.debtbook.goal.main.model.GoalUi
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.model.GoalDeposit
 import com.breckneck.deptbook.domain.usecase.Goal.DeleteGoal
 import com.breckneck.deptbook.domain.usecase.Goal.GetAllGoals
-import com.breckneck.deptbook.domain.usecase.Goal.UpdateGoal
-import com.breckneck.deptbook.domain.usecase.GoalDeposit.DeleteGoalDepositsByGoalId
 import com.breckneck.deptbook.domain.usecase.GoalDeposit.SetGoalDeposit
-import com.breckneck.deptbook.domain.util.ListState
 import com.breckneck.deptbook.domain.util.DecimalInput
+import com.breckneck.deptbook.domain.util.ListState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.orbitmvi.orbit.ContainerHost
+import org.orbitmvi.orbit.syntax.Syntax
 import org.orbitmvi.orbit.viewmodel.container
 import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
 class GoalsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val getAllGoals: GetAllGoals,
-    private val updateGoal: UpdateGoal,
     private val deleteGoal: DeleteGoal,
-    private val deleteGoalDepositsByGoalId: DeleteGoalDepositsByGoalId,
     private val setGoalDeposit: SetGoalDeposit,
 ) : ViewModel(), ContainerHost<GoalsState, GoalsSideEffect> {
-
-    private val TAG = "GoalsViewModel"
 
     private var domainGoals: List<Goal> = emptyList()
 
     override val container = container<GoalsState, GoalsSideEffect>(
-        initialState = GoalsState.initial(),
+        initialState = GoalsState(),
         onCreate = { loadGoals() },
     )
 
-    init {
-        Log.e(TAG, "Created")
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.e(TAG, "Cleared")
-    }
-
     fun onAction(action: GoalsAction) = when (action) {
-        GoalsAction.AddGoalClick -> navigateToAddGoal()
-        is GoalsAction.GoalClick -> navigateToGoalDetails(action.goalUi)
-        is GoalsAction.ShowAddDepositPopup -> showAddDepositPopup(action.goalUi)
-        GoalsAction.DismissAddDepositPopup -> dismissAddDepositPopup()
-        is GoalsAction.UpdateDepositSum -> updateDepositSum(action.text)
-        GoalsAction.AddGoalDeposit -> addGoalDeposit()
-        is GoalsAction.DeleteGoal -> deleteGoal(action.goalUi)
-        is GoalsAction.RefreshAfterNavigation -> refreshAfterNavigation(action.wasModified)
-    }
-
-    private fun navigateToAddGoal() = intent {
-        postSideEffect(GoalsSideEffect.NavigateToAddGoal)
-    }
-
-    private fun navigateToGoalDetails(goalUi: GoalUi) = intent {
-        val goal = domainGoals.firstOrNull { it.id == goalUi.goalId } ?: return@intent
-        postSideEffect(GoalsSideEffect.NavigateToGoalDetails(goal))
-    }
-
-    private fun showAddDepositPopup(goalUi: GoalUi) = intent {
-        reduce {
-            state.copy(
-                addDepositPopup = state.addDepositPopup.copy(
-                    isVisible = true,
-                    selectedGoalId = goalUi.goalId
-                )
-            )
+        GoalsAction.AddGoalClick -> intent { postSideEffect(GoalsSideEffect.NavigateToAddGoal) }
+        is GoalsAction.GoalClick -> intent {
+            findGoal(action.goalId)?.let { postSideEffect(GoalsSideEffect.NavigateToGoalDetails(it)) }
         }
-    }
-
-    private fun dismissAddDepositPopup() = intent {
-        reduce { state.copy(addDepositPopup = AddDepositPopup.initial()) }
-    }
-
-    private fun updateDepositSum(text: String) = intent {
-        if (DecimalInput.isEditable(text)) {
-            reduce {
-                state.copy(
-                    addDepositPopup = state.addDepositPopup.copy(
-                        sumText = text,
-                        inputError = null,
-                    )
-                )
+        is GoalsAction.EditGoalClick -> intent {
+            findGoal(action.goalId)?.takeIf { it.savedSum < it.sum }
+                ?.let { postSideEffect(GoalsSideEffect.NavigateToEditGoal(it)) }
+        }
+        is GoalsAction.ShowAddDepositPopup -> intent {
+            reduce { state.copy(adjustment = GoalAdjustment(action.goalId)) }
+        }
+        GoalsAction.DismissAddDepositPopup -> intent {
+            if (state.adjustment?.isSaving != true) reduce { state.copy(adjustment = null) }
+        }
+        is GoalsAction.UpdateDepositSum -> intent {
+            val adjustment = state.adjustment ?: return@intent
+            val goal = findGoal(adjustment.goalId) ?: return@intent
+            if (!adjustment.isSaving && DecimalInput.isEditable(action.text, goal.currency)) {
+                reduce { state.copy(adjustment = adjustment.copy(sumText = action.text, error = null)) }
+            }
+        }
+        GoalsAction.AddGoalDeposit -> addGoalDeposit()
+        is GoalsAction.ConfirmDelete -> intent { reduce { state.copy(deletion = GoalDeletion(action.goalId)) } }
+        GoalsAction.DismissDelete -> intent {
+            if (state.deletion?.isDeleting != true) reduce { state.copy(deletion = null) }
+        }
+        GoalsAction.DeleteGoal -> deleteGoal()
+        GoalsAction.Retry -> loadGoals()
+        is GoalsAction.RefreshAfterNavigation -> intent {
+            val goal = action.updatedGoal
+            if (goal != null && findGoal(goal.id) != null) {
+                domainGoals = domainGoals.map { if (it.id == goal.id) goal else it }
+                reduce { state.copy(goalList = domainGoals.map { it.toUi() }) }
+            } else {
+                readGoals()
             }
         }
     }
 
-    private fun loadGoals() = intent {
-        reduce { state.copy(listState = ListState.LOADING) }
+    private fun findGoal(id: Int): Goal? = domainGoals.firstOrNull { it.id == id }
+
+    private fun loadGoals() = intent { readGoals() }
+
+    private suspend fun Syntax<GoalsState, GoalsSideEffect>.readGoals() {
+        reduce {
+            state.copy(
+                loadFailed = false,
+                listState = if (state.goalList.isEmpty()) ListState.LOADING else state.listState,
+            )
+        }
         try {
             val goals = withContext(Dispatchers.IO) { getAllGoals.execute() }
             domainGoals = goals
-            val goalUiList = goals.map { it.toUi(context) }
             reduce {
                 state.copy(
-                    goalList = goalUiList,
-                    listState = if (goalUiList.isEmpty()) ListState.EMPTY else ListState.RECEIVED,
+                    goalList = goals.map { it.toUi() },
+                    listState = if (goals.isEmpty()) ListState.EMPTY else ListState.RECEIVED,
                 )
             }
-            Log.e(TAG, "Goals loaded")
-        } catch (e: Exception) {
-            Log.e(TAG, e.message.toString())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            reduce { state.copy(loadFailed = true) }
         }
     }
 
     private fun addGoalDeposit() = intent {
-        if (!state.addDepositPopup.isVisible || state.addDepositPopup.isSaving) return@intent
-        val goalId = state.addDepositPopup.selectedGoalId ?: return@intent
-        val goal = domainGoals.firstOrNull { it.id == goalId } ?: return@intent
-        val sumText = state.addDepositPopup.sumText.trim()
-        val parsed = DecimalInput.parse(sumText, goal.currency)
-        when {
-            sumText.isEmpty() -> {
-                reduce {
-                    state.copy(
-                        addDepositPopup = state.addDepositPopup.copy(
-                            inputError = AddDepositPopup.DepositInputError.EMPTY
-                        )
-                    )
-                }
-                return@intent
-            }
-
-            parsed == null || parsed <= BigDecimal.ZERO -> {
-                reduce {
-                    state.copy(
-                        addDepositPopup = state.addDepositPopup.copy(
-                            inputError = AddDepositPopup.DepositInputError.ZERO_OR_INVALID
-                        )
-                    )
-                }
-                return@intent
-            }
+        val adjustment = state.adjustment?.takeUnless { it.isSaving } ?: return@intent
+        val goal = findGoal(adjustment.goalId) ?: return@intent
+        val amount = DecimalInput.parse(adjustment.sumText, goal.currency)
+        if (amount == null || amount.signum() <= 0) {
+            reduce { state.copy(adjustment = adjustment.copy(error = GoalAdjustment.Error.INVALID_AMOUNT)) }
+            return@intent
         }
-        reduce { state.copy(addDepositPopup = state.addDepositPopup.copy(isSaving = true)) }
-        val updatedGoal = goal.copy(savedSum = goal.savedSum + parsed)
+        reduce { state.copy(adjustment = adjustment.copy(isSaving = true, error = null)) }
         try {
             withContext(Dispatchers.IO) {
-                setGoalDeposit.execute(
-                    goalDeposit = GoalDeposit(sum = parsed, date = Date(), goalId = goal.id)
-                )
+                setGoalDeposit.execute(GoalDeposit(sum = amount, date = Date(), goalId = goal.id))
             }
-            domainGoals = domainGoals.toMutableList().apply {
-                val idx = indexOfFirst { it.id == goal.id }
-                if (idx != -1) this[idx] = updatedGoal
-            }
-            val updatedList = state.goalList.toMutableList().apply {
-                val idx = indexOfFirst { it.goalId == goal.id }
-                if (idx != -1) this[idx] = updatedGoal.toUi(context)
-            }
-            reduce {
-                state.copy(
-                    goalList = updatedList,
-                    addDepositPopup = AddDepositPopup.initial(),
-                )
-            }
-            Log.e(TAG, "Goal deposit added")
-        } catch (e: Exception) {
-            reduce { state.copy(addDepositPopup = state.addDepositPopup.copy(isSaving = false, inputError = AddDepositPopup.DepositInputError.SAVE_FAILED)) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            reduce { state.copy(adjustment = adjustment.copy(error = GoalAdjustment.Error.SAVE_FAILED)) }
+            return@intent
         }
+        val updated = goal.copy(savedSum = goal.savedSum + amount)
+        domainGoals = domainGoals.map { if (it.id == updated.id) updated else it }
+        reduce { state.copy(goalList = domainGoals.map { it.toUi() }, adjustment = null) }
     }
 
-    private fun deleteGoal(goalUi: GoalUi) = intent {
-        val goal = domainGoals.firstOrNull { it.id == goalUi.goalId } ?: return@intent
+    private fun deleteGoal() = intent {
+        val deletion = state.deletion?.takeUnless { it.isDeleting } ?: return@intent
+        val goal = findGoal(deletion.goalId) ?: return@intent
+        reduce { state.copy(deletion = deletion.copy(isDeleting = true, failed = false)) }
         try {
-            withContext(Dispatchers.IO) {
-                deleteGoal.execute(goal = goal)
-                deleteGoalDepositsByGoalId.execute(goalId = goal.id)
-            }
-            domainGoals = domainGoals.filter { it.id != goal.id }
-            val updatedList = state.goalList.filter { it.goalId != goal.id }
-            reduce {
-                state.copy(
-                    goalList = updatedList,
-                    listState = if (updatedList.isEmpty()) ListState.EMPTY else ListState.RECEIVED,
-                )
-            }
-            Log.e(TAG, "Goal deleted")
-        } catch (e: Exception) {
-            Log.e(TAG, e.message.toString())
+            withContext(Dispatchers.IO) { deleteGoal.execute(goal) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            reduce { state.copy(deletion = deletion.copy(failed = true)) }
+            return@intent
         }
-    }
-
-    private fun refreshAfterNavigation(wasModified: Boolean) = intent {
-        if (!wasModified) return@intent
-        loadGoals()
+        domainGoals = domainGoals.filterNot { it.id == goal.id }
+        reduce {
+            state.copy(
+                goalList = domainGoals.map { it.toUi() },
+                listState = if (domainGoals.isEmpty()) ListState.EMPTY else ListState.RECEIVED,
+                deletion = null,
+            )
+        }
     }
 }

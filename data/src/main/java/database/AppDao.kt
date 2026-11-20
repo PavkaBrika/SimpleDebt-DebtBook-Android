@@ -239,8 +239,11 @@ interface AppDao {
     @Transaction
     fun addGoalDeposit(deposit: GoalDepositData) {
         val goal = requireNotNull(getGoal(deposit.goalId))
+        val balance = getGoalDepositsByGoalId(goal.id).fold(goal.openingAdjustment) { total, row -> total + row.sum }
+        val updatedBalance = balance + deposit.sum
+        require(deposit.sum.signum() >= 0 || updatedBalance.signum() >= 0) { "Withdrawal exceeds goal balance" }
         insertGoalDeposit(deposit)
-        goal.savedSum = getGoalDepositsByGoalId(goal.id).fold(goal.openingAdjustment) { total, row -> total + row.sum }
+        goal.savedSum = updatedBalance
         updateGoal(goal)
     }
 

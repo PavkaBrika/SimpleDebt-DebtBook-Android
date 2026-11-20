@@ -14,6 +14,7 @@ import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
+import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.launchOnLifecycleStarted
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.goal.create.screen.CreateGoalsScreen
@@ -48,6 +49,7 @@ class CreateGoalsFragment : Fragment() {
     ): View {
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         return ComposeView(requireContext()).apply {
+            id = R.id.createGoalComposeView
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
@@ -67,9 +69,9 @@ class CreateGoalsFragment : Fragment() {
                         if (effect.saved) {
                             setFragmentResult(
                                 "goalsFragmentKey",
-                                bundleOf("isListModified" to true),
+                                bundleOf("isListModified" to true, "goal" to effect.editedGoal),
                             )
-                            if (effect.editedGoal != null) {
+                            if (effect.editedGoal != null && arguments?.getBoolean("returnToGoalDetails") == true) {
                                 setFragmentResult(
                                     "goalDetailsFragmentKey",
                                     bundleOf("isGoalEdited" to true, "goal" to effect.editedGoal),

@@ -4,6 +4,8 @@
 
 ## С чего начать реализацию
 
+[Поэтапный план с задачами и критериями приёмки](bubble-compose-rollout.plan.md) задаёт порядок работы в этом проекте — цели, настройки, финансы, долги.
+
 Использовать HTML как интерактивный эталон расположения, подписей, переходов и состояний. В [studio.css](studio.css) находятся токены обеих тем, шрифтовая иерархия, поверхности, отступы и нижняя панель. Сценарии распределены между [финансами](finance.js), [целями](goals.js), [долгами](studio.js), [действиями с долгами](debt-tools.js) и [настройками, копиями и PIN](account.js). Общие элементы форм, диалогов и состояния списков собраны в [flows.js](flows.js).
 
 В Android привязать UI к существующим ViewModel, Orbit actions, use cases и событиям Android. Два образца в `app/src/debug/java/com/breckneck/debtbook/design/` уже компилируются — `BalanceBubble.kt` и `BubbleBottomBar.kt`. Состав маршрутов можно проверить в [nav_graph.xml](../../app/src/main/res/navigation/nav_graph.xml). Все пути ниже даны относительно `app/src/main/java/com/breckneck/debtbook/`.

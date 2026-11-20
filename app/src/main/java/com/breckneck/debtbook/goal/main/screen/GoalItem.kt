@@ -1,301 +1,173 @@
 package com.breckneck.debtbook.goal.main.screen
 
-import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.core.ui.theme.LocalDebtBookDarkTheme
-import com.breckneck.debtbook.core.ui.theme.elevation
-import com.breckneck.debtbook.core.ui.theme.spacing
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.model.GoalUi
+import java.text.NumberFormat
 
 @Composable
-fun GoalItem(
-    goalUi: GoalUi,
-    onGoalClick: (GoalUi) -> Unit,
-    onAddClick: (GoalUi) -> Unit,
-    onDeleteClick: (GoalUi) -> Unit,
-    modifier: Modifier = Modifier
+internal fun GoalItem(
+    goal: GoalUi,
+    onOpen: () -> Unit,
+    onAdd: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val spacing = MaterialTheme.spacing
+    val colors = bubbleColors()
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        GoalBalanceCard(goal, onOpen = onOpen)
+        if (goal.isReached) {
+            TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.goal_delete), color = colors.danger)
+            }
+        } else {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                val buttonColors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = colors.paper,
+                    contentColor = colors.muted,
+                )
+                val border = BorderStroke(1.dp, colors.border)
+                OutlinedButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp), border = border, colors = buttonColors) {
+                    Icon(Icons.Outlined.Add, null, Modifier.padding(end = 5.dp).size(18.dp))
+                    Text(stringResource(R.string.goal_top_up))
+                }
+                OutlinedButton(onClick = onEdit, modifier = Modifier.heightIn(min = 48.dp), border = border, colors = buttonColors) {
+                    Icon(Icons.Outlined.Edit, null, Modifier.padding(end = 5.dp).size(18.dp))
+                    Text(stringResource(R.string.goal_edit_action))
+                }
+            }
+        }
+    }
+}
 
-    val isDark = LocalDebtBookDarkTheme.current
-    Card(
-        onClick = { onGoalClick(goalUi) },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDark) MaterialTheme.colorScheme.surfaceContainerHigh
-                             else MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = MaterialTheme.elevation.card),
-        border = if (isDark) null
-                 else BorderStroke(MaterialTheme.elevation.borderHairline, MaterialTheme.colorScheme.outlineVariant),
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = spacing.space12, vertical = spacing.space4)
-    ) {
-        Column {
-            if (goalUi.hasPhoto) {
-                AsyncImage(
-                    model = goalUi.photoPath,
-                    contentDescription = null,
-                    contentScale = ContentScale.FillWidth,
-                    modifier = Modifier.fillMaxWidth()
+@Composable
+internal fun GoalBalanceCard(goal: GoalUi, modifier: Modifier = Modifier, onOpen: (() -> Unit)? = null) {
+    val colors = bubbleColors()
+    val shape = RoundedCornerShape(28.dp)
+    val cardModifier = if (onOpen == null) modifier else modifier.clip(shape).clickable(role = Role.Button, onClick = onOpen)
+    val status = when {
+        goal.isReached -> stringResource(R.string.goal_reached)
+        goal.deadline == null -> stringResource(R.string.goal_no_deadline)
+        goal.isOverdue -> stringResource(R.string.goal_due_overdue, goal.deadline)
+        else -> stringResource(R.string.goal_due_by, goal.deadline)
+    }
+    Surface(cardModifier.fillMaxWidth(), shape = shape, color = colors.mint, contentColor = colors.onMint) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (onOpen != null) {
+                        Text(goal.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        status,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (goal.isOverdue && !goal.isReached) colors.danger else colors.onMint,
+                    )
+                    Text(
+                        goal.savedAmount,
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                Box(Modifier.size(64.dp)) {
+                    GoalOrnament(colors.onMint.copy(alpha = 0.35f), Modifier.matchParentSize())
+                    if (goal.photoPath != null) {
+                        AsyncImage(goal.photoPath, stringResource(R.string.goal_s_photo), Modifier.matchParentSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                    }
+                    if (onOpen != null) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            null,
+                            Modifier.align(Alignment.TopEnd).size(22.dp).background(colors.mint, CircleShape),
+                        )
+                    }
+                }
+            }
+            LinearProgressIndicator(
+                progress = { goal.percent / 100f },
+                modifier = Modifier.fillMaxWidth(),
+                color = colors.onMint,
+                trackColor = colors.onMint.copy(alpha = 0.16f),
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    stringResource(R.string.goal_target_caption, goal.totalAmount),
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    NumberFormat.getPercentInstance().format(goal.percent / 100.0),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
                 )
             }
+        }
+    }
+}
 
-            Column(
-                modifier = Modifier.padding(spacing.space16),
-                verticalArrangement = Arrangement.spacedBy(spacing.space8)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = goalUi.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = spacing.space8)
-                    )
-                    if (goalUi.date != null) {
-                        val chipTint = when {
-                            goalUi.isReached -> MaterialTheme.colorScheme.primary
-                            goalUi.isOverdue -> Color.Red
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                        GoalDateChip(text = goalUi.date, iconTint = chipTint)
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = goalUi.savedAmount,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = " ${goalUi.currency}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = " / ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = goalUi.totalAmount,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = " ${goalUi.currency}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (goalUi.isReached) {
-                    Text(
-                        text = stringResource(R.string.congratulations_you_have_reached_your_goal),
-                        fontSize = 20.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedButton(
-                        onClick = { onDeleteClick(goalUi) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.delete))
-                    }
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = goalUi.remainingAmount.orEmpty(),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = " ${goalUi.currency}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = " ${stringResource(R.string.remaining)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Button(
-                        onClick = { onAddClick(goalUi) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = spacing.space8)
-                    ) {
-                        Text(stringResource(R.string.add))
-                    }
-                }
+@Composable
+private fun GoalOrnament(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val width = size.width * .34f
+        val height = size.height * .77f
+        repeat(12) { index ->
+            rotate(index * 15f) {
+                drawOval(
+                    color = color,
+                    topLeft = Offset(center.x - width / 2, center.y - height / 2),
+                    size = Size(width, height),
+                    style = Stroke(width = 1.dp.toPx()),
+                )
             }
-        }
-    }
-}
-
-@Composable
-private fun GoalDateChip(
-    text: String,
-    iconTint: Color,
-    modifier: Modifier = Modifier
-) {
-    val spacing = MaterialTheme.spacing
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.AccessTime,
-            contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(Modifier.width(spacing.space4))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = iconTint
-        )
-    }
-}
-
-private fun previewGoalUi(
-    id: Int = 1,
-    name: String = "New Car",
-    savedAmount: String = "1 200",
-    totalAmount: String = "5 000",
-    currency: String = "USD",
-    isReached: Boolean = false,
-    remainingAmount: String? = "3 800",
-    dateChipText: String? = "15 Jan 2026",
-    isOverdue: Boolean = false,
-) = GoalUi(
-    goalId = id,
-    name = name,
-    photoPath = null,
-    hasPhoto = false,
-    savedAmount = savedAmount,
-    totalAmount = totalAmount,
-    currency = currency,
-    isReached = isReached,
-    remainingAmount = remainingAmount,
-    date = dateChipText,
-    isOverdue = isOverdue,
-)
-
-@Preview(name = "GoalItem — active, light")
-@Preview(name = "GoalItem — active, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun GoalItemActivePreview() {
-    DebtBookTheme(dynamicColor = false) {
-        Surface {
-            GoalItem(
-                goalUi = previewGoalUi(),
-                onGoalClick = {},
-                onAddClick = {},
-                onDeleteClick = {}
-            )
-        }
-    }
-}
-
-@Preview(name = "GoalItem — reached, light")
-@Composable
-private fun GoalItemReachedPreview() {
-    DebtBookTheme(dynamicColor = false) {
-        Surface {
-            GoalItem(
-                goalUi = previewGoalUi(
-                    name = "Dream Vacation",
-                    savedAmount = "2 000",
-                    totalAmount = "2 000",
-                    isReached = true,
-                    remainingAmount = null,
-                    dateChipText = "Achieved in 45 days",
-                ),
-                onGoalClick = {},
-                onAddClick = {},
-                onDeleteClick = {}
-            )
-        }
-    }
-}
-
-@Preview(name = "GoalItem — overdue, light")
-@Composable
-private fun GoalItemOverduePreview() {
-    DebtBookTheme(dynamicColor = false) {
-        Surface {
-            GoalItem(
-                goalUi = previewGoalUi(
-                    name = "Emergency Fund",
-                    savedAmount = "3 000",
-                    totalAmount = "10 000",
-                    remainingAmount = "7 000",
-                    dateChipText = "Overdue",
-                    isOverdue = true,
-                ),
-                onGoalClick = {},
-                onAddClick = {},
-                onDeleteClick = {}
-            )
-        }
-    }
-}
-
-@Preview(name = "GoalItem — no date, light")
-@Composable
-private fun GoalItemNoDatePreview() {
-    DebtBookTheme(dynamicColor = false) {
-        Surface {
-            GoalItem(
-                goalUi = previewGoalUi(
-                    name = "Home Renovation",
-                    savedAmount = "500",
-                    totalAmount = "15 000",
-                    remainingAmount = "14 500",
-                    dateChipText = null,
-                ),
-                onGoalClick = {},
-                onAddClick = {},
-                onDeleteClick = {}
-            )
         }
     }
 }
