@@ -13,7 +13,6 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.deptbook.domain.util.DecimalInput
-import com.breckneck.deptbook.domain.util.LedgerDate
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -42,8 +41,7 @@ class RepaymentDialogFragment : DialogFragment() {
             val debt = vm.repaymentDebtId.value?.let(vm::originalDebt)
             if (debt != null) {
                 dialog.setTitle(if (debt.sum.signum() > 0) R.string.repayment_received else R.string.repayment_paid)
-                view.findViewById<TextView>(R.id.repaymentContext).text = getString(R.string.repayment_context,
-                    debt.id, DecimalInput.format(debt.sum.abs()), vm.humanCurrency, LedgerDate.display(debt.date))
+                view.findViewById<TextView>(R.id.repaymentContext).text = requireContext().originalDebtLabel(debt, vm.humanCurrency.orEmpty())
             }
             val rest = DecimalInput.format(vm.repaymentRemaining.value ?: BigDecimal.ZERO)
             view.findViewById<TextView>(R.id.repaymentRemaining).text = getString(R.string.debt_remaining, rest, vm.humanCurrency)

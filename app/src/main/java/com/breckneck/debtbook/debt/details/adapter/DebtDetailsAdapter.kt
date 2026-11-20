@@ -11,6 +11,8 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.debt.details.historyTitle
+import com.breckneck.debtbook.debt.details.originalDebtLabel
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -22,7 +24,8 @@ class DebtDetailsAdapter(
     debtDomainListImmutable: List<DebtDomain>,
     private val debtClickListener: OnDebtClickListener,
     private val currencyText: String,
-    private val remaining: (DebtDomain) -> java.math.BigDecimal
+    private val remaining: (DebtDomain) -> BigDecimal,
+    private val originalDebt: (Int) -> DebtDomain?
 ) : RecyclerView.Adapter<DebtDetailsAdapter.DebtViewHolder>() {
 
     private val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
@@ -87,20 +90,21 @@ class DebtDetailsAdapter(
             holder.due.setTextColor(if (overdue) holder.redColor else holder.operation.currentTextColor)
         }
         holder.itemView.alpha = if (debtDomain.cancelled) 0.65f else 1f
-        if (debtDomain.repaymentOfId == null) {
-            holder.operation.text = context.getString(R.string.debt_record, debtDomain.id,
-                context.getString(if (debtDomain.sum.signum() >= 0) R.string.debt_lent else R.string.debt_borrowed))
-            holder.remaining.text = context.getString(R.string.debt_repaid,
-                decimalFormat.format(debtDomain.sum.abs() - rest), currencyText) + "\n" +
-                context.getString(R.string.debt_remaining, decimalFormat.format(rest), currencyText) +
-                if (rest.signum() == 0) " · ${context.getString(R.string.repayment_closed)}" else ""
-            holder.remaining.visibility = View.VISIBLE
+        holder.operation.setText(debtDomain.historyTitle())
+        val originalId = debtDomain.repaymentOfId
+        val details = if (originalId == null) {
+            buildList {
+                if (rest < debtDomain.sum.abs()) {
+                    add(context.getString(R.string.debt_repaid, decimalFormat.format(debtDomain.sum.abs() - rest), currencyText))
+                    add(if (rest.signum() == 0) context.getString(R.string.repayment_closed)
+                        else context.getString(R.string.debt_remaining, decimalFormat.format(rest), currencyText))
+                }
+            }.joinToString("\n")
         } else {
-            holder.operation.text = context.getString(R.string.repayment_parent, debtDomain.repaymentOfId,
-                context.getString(if (debtDomain.cancelled) R.string.repayment_cancelled else
-                    if (debtDomain.sum.signum() < 0) R.string.repayment_received else R.string.repayment_paid))
-            holder.remaining.visibility = View.GONE
+            originalDebt(originalId)?.let { context.originalDebtLabel(it, currencyText) }.orEmpty()
         }
+        holder.remaining.text = details
+        holder.remaining.visibility = if (details.isBlank()) View.GONE else View.VISIBLE
         if (debtDomain.sum > 0) {
             holder.debt.setTextColor(holder.greenColor)
             holder.currency.setTextColor(holder.greenColor)

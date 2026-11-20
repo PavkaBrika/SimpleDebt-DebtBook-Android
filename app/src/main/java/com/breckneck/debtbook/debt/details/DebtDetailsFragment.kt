@@ -126,7 +126,7 @@ class DebtDetailsFragment : Fragment() {
                 Log.e(TAG, "Click on debt with id = ${debtDomain.id}")
             }
         }
-        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty(), vm::remaining)
+        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty(), vm::remaining, vm::originalDebt)
         recyclerView.adapter = debtDetailsAdapter
 
         vm.repaymentDebtId.observe(viewLifecycleOwner) { id ->
@@ -326,9 +326,9 @@ class DebtDetailsFragment : Fragment() {
         val status = dialog.findViewById<TextView>(R.id.debtActionStatus)!!
         val repay = dialog.findViewById<Button>(R.id.repaymentButton)!!
         if (isRepayment) {
-            status.text = getString(R.string.repayment_parent, debtDomain.repaymentOfId,
-                getString(if (debtDomain.cancelled) R.string.repayment_cancelled else
-                    if (debtDomain.sum.signum() < 0) R.string.repayment_received else R.string.repayment_paid))
+            status.text = listOfNotNull(getString(debtDomain.historyTitle()),
+                debtDomain.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) })
+                .joinToString("\n")
             repay.visibility = View.GONE
         } else {
             val rest = vm.remaining(debtDomain)
@@ -460,15 +460,13 @@ class DebtDetailsFragment : Fragment() {
     }
 
     private fun withHistoryDescription(debt: DebtDomain): DebtDomain {
-        val description = if (debt.repaymentOfId != null) {
-            getString(R.string.repayment_parent, debt.repaymentOfId,
-                getString(if (debt.cancelled) R.string.repayment_cancelled else
-                    if (debt.sum.signum() < 0) R.string.repayment_received else R.string.repayment_paid))
+        val details = if (debt.repaymentOfId != null) {
+            debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, vm.humanCurrency.orEmpty()) }
         } else {
-            getString(R.string.debt_record, debt.id, getString(if (debt.sum.signum() >= 0) R.string.debt_lent else R.string.debt_borrowed)) +
-                "; " + getString(R.string.debt_remaining, DecimalInput.format(vm.remaining(debt)), vm.humanCurrency)
+            getString(R.string.debt_remaining, DecimalInput.format(vm.remaining(debt)), vm.humanCurrency)
         }
-        return debt.copy(info = listOfNotNull(description.replace('\n', ' '), debt.info?.takeIf { it.isNotBlank() }).joinToString("; "))
+        val description = listOfNotNull(getString(debt.historyTitle()), details, debt.info?.takeIf { it.isNotBlank() })
+        return debt.copy(info = description.joinToString("; "))
     }
 
     private fun showSortDialog() {
