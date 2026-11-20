@@ -271,7 +271,7 @@ class SynchronizationFragment : Fragment() {
             override fun onClick(p0: View) {
                 val browserIntent = Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse("https://simpledebtbook-privacy-policy.ucoz.net/")
+                    Uri.parse(getString(R.string.privacy_policy_url))
                 )
                 startActivity(browserIntent)
             }

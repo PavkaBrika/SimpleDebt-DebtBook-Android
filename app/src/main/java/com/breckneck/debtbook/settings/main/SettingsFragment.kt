@@ -430,7 +430,7 @@ class SettingsFragment : Fragment() {
 
         val privacyPolicyLayout: LinearLayout = view.findViewById(R.id.privacyPolicyLayout)
         privacyPolicyLayout.setOnClickListener {
-            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://simpledebtbook-privacy-policy.ucoz.net/"))
+            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.privacy_policy_url)))
             startActivity(browserIntent)
         }
 
