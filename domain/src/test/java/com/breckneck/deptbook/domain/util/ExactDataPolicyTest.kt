@@ -37,6 +37,9 @@ class ExactDataPolicyTest {
                     TimeZone.setDefault(TimeZone.getTimeZone(timeZone))
                     assertEquals("2024-02-29", LedgerDate.day(2024, 1, 29))
                     assertEquals("2026-11-14", LedgerDate.canonical("14 Nov 2026"))
+                    assertEquals("2026-11-14", LedgerDate.canonical("14 Nov 2026 y."))
+                    assertEquals("2024-12-31", LedgerDate.canonical("31 déc. 2024 a"))
+                    assertEquals("2024-12-31", LedgerDate.canonical("31 Dez. 2024 j."))
                     assertEquals("2024-02-05", LedgerDate.canonical("5 февр. 2024 г."))
                 }
             }

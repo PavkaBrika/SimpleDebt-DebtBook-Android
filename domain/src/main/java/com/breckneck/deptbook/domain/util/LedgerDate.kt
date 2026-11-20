@@ -10,6 +10,9 @@ import java.util.TimeZone
 /** A day has no time zone. Unknown legacy text remains available verbatim. */
 object LedgerDate {
     private val utc = TimeZone.getTimeZone("UTC")
+    private val legacyLocales = listOf(Locale.ENGLISH, Locale.forLanguageTag("ru"), Locale.GERMAN, Locale.FRENCH)
+    // Older versions saved the date label, including the localized year suffix.
+    private val legacyPatterns = listOf("d MMM yyyy", "d MMM yyyy 'г'.", "d MMM yyyy 'г.'", "d MMM yyyy 'j.'", "d MMM yyyy 'y.'", "d MMM yyyy 'a'")
     private fun formatter(pattern: String, locale: Locale) = SimpleDateFormat(pattern, locale).apply {
         isLenient = false
         timeZone = utc
@@ -48,8 +51,8 @@ object LedgerDate {
         }
         // Numeric dates such as 01/02/2024 are deliberately never guessed.
         val candidates = mutableSetOf<String>()
-        for (locale in listOf(Locale.ENGLISH, Locale.forLanguageTag("ru"), Locale.GERMAN, Locale.FRENCH)) {
-            for (pattern in listOf("d MMM yyyy", "d MMM yyyy 'г'.", "d MMM yyyy 'г.'", "d MMM yyyy 'j.'")) {
+        for (locale in legacyLocales) {
+            for (pattern in legacyPatterns) {
                 parse(text, pattern, locale)?.let {
                     candidates += formatter("yyyy-MM-dd", Locale.ROOT).format(it)
                 }
