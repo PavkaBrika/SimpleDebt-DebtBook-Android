@@ -8,7 +8,6 @@
     <string name="due_permission_denied">Erlauben Sie Benachrichtigungen, um Erinnerungen zu erhalten.</string>
     <string name="due_notification_settings">Benachrichtigungseinstellungen</string>
     <string name="due_future_required">Wähle heute oder ein späteres Datum für die Erinnerung.</string>
-    <string name="due_sent">Erinnerung bereits gesendet</string>
     <string name="due_off">Erinnerung aus</string>
     <string name="due_channel">Persönliche Schuldenerinnerungen</string>
     <string name="due_notification_title">Schuld prüfen</string>

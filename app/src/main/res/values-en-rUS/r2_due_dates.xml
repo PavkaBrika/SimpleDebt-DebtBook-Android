@@ -8,7 +8,6 @@
     <string name="due_permission_denied">Allow notifications to get reminders.</string>
     <string name="due_notification_settings">Notification settings</string>
     <string name="due_future_required">Choose today or a future date to turn on the reminder.</string>
-    <string name="due_sent">Reminder already sent</string>
     <string name="due_off">Reminder off</string>
     <string name="due_channel">Personal debt reminders</string>
     <string name="due_notification_title">Check your debt</string>

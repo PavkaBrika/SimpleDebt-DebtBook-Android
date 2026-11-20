@@ -116,14 +116,14 @@ class DebtDetailsAdapter(
                 else -> R.string.due_date
             }
             val reminderLabel = when {
-                debt.reminderDelivered -> R.string.due_sent
+                debt.reminderDelivered -> null
                 debt.reminderMinute != null && !overdue && rest.signum() > 0 -> R.string.due_reminder_on
                 else -> R.string.due_off
             }
             dates = Dates(
                 operationDay,
                 itemView.context.getString(dueLabel, LedgerDate.display(day)),
-                itemView.context.getString(reminderLabel),
+                reminderLabel?.let(itemView.context::getString),
                 overdue
             )
         }

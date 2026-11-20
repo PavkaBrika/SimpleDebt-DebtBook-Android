@@ -8,7 +8,6 @@
     <string name="due_permission_denied">Autorisez les notifications pour recevoir les rappels.</string>
     <string name="due_notification_settings">Paramètres des notifications</string>
     <string name="due_future_required">Choisissez aujourd’hui ou une date ultérieure pour activer le rappel.</string>
-    <string name="due_sent">Rappel déjà envoyé</string>
     <string name="due_off">Rappel désactivé</string>
     <string name="due_channel">Rappels personnels de dettes</string>
     <string name="due_notification_title">Vérifiez votre dette</string>
