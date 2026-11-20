@@ -8,7 +8,25 @@
 
 Использовать HTML как интерактивный эталон расположения, подписей, переходов и состояний. В [studio.css](studio.css) находятся токены обеих тем, шрифтовая иерархия, поверхности, отступы и нижняя панель. Сценарии распределены между [финансами](finance.js), [целями](goals.js), [долгами](studio.js), [действиями с долгами](debt-tools.js) и [настройками, копиями и PIN](account.js). Общие элементы форм, диалогов и состояния списков собраны в [flows.js](flows.js).
 
-В Android привязать UI к существующим ViewModel, Orbit actions, use cases и событиям Android. Два образца в `app/src/debug/java/com/breckneck/debtbook/design/` уже компилируются — `BalanceBubble.kt` и `BubbleBottomBar.kt`. Состав маршрутов можно проверить в [nav_graph.xml](../../app/src/main/res/navigation/nav_graph.xml). Все пути ниже даны относительно `app/src/main/java/com/breckneck/debtbook/`.
+В Android привязать UI к существующим ViewModel, Orbit actions, use cases и событиям Android. В `app/src/debug/java/com/breckneck/debtbook/design/` находятся интерактивные превью баланса и вкладок. Состав маршрутов можно проверить в [nav_graph.xml](../../app/src/main/res/navigation/nav_graph.xml). Все пути ниже даны относительно `app/src/main/java/com/breckneck/debtbook/`.
+
+## Общие Compose-компоненты Bubble
+
+Реализации находятся в [core/ui/components](../../app/src/main/java/com/breckneck/debtbook/core/ui/components). Экран передаёт данные, обработчики нажатий и отступы. Сводные суммы, правила доступности действий, сохранение и маршруты принадлежат соответствующему разделу.
+
+| Элемент прототипа | Compose | Где применяется |
+| --- | --- | --- |
+| Нижняя панель `nav`, шапка `backbar` | `BubbleBottomBar`, `BubbleTopBar` | Панель обслуживает четыре вкладки. Шапка формы и деталей цели принимает действие справа. |
+| `primary`, `chip`, `iconButton` | `BubbleButton`, `BubbleOutlinedButton`, `BubbleIconButton` | Основные действия, кнопки карточек, возврат, меню и закрытие листа. |
+| `titleRow`, `.group`, `.setting` | `BubbleSectionTitle`, `BubbleGroup`, `BubbleValueRow` | Заголовки разделов, группы полей и пары «подпись — значение» в деталях. |
+| `field`, `entry` | `BubbleFieldRow`, `BubbleTextFieldRow` | Строки с иконкой, подписью, вводом или выбором значения. Состояние редактора и проверку допустимого текста задаёт форма. |
+| `amountField`, `editAmount` | `BubbleAmountField` | В прототипе это сумма долга, возврата, финансовой операции и движения цели. В приложении поле используется при пополнении и снятии. Оно учитывает дробность валюты и позволяет передать элемент выбора валюты. |
+| `.sheet`, `.sheet-head`, подтверждение | `BubbleBottomSheet`, `BubbleSheetHeader`, `ConfirmationBottomSheet` | Прокручиваемое содержимое, закрытие по крестику или отдельной кнопке отмены, блокировка закрытия при записи. Листы «Целей» используют общую основу `DebtBookBottomSheet`. |
+| Строки истории | `BubbleListRow` | История цели и история финансовой категории используют одну раскладку. Экраны передают содержимое, дату, сумму и обработчик нажатия. |
+| Сводка `.hero`, орнамент `fanArt` | `BubbleBalanceCard`, `BubbleFanOrnament` | Карточка принимает готовый итог, валюту и нижний блок для расшифровки сумм или выбора периода. В Android её использует [debug-превью](../../app/src/debug/java/com/breckneck/debtbook/design/BalanceBubble.kt). Орнамент используется на карточке цели без фото. |
+| Пустое состояние, загрузка и выбор из списка | `EmptyListPlaceholder`, `ShimmerListPlaceholder`, `SettingsPickerBottomSheet` | Существующие компоненты для списков целей и финансов и выбора валюты. |
+
+Переключатели направления и периода, строки меню настроек со значением и стрелкой пока представлены в Bubble-прототипе на маршрутах этапов S, F и D. Карточка прогресса цели, фото, выбор категории и ввод PIN содержат элементы конкретного сценария.
 
 ## Маршруты основного графа
 
