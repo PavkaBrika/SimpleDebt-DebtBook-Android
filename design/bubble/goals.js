@@ -9,10 +9,10 @@ const goalById=id=>savings.find(g=>g.id===id);
 const saved=g=>g.opening+g.deposits.reduce((sum,d)=>sum+d.cents,0);
 function goalBalance(g, overview=false) {
   const total=saved(g),done=total>=g.target,percent=Math.max(0,Math.min(100,Math.floor(total/g.target*100)));
-  const due=done?'Цель достигнута':g.due?(g.due<TODAY?'Срок прошёл · ':'К ')+dateText(g.due)+' '+g.due.slice(0,4):'Без срока';
+  const due=done?'Цель достигнута':g.due?(g.due<TODAY?'Срок прошёл · ':'К ')+dateText(g.due)+' '+g.due.slice(0,4):'';
   const photo=g.photo?'<img class="goal-photo" alt="" src="'+escapeHtml(g.photo)+'">':'';
   const heading=overview?`<button class="goal-link" data-act="goal-open" data-value="${g.id}"><strong>${escapeHtml(g.name)}</strong>${icon('chevron')}</button>`:'';
-  return '<div class="goal-hero goal-card">'+photo+(!g.photo?fanArt():'')+heading+'<div class="eyebrow">'+due+'</div><div class="big-money">'+amount(total,g.cur)+'</div><div class="track"><i style="width:'+percent+'%"></i></div><div class="loan-numbers"><span>из '+amount(g.target,g.cur)+'</span><strong>'+percent+'%</strong></div></div>';
+  return '<div class="goal-hero goal-card">'+photo+(!g.photo?fanArt():'')+heading+(due?'<div class="eyebrow">'+due+'</div>':'')+'<div class="big-money">'+amount(total,g.cur)+'</div><div class="track"><i style="width:'+percent+'%"></i></div><div class="loan-numbers"><span>из '+amount(g.target,g.cur)+'</span><strong>'+percent+'%</strong></div></div>';
 }
 flowViews.goals=f=>{
   const cards=savings.map(g=>'<article class="goal-item">'+goalBalance(g,true)+(saved(g)<g.target?pairButtons(button('goal-add','Пополнить',g.id,'chip','plus'),button('goal-edit','Редактировать',g.id,'chip','edit')):button('goal-delete','Удалить цель',g.id,'text-action danger'))+'</article>').join('');

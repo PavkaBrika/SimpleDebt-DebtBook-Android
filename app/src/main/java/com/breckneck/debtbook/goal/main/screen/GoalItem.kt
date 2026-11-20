@@ -2,7 +2,6 @@ package com.breckneck.debtbook.goal.main.screen
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,10 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -93,41 +92,43 @@ internal fun GoalBalanceCard(goal: GoalUi, modifier: Modifier = Modifier, onOpen
     val cardModifier = if (onOpen == null) modifier else modifier.clip(shape).clickable(role = Role.Button, onClick = onOpen)
     val status = when {
         goal.isReached -> stringResource(R.string.goal_reached)
-        goal.deadline == null -> stringResource(R.string.goal_no_deadline)
+        goal.deadline == null -> null
         goal.isOverdue -> stringResource(R.string.goal_due_overdue, goal.deadline)
         else -> stringResource(R.string.goal_due_by, goal.deadline)
     }
     Surface(cardModifier.fillMaxWidth(), shape = shape, color = colors.mint, contentColor = colors.onMint) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (goal.photoPath != null) {
+                AsyncImage(
+                    goal.photoPath, stringResource(R.string.goal_s_photo),
+                    Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(15.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            Box(Modifier.fillMaxWidth()) {
+                if (goal.photoPath == null) {
+                    GoalOrnament(colors.onMint.copy(alpha = 0.25f), Modifier.align(Alignment.TopEnd).size(64.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (onOpen != null) {
-                        Text(goal.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(goal.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(22.dp))
+                        }
                     }
-                    Text(
-                        status,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (goal.isOverdue && !goal.isReached) colors.danger else colors.onMint,
-                    )
+                    if (status != null) {
+                        Text(
+                            status,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (goal.isOverdue && !goal.isReached) colors.danger else colors.onMint,
+                        )
+                    }
                     Text(
                         goal.savedAmount,
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(top = 6.dp),
                     )
-                }
-                Box(Modifier.size(64.dp)) {
-                    GoalOrnament(colors.onMint.copy(alpha = 0.35f), Modifier.matchParentSize())
-                    if (goal.photoPath != null) {
-                        AsyncImage(goal.photoPath, stringResource(R.string.goal_s_photo), Modifier.matchParentSize().clip(CircleShape), contentScale = ContentScale.Crop)
-                    }
-                    if (onOpen != null) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                            null,
-                            Modifier.align(Alignment.TopEnd).size(22.dp).background(colors.mint, CircleShape),
-                        )
-                    }
                 }
             }
             LinearProgressIndicator(
