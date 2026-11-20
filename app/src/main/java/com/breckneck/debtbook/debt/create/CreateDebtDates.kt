@@ -104,7 +104,12 @@ private fun DebtDateCard(
         enabled = enabled,
         modifier = Modifier.fillMaxWidth().testTag(tag),
         shape = RoundedCornerShape(with(density) { neighboringCard.radius.toDp() }),
-        colors = CardDefaults.cardColors(containerColor = background, disabledContainerColor = background),
+        colors = CardDefaults.cardColors(
+            containerColor = background,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            disabledContainerColor = background,
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = with(density) { neighboringCard.cardElevation.toDp() }),
         border = border
     ) {

@@ -128,10 +128,7 @@ internal fun DebtDateSheet(
             Modifier.fillMaxWidth().padding(vertical = spacing.space24).testTag("debtDueSheet"),
             verticalArrangement = Arrangement.spacedBy(spacing.space12)
         ) {
-            Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(spacing.space8)
-            ) {
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                 DatePicker(
                     state = calendar,
                     title = null,
@@ -142,37 +139,37 @@ internal fun DebtDateSheet(
                     modifier = Modifier.fillMaxWidth().testTag("dueDatePicker"),
                     colors = DatePickerDefaults.colors(containerColor = Color.Transparent)
                 )
-                if (showReminder) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = spacing.space24)) {
-                        OutlinedCard(Modifier.fillMaxWidth()) {
-                            Row(
-                                Modifier.fillMaxWidth().testTag("dueReminderSwitch")
-                                    .toggleable(value = enabled, enabled = !busy, role = Role.Switch) { checked ->
-                                        allowed = reminders.allowed()
-                                        enabled = checked && allowed
-                                        if (checked && !allowed && Build.VERSION.SDK_INT >= 33 &&
-                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                                            PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        }
-                                    }.padding(horizontal = spacing.space16, vertical = spacing.space8),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(spacing.space8)
-                            ) {
-                                Text(stringResource(R.string.due_enable), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                                Switch(checked = enabled, onCheckedChange = null, enabled = !busy)
-                            }
+            }
+            if (showReminder) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = spacing.space24)) {
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.fillMaxWidth().testTag("dueReminderSwitch")
+                                .toggleable(value = enabled, enabled = !busy, role = Role.Switch) { checked ->
+                                    allowed = reminders.allowed()
+                                    enabled = checked && allowed
+                                    if (checked && !allowed && Build.VERSION.SDK_INT >= 33 &&
+                                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                        PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }.padding(horizontal = spacing.space16, vertical = spacing.space8),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(spacing.space8)
+                        ) {
+                            Text(stringResource(R.string.due_enable), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Switch(checked = enabled, onCheckedChange = null, enabled = !busy)
                         }
-                        if (!allowed) {
-                            Text(
-                                stringResource(R.string.due_permission_denied),
-                                modifier = Modifier.padding(top = spacing.space8).testTag("duePermissionStatus"),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            TextButton(onClick = { openNotificationSettings(context) }, enabled = !busy) {
-                                Text(stringResource(R.string.due_notification_settings))
-                            }
+                    }
+                    if (!allowed) {
+                        Text(
+                            stringResource(R.string.due_permission_denied),
+                            modifier = Modifier.padding(top = spacing.space8).testTag("duePermissionStatus"),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        TextButton(onClick = { openNotificationSettings(context) }, enabled = !busy) {
+                            Text(stringResource(R.string.due_notification_settings))
                         }
                     }
                 }

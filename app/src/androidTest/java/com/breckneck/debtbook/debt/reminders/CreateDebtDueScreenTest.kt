@@ -6,7 +6,6 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
@@ -57,7 +56,7 @@ class CreateDebtDueScreenTest {
                 compose.enterDebtDate(scenario, today.minusDays(1))
                 compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
                 compose.enterDebtDate(scenario, LocalDate.of(2099, 11, 29))
-                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
+                compose.onNodeWithTag("dueReminderSwitch").performClick()
                 scenario.recreate()
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
                 compose.onNodeWithTag("dueSaveButton").performClick()

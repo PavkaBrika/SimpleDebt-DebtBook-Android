@@ -8,7 +8,6 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
@@ -124,7 +123,7 @@ class DueDateScreenTest {
                 assertEquals(540, row().reminderMinute)
 
                 open()
-                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
+                compose.onNodeWithTag("dueReminderSwitch").performClick()
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
                 save()
                 await("disable") { row().reminderToken == null }
