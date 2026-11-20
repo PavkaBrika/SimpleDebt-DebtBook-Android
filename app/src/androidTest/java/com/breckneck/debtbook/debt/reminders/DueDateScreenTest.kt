@@ -1,6 +1,9 @@
 package com.breckneck.debtbook.debt.reminders
 
 import android.content.Context
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -17,6 +20,7 @@ import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.*
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.deptbook.domain.util.LedgerDate
 import database.AppDataBase
 import entity.Debt
 import entity.Human
@@ -68,66 +72,94 @@ class DueDateScreenTest {
         }
     }
 
-    private fun open() {
+    private fun edit() {
         waitForHistory()
         onView(withTagValue(equalTo(id))).perform(click())
-        compose.onNodeWithTag("dueSettingsButton").performClick()
-        compose.onNodeWithTag("dueDatePicker").assertExists()
+        compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
+        compose.onNodeWithTag("editButton").performClick()
     }
 
-    private fun save() { compose.onNodeWithTag("dueSaveButton").performClick() }
+    private fun applyDate() {
+        compose.onNodeWithTag("dueSaveButton").performClick()
+        compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
+    }
 
-    @Test fun editAndDisableReminderWithoutAnExtraDateStep() {
+    private fun saveForm() { onView(withId(R.id.setFinanceButton)).perform(click()) }
+
+    @Test fun editReminderFromDebtFormBothDirectionsIncludingAfterRepayment() {
         assertTrue("Grant notifications before running", DebtReminders.get(context).allowed())
         for (sign in listOf(1, -1)) {
             dao.insertHuman(Human(id, "Due screen", BigDecimal.ZERO, "EUR"))
             dao.saveDebt(Debt(id, BigDecimal(100 * sign), id, null, "2026-11-16"))
             dao.setDebtDueDate(id, "2099-12-31", 600, "legacy-token", System.currentTimeMillis())
+            if (sign < 0) {
+                dao.saveDebt(Debt(0, BigDecimal("20"), id, null, "2026-11-17",
+                    repaymentOfId = id, operationId = "test-due-repayment-1"))
+            }
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.onHumanClick(id, "EUR", "Due screen") }
                 waitForHistory()
-                onView(withId(R.id.dueTextView)).check(matches(withText(containsString(scenario.screenString(R.string.due_reminder_on)))))
+                val datesColumn = hasAnyAncestor(hasTestTag("historyDebtDates"))
+                compose.onNode(datesColumn and hasText(LedgerDate.display("2026-11-16"))).assertExists()
+                compose.onNode(datesColumn and hasText(scenario.screenString(R.string.due_reminder_on))).assertExists()
 
                 onView(withTagValue(equalTo(id))).perform(click())
                 compose.onNodeWithTag("editButton").assertExists()
                 compose.onNodeWithTag("debtActionsCancel").performClick()
-                compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
 
-                open()
+                edit()
+                if (sign < 0) {
+                    onView(withId(R.id.debtSumEditText)).check(matches(isNotEnabled()))
+                    onView(withId(R.id.customSwitch)).check(matches(isNotEnabled()))
+                    compose.onNodeWithTag("createDebtDate").assertIsNotEnabled()
+                }
+                compose.openDueCalendarInForm()
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
-                compose.onNodeWithTag("dueTimeButton").assertDoesNotExist()
-                compose.onNodeWithTag("dueClearButton").assertDoesNotExist()
                 compose.enterDebtDate(scenario, LocalDate.of(2026, 11, 15))
                 compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
                 compose.onNodeWithTag("dueCancelButton").performClick()
+
+                compose.openDueCalendarInForm()
+                pressBack()
+                compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
+                compose.openDueCalendarInForm()
+                applyDate()
+                saveForm()
+                waitForHistory()
                 assertEquals("2099-12-31", row().dueDay)
                 assertEquals(600, row().reminderMinute)
                 assertEquals("legacy-token", row().reminderToken)
 
-                open()
+                edit()
+                compose.openDueCalendarInForm()
+                compose.enterDebtDate(scenario, LocalDate.of(2099, 12, 29))
+                applyDate()
+                assertEquals("2099-12-31", row().dueDay)
                 pressBack()
-                compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
-                open()
-                save()
                 waitForHistory()
-                assertEquals(600, row().reminderMinute)
-                assertEquals("legacy-token", row().reminderToken)
+                assertEquals("2099-12-31", row().dueDay)
 
-                open()
+                edit()
+                compose.openDueCalendarInForm()
                 compose.enterDebtDate(scenario, LocalDate.of(2099, 12, 30))
                 scenario.recreate()
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
-                save()
+                applyDate()
+                saveForm()
                 await("reschedule") { row().dueDay == "2099-12-30" }
                 assertNotEquals("legacy-token", row().reminderToken)
                 assertEquals(540, row().reminderMinute)
 
-                open()
+                edit()
+                compose.openDueCalendarInForm()
                 compose.onNodeWithTag("dueReminderSwitch").performClick()
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
-                save()
+                applyDate()
+                saveForm()
                 await("disable") { row().reminderToken == null }
                 assertEquals("2099-12-30", row().dueDay)
+                assertEquals(0, (100 * sign).toBigDecimal().compareTo(row().sum))
+                assertEquals(0, (if (sign > 0) 100 else -80).toBigDecimal().compareTo(dao.getHumanSumDebt(id)))
             }
             clean()
         }

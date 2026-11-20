@@ -31,12 +31,6 @@
                 android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/dueTextView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="4dp"
-                    android:textSize="14sp" />
-                <TextView
                     android:id="@+id/operationTextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -106,6 +100,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/debtDatesLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
@@ -113,20 +108,6 @@
                 android:background="@android:color/transparent"
                 android:gravity="end"
                 android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/dateTextView"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
-                    android:background="@android:color/transparent"
-                    android:text="date"
-                    android:textAlignment="viewEnd"
-                    android:textSize="18sp"
-                    app:autoSizeMinTextSize="12sp"
-                    app:autoSizeStepGranularity="1px"
-                    app:autoSizeTextType="uniform" />
 
                 <ImageView
                     style="@style/actionArrowImageView"

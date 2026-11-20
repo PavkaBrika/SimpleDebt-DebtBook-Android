@@ -170,6 +170,7 @@ class CustomSwitchView(context: Context, attrs: AttributeSet) : View(context, at
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
+        if (!super.isEnabled()) return false
         val action = event!!.action
         when (action) {
             MotionEvent.ACTION_DOWN -> {

@@ -6,9 +6,14 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.scrollTo
+import androidx.test.espresso.matcher.ViewMatchers.withId
+import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -33,4 +38,10 @@ internal fun ComposeTestRule.enterDebtDate(scenario: ActivityScenario<MainActivi
             .format(GregorianCalendar(date.year, date.monthValue - 1, date.dayOfMonth).time)
     }
     onNode(dateInput).performTextReplacement(input)
+}
+
+internal fun ComposeTestRule.openDueCalendarInForm() {
+    onView(withId(R.id.debtDueForm)).perform(scrollTo())
+    onNodeWithTag("createDebtDue").performClick()
+    onNodeWithTag("dueDatePicker").assertExists()
 }

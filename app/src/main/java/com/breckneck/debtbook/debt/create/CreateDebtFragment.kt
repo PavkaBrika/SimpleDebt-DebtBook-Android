@@ -125,11 +125,14 @@ class CreateDebtFragment: Fragment() {
         val infoEditText: EditText = view.findViewById(R.id.debtInfoEditText)
         val commentCard = view.findViewById<View>(R.id.debtInfoTextInput).parent as MaterialCardView
         val form = commentCard.parent as LinearLayout
+        // The gap belongs inside the Compose host so the last card can draw its shadow into it.
+        commentCard.layoutParams = (commentCard.layoutParams as LinearLayout.LayoutParams).apply { topMargin = 0 }
         form.addView(ComposeView(requireContext()).apply {
             id = R.id.debtDueForm
+            clipChildren = false
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                DebtBookTheme { CreateDebtDates(vm, commentCard, newDebt = (idDebt ?: 0) <= 0) }
+                DebtBookTheme { CreateDebtDates(vm, commentCard) }
             }
         }, form.indexOfChild(commentCard),
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -188,6 +191,10 @@ class CreateDebtFragment: Fragment() {
         if (idDebt != null && idDebt > 0) { //EXIST HUMAN EDIT DEBT LAYOUT CHANGES
             debtSumEditText.setText(DecimalInput.format(com.breckneck.deptbook.domain.util.abs(sumArgs)))
             customSwitch.setChecked(sumArgs >= BigDecimal.ZERO)
+            if (vm.hasRepayments) {
+                customSwitch.isEnabled = false
+                debtSumEditText.isEnabled = false
+            }
             infoEditText.setText(infoArgs)
             collapsed.title = getString(R.string.editdebtcollaps)
             currencyTextView.isClickable = false
@@ -220,7 +227,9 @@ class CreateDebtFragment: Fragment() {
         }
         setButton.setOnClickListener {
             val name = humanNameEditText.text.toString().trim()
-            val parsed = DecimalInput.parse(debtSumEditText.text.toString(), vm.currency.value, sumArgs.abs().takeIf { (idDebt ?: 0) > 0 })
+            val parsed = if (vm.hasRepayments) sumArgs.abs() else {
+                DecimalInput.parse(debtSumEditText.text.toString(), vm.currency.value, sumArgs.abs().takeIf { (idDebt ?: 0) > 0 })
+            }
             humanNameTextInput.error = null
             debtSumTextInput.error = null
             if ((idHuman == null || idHuman <= 0) && name.isEmpty()) {
@@ -235,24 +244,22 @@ class CreateDebtFragment: Fragment() {
                 debtSumTextInput.error = getString(R.string.zerodebt)
                 return@setOnClickListener
             }
-            if ((idDebt ?: 0) <= 0) {
-                val day = vm.dueDay.value
-                if (day != null && vm.remind.value == true) {
+            val day = vm.dueDay.value
+            if (day != null && vm.hasDueChange && vm.remind.value == true) {
                     val reminders = DebtReminders.get(requireContext())
-                    val warning = when {
-                        !reminders.allowed() -> R.string.due_permission_denied
-                        !DebtReminderPolicy.canSchedule(day) -> R.string.due_future_required
-                        else -> null
-                    }
-                    if (warning != null) {
-                        Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
-                        return@setOnClickListener
-                    }
+                val warning = when {
+                    !reminders.allowed() -> R.string.due_permission_denied
+                    !DebtReminderPolicy.canSchedule(day) -> R.string.due_future_required
+                    else -> null
+                }
+                if (warning != null) {
+                    Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
                 }
             }
             buttonClickListener.onSetButtonClick()
             vm.saveDebt(idHuman ?: -1, idDebt ?: -1, name,
-                if (customSwitch.isChecked()) parsed else -parsed,
+                if (vm.hasRepayments) sumArgs else if (customSwitch.isChecked()) parsed else -parsed,
                 (vm.date.value ?: dateArgs ?: com.breckneck.deptbook.domain.util.LedgerDate.today()), infoEditText.text.toString())
         }
 

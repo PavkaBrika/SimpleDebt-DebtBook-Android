@@ -3,27 +3,22 @@ package com.breckneck.debtbook.debt.details
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -32,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
+import com.breckneck.debtbook.core.ui.components.DebtBookOutlinedAction
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DecimalInput
@@ -48,7 +44,6 @@ internal fun DebtActionsSheet(
     hasRepayments: Boolean,
     onDismiss: () -> Unit,
     onRepay: () -> Unit,
-    onDue: () -> Unit,
     onEdit: () -> Unit,
     onRemove: () -> Unit
 ) {
@@ -78,7 +73,10 @@ internal fun DebtActionsSheet(
                     Text(context.originalDebtLabel(it, currency), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (!debt.cancelled) {
-                    DebtActionButton(stringResource(R.string.repayment_cancel), "deleteButton", onRemove)
+                    DebtBookOutlinedAction(
+                        stringResource(R.string.repayment_cancel), onRemove,
+                        modifier = Modifier.fillMaxWidth().testTag("deleteButton")
+                    )
                 }
             } else {
                 if (hasRepayments) {
@@ -90,27 +88,15 @@ internal fun DebtActionsSheet(
                         Text(stringResource(if (debt.sum.signum() > 0) R.string.repayment_received else R.string.repayment_paid))
                     }
                 }
-                if (debt.sum.signum() != 0) {
-                    DebtActionButton(stringResource(R.string.due_settings), "dueSettingsButton", onDue, Icons.Outlined.DateRange)
-                }
-                if (!hasRepayments) {
-                    DebtActionButton(stringResource(R.string.edit), "editButton", onEdit, Icons.Outlined.Edit)
-                }
+                DebtBookOutlinedAction(
+                    stringResource(R.string.edit), onEdit,
+                    modifier = Modifier.fillMaxWidth().testTag("editButton"),
+                    icon = Icons.Outlined.Edit
+                )
             }
             TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).testTag("debtActionsCancel")) {
                 Text(stringResource(R.string.cancel))
             }
         }
-    }
-}
-
-@Composable
-private fun DebtActionButton(title: String, tag: String, onClick: () -> Unit, icon: ImageVector? = null) {
-    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().testTag(tag)) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null)
-            Spacer(Modifier.width(MaterialTheme.spacing.space8))
-        }
-        Text(title)
     }
 }

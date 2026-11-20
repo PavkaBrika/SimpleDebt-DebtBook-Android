@@ -1,7 +1,6 @@
 package com.breckneck.debtbook.debt.create
 
 import java.math.BigDecimal
-import com.breckneck.deptbook.domain.util.compareTo
 
 import android.util.Log
 import com.breckneck.deptbook.domain.repository.DataTransaction
@@ -17,6 +16,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.breckneck.deptbook.domain.usecase.Debt.GetCurrentDateUseCase
+import com.breckneck.deptbook.domain.model.DebtDueChange
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
@@ -40,9 +40,15 @@ class CreateDebtViewModel @Inject constructor(
     val isSaving = MutableLiveData(false)
     val saveError = MutableLiveData(false)
     val savedHumanId = MutableLiveData<Int?>()
-    val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", null)
-    val remind: LiveData<Boolean> = savedState.getLiveData("remind", false)
-    val existingDueDay = savedState.get<String>("dueDayOnEdit")?.let(LedgerDate::canonical)
+    private val initialDueDay = savedState.get<String>("dueDayOnEdit")?.let(LedgerDate::canonical)
+    private val initialRemind = savedState.get<Boolean>("remindOnEdit") == true
+    val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", initialDueDay)
+    val remind: LiveData<Boolean> = savedState.getLiveData("remind", initialRemind)
+    val hasRepayments = savedState.get<Boolean>("hasRepayments") == true
+    val canRemind = savedState.get<Boolean>("canRemind") ?: true
+
+    val hasDueChange: Boolean
+        get() = dueDay.value != initialDueDay || remind.value != initialRemind
 
     fun setDueDraft(day: String, remind: Boolean) {
         savedState["dueDay"] = day
@@ -55,7 +61,9 @@ class CreateDebtViewModel @Inject constructor(
                  date: String, info: String) {
         if (isSaving.value == true || savedHumanId.value != null) return
         val selectedDay = dueDay.value
-        val selectedMinute = DebtReminderPolicy.DEFAULT_MINUTE.takeIf { remind.value == true }
+        val reminderEnabled = remind.value == true
+        val selectedMinute = DebtReminderPolicy.DEFAULT_MINUTE.takeIf { reminderEnabled }
+        val due = selectedDay?.takeIf { hasDueChange }?.let { DebtDueChange(it, reminderEnabled) }
         isSaving.value = true
         saveError.value = false
         viewModelScope.launch {
@@ -67,7 +75,7 @@ class CreateDebtViewModel @Inject constructor(
                     }
                     if (debtId > 0) {
                         val previous = requireNotNull(getDebts.execute(id).firstOrNull { it.id == debtId })
-                        editDebt.execute(debtId, sum, id, info.ifBlank { null }, date)
+                        editDebt.execute(debtId, sum, id, info.ifBlank { null }, date, due)
                         addSum.execute(id, sum - previous.sum)
                     } else {
                         setDebt.execute(sum, id, info.ifBlank { null }, date, selectedDay, selectedMinute)

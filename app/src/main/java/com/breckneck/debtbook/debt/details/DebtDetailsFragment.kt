@@ -44,13 +44,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.debt.reminders.DebtDateSheet
-import com.breckneck.deptbook.domain.util.DebtReminderPolicy
-import com.breckneck.debtbook.debt.reminders.DebtReminders
-import database.AppDataBase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.util.UUID
 import com.breckneck.debtbook.debt.details.adapter.DebtDetailsAdapter
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.usecase.Debt.*
@@ -79,12 +72,15 @@ class DebtDetailsFragment : Fragment() {
 
     private val TAG = "DebtDetailsFragment"
 
-    private enum class DebtSheet { ACTIONS, DUE, REMOVE }
+    private enum class DebtSheet { ACTIONS, REMOVE }
 
     interface OnButtonClickListener {
         fun addNewDebtFragment(idHuman: Int, currency: String, name: String)
 
-        fun editDebt(debtDomain: DebtDomain, currency: String, name: String)
+        fun editDebt(
+            debtDomain: DebtDomain, currency: String, name: String,
+            hasRepayments: Boolean = false, canRemind: Boolean = true
+        )
 
         fun deleteHuman()
 
@@ -319,7 +315,6 @@ class DebtDetailsFragment : Fragment() {
     }
 
     private fun attachDebtSheets(root: ViewGroup) {
-        val appContext = requireContext().applicationContext
         root.addView(ComposeView(requireContext()).apply {
             id = R.id.debtDetailsSheets
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -336,39 +331,22 @@ class DebtDetailsFragment : Fragment() {
                         var sheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
                         val rest = vm.remaining(debt)
                         val currency = vm.humanCurrency.orEmpty()
+                        val hasRepayments = vm.hasRepayments(debt.id)
                         val close = { vm.selectDebtAction(null) }
                         when (sheet) {
                             DebtSheet.ACTIONS -> DebtActionsSheet(
-                                debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, vm.hasRepayments(debt.id),
+                                debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments,
                                 onDismiss = close,
                                 onRepay = { close(); vm.openRepayment(debt) },
-                                onDue = { sheet = DebtSheet.DUE },
-                                onEdit = { close(); buttonClickListener?.editDebt(debt, currency, vm.humanName.value.orEmpty()) },
+                                onEdit = {
+                                    close()
+                                    buttonClickListener?.editDebt(
+                                        debt, currency, vm.humanName.value.orEmpty(), hasRepayments,
+                                        canRemind = !hasRepayments || rest.signum() > 0
+                                    )
+                                },
                                 onRemove = { sheet = DebtSheet.REMOVE }
                             )
-                            DebtSheet.DUE -> {
-                                val pending = rest.signum() > 0 && !debt.reminderDelivered &&
-                                    debt.dueDay?.let { it >= LedgerDate.today() } == true
-                                DebtDateSheet(
-                                    title = stringResource(R.string.due_settings),
-                                    initialDay = debt.dueDay,
-                                    minDay = LedgerDate.canonical(debt.date),
-                                    initialReminder = (pending && debt.reminderMinute != null).takeIf { rest.signum() > 0 },
-                                    onDismiss = close
-                                ) { day, remind ->
-                                    val minute = if (remind) {
-                                        debt.reminderMinute.takeIf { pending && day == debt.dueDay }
-                                            ?: DebtReminderPolicy.DEFAULT_MINUTE
-                                    } else null
-                                    withContext(Dispatchers.IO) {
-                                        AppDataBase(appContext).appDao().setDebtDueDate(
-                                            debt.id, day, minute, minute?.let { UUID.randomUUID().toString() }, System.currentTimeMillis()
-                                        )
-                                    }
-                                    DebtReminders.get(appContext).refresh()
-                                    vm.retry()
-                                }
-                            }
                             DebtSheet.REMOVE -> {
                                 val repayment = debt.repaymentOfId != null
                                 val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)

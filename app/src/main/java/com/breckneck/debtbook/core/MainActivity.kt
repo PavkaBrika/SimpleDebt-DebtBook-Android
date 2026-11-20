@@ -52,6 +52,7 @@ import com.breckneck.debtbook.goal.main.GoalsFragment
 import com.breckneck.debtbook.settings.main.SettingsFragment
 import com.breckneck.debtbook.settings.synchronization.SynchronizationFragment
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.model.Goal
 import com.breckneck.deptbook.domain.util.CLICKS_QUANTITY_FOR_AD_SHOW
@@ -481,13 +482,18 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         vm.onActionClick()
     }
 
-    override fun editDebt(debtDomain: DebtDomain, currency: String, name: String) {
+    override fun editDebt(debtDomain: DebtDomain, currency: String, name: String, hasRepayments: Boolean, canRemind: Boolean) {
         val args = Bundle()
         args.putInt("idDebt", debtDomain.id)
         args.putInt("idHuman", debtDomain.idHuman)
         args.putString("sum", debtDomain.sum.toPlainString())
         args.putString("date", debtDomain.date)
         args.putString("dueDayOnEdit", debtDomain.dueDay)
+        args.putBoolean("hasRepayments", hasRepayments)
+        args.putBoolean("canRemind", canRemind)
+        val pending = canRemind && debtDomain.reminderMinute != null && !debtDomain.reminderDelivered &&
+            debtDomain.dueDay?.let { DebtReminderPolicy.canSchedule(it) } == true
+        args.putBoolean("remindOnEdit", pending)
         if (debtDomain.info == null)
             args.putString("info", "")
         else

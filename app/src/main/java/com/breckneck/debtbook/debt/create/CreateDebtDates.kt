@@ -36,7 +36,7 @@ import com.google.android.material.card.MaterialCardView
 private enum class DateField { DEBT, DUE }
 
 @Composable
-internal fun CreateDebtDates(vm: CreateDebtViewModel, neighboringCard: MaterialCardView, newDebt: Boolean) {
+internal fun CreateDebtDates(vm: CreateDebtViewModel, neighboringCard: MaterialCardView) {
     val date by vm.date.observeAsState()
     val draftDueDay by vm.dueDay.observeAsState()
     val reminder by vm.remind.observeAsState(false)
@@ -46,26 +46,26 @@ internal fun CreateDebtDates(vm: CreateDebtViewModel, neighboringCard: MaterialC
     val dateLabel = stringResource(R.string.debt_entry_date)
     val dueLabel = stringResource(R.string.due_settings)
 
-    Column(Modifier.fillMaxWidth().padding(start = spacing.space8, end = spacing.space8, top = spacing.space8),
-        verticalArrangement = Arrangement.spacedBy(spacing.space8)) {
-        DebtDateCard(dateLabel, date?.let(LedgerDate::display).orEmpty(), neighboringCard, !saving, "createDebtDate") {
-            openField = DateField.DEBT
-        }
-        if (newDebt) {
-            DebtDateCard(dueLabel, draftDueDay?.let(LedgerDate::display) ?: stringResource(R.string.due_optional),
-                neighboringCard, !saving, "createDebtDue") {
-                openField = DateField.DUE
-            }
-        }
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = spacing.space8, vertical = spacing.space8),
+        verticalArrangement = Arrangement.spacedBy(spacing.space8)
+    ) {
+        DebtDateCard(
+            dateLabel, date?.let(LedgerDate::display).orEmpty(), neighboringCard,
+            enabled = !saving && !vm.hasRepayments, tag = "createDebtDate", editable = !vm.hasRepayments
+        ) { openField = DateField.DEBT }
+        DebtDateCard(
+            dueLabel, draftDueDay?.let(LedgerDate::display) ?: stringResource(R.string.due_optional),
+            neighboringCard, !saving, "createDebtDue"
+        ) { openField = DateField.DUE }
     }
     when (openField) {
         DateField.DEBT -> {
             val today = LedgerDate.today()
-            val due = if (newDebt) draftDueDay else vm.existingDueDay
             DebtDateSheet(
                 title = dateLabel,
                 initialDay = date,
-                maxDay = due?.let { minOf(today, it) } ?: today,
+                maxDay = draftDueDay?.let { minOf(today, it) } ?: today,
                 confirmText = stringResource(R.string.due_apply),
                 onDismiss = { openField = null }
             ) { day, _ -> vm.setStoredDate(day) }
@@ -74,7 +74,7 @@ internal fun CreateDebtDates(vm: CreateDebtViewModel, neighboringCard: MaterialC
             title = dueLabel,
             initialDay = draftDueDay,
             minDay = date?.let(LedgerDate::canonical),
-            initialReminder = reminder,
+            initialReminder = reminder.takeIf { vm.canRemind },
             confirmText = stringResource(R.string.due_apply),
             onDismiss = { openField = null },
             onSave = vm::setDueDraft
@@ -90,6 +90,7 @@ private fun DebtDateCard(
     neighboringCard: MaterialCardView,
     enabled: Boolean,
     tag: String,
+    editable: Boolean = true,
     onClick: () -> Unit
 ) {
     val spacing = MaterialTheme.spacing
@@ -108,7 +109,7 @@ private fun DebtDateCard(
             containerColor = background,
             contentColor = MaterialTheme.colorScheme.onSurface,
             disabledContainerColor = background,
-            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = if (editable) 0.38f else 1f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = with(density) { neighboringCard.cardElevation.toDp() }),
         border = border
@@ -123,7 +124,7 @@ private fun DebtDateCard(
                 Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            if (editable) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }

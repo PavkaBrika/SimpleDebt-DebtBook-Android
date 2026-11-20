@@ -9,8 +9,23 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.cardview.widget.CardView
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.debtbook.debt.details.historyTitle
 import com.breckneck.debtbook.debt.details.originalDebtLabel
 import com.breckneck.deptbook.domain.model.DebtDomain
@@ -44,17 +59,81 @@ class DebtDetailsAdapter(
     }
 
     class DebtViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val due: TextView = itemView.findViewById(R.id.dueTextView)
         val debt: TextView = itemView.findViewById(R.id.debtTextView)
         val operation: TextView = itemView.findViewById(R.id.operationTextView)
         val remaining: TextView = itemView.findViewById(R.id.remainingTextView)
-        val date: TextView = itemView.findViewById(R.id.dateTextView)
         val info: TextView = itemView.findViewById(R.id.infoTextView)
         val currency: TextView = itemView.findViewById(R.id.currencyTextVew)
         val debtCardView: CardView = itemView.findViewById(R.id.debtCardView)
         val infoLayout: LinearLayout = itemView.findViewById(R.id.infoLayout)
         val greenColor = itemView.resources.getColor(R.color.green)
         val redColor = itemView.resources.getColor(R.color.red)
+        private var dates by mutableStateOf(Dates(""))
+
+        init {
+            itemView.findViewById<LinearLayout>(R.id.debtDatesLayout).addView(
+                ComposeView(itemView.context).apply {
+                    setContent {
+                        DebtBookTheme {
+                            val data = dates
+                            val spacing = MaterialTheme.spacing
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(end = spacing.space4).testTag("historyDebtDates"),
+                                verticalArrangement = Arrangement.spacedBy(spacing.space4)
+                            ) {
+                                Text(data.operationDay, Modifier.fillMaxWidth(), textAlign = TextAlign.End,
+                                    style = MaterialTheme.typography.bodyLarge)
+                                data.dueLabel?.let { due ->
+                                    Text(
+                                        due, Modifier.fillMaxWidth(), textAlign = TextAlign.End,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (data.overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                data.reminderLabel?.let { reminder ->
+                                    Text(reminder, Modifier.fillMaxWidth(), textAlign = TextAlign.End,
+                                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }, 0, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            )
+        }
+
+        fun bindDates(debt: DebtDomain, rest: BigDecimal) {
+            val operationDay = LedgerDate.display(debt.date)
+            val day = debt.dueDay?.takeIf { debt.repaymentOfId == null }
+            if (day == null) {
+                dates = Dates(operationDay)
+                return
+            }
+            val today = LedgerDate.today()
+            val overdue = DebtReminderPolicy.overdue(debt, rest, today)
+            val dueLabel = when {
+                overdue -> R.string.due_overdue
+                day == today && rest.signum() > 0 -> R.string.due_today
+                else -> R.string.due_date
+            }
+            val reminderLabel = when {
+                debt.reminderDelivered -> R.string.due_sent
+                debt.reminderMinute != null && !overdue && rest.signum() > 0 -> R.string.due_reminder_on
+                else -> R.string.due_off
+            }
+            dates = Dates(
+                operationDay,
+                itemView.context.getString(dueLabel, LedgerDate.display(day)),
+                itemView.context.getString(reminderLabel),
+                overdue
+            )
+        }
+
+        private data class Dates(
+            val operationDay: String,
+            val dueLabel: String? = null,
+            val reminderLabel: String? = null,
+            val overdue: Boolean = false
+        )
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DebtViewHolder {
@@ -70,24 +149,7 @@ class DebtDetailsAdapter(
         holder.debtCardView.tag = debtDomain.id
         val context = holder.itemView.context
         val rest = if (debtDomain.repaymentOfId == null) remaining(debtDomain) else BigDecimal.ZERO
-        holder.due.visibility = if (debtDomain.repaymentOfId == null && debtDomain.dueDay != null) View.VISIBLE else View.GONE
-        debtDomain.dueDay?.let { day ->
-            val today = LedgerDate.today()
-            val overdue = DebtReminderPolicy.overdue(debtDomain, rest, today)
-            val minute = debtDomain.reminderMinute
-            val dueLabel = when {
-                overdue -> R.string.due_overdue
-                day == today && rest.signum() > 0 -> R.string.due_today
-                else -> R.string.due_date
-            }
-            holder.due.text = context.getString(dueLabel, LedgerDate.display(day)) + "\n" +
-                when {
-                    debtDomain.reminderDelivered -> context.getString(R.string.due_sent)
-                    minute != null && !overdue && rest.signum() > 0 -> context.getString(R.string.due_reminder_on)
-                    else -> context.getString(R.string.due_off)
-                }
-            holder.due.setTextColor(if (overdue) holder.redColor else holder.operation.currentTextColor)
-        }
+        holder.bindDates(debtDomain, rest)
         holder.itemView.alpha = if (debtDomain.cancelled) 0.65f else 1f
         holder.operation.setText(debtDomain.historyTitle())
         val originalId = debtDomain.repaymentOfId
@@ -113,7 +175,6 @@ class DebtDetailsAdapter(
             holder.currency.setTextColor(holder.redColor)
             holder.debt.text = decimalFormat.format(debtDomain.sum)
         }
-        holder.date.text = com.breckneck.deptbook.domain.util.LedgerDate.display(debtDomain.date)
         holder.info.text = debtDomain.info
         holder.currency.text = currencyText
         holder.infoLayout.visibility = if (debtDomain.info.isNullOrBlank()) View.GONE else View.VISIBLE
