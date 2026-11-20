@@ -13,7 +13,7 @@ import org.mockito.Mockito.`when`
 import java.text.DecimalFormat
 
 class GetAllDebtsSumUseCaseTest {
-    val decimalFormat = DecimalFormat("#,##0.00")
+    val decimalFormat = DecimalFormat("#,##0")
     val humanRepository = mock<HumanRepository>()
 
     @AfterEach

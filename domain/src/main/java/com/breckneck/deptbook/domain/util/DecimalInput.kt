@@ -14,7 +14,9 @@ object DecimalInput {
         Regex("[+-]?[0-9]{0,18}(?:[.,][0-9]{0,${MoneyPolicy.scale(currency)}})?").matches(text)
     fun format(value: BigDecimal, locale: Locale = Locale.getDefault(), currency: String? = null): String {
         val exact = value.stripTrailingZeros()
-        val scale = maxOf(exact.scale(), currency?.let(MoneyPolicy::scale) ?: 0)
-        return exact.setScale(scale).toPlainString().replace('.', DecimalFormatSymbols(locale).decimalSeparator)
+        val padded = if (exact.scale() > 0 && currency != null) {
+            exact.setScale(maxOf(exact.scale(), MoneyPolicy.scale(currency)))
+        } else exact
+        return padded.toPlainString().replace('.', DecimalFormatSymbols(locale).decimalSeparator)
     }
 }
