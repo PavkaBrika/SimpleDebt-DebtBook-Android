@@ -6,17 +6,21 @@
     <string name="due_overdue">Срок прошёл: %1$s</string>
     <string name="due_today">Срок сегодня · %1$s</string>
     <string name="due_clear">Убрать срок</string>
-    <string name="due_enable">Напомнить мне один раз</string>
-    <string name="due_time">Местное время: %1$s</string>
-    <string name="due_help">Личное напоминание в день срока, по местному времени устройства. Android может доставить его позже. Сообщения другим людям не отправляются. Полный возврат выключает напоминание; отмена возврата не включает его снова.</string>
-    <string name="due_permission_denied">Уведомления запрещены. Учёт долгов и сроки продолжают работать. Для напоминаний разрешите уведомления.</string>
+    <string name="due_enable">Напомнить мне</string>
+    <string name="due_permission_denied">Разрешите уведомления, чтобы получать напоминания.</string>
     <string name="due_notification_settings">Настройки уведомлений</string>
-    <string name="due_future_required">Выберите будущую дату и время или выключите напоминание. У долга должен быть непогашенный остаток.</string>
-    <string name="due_reminder_at">Напоминание: %1$s · местное время</string>
+    <string name="due_future_required">Выберите будущую дату и время или выключите напоминание.</string>
+    <string name="due_reminder_at">Напоминание в %1$s</string>
     <string name="due_sent">Напоминание уже отправлено</string>
     <string name="due_off">Напоминание выключено</string>
     <string name="due_channel">Личные напоминания о долгах</string>
     <string name="due_notification_title">Проверьте долг</string>
     <string name="due_notification_text">Наступил срок возврата. Нажмите, чтобы открыть долг.</string>
     <string name="due_missing">Этот долг удалён</string>
+    <string name="due_choose_time">Время напоминания</string>
+    <string name="due_select">Выбрать</string>
+    <string name="due_apply">Применить</string>
+    <string name="due_save_failed">Не удалось сохранить срок. Попробуйте ещё раз.</string>
+    <string name="debt_delete_question">Удалить этот долг?</string>
+    <string name="due_optional">Необязательно</string>
 </resources>

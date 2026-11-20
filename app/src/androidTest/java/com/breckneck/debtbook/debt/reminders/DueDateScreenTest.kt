@@ -1,20 +1,19 @@
 package com.breckneck.debtbook.debt.reminders
 
 import android.content.Context
-import android.view.View
-import android.widget.DatePicker
-import android.widget.TimePicker
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.UiController
-import androidx.test.espresso.ViewAction
-import androidx.test.espresso.action.ViewActions.*
+import androidx.test.espresso.Espresso.pressBack
+import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.*
-import androidx.test.espresso.matcher.RootMatchers.isDialog
-import androidx.test.espresso.matcher.RootMatchers.withDecorView
-import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import database.AppDataBase
@@ -24,10 +23,12 @@ import org.hamcrest.Matchers.*
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import java.math.BigDecimal
 
 class DueDateScreenTest {
+    @get:Rule val compose = createEmptyComposeRule()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val dao get() = AppDataBase(context).appDao()
     private val prefs get() = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
@@ -49,23 +50,30 @@ class DueDateScreenTest {
         val end = System.currentTimeMillis() + 15000
         while (!condition()) { if (System.currentTimeMillis() > end) fail(message); Thread.sleep(50) }
     }
+    private fun waitForHistory() {
+        compose.waitUntil(15_000) {
+            compose.onAllNodesWithTag("debtDueSheet").fetchSemanticsNodes().isEmpty()
+        }
+        await("history") {
+            try {
+                onView(withTagValue(equalTo(id))).check(matches(isDisplayed()))
+                true
+            } catch (_: AssertionError) {
+                false
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
     private fun open() {
+        waitForHistory()
         onView(withTagValue(equalTo(id))).perform(click())
-        onView(withId(R.id.dueSettingsButton)).inRoot(isDialog()).perform(scrollTo(), click())
-        onView(withId(R.id.dueDateButton))
-            .inRoot(allOf(isDialog(), withDecorView(hasDescendant(allOf(withId(R.id.dueDateButton), isEnabled())))))
-            .check(matches(isDisplayed()))
+        compose.onNodeWithTag("dueSettingsButton").performClick()
+        compose.onNodeWithTag("dueDateButton").assertExists()
     }
-    private fun date(year: Int, month: Int, day: Int) {
-        onView(withId(R.id.dueDateButton)).inRoot(isDialog()).perform(click())
-        onView(isAssignableFrom(DatePicker::class.java)).inRoot(isDialog()).perform(object : ViewAction {
-            override fun getConstraints() = isAssignableFrom(DatePicker::class.java)
-            override fun getDescription() = "Select calendar date"
-            override fun perform(ui: UiController, view: View) { (view as DatePicker).updateDate(year, month - 1, day) }
-        })
-        onView(withId(android.R.id.button1)).inRoot(isDialog()).perform(click())
-    }
-    private fun save() { onView(withId(android.R.id.button1)).inRoot(isDialog()).perform(click()) }
+
+    private fun save() { compose.onNodeWithTag("dueSaveButton").performClick() }
 
     @Test fun dueDateReminderEditDisableAndRemoveSurviveRecreationBothDirections() {
         assertTrue("Grant notifications before running", DebtReminders.get(context).allowed())
@@ -76,40 +84,39 @@ class DueDateScreenTest {
             dao.updateDebt(row().copy(dueDay = "2020-01-01", reminderMinute = 540, reminderToken = "expired-1"))
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.onHumanClick(id, "EUR", "Due screen") }
-                await("history") { try { onView(withTagValue(equalTo(id))).check(matches(isDisplayed())); true } catch (_: Exception) { false } }
+                waitForHistory()
                 onView(withId(R.id.dueTextView)).check(matches(withText(containsString(context.getString(R.string.due_off)))))
                 open()
-                onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).check(matches(isNotChecked()))
-                date(2099, 12, 31)
-                onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).perform(click())
+                compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
+                compose.onNodeWithTag("dueTimeButton").assertDoesNotExist()
+                compose.onNodeWithTag("dueDateButton").performClick()
+                pressBack()
+                compose.onNodeWithTag("dueDateButton").assertExists()
+                compose.selectDueDay(scenario, 2099, 12, 31)
+                compose.onNodeWithTag("dueReminderSwitch").performClick()
                 scenario.recreate()
-                onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).check(matches(isChecked()))
+                compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
                 save()
-                await("due save") { row().reminderToken != null }
+                await("due save") { row().dueDay == "2099-12-31" && row().reminderToken != null }
                 assertEquals("2099-12-31", row().dueDay)
                 val token = row().reminderToken
-                open(); date(2099, 12, 30)
-                onView(withId(R.id.dueTimeButton)).inRoot(isDialog()).perform(click())
-                onView(isAssignableFrom(TimePicker::class.java)).inRoot(isDialog()).perform(object : ViewAction {
-                    override fun getConstraints() = isAssignableFrom(TimePicker::class.java)
-                    override fun getDescription() = "Select reminder time"
-                    override fun perform(ui: UiController, view: View) { (view as TimePicker).apply { hour = 10; minute = 15 } }
-                })
-                onView(withId(android.R.id.button1)).inRoot(isDialog()).perform(click())
+                open(); compose.selectDueDay(scenario, 2099, 12, 30)
+                compose.selectMorningTime(scenario, 10, 15)
                 save(); await("reschedule") { row().reminderMinute == 615 }
                 assertNotEquals(token, row().reminderToken)
-                open(); date(2020, 1, 1); save()
-                await("past reminder validation") {
-                    try { onView(withId(R.id.dueError)).inRoot(isDialog()).check(matches(isDisplayed())); true }
-                    catch (_: AssertionError) { false }
-                    catch (_: Exception) { false }
-                }
+                open(); compose.selectDueDay(scenario, 2020, 1, 1); save()
+                compose.onNodeWithTag("dueError").assertExists()
                 assertEquals("2099-12-30", row().dueDay)
-                onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).perform(click())
+                compose.onNodeWithTag("dueReminderSwitch").performClick()
                 save(); await("disable") { row().reminderToken == null }
                 assertEquals("2020-01-01", row().dueDay)
+                waitForHistory()
                 onView(withId(R.id.dueTextView)).check(matches(withText(containsString(context.getString(R.string.due_overdue, com.breckneck.deptbook.domain.util.LedgerDate.display("2020-01-01"))))))
-                open(); onView(withId(R.id.dueClearButton)).inRoot(isDialog()).perform(click()); save()
+                open()
+                compose.onNodeWithTag("dueClearButton").performClick()
+                compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
+                compose.onNodeWithTag("dueTimeButton").assertDoesNotExist()
+                save()
                 await("clear due") { row().dueDay == null }
                 assertNull(row().reminderToken)
             }

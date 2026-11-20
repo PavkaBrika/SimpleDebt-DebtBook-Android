@@ -2,21 +2,21 @@ package com.breckneck.debtbook.debt.reminders
 
 import android.content.Context
 import android.os.Build
-import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.widget.DatePicker
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.UiController
-import androidx.test.espresso.ViewAction
 import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.*
-import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.platform.app.InstrumentationRegistry
-import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import database.AppDataBase
 import entity.Debt
@@ -24,11 +24,13 @@ import entity.Human
 import org.hamcrest.Matchers.*
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
+import org.junit.Rule
 import org.junit.Test
 import java.math.BigDecimal
 
 /** Run separately after pm revoke + clear-permission-flags, API33+. */
 class DeniedReminderScreenTest {
+    @get:Rule val compose = createEmptyComposeRule()
     @Test fun systemPermissionResponseKeepsDebtAndDueDateUsable() {
         val response = InstrumentationRegistry.getArguments().getString("r22PermissionResponse")
         assumeTrue("Run on API 33+ with r22PermissionResponse=allow or deny", Build.VERSION.SDK_INT >= 33 &&
@@ -53,15 +55,10 @@ class DeniedReminderScreenTest {
                 scenario.onActivity { it.onHumanClick(id, "EUR", "Denied reminder") }
                 waitFor("history missing") { try { onView(withTagValue(equalTo(id))).check(matches(isDisplayed())); true } catch (_: Exception) { false } }
                 onView(withTagValue(equalTo(id))).perform(click())
-                onView(withId(R.id.dueSettingsButton)).inRoot(isDialog()).perform(scrollTo(), click())
-                onView(withId(R.id.dueDateButton)).inRoot(isDialog()).perform(click())
-                onView(isAssignableFrom(DatePicker::class.java)).inRoot(isDialog()).perform(object : ViewAction {
-                    override fun getConstraints() = isAssignableFrom(DatePicker::class.java)
-                    override fun getDescription() = "Set future due date"
-                    override fun perform(ui: UiController, view: View) { (view as DatePicker).updateDate(2099, 11, 31) }
-                })
-                onView(withId(android.R.id.button1)).inRoot(isDialog()).perform(click())
-                onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).perform(click())
+                compose.onNodeWithTag("dueSettingsButton").performClick()
+                compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
+                compose.selectDueDay(scenario, 2099, 12, 31)
+                compose.onNodeWithTag("dueReminderSwitch").performClick()
                 val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
                 automation.serviceInfo = automation.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
                 var button: AccessibilityNodeInfo? = null
@@ -77,10 +74,16 @@ class DeniedReminderScreenTest {
                 }
                 bitmap.recycle()
                 assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
-                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-                onView(withId(R.id.dueReminderSwitch)).inRoot(isDialog()).check(matches(if (allow) isChecked() else isNotChecked()))
-                if (!allow) onView(withId(R.id.duePermissionStatus)).inRoot(isDialog()).check(matches(isDisplayed()))
-                onView(withId(android.R.id.button1)).inRoot(isDialog()).perform(click())
+                compose.waitUntil(15_000) {
+                    compose.onAllNodesWithTag("dueReminderSwitch").fetchSemanticsNodes().isNotEmpty()
+                }
+                if (allow) compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
+                else {
+                    compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
+                    compose.onNodeWithTag("duePermissionStatus").assertExists()
+                    compose.onNodeWithTag("dueTimeButton").assertDoesNotExist()
+                }
+                compose.onNodeWithTag("dueSaveButton").performClick()
                 waitFor("due date not saved after denial") { dao.getAllDebtsById(id).single().dueDay == "2099-12-31" }
                 val row = dao.getAllDebtsById(id).single()
                 if (allow) assertNotNull(row.reminderToken) else assertNull(row.reminderToken)

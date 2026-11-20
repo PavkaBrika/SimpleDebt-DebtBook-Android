@@ -4,16 +4,13 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
-import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.AuthSession
 import com.breckneck.debtbook.auth.PinCodeStore
 import com.breckneck.debtbook.core.MainActivity
@@ -56,20 +53,19 @@ class ReminderPinNavigationTest {
             fun notification() = notifications.activeNotifications.firstOrNull { it.tag == DebtReminders.TAG && it.id == id }
             run {
                 context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                compose.onNodeWithText(context.getString(R.string.enter_pin)).assertExists()
+                compose.waitUntil(10_000) { compose.onAllNodesWithText("9").fetchSemanticsNodes().isNotEmpty() }
                 compose.waitUntil(5000) { notification() != null }
                 checkNotNull(notification()).notification.contentIntent.send()
-                compose.onNodeWithText(context.getString(R.string.enter_pin)).assertExists()
+                compose.onNodeWithText("9").assertExists()
                 assertFalse(AuthSession.isUnlocked)
                 "9999".forEach { compose.onNodeWithText(it.toString()).performClick() }
                 assertFalse(AuthSession.isUnlocked)
                 "1234".forEach { compose.onNodeWithText(it.toString()).performClick() }
                 compose.waitUntil(15000) { AuthSession.isUnlocked }
-                val end = System.currentTimeMillis() + 15000
-                while (true) {
-                    try { onView(withId(R.id.extrasTitle)).check(matches(withText(org.hamcrest.Matchers.containsString("100")))); break }
-                    catch (error: Exception) { if (System.currentTimeMillis() >= end) throw error; Thread.sleep(100) }
+                compose.waitUntil(15_000) {
+                    compose.onAllNodesWithText("100 EUR", substring = true).fetchSemanticsNodes().isNotEmpty()
                 }
+                compose.onNodeWithText("100 EUR", substring = true).assertExists()
             }
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync {

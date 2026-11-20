@@ -37,7 +37,8 @@ object LedgerDate {
         require(canonical(day) == day)
         return requireNotNull(parse(day, "yyyy-MM-dd", Locale.ROOT)).time
     }
-    fun fromPickerMillis(millis: Long): Date = requireNotNull(localDate(formatter("yyyy-MM-dd", Locale.ROOT).format(Date(millis))))
+    fun dayFromPickerMillis(millis: Long): String = formatter("yyyy-MM-dd", Locale.ROOT).format(Date(millis))
+    fun fromPickerMillis(millis: Long): Date = requireNotNull(localDate(dayFromPickerMillis(millis)))
     fun today(): String = Calendar.getInstance().let {
         day(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
     }

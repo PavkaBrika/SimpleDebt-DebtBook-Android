@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.debt.details.historyTitle
 import com.breckneck.debtbook.debt.details.originalDebtLabel
+import com.breckneck.debtbook.debt.reminders.reminderTimeLabel
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -84,7 +85,7 @@ class DebtDetailsAdapter(
                 when {
                     debtDomain.reminderDelivered -> context.getString(R.string.due_sent)
                     minute != null && !overdue && rest.signum() > 0 -> context.getString(R.string.due_reminder_at,
-                        String.format(java.util.Locale.getDefault(), "%02d:%02d", minute / 60, minute % 60))
+                        reminderTimeLabel(context, minute))
                     else -> context.getString(R.string.due_off)
                 }
             holder.due.setTextColor(if (overdue) holder.redColor else holder.operation.currentTextColor)

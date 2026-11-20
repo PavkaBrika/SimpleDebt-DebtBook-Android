@@ -91,12 +91,13 @@ class DebtDetailsViewModel @Inject constructor(
     private val _isShareDialogShown by lazy { MutableLiveData<Boolean>() }
     val isShareDialogShown: LiveData<Boolean>
         get() = _isShareDialogShown
-    private val _isDebtSettingsDialogShown by lazy { MutableLiveData<Boolean>() }
-    val isDebtSettingsDialogShown: LiveData<Boolean>
-        get() = _isDebtSettingsDialogShown
-    private val _settingDebt by lazy { MutableLiveData<DebtDomain>() }
-    val settingDebt: LiveData<DebtDomain>
-        get() = _settingDebt
+    val debtActionId = savedStateHandle.getLiveData<Int?>("debtActionId", null)
+
+    fun selectDebtAction(id: Int?) {
+        debtActionId.value = id
+    }
+
+    fun historyDebt(id: Int): DebtDomain? = _initialDebtList.value?.firstOrNull { it.id == id }
 
     private val _debtOrder = MutableLiveData<Pair<DebtOrderAttribute, Boolean>>()
     val debtOrder: LiveData<Pair<DebtOrderAttribute, Boolean>> = _debtOrder
@@ -314,18 +315,6 @@ class DebtDetailsViewModel @Inject constructor(
 
     fun onHumanDeleteDialogClose() {
         _isHumanDeleteDialogShown.value = false
-    }
-
-    fun onDebtSettingsDialogOpen() {
-        _isDebtSettingsDialogShown.value = true
-    }
-
-    fun onDebtSettingsDialogClose() {
-        _isDebtSettingsDialogShown.value = false
-    }
-
-    fun onSetSettingDebt(debt: DebtDomain) {
-        _settingDebt.value = debt
     }
 
     fun onShareDialogOpen() {
