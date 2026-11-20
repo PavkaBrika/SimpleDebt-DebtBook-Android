@@ -136,8 +136,13 @@ function home(f) {
     '<div class="people">'+peopleList(f)+'</div>';
   return layout(html,primary('new','Новый долг','plus'),nav('home'));
 }
-function layout(body,action='',navigation='') {
-  return status+'<div class="scroll">'+body+'</div>'+(action?'<div class="sticky-action">'+action+'</div>':'')+navigation+gesture;
+function layout(body,action='',navigation='',goalsList=false) {
+  const cta=action?'<div class="sticky-action">'+action+'</div>':'';
+  if(goalsList) {
+    return status+'<div class="scroll goals-scroll">'+body+'</div><div class="goals-dock">'+cta+
+      '<div class="goals-nav">'+navigation+gesture+'</div></div>';
+  }
+  return status+'<div class="scroll">'+body+'</div>'+cta+navigation+gesture;
 }
 function loanCard(l,p) {
   const left=remaining(l), paid=Math.abs(l.principal)-left;
@@ -208,6 +213,9 @@ function sheet(f) {
 const board=document.querySelector('#board');
 const mobile=document.querySelector('.mobile-switch');
 const sections=[];
+const goalDockObserver=new ResizeObserver(entries=>{
+  for(const {target,contentRect} of entries)target.parentElement?.style.setProperty('--goals-dock-height',contentRect.height+'px');
+});
 for(let i=0;i<3;i++) {
   const section=document.createElement('section');
   section.className='panel'; section.dataset.index=i; board.appendChild(section); sections.push(section);
@@ -230,6 +238,8 @@ function updateRemaining(i) {
 }
 function render(i,keepScroll=false) {
   const f=frames[i],target=sections[i], y=keepScroll?(target.querySelector('.scroll')?.scrollTop||0):0;
+  const previousDock=target.querySelector('.goals-dock');
+  if(previousDock)goalDockObserver.unobserve(previousDock);
   if(before) {
     const select='<select class="compare-select" data-bind="beforeScreen" aria-label="Снимок текущего приложения">'+Object.entries(screenNames).map(([k,v])=>'<option value="'+k+'" '+(f.beforeScreen===k?'selected':'')+'>'+v+'</option>').join('')+'</select>';
     target.innerHTML='<div class="panel-heading">'+select+'</div><div class="phone before"><img class="thumb" src="before/'+f.beforeScreen+'.webp" alt="Текущий экран: '+screenNames[f.beforeScreen]+'"></div><div class="before-mobile">'+select+'</div>';
@@ -238,6 +248,11 @@ function render(i,keepScroll=false) {
   const listState=listStateControl(f);
   const html=listState&&f.listState&&f.listState!=='Данные'?reviewList(f):f.route==='home'?home(f):f.route==='person'?person(f):f.route==='new'?newDebt(f):flowViews[f.route](f);
   target.innerHTML='<div class="panel-heading">'+(screenNames[f.route]||flowNames[f.route])+listState+'</div><div class="phone">'+html+(f.sheet?sheet(f):'')+'</div>';
+  const dock=target.querySelector('.goals-dock');
+  if(dock){
+    dock.parentElement.style.setProperty('--goals-dock-height',dock.offsetHeight+'px');
+    goalDockObserver.observe(dock);
+  }
   target.querySelector('.scroll').scrollTop=y;
   if(f.sheet) {
     for(const element of target.querySelector('.phone').children) if(!element.classList.contains('overlay'))element.inert=true;

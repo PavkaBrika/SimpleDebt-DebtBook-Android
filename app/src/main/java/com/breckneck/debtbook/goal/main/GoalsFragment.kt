@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.BundleCompat
@@ -25,6 +26,7 @@ class GoalsFragment : Fragment() {
     private val vm by viewModels<GoalsViewModel>()
 
     interface OnClickListener {
+        val goalsListInsets: PaddingValues
         fun onAddGoalButtonClick()
         fun onGoalClick(goal: Goal)
         fun onEditGoalButtonClick(goal: Goal)
@@ -50,12 +52,13 @@ class GoalsFragment : Fragment() {
             }
         }
 
+        val host = requireNotNull(onButtonClickListener)
         return ComposeView(requireContext()).apply {
             id = R.id.goalsComposeView
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
-                    GoalsScreen(vm = vm)
+                    GoalsScreen(vm = vm, hostInsets = host.goalsListInsets)
                 }
             }
         }

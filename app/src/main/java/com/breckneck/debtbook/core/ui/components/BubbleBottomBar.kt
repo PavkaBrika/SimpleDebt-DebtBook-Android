@@ -67,9 +67,8 @@ internal fun BubbleBottomBar(
 
     val colors = bubbleColors()
 
-    val barModifier = if (destination == R.id.goalsFragment) modifier.background(colors.background) else modifier
     Box(
-        barModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(

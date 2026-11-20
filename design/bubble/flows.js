@@ -107,11 +107,11 @@ function reviewList(f){
   const root=baseRoute(f.route), main=f.route===root;
   const titles={home:'Долги',finance:'Финансы',goals:'Цели',person:people.find(p=>p.id===f.personId)?.name,categoryHistory:categoryById(f.categoryId)?.name,goalDetail:goalById(f.goalId)?.name};
   const title=titles[f.route], h=main?heading(title):backbar(title);
-  if(f.listState==='Загрузка')return layout(h+'<div class="skeleton" role="status" aria-label="Загрузка"><i></i><i></i><i></i></div>','',main?nav(root):'');
-  if(f.listState==='Ошибка')return layout(h+empty('Не удалось загрузить записи.')+primary('list-retry','Повторить','reset',true),'',main?nav(root):'');
+  if(f.listState==='Загрузка')return layout(h+'<div class="skeleton" role="status" aria-label="Загрузка"><i></i><i></i><i></i></div>','',main?nav(root):'',f.route==='goals');
+  if(f.listState==='Ошибка')return layout(h+empty('Не удалось загрузить записи.')+primary('list-retry','Повторить','reset',true),'',main?nav(root):'',f.route==='goals');
   const labels={home:'В книге пока нет долгов.',finance:'За этот период записей нет.',goals:'Целей пока нет.',person:'История долгов пуста.',categoryHistory:'Операций пока нет.',goalDetail:'Пополнений и снятий пока нет.'};
   const actions={home:['new','Новый долг'],finance:['record-new',f.financeDir==='Расходы'?'Добавить расход':'Добавить доход'],goals:['goal-new','Новая цель'],person:['new','Новый долг'],categoryHistory:['record-new','Добавить операцию']};
   const action=actions[f.route];
-  return layout(h+empty(labels[f.route]),action?primary(action[0],action[1],'plus'):'',main?nav(root):'');
+  return layout(h+empty(labels[f.route]),action?primary(action[0],action[1],'plus'):'',main?nav(root):'',f.route==='goals');
 }
 flowActions['list-retry']=i=>{frames[i].listState='Данные';render(i);};

@@ -1,6 +1,10 @@
 package com.breckneck.debtbook.goal.main.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,6 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -40,13 +45,13 @@ import com.breckneck.deptbook.domain.util.ListState
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
-fun GoalsScreen(vm: GoalsViewModel) {
+fun GoalsScreen(vm: GoalsViewModel, hostInsets: PaddingValues) {
     val state by vm.collectAsState()
-    GoalsContent(state, vm::onAction)
+    GoalsContent(state, hostInsets, vm::onAction)
 }
 
 @Composable
-private fun GoalsContent(state: GoalsState, onAction: (GoalsAction) -> Unit) {
+private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction: (GoalsAction) -> Unit) {
     val colors = bubbleColors()
     val listScroll = rememberLazyListState()
     Scaffold(
@@ -55,52 +60,74 @@ private fun GoalsContent(state: GoalsState, onAction: (GoalsAction) -> Unit) {
         contentColor = colors.ink,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            GoalButton(
-                onClick = { onAction(GoalsAction.AddGoalClick) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))
+            Column {
+                GoalButton(
+                    onClick = { onAction(GoalsAction.AddGoalClick) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                    Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))
+                }
+                Spacer(
+                    Modifier.fillMaxWidth().height(hostInsets.calculateBottomPadding()).background(
+                        Brush.verticalGradient(listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = .9f))),
+                    ),
+                )
             }
         },
     ) { insets ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(insets),
-            state = listScroll,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item {
-                Text(
-                    stringResource(R.string.goals),
-                    Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            if (state.loadFailed) {
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listScroll,
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp,
+                    top = hostInsets.calculateTopPadding() + 8.dp,
+                    bottom = insets.calculateBottomPadding() + 8.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 item {
-                    Column {
-                        Text(stringResource(R.string.something_went_wrong), color = colors.danger)
-                        TextButton(onClick = { onAction(GoalsAction.Retry) }) { Text(stringResource(R.string.form_retry)) }
+                    Text(
+                        stringResource(R.string.goals),
+                        Modifier.semantics { heading() },
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                if (state.loadFailed) {
+                    item {
+                        Column {
+                            Text(stringResource(R.string.something_went_wrong), color = colors.danger)
+                            TextButton(onClick = { onAction(GoalsAction.Retry) }) { Text(stringResource(R.string.form_retry)) }
+                        }
+                    }
+                }
+                when (state.listState) {
+                    ListState.LOADING -> if (!state.loadFailed) item { ShimmerListPlaceholder(rowCount = 2, rowHeight = 156.dp) }
+                    ListState.EMPTY -> if (!state.loadFailed) item {
+                        EmptyListPlaceholder(stringResource(R.string.goal_empty_list), Icons.Outlined.Savings)
+                    }
+                    ListState.RECEIVED -> items(state.goalList, key = { it.goalId }) { goal ->
+                        GoalItem(
+                            goal,
+                            onOpen = { onAction(GoalsAction.GoalClick(goal.goalId)) },
+                            onAdd = { onAction(GoalsAction.ShowAddDepositPopup(goal.goalId)) },
+                            onEdit = { onAction(GoalsAction.EditGoalClick(goal.goalId)) },
+                            onDelete = { onAction(GoalsAction.ConfirmDelete(goal.goalId)) },
+                        )
                     }
                 }
             }
-            when (state.listState) {
-                ListState.LOADING -> if (!state.loadFailed) item { ShimmerListPlaceholder(rowCount = 2, rowHeight = 156.dp) }
-                ListState.EMPTY -> if (!state.loadFailed) item {
-                    EmptyListPlaceholder(stringResource(R.string.goal_empty_list), Icons.Outlined.Savings)
-                }
-                ListState.RECEIVED -> items(state.goalList, key = { it.goalId }) { goal ->
-                    GoalItem(
-                        goal,
-                        onOpen = { onAction(GoalsAction.GoalClick(goal.goalId)) },
-                        onAdd = { onAction(GoalsAction.ShowAddDepositPopup(goal.goalId)) },
-                        onEdit = { onAction(GoalsAction.EditGoalClick(goal.goalId)) },
-                        onDelete = { onAction(GoalsAction.ConfirmDelete(goal.goalId)) },
-                    )
-                }
-            }
+            Spacer(
+                Modifier.fillMaxWidth().height(hostInsets.calculateTopPadding() + 12.dp).background(
+                    Brush.verticalGradient(
+                        0f to colors.background.copy(alpha = .94f),
+                        .45f to colors.background.copy(alpha = .84f),
+                        1f to colors.background.copy(alpha = 0f),
+                    ),
+                ),
+            )
         }
     }
 

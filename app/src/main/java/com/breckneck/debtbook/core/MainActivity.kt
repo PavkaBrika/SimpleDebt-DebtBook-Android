@@ -32,6 +32,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.PopupMenu
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
+import androidx.core.view.updateLayoutParams
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -101,6 +107,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         },
         lockDelayMillis = { vm.pinLockDelayMillis() }
     )
+    override var goalsListInsets by mutableStateOf(PaddingValues(0.dp))
+        private set
     lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,25 +124,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 //        else
 //            config.locale = locale
         setContentView(R.layout.activity_main)
-        // One inset owner for the mixed XML/Compose NavHost. Consume here so the
-        // legacy fitsSystemWindows children do not apply the bars a second time.
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.rootLayout)) { root, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
-            val revealInput = ime.bottom > bars.bottom && root.paddingBottom != ime.bottom
-            root.updatePadding(left = bars.left, top = bars.top, right = bars.right,
-                bottom = maxOf(bars.bottom, ime.bottom))
-            if (revealInput) root.doOnNextLayout {
-                // Legacy scrolling forms must reveal the focused field after the
-                // inset changes their viewport, including with a large system font.
-                (root.findFocus() as? EditText)?.let { input ->
-                    input.requestRectangleOnScreen(Rect(0, 0, input.width, input.height), true)
-                }
-            }
-            WindowInsetsCompat.CONSUMED
-        }
-        ViewCompat.requestApplyInsets(findViewById(R.id.rootLayout))
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager =
                 getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -240,6 +229,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
         navController = navHostFragment.navController
 
+        configureHostInsets()
         val bottomNavBar = findViewById<ComposeView>(R.id.bottomNavigationView)
         val selectedTab = mutableIntStateOf(0)
         // Reuse NavigationUI's tab options, including the saved back stack for each tab.
@@ -264,6 +254,56 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 )
             }
         }
+    }
+
+    private fun configureHostInsets() {
+        val root = findViewById<View>(R.id.rootLayout)
+        val dock = findViewById<View>(R.id.bottomDock)
+        val host = findViewById<View>(R.id.frameLayout)
+        val defaultContrast = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && window.isNavigationBarContrastEnforced
+        var overlayGoals = false
+        var safeTop = 0
+
+        fun updateListInsets() {
+            if (overlayGoals) {
+                val density = resources.displayMetrics.density
+                goalsListInsets = PaddingValues(top = (safeTop / density).dp, bottom = (dock.height / density).dp)
+            }
+        }
+        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateListInsets() }
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val bottom = maxOf(bars.bottom, ime.bottom)
+            val revealInput = !overlayGoals && ime.bottom > bars.bottom && root.paddingBottom != ime.bottom
+            safeTop = bars.top
+            root.updatePadding(left = bars.left, top = if (overlayGoals) 0 else bars.top, right = bars.right,
+                bottom = if (overlayGoals) 0 else bottom)
+            dock.updatePadding(bottom = if (overlayGoals) bottom else 0)
+            updateListInsets()
+            if (revealInput) root.doOnNextLayout {
+                (root.findFocus() as? EditText)?.let { input ->
+                    input.requestRectangleOnScreen(Rect(0, 0, input.width, input.height), true)
+                }
+            }
+            WindowInsetsCompat.CONSUMED
+        }
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            val goals = destination.id == R.id.goalsFragment
+            if (goals != overlayGoals) {
+                overlayGoals = goals
+                host.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                    bottomToTop = if (goals) ConstraintLayout.LayoutParams.UNSET else R.id.bottomDock
+                    bottomToBottom = if (goals) ConstraintLayout.LayoutParams.PARENT_ID else ConstraintLayout.LayoutParams.UNSET
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = !goals && defaultContrast
+                }
+                ViewCompat.requestApplyInsets(root)
+            }
+        }
+        ViewCompat.requestApplyInsets(root)
     }
 
     override fun onStart() {

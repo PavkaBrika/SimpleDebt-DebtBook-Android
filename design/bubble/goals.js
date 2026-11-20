@@ -16,7 +16,7 @@ function goalBalance(g, overview=false) {
 }
 flowViews.goals=f=>{
   const cards=savings.map(g=>'<article class="goal-item">'+goalBalance(g,true)+(saved(g)<g.target?pairButtons(button('goal-add','Пополнить',g.id,'chip','plus'),button('goal-edit','Редактировать',g.id,'chip','edit')):button('goal-delete','Удалить цель',g.id,'text-action danger'))+'</article>').join('');
-  return layout(heading('Цели')+(cards||empty('Пока нет целей. Создайте первую цель накопления.')),primary('goal-new','Новая цель','plus'),nav('goals'));
+  return layout(heading('Цели')+(cards||empty('Пока нет целей. Создайте первую цель накопления.')),primary('goal-new','Новая цель','plus'),nav('goals'),true);
 };
 flowActions['goal-open']=(i,v)=>{frames[i].goalId=Number(v);go(i,'goalDetail');};
 flowViews.goalDetail=f=>{
@@ -32,6 +32,7 @@ function goalAdjustment(i,v,b,sign) {
   const g=goalById(Number(v));if(!g||saved(g)>=g.target)return;
   showDialog(i,sign>0?'Пополнить цель':'Снять с цели',s=>'<p class="note">'+escapeHtml(g.name)+' · Накоплено '+amount(saved(g),g.cur)+'</p>'+editAmount('sheet.sum',s.sum,g.cur),b,(_,s)=>{
     const n=readMoney(s.sum,g.cur);if(!n)return fail(i,'Введите положительную сумму в валюте цели.');
+    if(sign<0&&n>saved(g))return fail(i,'Сумма превышает накопления.');
     g.deposits.push({id:newId(),date:TODAY,cents:n*sign});changed(i,sign>0?'Пополнение записано':'Снятие записано');
   },sign>0?'Пополнить':'Снять',{sum:''});
 }
