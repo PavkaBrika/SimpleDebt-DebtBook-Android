@@ -129,7 +129,7 @@ class DebtUseCasesTest {
         EditDebtUseCase(debtRepository).execute(id = 5, sum = "300.0".toBigDecimal().stripTrailingZeros(), idHuman = 2, info = "edited", date = "20 Apr 2024")
 
         val captor = argumentCaptor<DebtDomain>()
-        verify(debtRepository).editDebt(captor.capture())
+        verify(debtRepository).editDebt(captor.capture(), org.mockito.kotlin.isNull())
         val debt = captor.firstValue
         Assertions.assertEquals(5, debt.id)
         Assertions.assertEquals(0, ("300.0".toBigDecimal().stripTrailingZeros()).compareTo(debt.sum!!))

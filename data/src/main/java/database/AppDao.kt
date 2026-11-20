@@ -5,6 +5,8 @@ import com.breckneck.deptbook.domain.util.compareTo
 import com.breckneck.deptbook.domain.util.RepaymentPolicy
 import com.breckneck.deptbook.domain.util.MoneyPolicy
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
+import com.breckneck.deptbook.domain.model.DebtDueChange
+import java.util.UUID
 
 import androidx.room.*
 import entity.Debt
@@ -98,19 +100,34 @@ interface AppDao {
     }
 
     @Transaction
-    fun reviseDebt(debt: Debt) {
-        val previous = getAllDebts().firstOrNull { it.id == debt.id } ?: error("Missing debt")
-        require(previous.repaymentOfId == null && debt.repaymentOfId == null && debt.operationId == null && !debt.cancelled) { "Cancel a repayment instead of editing" }
-        if (getAllDebts().any { it.repaymentOfId == previous.id }) {
-            require(previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0) { "Debt has repayment history" }
+    fun reviseDebt(debt: Debt, due: DebtDueChange? = null) {
+        val history = getAllDebts()
+        val previous = history.firstOrNull { it.id == debt.id } ?: error("Missing debt")
+        require(previous.repaymentOfId == null && debt.repaymentOfId == null && debt.operationId == null && !debt.cancelled) {
+            "Cancel a repayment instead of editing"
         }
-        if (debt.date != previous.date) {
-            previous.dueDay?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }
+        if (history.any { it.repaymentOfId == previous.id }) {
+            require(previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0 && previous.date == debt.date) {
+                "Debt has repayment history"
+            }
         }
-        debt.legacyDate = previous.legacyDate
-        // Ordinary amount/comment editing must preserve independently edited due settings.
-        updateDebt(debt.copy(dueDay = previous.dueDay, reminderMinute = previous.reminderMinute,
-            reminderToken = previous.reminderToken, reminderDelivered = previous.reminderDelivered))
+        val updated = debt.copy(legacyDate = previous.legacyDate, dueDay = previous.dueDay,
+            reminderMinute = previous.reminderMinute, reminderToken = previous.reminderToken,
+            reminderDelivered = previous.reminderDelivered)
+        val next = if (due != null) {
+            val minute = if (due.remind) {
+                previous.reminderMinute.takeIf { due.day == previous.dueDay && !previous.reminderDelivered }
+                    ?: DebtReminderPolicy.DEFAULT_MINUTE
+            } else null
+            withDueSettings(updated, history, due.day, minute,
+                minute?.let { UUID.randomUUID().toString() }, System.currentTimeMillis())
+        } else {
+            if (debt.date != previous.date) {
+                previous.dueDay?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }
+            }
+            updated
+        }
+        updateDebt(next)
         addSum(previous.idHuman, BigDecimal.ZERO)
         if (previous.idHuman != debt.idHuman) addSum(debt.idHuman, BigDecimal.ZERO)
     }
@@ -132,17 +149,21 @@ interface AppDao {
     fun setDebtDueDate(id: Int, day: String?, minute: Int?, token: String?, now: Long) {
         val history = getAllDebts()
         val previous = requireNotNull(history.firstOrNull { it.id == id })
-        require(previous.repaymentOfId == null && previous.sum.signum() != 0)
-        val next = previous.copy(dueDay = day, reminderMinute = minute,
-            reminderToken = token, reminderDelivered = false)
-        DebtReminderPolicy.validate(next.toDomain())
-        day?.let { require(DebtReminderPolicy.canSetDueDay(previous.date, it)) { "Due day precedes the debt" } }
+        updateDebt(withDueSettings(previous, history, day, minute, token, now))
+    }
+
+    private fun withDueSettings(debt: Debt, history: List<Debt>, day: String?, minute: Int?, token: String?, now: Long): Debt {
+        require(debt.repaymentOfId == null && debt.sum.signum() != 0)
+        val next = debt.copy(dueDay = day, reminderMinute = minute, reminderToken = token, reminderDelivered = false)
+        val original = next.toDomain()
+        DebtReminderPolicy.validate(original)
+        day?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }
         if (minute != null) {
-            require(RepaymentPolicy.remaining(previous.toDomain(), history.map { it.toDomain() }).signum() > 0)
+            require(RepaymentPolicy.remaining(original, history.map { it.toDomain() }).signum() > 0)
             require(DebtReminderPolicy.canSchedule(requireNotNull(day), now)) { "Reminder day has passed" }
         }
-        val unchanged = previous.dueDay == day && previous.reminderMinute == minute && previous.reminderToken != null && !previous.reminderDelivered
-        updateDebt(if (unchanged) next.copy(reminderToken = previous.reminderToken, reminderDelivered = previous.reminderDelivered) else next)
+        val unchanged = debt.dueDay == day && debt.reminderMinute == minute && debt.reminderToken != null && !debt.reminderDelivered
+        return if (unchanged) next.copy(reminderToken = debt.reminderToken) else next
     }
 
     //Debt

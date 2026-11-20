@@ -7,6 +7,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import com.breckneck.deptbook.domain.model.DebtDueChange
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.RepaymentPolicy
 import com.google.gson.JsonParser
@@ -35,6 +36,12 @@ class DueDateRoomTest {
             dao.reviseDebt(dao.getAllDebts().first().copy(info = "Edited"))
             assertEquals("token-2", dao.getAllDebts().first().reminderToken)
             db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_due_balance BEFORE UPDATE ON Human BEGIN SELECT RAISE(ABORT, 'test'); END")
+            val original = dao.getAllDebts().first()
+            try {
+                dao.reviseDebt(original.copy(info = "Draft edit"), DebtDueChange("2099-12-29", true))
+                fail("Combined debt edit was not rolled back")
+            } catch (_: android.database.sqlite.SQLiteException) { }
+            assertEquals(original, dao.getAllDebts().first())
             val full = Debt(0, (-80 * sign).toBigDecimal(), 1, null, "2026-11-16", repaymentOfId = 1, operationId = "payment-0000000002")
             try { dao.saveDebt(full); fail("write accepted") } catch (_: android.database.sqlite.SQLiteException) { }
             assertEquals("token-2", dao.getAllDebts().first().reminderToken)
