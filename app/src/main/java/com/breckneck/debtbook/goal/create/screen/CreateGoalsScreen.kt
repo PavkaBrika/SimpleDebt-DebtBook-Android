@@ -74,6 +74,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.toDMYFormat
+import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.components.SettingsPickerBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -83,8 +85,6 @@ import com.breckneck.debtbook.goal.create.CreateGoalsState
 import com.breckneck.debtbook.goal.create.CreateGoalsViewModel
 import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.debtbook.goal.create.model.SavedSumError
-import com.breckneck.debtbook.goal.ui.GoalButton
-import com.breckneck.debtbook.goal.ui.GoalHeader
 import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
 import java.util.Date
@@ -121,7 +121,7 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
         contentColor = colors.ink,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            GoalHeader(
+            BubbleTopBar(
                 title = title,
                 onBack = { onAction(CreateGoalsAction.BackClick) },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -137,7 +137,7 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                         color = colors.danger,
                     )
                 }
-                GoalButton(
+                BubbleButton(
                     onClick = {
                         focus.clearFocus()
                         keyboard?.hide()

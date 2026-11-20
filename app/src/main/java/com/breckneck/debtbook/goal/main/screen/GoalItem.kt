@@ -1,7 +1,5 @@
 package com.breckneck.debtbook.goal.main.screen
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,11 +16,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,11 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleFanOrnament
+import com.breckneck.debtbook.core.ui.components.BubbleOutlinedButton
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.model.GoalUi
 import java.text.NumberFormat
@@ -67,16 +60,11 @@ internal fun GoalItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                val buttonColors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = colors.paper,
-                    contentColor = colors.muted,
-                )
-                val border = BorderStroke(1.dp, colors.border)
-                OutlinedButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp), border = border, colors = buttonColors) {
+                BubbleOutlinedButton(onClick = onAdd) {
                     Icon(Icons.Outlined.Add, null, Modifier.padding(end = 5.dp).size(18.dp))
                     Text(stringResource(R.string.goal_top_up))
                 }
-                OutlinedButton(onClick = onEdit, modifier = Modifier.heightIn(min = 48.dp), border = border, colors = buttonColors) {
+                BubbleOutlinedButton(onClick = onEdit) {
                     Icon(Icons.Outlined.Edit, null, Modifier.padding(end = 5.dp).size(18.dp))
                     Text(stringResource(R.string.goal_edit_action))
                 }
@@ -107,7 +95,7 @@ internal fun GoalBalanceCard(goal: GoalUi, modifier: Modifier = Modifier, onOpen
             }
             Box(Modifier.fillMaxWidth()) {
                 if (goal.photoPath == null) {
-                    GoalOrnament(colors.onMint.copy(alpha = 0.25f), Modifier.align(Alignment.TopEnd).size(64.dp))
+                    BubbleFanOrnament(colors.onMint.copy(alpha = 0.25f), Modifier.align(Alignment.TopEnd).size(64.dp))
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (onOpen != null) {
@@ -149,24 +137,6 @@ internal fun GoalBalanceCard(goal: GoalUi, modifier: Modifier = Modifier, onOpen
                     NumberFormat.getPercentInstance().format(goal.percent / 100.0),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun GoalOrnament(color: Color, modifier: Modifier) {
-    Canvas(modifier) {
-        val width = size.width * .34f
-        val height = size.height * .77f
-        repeat(12) { index ->
-            rotate(index * 15f) {
-                drawOval(
-                    color = color,
-                    topLeft = Offset(center.x - width / 2, center.y - height / 2),
-                    size = Size(width, height),
-                    style = Stroke(width = 1.dp.toPx()),
                 )
             }
         }

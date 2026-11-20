@@ -3,13 +3,13 @@ package com.breckneck.debtbook.goal.main.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.EmptyListPlaceholder
 import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -40,7 +41,6 @@ import com.breckneck.debtbook.goal.main.GoalsAction
 import com.breckneck.debtbook.goal.main.GoalsState
 import com.breckneck.debtbook.goal.main.GoalsViewModel
 import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
-import com.breckneck.debtbook.goal.ui.GoalButton
 import com.breckneck.deptbook.domain.util.ListState
 import org.orbitmvi.orbit.compose.collectAsState
 
@@ -61,7 +61,7 @@ private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction:
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             Column {
-                GoalButton(
+                BubbleButton(
                     onClick = { onAction(GoalsAction.AddGoalClick) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 ) {

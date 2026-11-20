@@ -48,10 +48,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.GoalAdjustment
 import com.breckneck.debtbook.goal.main.model.GoalUi
-import com.breckneck.debtbook.goal.ui.GoalButton
 import com.breckneck.deptbook.domain.util.DecimalInput
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -144,7 +144,7 @@ internal fun GoalAdjustmentSheet(
             if (errorMessage != null) {
                 Text(errorMessage, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = colors.danger)
             }
-            GoalButton(onClick = onConfirm, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("goal_adjustment_confirm")) {
+            BubbleButton(onClick = onConfirm, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("goal_adjustment_confirm")) {
                 Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
                 Text(stringResource(if (withdraw) R.string.goal_withdraw else R.string.goal_top_up), Modifier.padding(start = 8.dp))
             }

@@ -29,7 +29,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -51,6 +50,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleIconButton
+import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -58,8 +60,6 @@ import com.breckneck.debtbook.goal.main.model.GoalUi
 import com.breckneck.debtbook.goal.main.screen.GoalAdjustmentSheet
 import com.breckneck.debtbook.goal.main.screen.GoalBalanceCard
 import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
-import com.breckneck.debtbook.goal.ui.GoalButton
-import com.breckneck.debtbook.goal.ui.GoalHeader
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
@@ -116,7 +116,7 @@ private fun GoalDetailsContent(
         contentColor = colors.ink,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            GoalHeader(goal.name, onBack, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+            BubbleTopBar(goal.name, onBack, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                 GoalActionsMenu(goal.isReached, onEdit, onDelete)
             }
         },
@@ -133,11 +133,11 @@ private fun GoalDetailsContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        GoalButton(onClick = onAdd, modifier = Modifier.weight(1f), colors = secondaryColors) {
+                        BubbleButton(onClick = onAdd, modifier = Modifier.weight(1f), colors = secondaryColors) {
                             Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                             Text(stringResource(R.string.goal_top_up), Modifier.padding(start = 6.dp))
                         }
-                        GoalButton(onClick = onSubtract, modifier = Modifier.weight(1f), colors = secondaryColors, enabled = goal.hasSavings) {
+                        BubbleButton(onClick = onSubtract, modifier = Modifier.weight(1f), colors = secondaryColors, enabled = goal.hasSavings) {
                             Icon(Icons.AutoMirrored.Outlined.CallMade, null, Modifier.size(18.dp))
                             Text(stringResource(R.string.goal_withdraw), Modifier.padding(start = 6.dp))
                         }
@@ -194,10 +194,8 @@ private fun GoalActionsMenu(isReached: Boolean, onEdit: () -> Unit, onDelete: ()
     val colors = bubbleColors()
     var expanded by remember { mutableStateOf(false) }
     Box {
-        Surface(shape = CircleShape, color = colors.paper, border = BorderStroke(1.dp, colors.border)) {
-            IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.goal_actions), tint = colors.ink)
-            }
+        BubbleIconButton(onClick = { expanded = true }) {
+            Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.goal_actions))
         }
         DropdownMenu(
             expanded = expanded, onDismissRequest = { expanded = false },
