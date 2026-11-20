@@ -3,8 +3,9 @@ package com.breckneck.debtbook.debt
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
-import android.view.View
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.EditText
 import android.view.inputmethod.InputMethodManager
@@ -207,31 +208,48 @@ class PartialRepaymentScreenTest {
             }
             val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
             automation.serviceInfo = automation.serviceInfo.apply {
-                flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+                flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
             }
-            var keyboardTop: Int? = null
+            data class ScreenBounds(val keyboard: Rect, val amount: Rect, val save: Rect)
+            var bounds: ScreenBounds? = null
             var stableFrames = 0
-            await("repayment keyboard did not open") {
-                val top = automation.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }?.let { window ->
-                    Rect().also(window::getBoundsInScreen).takeUnless { it.isEmpty }?.top
-                }
-                stableFrames = if (top != null && keyboardTop == top) stableFrames + 1 else 0
-                keyboardTop = top
+            await("repayment keyboard and form did not become visible") {
+                val windows = automation.windows
+                val keyboard = windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+                    ?.let { Rect().also(it::getBoundsInScreen).takeUnless(Rect::isEmpty) }
+                val controls = windows.asSequence().filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }.mapNotNull { window ->
+                    val root = window.root ?: return@mapNotNull null
+                    fun boundsOf(id: String) = root.findAccessibilityNodeInfosByViewId(id)
+                        .firstOrNull { it.isVisibleToUser }?.let { Rect().also(it::getBoundsInScreen) }
+                    val amount = boundsOf("${context.packageName}:id/repaymentAmountInput") ?: return@mapNotNull null
+                    val save = boundsOf("android:id/button1") ?: return@mapNotNull null
+                    amount to save
+                }.firstOrNull()
+                val current = if (keyboard != null && controls != null) {
+                    ScreenBounds(keyboard, controls.first, controls.second)
+                } else null
+                stableFrames = if (current != null && bounds == current) stableFrames + 1 else 0
+                bounds = current
                 stableFrames >= 5
             }
             screenshot("keyboard")
-            scenario.onActivity {
-                val dialog = (details(it).childFragmentManager.findFragmentByTag(RepaymentDialogFragment.TAG) as RepaymentDialogFragment).requireDialog() as AlertDialog
-                val imeTop = checkNotNull(keyboardTop)
-                for (control in listOf<View>(requireNotNull(dialog.findViewById<EditText>(R.id.repaymentAmountInput)), dialog.getButton(AlertDialog.BUTTON_POSITIVE))) {
-                    val position = IntArray(2)
-                    control.getLocationOnScreen(position)
-                    val controlBottom = position[1] + control.height
-                    assertTrue("Repayment control ends at $controlBottom, below IME top $imeTop", controlBottom <= imeTop)
-                    assertTrue(control.isShown)
+            val visible = checkNotNull(bounds)
+            for (control in listOf(visible.amount, visible.save)) {
+                assertFalse(control.isEmpty)
+                assertTrue("Repayment control ends at ${control.bottom}, below IME top ${visible.keyboard.top}",
+                    control.bottom <= visible.keyboard.top)
+            }
+            val downTime = SystemClock.uptimeMillis()
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                val tap = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
+                    visible.save.centerX().toFloat(), visible.save.centerY().toFloat(), 0)
+                try {
+                    tap.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                    assertTrue(automation.injectInputEvent(tap, true))
+                } finally {
+                    tap.recycle()
                 }
             }
-            saveTwice(scenario)
             await("keyboard save did not persist") { dao.getAllDebtsById(humanId).size == 2 }
             ready(scenario)
             assertAmount(80)
