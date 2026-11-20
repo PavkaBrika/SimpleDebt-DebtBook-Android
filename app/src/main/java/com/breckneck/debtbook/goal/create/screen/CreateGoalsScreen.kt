@@ -1,7 +1,6 @@
 package com.breckneck.debtbook.goal.create.screen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,11 +15,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,10 +36,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -54,8 +48,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
@@ -64,7 +56,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -75,6 +66,9 @@ import coil3.compose.AsyncImage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.toDMYFormat
 import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
+import com.breckneck.debtbook.core.ui.components.BubbleGroup
+import com.breckneck.debtbook.core.ui.components.BubbleTextFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.components.SettingsPickerBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
@@ -162,11 +156,11 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            GoalFormGroup {
-                GoalTextRow(
+            BubbleGroup {
+                BubbleTextFieldRow(
                     icon = Icons.Outlined.Flag,
                     label = stringResource(R.string.name),
-                    value = goal.name,
+                    state = rememberTextFieldState(initialText = goal.name),
                     placeholder = stringResource(R.string.goal_name_hint),
                     enabled = enabled,
                     errorMessage = state.nameError?.let { stringResource(R.string.youmustentername) },
@@ -174,10 +168,10 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                     onChange = { onAction(CreateGoalsAction.NameChanged(it)) },
                 )
                 HorizontalDivider(color = colors.border)
-                GoalTextRow(
+                BubbleTextFieldRow(
                     icon = Icons.Outlined.Layers,
                     label = stringResource(R.string.goal_target_amount),
-                    value = goal.sum,
+                    state = rememberTextFieldState(initialText = goal.sum),
                     placeholder = "0",
                     enabled = enabled,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
@@ -186,10 +180,10 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                     onChange = { onAction(CreateGoalsAction.SumChanged(it)) },
                 )
                 HorizontalDivider(color = colors.border)
-                GoalTextRow(
+                BubbleTextFieldRow(
                     icon = Icons.AutoMirrored.Outlined.CallReceived,
                     label = stringResource(R.string.already_saved_sum),
-                    value = goal.savedSum,
+                    state = rememberTextFieldState(initialText = goal.savedSum),
                     placeholder = "0",
                     enabled = enabled,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
@@ -203,7 +197,7 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                 )
                 HorizontalDivider(color = colors.border)
                 val currencyDescription = stringResource(R.string.a11y_currency_picker, goal.currencyDisplayName)
-                GoalFieldRow(
+                BubbleFieldRow(
                     Icons.Outlined.PieChartOutline, stringResource(R.string.goal_currency),
                     Modifier.clickable(enabled = enabled, role = Role.Button) { openPicker(CreateGoalsAction.CurrencyClick) }
                         .semantics { contentDescription = currencyDescription },
@@ -211,7 +205,7 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                 ) { Text(goal.currency) }
                 HorizontalDivider(color = colors.border)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    GoalFieldRow(
+                    BubbleFieldRow(
                         Icons.Outlined.CalendarMonth, stringResource(R.string.goal_date_optional),
                         Modifier.weight(1f).clickable(enabled = enabled, role = Role.Button) { openPicker(CreateGoalsAction.DateClick) },
                     ) {
@@ -226,7 +220,7 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
                 }
                 if (state.dateInvalid) Text(stringResource(R.string.goal_date_future), Modifier.padding(12.dp), color = colors.danger)
             }
-            GoalFormGroup {
+            BubbleGroup {
                 Column(
                     Modifier.fillMaxWidth().clickable(enabled = enabled, role = Role.Button) {
                         openPicker(CreateGoalsAction.PhotoCardClick)
@@ -269,85 +263,6 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
             onDismiss = { onAction(CreateGoalsAction.DismissDatePicker) },
         )
     }
-}
-
-@Composable
-private fun GoalFormGroup(content: @Composable () -> Unit) {
-    val colors = bubbleColors()
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = colors.paper,
-        contentColor = colors.ink,
-        border = BorderStroke(1.dp, colors.border),
-    ) {
-        Column { content() }
-    }
-}
-
-@Composable
-private fun GoalFieldRow(
-    icon: ImageVector,
-    label: String,
-    modifier: Modifier = Modifier,
-    trailing: @Composable () -> Unit = {},
-    content: @Composable () -> Unit,
-) {
-    val colors = bubbleColors()
-    Row(
-        modifier.fillMaxWidth().heightIn(min = 58.dp).padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Box(Modifier.size(34.dp).background(colors.background, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, null, Modifier.size(18.dp), tint = colors.muted)
-        }
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.muted)
-            content()
-        }
-        trailing()
-    }
-}
-
-@Composable
-private fun GoalTextRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    placeholder: String,
-    enabled: Boolean,
-    errorMessage: String?,
-    keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-    accepts: (String) -> Boolean,
-    onChange: (String) -> Unit,
-) {
-    val colors = bubbleColors()
-    val input = rememberTextFieldState(initialText = value)
-    BasicTextField(
-        state = input,
-        inputTransformation = {
-            val edited = asCharSequence().toString()
-            if (edited != originalText.toString()) {
-                if (accepts(edited)) onChange(edited) else revertAllChanges()
-            }
-        },
-        modifier = Modifier.fillMaxWidth().semantics { if (errorMessage != null) error(errorMessage) },
-        enabled = enabled,
-        lineLimits = TextFieldLineLimits.SingleLine,
-        keyboardOptions = keyboardOptions,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.ink),
-        cursorBrush = SolidColor(colors.ink),
-        decorator = { editor ->
-            GoalFieldRow(icon, label) {
-                Box {
-                    if (input.text.isEmpty()) Text(placeholder, color = colors.muted)
-                    editor()
-                }
-                if (errorMessage != null) Text(errorMessage, color = colors.danger, style = MaterialTheme.typography.bodySmall)
-            }
-        },
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

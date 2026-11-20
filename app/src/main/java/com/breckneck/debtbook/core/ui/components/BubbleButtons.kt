@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.core.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
@@ -13,7 +14,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 
@@ -61,16 +64,18 @@ internal fun BubbleIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    diameter: Dp = 48.dp,
     content: @Composable () -> Unit,
 ) {
     val colors = bubbleColors()
-    Surface(
-        modifier = modifier,
-        shape = CircleShape,
-        color = colors.paper,
-        contentColor = colors.ink,
-        border = BorderStroke(1.dp, colors.border),
-    ) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp), content = content)
+    IconButton(onClick = onClick, enabled = enabled, modifier = modifier.size(48.dp)) {
+        Surface(
+            shape = CircleShape,
+            color = colors.paper,
+            contentColor = colors.ink,
+            border = BorderStroke(1.dp, colors.border),
+        ) {
+            Box(Modifier.size(diameter), contentAlignment = Alignment.Center) { content() }
+        }
     }
 }

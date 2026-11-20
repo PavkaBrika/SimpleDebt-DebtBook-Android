@@ -3,33 +3,22 @@ package com.breckneck.debtbook.core.ui.components
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.core.ui.theme.spacing
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 
-/**
- * Confirmation bottom sheet with title, message and action buttons (replaces dialog_are_you_sure.xml).
- * Follows M3 button hierarchy: destructive confirm = FilledTonal(error), dismiss = TextButton.
- * Used in: DebtDetails, CreateFinance, Synchronization.
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmationBottomSheet(
     title: String,
@@ -37,17 +26,18 @@ fun ConfirmationBottomSheet(
     confirmText: String = stringResource(R.string.yes),
     dismissText: String = stringResource(R.string.No),
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    errorMessage: String? = null,
 ) {
-    DebtBookBottomSheet(onDismiss = onDismiss) {
-        ConfirmationContent(
-            title = title,
-            message = message,
-            confirmText = confirmText,
-            dismissText = dismissText,
-            onConfirm = onConfirm,
-            onDismiss = onDismiss
-        )
+    BubbleBottomSheet(
+        onDismiss = onDismiss,
+        modifier = modifier,
+        dismissEnabled = enabled,
+        contentPadding = PaddingValues(20.dp),
+    ) {
+        ConfirmationContent(title, message, confirmText, dismissText, onConfirm, onDismiss, enabled, errorMessage)
     }
 }
 
@@ -58,47 +48,22 @@ internal fun ConfirmationContent(
     confirmText: String,
     dismissText: String,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    enabled: Boolean = true,
+    errorMessage: String? = null,
 ) {
-    val spacing = MaterialTheme.spacing
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = spacing.space24)
-            .padding(top = spacing.space24, bottom = spacing.space24)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.height(spacing.space16))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(spacing.space24))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(onClick = onDismiss) {
-                Text(text = dismissText)
-            }
-            FilledTonalButton(
-                onClick = onConfirm,
-                modifier = Modifier.padding(start = spacing.space8),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                )
-            ) {
-                Text(text = confirmText)
-            }
-        }
-    }
+    val colors = bubbleColors()
+    Text(title, style = MaterialTheme.typography.headlineSmall)
+    Text(message)
+    if (errorMessage != null) Text(errorMessage, color = colors.danger)
+    BubbleButton(
+        onClick = onConfirm, enabled = enabled, modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(containerColor = colors.danger, contentColor = colors.paper),
+    ) { Text(confirmText) }
+    BubbleButton(
+        onClick = onDismiss, enabled = enabled, modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(containerColor = colors.mint, contentColor = colors.onMint),
+    ) { Text(dismissText) }
 }
 
 @Preview(name = "Confirmation — light")
@@ -106,7 +71,7 @@ internal fun ConfirmationContent(
 @Composable
 private fun ConfirmationBottomSheetPreview() {
     DebtBookTheme(dynamicColor = false) {
-        Surface {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ConfirmationContent(
                 title = "Are you sure?",
                 message = "Delete this debt? This action cannot be undone.",

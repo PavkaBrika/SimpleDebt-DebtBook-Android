@@ -1,6 +1,5 @@
 package com.breckneck.debtbook.goal.details
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,13 +45,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleGroup
 import com.breckneck.debtbook.core.ui.components.BubbleIconButton
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
+import com.breckneck.debtbook.core.ui.components.BubbleValueRow
 import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -145,21 +145,13 @@ private fun GoalDetailsContent(
                 }
             }
             item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    color = colors.paper,
-                    contentColor = colors.ink,
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, colors.border),
-                ) {
-                    Column {
-                        GoalFact(stringResource(R.string.goal_remaining), goal.remainingAmount)
+                BubbleGroup(Modifier.padding(top = 12.dp)) {
+                    BubbleValueRow(stringResource(R.string.goal_remaining), goal.remainingAmount)
+                    HorizontalDivider(color = colors.border)
+                    BubbleValueRow(stringResource(R.string.goal_created), goal.creationDate)
+                    if (goal.isReached && goal.deadline != null) {
                         HorizontalDivider(color = colors.border)
-                        GoalFact(stringResource(R.string.goal_created), goal.creationDate)
-                        if (goal.isReached && goal.deadline != null) {
-                            HorizontalDivider(color = colors.border)
-                            GoalFact(stringResource(R.string.goal_deadline), goal.deadline)
-                        }
+                        BubbleValueRow(stringResource(R.string.goal_deadline), goal.deadline)
                     }
                 }
             }
@@ -220,18 +212,6 @@ private fun GoalActionsMenu(isReached: Boolean, onEdit: () -> Unit, onDelete: ()
                 },
             )
         }
-    }
-}
-
-@Composable
-private fun GoalFact(label: String, value: String) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 15.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, Modifier.weight(1f))
-        Text(value, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
     }
 }
 
