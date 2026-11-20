@@ -2,11 +2,12 @@ package com.breckneck.debtbook.debt
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.view.View
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.EditText
 import android.view.inputmethod.InputMethodManager
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
@@ -16,6 +17,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
@@ -99,7 +101,7 @@ class PartialRepaymentScreenTest {
     private fun openPayment(scenario: ActivityScenario<MainActivity>) {
         scrollToRecord(scenario, originalId)
         onView(withTagValue(equalTo(originalId))).perform(click())
-        onView(withId(R.id.repaymentButton)).perform(click())
+        onView(withId(R.id.repaymentButton)).inRoot(isDialog()).perform(scrollTo(), click())
         onView(withId(R.id.repaymentAmountInput)).check(matches(isDisplayed()))
     }
     private fun saveTwice(scenario: ActivityScenario<MainActivity>) {
@@ -122,8 +124,9 @@ class PartialRepaymentScreenTest {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 open(scenario)
                 onView(withTagValue(equalTo(originalId))).perform(click())
-                onView(withId(R.id.repaymentButton)).check(matches(withText(if (sign > 0) R.string.repayment_received else R.string.repayment_paid)))
-                    .perform(click())
+                onView(withId(R.id.repaymentButton)).inRoot(isDialog())
+                    .check(matches(withText(if (sign > 0) R.string.repayment_received else R.string.repayment_paid)))
+                    .perform(scrollTo(), click())
                 onView(withId(R.id.repaymentAmountInput)).perform(replaceText("101"), closeSoftKeyboard())
                 onView(withText(R.string.save)).perform(click())
                 onView(withText(containsString(context.getString(R.string.repayment_over, "100", "EUR")))).check(matches(isDisplayed()))
@@ -150,8 +153,9 @@ class PartialRepaymentScreenTest {
                 val last = dao.getAllDebtsById(humanId).maxBy { it.id }
                 scrollToRecord(scenario, last.id)
                 onView(withTagValue(equalTo(last.id))).perform(click())
-                onView(withId(R.id.deleteButton)).check(matches(withText(R.string.repayment_cancel))).perform(click())
-                onView(withId(android.R.id.button1)).perform(click())
+                onView(withId(R.id.deleteButton)).inRoot(isDialog())
+                    .check(matches(withText(R.string.repayment_cancel))).perform(scrollTo(), click())
+                onView(withId(android.R.id.button1)).inRoot(isDialog()).perform(click())
                 await("cancellation not stored") { dao.getAllDebtsById(humanId).any { it.id == last.id && it.cancelled } }
                 ready(scenario)
                 assertAmount(80 * sign)
@@ -201,36 +205,32 @@ class PartialRepaymentScreenTest {
                 input.requestFocus()
                 (it.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
             }
-            var previousBottom = 0
+            val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+            automation.serviceInfo = automation.serviceInfo.apply {
+                flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            }
+            var keyboardTop: Int? = null
             var stableFrames = 0
             await("repayment keyboard did not open") {
-                var shown = false
-                scenario.onActivity {
-                    val dialog = (details(it).childFragmentManager.findFragmentByTag(RepaymentDialogFragment.TAG) as RepaymentDialogFragment).requireDialog()
-                    val insets = ViewCompat.getRootWindowInsets(dialog.window!!.decorView)
-                    val activityInsets = ViewCompat.getRootWindowInsets(it.window.decorView)
-                    val bottom = maxOf(insets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0,
-                        activityInsets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0)
-                    stableFrames = if (bottom > 0 && previousBottom == bottom) stableFrames + 1 else 0
-                    previousBottom = bottom
-                    shown = (insets?.isVisible(WindowInsetsCompat.Type.ime()) == true ||
-                        activityInsets?.isVisible(WindowInsetsCompat.Type.ime()) == true) && stableFrames >= 5
+                val top = automation.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }?.let { window ->
+                    Rect().also(window::getBoundsInScreen).takeUnless { it.isEmpty }?.top
                 }
-                shown
+                stableFrames = if (top != null && keyboardTop == top) stableFrames + 1 else 0
+                keyboardTop = top
+                stableFrames >= 5
             }
+            screenshot("keyboard")
             scenario.onActivity {
                 val dialog = (details(it).childFragmentManager.findFragmentByTag(RepaymentDialogFragment.TAG) as RepaymentDialogFragment).requireDialog() as AlertDialog
-                val screenBottom = it.window.decorView.height
-                val imeBottom = maxOf(ViewCompat.getRootWindowInsets(dialog.window!!.decorView)!!.getInsets(WindowInsetsCompat.Type.ime()).bottom,
-                    ViewCompat.getRootWindowInsets(it.window.decorView)!!.getInsets(WindowInsetsCompat.Type.ime()).bottom)
+                val imeTop = checkNotNull(keyboardTop)
                 for (control in listOf<View>(requireNotNull(dialog.findViewById<EditText>(R.id.repaymentAmountInput)), dialog.getButton(AlertDialog.BUTTON_POSITIVE))) {
                     val position = IntArray(2)
                     control.getLocationOnScreen(position)
-                    assertTrue("Repayment control is hidden behind IME", position[1] + control.height <= screenBottom - imeBottom)
+                    val controlBottom = position[1] + control.height
+                    assertTrue("Repayment control ends at $controlBottom, below IME top $imeTop", controlBottom <= imeTop)
                     assertTrue(control.isShown)
                 }
             }
-            screenshot("keyboard")
             saveTwice(scenario)
             await("keyboard save did not persist") { dao.getAllDebtsById(humanId).size == 2 }
             ready(scenario)

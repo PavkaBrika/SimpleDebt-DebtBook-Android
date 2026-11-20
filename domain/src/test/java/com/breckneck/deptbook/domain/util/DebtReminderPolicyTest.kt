@@ -42,7 +42,7 @@ class DebtReminderPolicyTest {
         val la = TimeZone.getTimeZone("America/Los_Angeles")
         assertEquals(at("2026-03-08", 10 * 60 + 30), DebtReminderPolicy.trigger("2026-03-08", 2 * 60 + 30, la))
         val repeated = DebtReminderPolicy.trigger("2026-11-01", 90, la)
-        assertEquals(repeated, DebtReminderPolicy.trigger("2026-11-01", 90, la))
+        assertEquals(at("2026-11-01", 9 * 60 + 30), repeated)
         assertEquals("2026-11-17", row.dueDay)
     }
 
