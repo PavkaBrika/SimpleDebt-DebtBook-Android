@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.goal.details
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import android.widget.Toast
 
 import java.math.BigDecimal
@@ -55,8 +56,6 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -113,14 +112,10 @@ class GoalDetailsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
-        val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
         vm.operationError.observe(viewLifecycleOwner) { failed ->
             if (failed) Toast.makeText(requireContext(), R.string.something_went_wrong, Toast.LENGTH_LONG).show()
         }
         val sdf = SimpleDateFormat("d MMM yyyy")
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
 
         if (vm.isChangeSavedSumDialogOpened == true) {
             openChangeSavedGoalSumDialog(state = vm.changeDialogState!!)
@@ -210,7 +205,7 @@ class GoalDetailsFragment : Fragment() {
 
         vm.goal.observe(viewLifecycleOwner) { goal ->
             collaps.title = goal.name
-            goalSumTextView.text = decimalFormat.format(goal.sum)
+            goalSumTextView.text = MoneyDisplay.format(goal.sum, goal.currency)
             goalCreationDateTextView.text = sdf.format(goal.creationDate)
 
             goalSavedMoneyCurrencyTextView.text = goal.currency
@@ -249,8 +244,9 @@ class GoalDetailsFragment : Fragment() {
         }
 
         vm.goalSavedSum.observe(viewLifecycleOwner) { savedSum ->
-            goalSavedMoneyTextView.text = decimalFormat.format(savedSum)
-            val sum = vm.goal.value!!.sum
+            val goal = vm.goal.value!!
+            goalSavedMoneyTextView.text = MoneyDisplay.format(savedSum, goal.currency)
+            val sum = goal.sum
             if (sum - savedSum <= 0) { // if goal is reached
                 editGoalButton.visibility = View.GONE
                 goalRemainingSumLayout.visibility = View.GONE
@@ -281,7 +277,7 @@ class GoalDetailsFragment : Fragment() {
                 }
             } else {
                 editGoalButton.visibility = View.VISIBLE
-                goalRemainingMoneyTextView.text = decimalFormat.format(sum - savedSum)
+                goalRemainingMoneyTextView.text = MoneyDisplay.format(sum - savedSum, goal.currency)
                 if (vm.goal.value!!.presentationGoalDate != null) {
                     goalDateLayout.visibility = View.VISIBLE
                     if (vm.goal.value!!.isPastGoalDay) {

@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.details
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import java.math.BigDecimal
 import com.breckneck.deptbook.domain.util.compareTo
 
@@ -61,9 +62,6 @@ import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import javax.inject.Inject
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
-import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
 
 
@@ -274,19 +272,16 @@ class DebtDetailsFragment : Fragment() {
 
     fun setOverallSumText(sum: BigDecimal, currency: String, view: View) {
         overallSumTextView = view.findViewById(R.id.overallSumTextView)
-        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
-        val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
+        val formatted = MoneyDisplay.format(sum, currency)
         if (sum > 0) {
             overallSumTextView.setTextColor(ContextCompat.getColor(view.context, R.color.green))
-            overallSumTextView.text = "+${decimalFormat.format(sum)} $currency"
+            overallSumTextView.text = "+$formatted $currency"
         } else if (sum < 0) {
             overallSumTextView.setTextColor(ContextCompat.getColor(view.context, R.color.red))
-            overallSumTextView.text = "${decimalFormat.format(sum)} $currency"
+            overallSumTextView.text = "$formatted $currency"
         } else {
             overallSumTextView.setTextColor(ContextCompat.getColor(view.context, R.color.darkgray))
-            overallSumTextView.text = "${decimalFormat.format(sum)} $currency"
+            overallSumTextView.text = "$formatted $currency"
         }
     }
 
@@ -353,7 +348,7 @@ class DebtDetailsFragment : Fragment() {
                                 ConfirmationBottomSheet(
                                     title = action,
                                     message = if (repayment) stringResource(R.string.repayment_cancel_confirm,
-                                        DecimalInput.format(debt.sum.abs()), currency)
+                                        MoneyDisplay.format(debt.sum.abs(), currency), currency)
                                     else stringResource(R.string.debt_delete_question),
                                     confirmText = action,
                                     dismissText = stringResource(R.string.cancel),
@@ -443,7 +438,7 @@ class DebtDetailsFragment : Fragment() {
         val details = if (debt.repaymentOfId != null) {
             debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, vm.humanCurrency.orEmpty()) }
         } else {
-            getString(R.string.debt_remaining, DecimalInput.format(vm.remaining(debt)), vm.humanCurrency)
+            getString(R.string.debt_remaining, MoneyDisplay.format(vm.remaining(debt), vm.humanCurrency.orEmpty()), vm.humanCurrency)
         }
         val description = listOfNotNull(getString(debt.historyTitle()), details, debt.info?.takeIf { it.isNotBlank() })
         return debt.copy(info = description.joinToString("; "))

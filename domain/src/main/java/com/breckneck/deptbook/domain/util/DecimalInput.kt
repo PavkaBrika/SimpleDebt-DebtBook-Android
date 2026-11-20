@@ -12,6 +12,9 @@ object DecimalInput {
     }
     fun isEditable(text: String, currency: String = "USD"): Boolean =
         Regex("[+-]?[0-9]{0,18}(?:[.,][0-9]{0,${MoneyPolicy.scale(currency)}})?").matches(text)
-    fun format(value: BigDecimal, locale: Locale = Locale.getDefault()): String =
-        value.stripTrailingZeros().toPlainString().replace('.', DecimalFormatSymbols(locale).decimalSeparator)
+    fun format(value: BigDecimal, locale: Locale = Locale.getDefault(), currency: String? = null): String {
+        val exact = value.stripTrailingZeros()
+        val scale = maxOf(exact.scale(), currency?.let(MoneyPolicy::scale) ?: 0)
+        return exact.setScale(scale).toPlainString().replace('.', DecimalFormatSymbols(locale).decimalSeparator)
+    }
 }

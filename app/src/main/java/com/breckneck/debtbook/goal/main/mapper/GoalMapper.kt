@@ -1,10 +1,10 @@
 package com.breckneck.debtbook.goal.main.mapper
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.deptbook.domain.util.compareTo
 
 import android.content.Context
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.common.format
 import com.breckneck.debtbook.common.toDMYFormat
 import com.breckneck.debtbook.goal.main.model.GoalUi
 import com.breckneck.deptbook.domain.model.Goal
@@ -56,11 +56,11 @@ fun Goal.toUi(context: Context): GoalUi {
         name = name,
         photoPath = photoPath,
         hasPhoto = photoPath != null && File(photoPath!!).exists(),
-        savedAmount = savedSum.format(),
-        totalAmount = sum.format(),
+        savedAmount = MoneyDisplay.format(savedSum, currency),
+        totalAmount = MoneyDisplay.format(sum, currency),
         currency = currency,
         isReached = isReached,
-        remainingAmount = if (!isReached) (sum - savedSum).format() else null,
+        remainingAmount = if (!isReached) MoneyDisplay.format(sum - savedSum, currency) else null,
         date = dateChipText,
         isOverdue = isOverdue,
     )

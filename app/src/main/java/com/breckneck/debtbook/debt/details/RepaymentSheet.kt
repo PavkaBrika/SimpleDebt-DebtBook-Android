@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.details
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,8 +49,8 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
     val error by vm.repaymentError.observeAsState()
     val busy by vm.isDeleting.observeAsState(false)
     val ready = screen == DebtDetailsState.SUCCESS && !busy
-    val rest = DecimalInput.format(remaining)
     val currency = vm.humanCurrency.orEmpty()
+    val rest = MoneyDisplay.format(remaining, currency)
     val spacing = MaterialTheme.spacing
     val errorText = when (error) {
         RepaymentError.INVALID_AMOUNT -> stringResource(R.string.repayment_invalid)
@@ -96,7 +97,7 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
                     DebtBookOutlinedAction(
                         label = stringResource(R.string.repayment_full),
                         icon = Icons.Outlined.Calculate,
-                        onClick = { vm.changeRepaymentAmount(rest) },
+                        onClick = { vm.changeRepaymentAmount(DecimalInput.format(remaining, currency = currency)) },
                         enabled = ready,
                         modifier = Modifier.fillMaxWidth().testTag("repaymentFullButton")
                     )

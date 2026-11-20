@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.details.adapter
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.deptbook.domain.util.compareTo
 
 import android.annotation.SuppressLint
@@ -32,8 +33,6 @@ import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
 import java.math.BigDecimal
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 
 class DebtDetailsAdapter(
     debtDomainListImmutable: List<DebtDomain>,
@@ -43,8 +42,6 @@ class DebtDetailsAdapter(
     private val originalDebt: (Int) -> DebtDomain?
 ) : RecyclerView.Adapter<DebtDetailsAdapter.DebtViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
-    private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val debtDomainList: MutableList<DebtDomain> = debtDomainListImmutable.toMutableList()
 
     interface OnDebtClickListener {
@@ -137,8 +134,6 @@ class DebtDetailsAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DebtViewHolder {
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
         val itemView =
             LayoutInflater.from(parent.context).inflate(R.layout.item_debt, parent, false)
         return DebtViewHolder(itemView)
@@ -156,9 +151,9 @@ class DebtDetailsAdapter(
         val details = if (originalId == null) {
             buildList {
                 if (rest < debtDomain.sum.abs()) {
-                    add(context.getString(R.string.debt_repaid, decimalFormat.format(debtDomain.sum.abs() - rest), currencyText))
+                    add(context.getString(R.string.debt_repaid, MoneyDisplay.format(debtDomain.sum.abs() - rest, currencyText), currencyText))
                     add(if (rest.signum() == 0) context.getString(R.string.repayment_closed)
-                        else context.getString(R.string.debt_remaining, decimalFormat.format(rest), currencyText))
+                        else context.getString(R.string.debt_remaining, MoneyDisplay.format(rest, currencyText), currencyText))
                 }
             }.joinToString("\n")
         } else {
@@ -169,11 +164,11 @@ class DebtDetailsAdapter(
         if (debtDomain.sum > 0) {
             holder.debt.setTextColor(holder.greenColor)
             holder.currency.setTextColor(holder.greenColor)
-            holder.debt.text = "+${decimalFormat.format(debtDomain.sum)}"
+            holder.debt.text = "+${MoneyDisplay.format(debtDomain.sum, currencyText)}"
         } else {
             holder.debt.setTextColor(holder.redColor)
             holder.currency.setTextColor(holder.redColor)
-            holder.debt.text = decimalFormat.format(debtDomain.sum)
+            holder.debt.text = MoneyDisplay.format(debtDomain.sum, currencyText)
         }
         holder.info.text = debtDomain.info
         holder.currency.text = currencyText

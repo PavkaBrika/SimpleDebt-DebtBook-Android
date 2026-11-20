@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.details
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,7 +31,6 @@ import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.components.DebtBookOutlinedAction
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.model.DebtDomain
-import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
 import java.math.BigDecimal
 
@@ -59,7 +59,7 @@ internal fun DebtActionsSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(debt.historyTitle()), style = MaterialTheme.typography.titleLarge)
-                    Text("${DecimalInput.format(debt.sum.abs())} $currency · ${LedgerDate.display(debt.date)}",
+                    Text("${MoneyDisplay.format(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
                         style = MaterialTheme.typography.bodyMedium)
                 }
                 if (!isRepayment && !hasRepayments) {
@@ -80,7 +80,7 @@ internal fun DebtActionsSheet(
                 }
             } else {
                 if (hasRepayments) {
-                    Text(stringResource(R.string.debt_remaining, DecimalInput.format(remaining), currency),
+                    Text(stringResource(R.string.debt_remaining, MoneyDisplay.format(remaining, currency), currency),
                         style = MaterialTheme.typography.bodyMedium)
                 }
                 if (remaining.signum() > 0) {

@@ -34,6 +34,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
+import java.text.DecimalFormatSymbols
 
 /** Run only on a disposable emulator. No account, ads or network is involved. */
 class PartialRepaymentScreenTest {
@@ -134,7 +135,7 @@ class PartialRepaymentScreenTest {
                     .performClick()
                 compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("101")
                 compose.onNodeWithTag("repaymentSaveButton").performClick()
-                compose.onNodeWithText(context.getString(R.string.repayment_over, "100", "EUR")).assertIsDisplayed()
+                compose.onNodeWithText(context.getString(R.string.repayment_over, "100${DecimalFormatSymbols().decimalSeparator}00", "EUR")).assertIsDisplayed()
                 assertAmount(100 * sign)
                 compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("20")
                 scenario.recreate()
@@ -147,7 +148,7 @@ class PartialRepaymentScreenTest {
                 screenshot("partial-$sign")
                 openPayment(scenario)
                 compose.onNodeWithTag("repaymentFullButton").performClick()
-                compose.onNodeWithTag("repaymentAmountInput").assertTextContains("80")
+                compose.onNodeWithTag("repaymentAmountInput").assertTextContains("80${DecimalFormatSymbols().decimalSeparator}00")
                 saveTwice()
                 await("full payment not stored") { dao.getAllDebtsById(humanId).size == 3 }
                 ready(scenario)

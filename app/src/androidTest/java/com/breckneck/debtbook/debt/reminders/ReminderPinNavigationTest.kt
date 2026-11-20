@@ -6,16 +6,21 @@ import android.content.Intent
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
+import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.AuthSession
 import com.breckneck.debtbook.auth.PinCodeStore
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
+import com.google.android.material.appbar.CollapsingToolbarLayout
 import database.AppDataBase
 import entity.Debt
 import entity.Human
@@ -24,6 +29,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
+import java.text.DecimalFormatSymbols
 
 class ReminderPinNavigationTest {
     @get:Rule val compose = createEmptyComposeRule()
@@ -41,8 +47,8 @@ class ReminderPinNavigationTest {
         val notifications = context.getSystemService(NotificationManager::class.java)
         try {
             dao.deleteDebtsByHumanId(id); dao.deleteHumanById(id)
-            dao.insertHuman(Human(id, "Protected debt", BigDecimal.ZERO, "EUR"))
-            dao.saveDebt(Debt(id, BigDecimal("100"), id, "Requested original", "2026-11-16"))
+            dao.insertHuman(Human(id, "Protected owner", BigDecimal.ZERO, "EUR"))
+            dao.saveDebt(Debt(id, BigDecimal("10.5"), id, "Requested original", "2026-11-16"))
             dao.saveDebt(Debt(id + 1, BigDecimal("50"), id, "Other original", "2026-11-16"))
             dao.updateDebt(dao.getAllDebtsById(id).first { it.id == id }.copy(
                 dueDay = DebtReminderPolicy.today(now), reminderMinute = 0, reminderToken = token))
@@ -65,11 +71,19 @@ class ReminderPinNavigationTest {
                 assertFalse(AuthSession.isUnlocked)
                 "1234".forEach { compose.onNodeWithText(it.toString()).performClick() }
                 compose.waitUntil(15000) { AuthSession.isUnlocked }
+                val amount = "10${DecimalFormatSymbols().decimalSeparator}50 EUR"
                 compose.waitUntil(15_000) {
-                    compose.onAllNodesWithText("100 EUR", substring = true)
+                    compose.onAllNodesWithText(amount, substring = true)
                         .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
                 }
-                compose.onNodeWithText("100 EUR", substring = true).assertExists()
+                compose.onNodeWithText(amount, substring = true).assertExists()
+                compose.onNodeWithTag("debtActionsCancel").performClick()
+                onView(withId(R.id.collaps)).check { view, error ->
+                    if (error != null) throw error
+                    assertEquals("Protected owner", (view as CollapsingToolbarLayout).title.toString())
+                }
+                compose.onNodeWithText("Reminder already sent").assertDoesNotExist()
+                compose.onNodeWithText("Напоминание уже отправлено").assertDoesNotExist()
             }
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync {

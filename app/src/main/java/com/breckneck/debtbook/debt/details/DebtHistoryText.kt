@@ -1,10 +1,10 @@
 package com.breckneck.debtbook.debt.details
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import android.content.Context
 import androidx.annotation.StringRes
 import com.breckneck.debtbook.R
 import com.breckneck.deptbook.domain.model.DebtDomain
-import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
 
 @StringRes
@@ -17,4 +17,4 @@ internal fun DebtDomain.historyTitle(): Int = when {
 }
 
 internal fun Context.originalDebtLabel(debt: DebtDomain, currency: String): String =
-    getString(R.string.repayment_context, DecimalInput.format(debt.sum.abs()), currency, LedgerDate.display(debt.date))
+    getString(R.string.repayment_context, MoneyDisplay.format(debt.sum.abs(), currency), currency, LedgerDate.display(debt.date))

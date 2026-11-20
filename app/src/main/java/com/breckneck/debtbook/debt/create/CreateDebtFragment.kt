@@ -189,7 +189,7 @@ class CreateDebtFragment: Fragment() {
         debtSumEditText.keyListener = DigitsKeyListener.getInstance("0123456789.,")
 
         if (idDebt != null && idDebt > 0) { //EXIST HUMAN EDIT DEBT LAYOUT CHANGES
-            debtSumEditText.setText(DecimalInput.format(com.breckneck.deptbook.domain.util.abs(sumArgs)))
+            debtSumEditText.setText(DecimalInput.format(sumArgs.abs(), currency = currency))
             customSwitch.setChecked(sumArgs >= BigDecimal.ZERO)
             if (vm.hasRepayments) {
                 customSwitch.isEnabled = false
