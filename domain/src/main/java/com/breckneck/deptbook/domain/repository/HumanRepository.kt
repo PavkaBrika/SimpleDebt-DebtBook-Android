@@ -6,6 +6,8 @@ import com.breckneck.deptbook.domain.model.HumanDomain
 
 interface HumanRepository {
 
+    fun getHumanById(id: Int): HumanDomain?
+
     fun getAllHumans() : List<HumanDomain>
 
     fun replaceAllHumans(humanList: List<HumanDomain>)

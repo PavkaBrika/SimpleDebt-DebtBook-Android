@@ -8,13 +8,14 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.SavedStateHandle
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase
 import com.breckneck.deptbook.domain.usecase.Human.AddSumUseCase
 import com.breckneck.deptbook.domain.usecase.Human.DeleteHumanUseCase
-import com.breckneck.deptbook.domain.usecase.Human.GetHumanSumDebtUseCase
+import com.breckneck.deptbook.domain.usecase.Human.GetHumanByIdUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetLastHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder
@@ -38,7 +39,7 @@ class DebtDetailsViewModelTest {
     @get:Rule val instantTaskRule = InstantTaskExecutorRule()
     private val debts: GetAllDebtsByIdUseCase = mock()
     private val latestId: GetLastHumanIdUseCase = mock()
-    private val sum: GetHumanSumDebtUseCase = mock()
+    private val human: GetHumanByIdUseCase = mock()
     private val deleteHuman: DeleteHumanUseCase = mock()
     private val deleteHumanDebts: DeleteDebtsByHumanIdUseCase = mock()
     private val deleteDebt: DeleteDebtUseCase = mock()
@@ -52,12 +53,12 @@ class DebtDetailsViewModelTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         whenever(getOrder.execute()).thenReturn(DebtOrderAttribute.CreationDate to false)
         whenever(debts.execute(any())).thenReturn(listOf(record))
-        whenever(sum.execute(any())).thenReturn(record.sum)
+        whenever(human.execute(7)).thenReturn(HumanDomain(7, "Actual owner", record.sum, "EUR"))
     }
     @After fun teardown() = Dispatchers.resetMain()
 
     private fun vm(state: SavedStateHandle = SavedStateHandle(mapOf("idHuman" to 7))) =
-        DebtDetailsViewModel(debts, latestId, sum, deleteHuman, deleteHumanDebts, deleteDebt,
+        DebtDetailsViewModel(debts, latestId, human, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
             }, state, recordRepayment)
@@ -129,10 +130,11 @@ class DebtDetailsViewModelTest {
         verify(recordRepayment, times(1)).execute(any(), any(), any(), any(), any())
     }
 
-    @Test fun `restored ID loads history without querying latest person`() {
-        val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "newHuman" to true)))
+    @Test fun `restored ID loads saved name and history even with a stale navigation title`() {
+        val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "newHuman" to true, "name" to "Notification")))
         model.screenState.await { it == DebtDetailsState.SUCCESS }
         assertEquals(listOf(record), model.resultedDebtList.value)
+        assertEquals("Actual owner", model.humanName.value)
         assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(model.overallSum.value!!!!))
         verify(debts).execute(7)
         verifyNoInteractions(latestId)
@@ -154,7 +156,7 @@ class DebtDetailsViewModelTest {
     @Test fun `missing arguments show error instead of loading or empty history`() {
         val model = vm(SavedStateHandle())
         model.screenState.await { it == DebtDetailsState.ERROR }
-        verifyNoInteractions(debts, sum)
+        verifyNoInteractions(debts, human)
     }
 
     @Test fun `read failure is visible and retry loads records`() {

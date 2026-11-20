@@ -15,7 +15,7 @@ import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
 import com.breckneck.deptbook.domain.usecase.Human.AddSumUseCase
 import com.breckneck.deptbook.domain.usecase.Human.DeleteHumanUseCase
-import com.breckneck.deptbook.domain.usecase.Human.GetHumanSumDebtUseCase
+import com.breckneck.deptbook.domain.usecase.Human.GetHumanByIdUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetLastHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder
@@ -42,7 +42,7 @@ enum class RepaymentError { INVALID_AMOUNT, EXCEEDS_REMAINING, SAVE_FAILED }
 class DebtDetailsViewModel @Inject constructor(
     private val getAllDebtsByIdUseCase: GetAllDebtsByIdUseCase,
     private val getLastHumanIdUseCase: GetLastHumanIdUseCase,
-    private val getHumanSumDebtUseCase: GetHumanSumDebtUseCase,
+    private val getHumanByIdUseCase: GetHumanByIdUseCase,
     private val deleteHumanUseCase: DeleteHumanUseCase,
     private val deleteDebtsByHumanIdUseCase: DeleteDebtsByHumanIdUseCase,
     private val deleteDebtUseCase: DeleteDebtUseCase,
@@ -68,7 +68,7 @@ class DebtDetailsViewModel @Inject constructor(
     private var _humanId = savedStateHandle.get<Int>("idHuman")
     val humanId: Int?
         get() = _humanId
-    private val _humanName = savedStateHandle.getLiveData<String>("name")
+    private val _humanName = MutableLiveData<String>()
     val humanName: LiveData<String>
         get() = _humanName
     private val _humanCurrency = savedStateHandle.get<String>("currency")
@@ -211,11 +211,15 @@ class DebtDetailsViewModel @Inject constructor(
                 _humanId = id
                 savedStateHandle["idHuman"] = id
                 savedStateHandle["newHuman"] = false
-                val (debts, sum) = withContext(Dispatchers.IO) {
-                    transaction.run { getAllDebtsByIdUseCase.execute(id) to getHumanSumDebtUseCase.execute(id) }
+                val (human, debts) = withContext(Dispatchers.IO) {
+                    transaction.run {
+                        val human = requireNotNull(getHumanByIdUseCase.execute(id)) { "Missing person" }
+                        human to getAllDebtsByIdUseCase.execute(id)
+                    }
                 }
+                _humanName.value = human.name
                 _initialDebtList.value = debts
-                _overallSum.value = sum
+                _overallSum.value = human.sumDebt
                 val request = savedStateHandle.get<String>("repaymentRequestId")
                 if (request != null && debts.any { it.operationId == request }) closeRepayment()
                 repaymentDebtId.value?.let { selected ->

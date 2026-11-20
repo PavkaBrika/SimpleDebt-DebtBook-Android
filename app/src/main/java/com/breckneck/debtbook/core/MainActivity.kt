@@ -306,7 +306,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                     navController.popBackStack(R.id.mainFragment, false)
                     navController.navigate(R.id.debtDetailsFragment, Bundle().apply {
                         putInt("idHuman", result.id); putString("currency", result.currency)
-                        putString("name", result.name); putInt("openDebtId", id)
+                        putInt("openDebtId", id)
                     })
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }

@@ -7,6 +7,8 @@ import java.math.BigDecimal
 
 class DataBaseHumanStorageImpl(context: Context) : HumanStorage {
     private val db = AppDataBase(context)
+    override fun getHumanById(id: Int): Human? = db.appDao().getHuman(id)
+
     override fun getAllHumans(): List<Human> {
         val humanList = db.appDao().getAllHuman()
         return humanList
