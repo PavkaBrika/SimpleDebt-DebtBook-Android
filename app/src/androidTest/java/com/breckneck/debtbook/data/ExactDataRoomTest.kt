@@ -146,7 +146,7 @@ class ExactDataRoomTest {
             }
         }
         try {
-            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.migration15To16("USD"), DatabaseMigrations.MIGRATION_16_17, DatabaseMigrations.MIGRATION_17_18).build().use { db ->
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.migration15To16("USD"), DatabaseMigrations.MIGRATION_16_17, DatabaseMigrations.MIGRATION_17_18, DatabaseMigrations.MIGRATION_18_19).build().use { db ->
                 try { db.appDao().getAllHuman(); fail("migration should fail") } catch (_: IllegalStateException) { }
             }
             assertTrue("Failing conversion was not exercised", converted)

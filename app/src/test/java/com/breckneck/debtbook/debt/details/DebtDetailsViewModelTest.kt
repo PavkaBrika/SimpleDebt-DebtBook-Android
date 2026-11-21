@@ -190,6 +190,35 @@ class DebtDetailsViewModelTest {
         assertEquals(DebtOrderAttribute.Sum to true, recreated.debtOrder.value)
     }
 
+    @Test fun `archive selection survives recreation and groups repayments without narrowing exports`() {
+        val other = record.copy(id = 10, sum = record.sum.negate())
+        val first = record.copy(id = 11, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, date = "2026-11-10")
+        val last = record.copy(id = 12, sum = "-10".toBigDecimal(), repaymentOfId = 9, date = "2026-11-20")
+        val history = listOf(record, other, last, first)
+        whenever(debts.execute(7)).thenReturn(history)
+        val saved = SavedStateHandle(mapOf("idHuman" to 7))
+        val model = vm(saved)
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(listOf(other), model.visibleDebtRows.value)
+        model.selectDebtSection(true)
+        assertEquals(listOf(record, first, last), model.visibleDebtRows.value)
+        assertEquals(history.toSet(), model.resultedDebtList.value!!.toSet())
+
+        val recreated = vm(SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) }))
+        recreated.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(true, recreated.showSettledDebts.value)
+        assertEquals(listOf(record, first, last), recreated.visibleDebtRows.value)
+
+        val undone = last.copy(cancelled = true)
+        whenever(debts.execute(7)).thenReturn(listOf(record, other, first, undone))
+        recreated.retry()
+        recreated.screenState.await { it == DebtDetailsState.EMPTY }
+        assertTrue(recreated.visibleDebtRows.value!!.isEmpty())
+        recreated.selectDebtSection(false)
+        assertEquals(listOf(record, first, undone, other), recreated.visibleDebtRows.value)
+        assertEquals(0, recreated.remaining(record).compareTo("10".toBigDecimal()))
+    }
+
     @Test fun `human deletion navigates only after both writes complete and ignores duplicate tap`() {
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)

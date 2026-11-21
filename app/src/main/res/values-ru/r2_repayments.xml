@@ -3,8 +3,8 @@
     <string name="repayment_paid">Я вернул</string>
     <string name="repayment_cancel">Отменить возврат</string>
     <string name="repayment_cancelled">Возврат отменён · не влияет на баланс</string>
-    <string name="debt_lent">Мне должны</string>
-    <string name="debt_borrowed">Я должен</string>
+    <string name="debt_lent">Дал в долг</string>
+    <string name="debt_borrowed">Взял в долг</string>
     <string name="debt_remaining">Осталось: %1$s %2$s</string>
     <string name="debt_repaid">Возвращено: %1$s %2$s</string>
     <string name="repayment_context">Долг от %3$s на %1$s %2$s</string>

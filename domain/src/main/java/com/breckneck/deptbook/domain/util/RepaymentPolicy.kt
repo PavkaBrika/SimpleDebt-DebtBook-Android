@@ -19,6 +19,7 @@ object RepaymentPolicy {
             if (row.repaymentOfId == null) {
                 require(row.operationId == null && !row.cancelled) { "Invalid original debt" }
             } else {
+                require(!row.recordedAsLoan) { "A repayment cannot be an original loan" }
                 val original = requireNotNull(byId[row.repaymentOfId]) { "Missing original debt" }
                 require(original.repaymentOfId == null && original.id != row.id && original.idHuman == row.idHuman) { "Invalid repayment link" }
                 require(original.sum.signum() != 0 && row.sum.signum() == -original.sum.signum()) { "Invalid repayment direction" }

@@ -61,15 +61,15 @@ class HumanAdapter(
         if (humanDomain.sumDebt > 0) {
             holder.debt.setTextColor(holder.greenColor)
             holder.currency.setTextColor(holder.greenColor)
-            holder.debt.text = "+${MoneyDisplay.format(humanDomain.sumDebt, humanDomain.currency)}"
+            holder.debt.text = "+${MoneyDisplay.formatExact(humanDomain.sumDebt, humanDomain.currency)}"
         } else if (humanDomain.sumDebt < 0) {
             holder.debt.setTextColor(holder.redColor)
             holder.currency.setTextColor(holder.redColor)
-            holder.debt.text = MoneyDisplay.format(humanDomain.sumDebt, humanDomain.currency)
+            holder.debt.text = MoneyDisplay.formatExact(humanDomain.sumDebt, humanDomain.currency)
         } else {
             holder.debt.setTextColor(holder.grayColor)
             holder.currency.setTextColor(holder.grayColor)
-            holder.debt.text = MoneyDisplay.format(humanDomain.sumDebt, humanDomain.currency)
+            holder.debt.text = MoneyDisplay.formatExact(humanDomain.sumDebt, humanDomain.currency)
         }
 
 

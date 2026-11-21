@@ -1,7 +1,5 @@
 package com.breckneck.debtbook.debt.main
 
-import com.breckneck.deptbook.domain.util.compareTo
-
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -9,6 +7,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.model.HumanDomain
+import com.breckneck.deptbook.domain.model.PersonDebtHistory
+import com.breckneck.deptbook.domain.repository.DataTransaction
+import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.*
 import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
@@ -32,6 +33,8 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 class DebtViewModel @Inject constructor(
     private val getAllHumansUseCase: GetAllHumansUseCase,
+    private val getAllDebts: GetAllDebts,
+    private val transaction: DataTransaction,
     private val getAllDebtsSumUseCase: GetAllDebtsSumUseCase,
     private val getFirstMainCurrency: GetFirstMainCurrency,
     private val getSecondMainCurrency: GetSecondMainCurrency,
@@ -51,8 +54,7 @@ class DebtViewModel @Inject constructor(
     val mainSums: LiveData<Pair<String, String>>
         get() = _mainSums
 
-    private val _initialHumanList = MutableLiveData<List<HumanDomain>>()
-    private val _sortedHumanList = MutableLiveData<List<HumanDomain>>()
+    private var peopleByFilter: Map<Filter, List<HumanDomain>> = emptyMap()
     private val _resultedHumanList = MutableLiveData<List<HumanDomain>>()
     val resultedHumanList: LiveData<List<HumanDomain>>
         get() = _resultedHumanList
@@ -97,12 +99,21 @@ class DebtViewModel @Inject constructor(
         refreshJob = viewModelScope.launch {
             _screenState.value = ScreenState.LOADING
             try {
-                val (humans, sums) = withContext(Dispatchers.IO) {
-                    getAllHumansUseCase.execute() to getAllDebtsSumUseCase.execute(
-                        getFirstMainCurrency.execute(), getSecondMainCurrency.execute()
-                    )
+                val (lists, sums) = withContext(Dispatchers.IO) {
+                    val (people, rows, totals) = transaction.run {
+                        Triple(
+                            getAllHumansUseCase.execute(),
+                            getAllDebts.execute(),
+                            getAllDebtsSumUseCase.execute(getFirstMainCurrency.execute(), getSecondMainCurrency.execute())
+                        )
+                    }
+                    val histories = rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
+                    val lists = Filter.entries.associateWith { filter ->
+                        if (filter == Filter.ALL) people else people.filter { histories[it.id]?.matches(filter) == true }
+                    }
+                    lists to totals
                 }
-                _initialHumanList.value = humans
+                peopleByFilter = lists
                 _mainSums.value = sums
                 publishHumans()
             } catch (e: CancellationException) {
@@ -134,14 +145,6 @@ class DebtViewModel @Inject constructor(
         _humanOrder.value = getHumanOrder.execute()
     }
 
-    private fun filterHumans(list: List<HumanDomain>): List<HumanDomain> {
-        return when (humanFilter.value!!) {
-            Filter.ALL -> list
-            Filter.NEGATIVE -> list.filter { human -> human.sumDebt <= 0 }
-            Filter.POSITIVE -> list.filter { human -> human.sumDebt >= 0 }
-        }
-    }
-
     private fun orderHumans(list: List<HumanDomain>): List<HumanDomain> {
         return com.breckneck.deptbook.domain.util.sortHumans(
             debtList = list,
@@ -150,8 +153,7 @@ class DebtViewModel @Inject constructor(
     }
 
     private fun publishHumans() {
-        val sorted = orderHumans(filterHumans(_initialHumanList.value.orEmpty()))
-        _sortedHumanList.value = sorted
+        val sorted = orderHumans(peopleByFilter[humanFilter.value].orEmpty())
         val query = if (_isSearching.value == true) _searchQuery.value.trim() else ""
         val visible = sorted.filter { it.name.contains(query, ignoreCase = true) }
         _resultedHumanList.value = visible

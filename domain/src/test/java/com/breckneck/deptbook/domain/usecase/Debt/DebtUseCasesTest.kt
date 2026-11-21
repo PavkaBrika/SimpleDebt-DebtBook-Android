@@ -83,6 +83,7 @@ class DebtUseCasesTest {
         val captor = argumentCaptor<DebtDomain>()
         verify(debtRepository).setDebt(captor.capture())
         val debt = captor.firstValue
+        Assertions.assertTrue(debt.recordedAsLoan)
         Assertions.assertEquals(0, debt.id)
         Assertions.assertEquals(0, ("250.0".toBigDecimal().stripTrailingZeros()).compareTo(debt.sum!!))
         Assertions.assertEquals(3, debt.idHuman)

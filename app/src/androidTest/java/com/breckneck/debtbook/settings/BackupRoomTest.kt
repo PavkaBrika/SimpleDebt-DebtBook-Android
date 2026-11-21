@@ -24,7 +24,7 @@ class BackupRoomTest {
     private val repository get() = AppDataRepositoryImpl(context)
     private fun snapshot(id: Int, photo: String? = null) = AppDataLists(
         listOf(HumanDomain(id, "Backup person", "123456789012345678.91".toBigDecimal(), "EUR", BigDecimal.ZERO)),
-        listOf(DebtDomain(id, "123456789012345678.91".toBigDecimal(), id, "Debt", "2026-11-15", "15 Nov 2026")),
+        listOf(DebtDomain(id, "123456789012345678.91".toBigDecimal(), id, "Debt", "2026-11-15", "15 Nov 2026", recordedAsLoan = true)),
         listOf(Finance(id, "0.01".toBigDecimal(), Date(1794700800123L), "Finance", id, "EUR", "2026-11-15")),
         listOf(FinanceCategory(id, "Category", FinanceCategoryState.INCOME, "#123456", 123)),
         listOf(Goal(id, "Portable photo", "100.01".toBigDecimal(), "20.21".toBigDecimal(), "JPY", photo, Date(1794700800123L), Date(1794787200123L), "20.01".toBigDecimal(), "2026-11-16")),
@@ -41,7 +41,7 @@ class BackupRoomTest {
             transfer.restore { codec.encode(b) }
             assertEquals(a, codec.decode(previous).data)
             transfer.upload { assertEquals(b, codec.decode(it).data) }
-            for (content in listOf("{}", codec.encode(a).replace("\"formatVersion\":4", "\"formatVersion\":99"))) {
+            for (content in listOf("{}", codec.encode(a).replace("\"formatVersion\":${BackupCodec.VERSION}", "\"formatVersion\":99"))) {
                 try { transfer.restore { content }; fail("malformed backup accepted") } catch (_: IllegalArgumentException) { }
                 assertEquals(b, repo.getAllAppData())
             }

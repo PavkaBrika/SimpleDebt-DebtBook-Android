@@ -22,6 +22,7 @@ class SetDebtUseCase(val debtRepository: DebtRepository) {
             idHuman = idHuman,
             info = info,
             date = date,
+            recordedAsLoan = true,
             dueDay = dueDay,
             reminderMinute = reminderMinute,
             reminderToken = reminderMinute?.let { UUID.randomUUID().toString() }

@@ -1,0 +1,24 @@
+<resources>
+    <string name="statement_preview">Statement preview</string>
+    <string name="statement_send">Send</string>
+    <string name="statement_title">Transaction history</string>
+    <string name="statement_you_owe">You owe me %1$s</string>
+    <string name="statement_i_owe">I owe you %1$s</string>
+    <string name="statement_even">Balance — %1$s</string>
+    <string name="statement_all">Transactions:</string>
+    <string name="statement_positive">Transactions (loans from me):</string>
+    <string name="statement_negative">Transactions (loans from you):</string>
+    <string name="statement_entry">Entry · %1$s</string>
+    <string name="statement_lent">I lent you %1$s</string>
+    <string name="statement_borrowed">You lent me %1$s</string>
+    <string name="statement_from_you">You repaid me %1$s</string>
+    <string name="statement_from_me">I repaid you %1$s</string>
+    <string name="statement_cancelled">Cancelled repayment — %1$s</string>
+    <string name="statement_repaid">Repaid — %1$s</string>
+    <string name="statement_remaining">Remaining — %1$s</string>
+    <string name="statement_subtotal">Running total of entries shown · %1$s</string>
+    <string name="statement_positive_entries">Transactions (loans from me and entries ≥ 0):</string>
+    <string name="statement_negative_entries">Transactions (loans from you and entries ≤ 0):</string>
+    <string name="statement_include_settled">Include repaid loans</string>
+    <string name="statement_empty">No matching transactions</string>
+</resources>

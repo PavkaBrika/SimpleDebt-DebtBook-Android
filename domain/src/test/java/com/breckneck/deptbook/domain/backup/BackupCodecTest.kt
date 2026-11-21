@@ -14,7 +14,7 @@ class BackupCodecTest {
     private val codec = BackupCodec()
     private fun fixture() = AppDataLists(
         listOf(HumanDomain(1, "Person", "999999999999999999.99".toBigDecimal(), "EUR", "0.01".toBigDecimal())),
-        listOf(DebtDomain(2, "999999999999999999.98".toBigDecimal(), 1, "Note", "2026-11-15", "15 Nov 2026")),
+        listOf(DebtDomain(2, "999999999999999999.98".toBigDecimal(), 1, "Note", "2026-11-15", "15 Nov 2026", recordedAsLoan = true)),
         listOf(Finance(3, "0.01".toBigDecimal(), Date(1794700800123L), "Info", 4, "EUR", "2026-11-15")),
         listOf(FinanceCategory(4, "Food", FinanceCategoryState.EXPENSE, "#123456", 123)),
         listOf(Goal(5, "Goal", "1000".toBigDecimal().stripTrailingZeros(), "20.3".toBigDecimal(), "JPY", null, Date(1794700800123L), Date(1794787200000L), "20.1".toBigDecimal(), "2026-11-16")),
@@ -31,6 +31,12 @@ class BackupCodecTest {
         assertEquals(6, document.recordCount)
         assertEquals("aW1hZ2U=", document.photos[5])
         assertFalse(document.legacy)
+    }
+    @Test fun `v4 independent entries have unknown purpose`() {
+        val root = JsonParser.parseString(encoded()).asJsonObject
+        root.addProperty("formatVersion", 4)
+        root.getAsJsonObject("data").getAsJsonArray("debtList")[0].asJsonObject.remove("recordedAsLoan")
+        assertFalse(codec.decode(root.toString()).data.debtList.single().recordedAsLoan)
     }
     @Test fun `versioned timestamp and day survive locale and timezone changes`() {
         val text = encoded()
@@ -59,7 +65,7 @@ class BackupCodecTest {
             }
             old.getAsJsonArray("financeList").forEach { it.asJsonObject.remove("currency"); it.asJsonObject.remove("calendarDay") }
             old.getAsJsonArray("goalList").forEach { it.asJsonObject.remove("goalDay") }
-            old.getAsJsonArray("debtList").forEach { listOf("cancelled", "dueDay", "reminderMinute", "reminderToken", "reminderDelivered").forEach(it.asJsonObject::remove) }
+            old.getAsJsonArray("debtList").forEach { listOf("cancelled", "dueDay", "reminderMinute", "reminderToken", "reminderDelivered", "recordedAsLoan").forEach(it.asJsonObject::remove) }
             old.getAsJsonArray("debtList")[0].asJsonObject.addProperty("date", "01/02/2024")
             old.getAsJsonArray("goalList")[0].asJsonObject.addProperty("photoPath", "/another/device/photo.jpg")
             val document = BackupCodec("GBP").decode(old.toString())
@@ -77,7 +83,7 @@ class BackupCodecTest {
     @Test fun `unsupported corrupt and incomplete envelopes are rejected`() {
         val valid = encoded()
         val bad = listOf(
-            valid.replace("\"formatVersion\":4", "\"formatVersion\":99"),
+            valid.replace("\"formatVersion\":${BackupCodec.VERSION}", "\"formatVersion\":99"),
             valid.replace("\"recordCount\":6", "\"recordCount\":7"),
             valid.replace("\"calendarDay\":\"2026-11-15\"", "\"calendarDay\":\"2026-02-30\""),
             valid.replace("\"idHuman\":1", "\"idHuman\":99"),

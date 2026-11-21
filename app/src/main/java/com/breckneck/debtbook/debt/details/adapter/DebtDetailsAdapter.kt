@@ -133,9 +133,20 @@ class DebtDetailsAdapter(
         )
     }
 
+    private companion object {
+        const val ORIGINAL = 0
+        const val REPAYMENT = 1
+    }
+
+    override fun getItemViewType(position: Int): Int =
+        if (debtDomainList[position].repaymentOfId == null) ORIGINAL else REPAYMENT
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DebtViewHolder {
-        val itemView =
-            LayoutInflater.from(parent.context).inflate(R.layout.item_debt, parent, false)
+        val itemView = LayoutInflater.from(parent.context).inflate(R.layout.item_debt, parent, false)
+        if (viewType == REPAYMENT) {
+            itemView.setPaddingRelative(itemView.paddingStart * 2, itemView.paddingTop,
+                itemView.paddingEnd, itemView.paddingBottom)
+        }
         return DebtViewHolder(itemView)
     }
 
@@ -151,9 +162,9 @@ class DebtDetailsAdapter(
         val details = if (originalId == null) {
             buildList {
                 if (rest < debtDomain.sum.abs()) {
-                    add(context.getString(R.string.debt_repaid, MoneyDisplay.format(debtDomain.sum.abs() - rest, currencyText), currencyText))
+                    add(context.getString(R.string.debt_repaid, MoneyDisplay.formatExact(debtDomain.sum.abs() - rest, currencyText), currencyText))
                     add(if (rest.signum() == 0) context.getString(R.string.repayment_closed)
-                        else context.getString(R.string.debt_remaining, MoneyDisplay.format(rest, currencyText), currencyText))
+                        else context.getString(R.string.debt_remaining, MoneyDisplay.formatExact(rest, currencyText), currencyText))
                 }
             }.joinToString("\n")
         } else {
@@ -164,11 +175,11 @@ class DebtDetailsAdapter(
         if (debtDomain.sum > 0) {
             holder.debt.setTextColor(holder.greenColor)
             holder.currency.setTextColor(holder.greenColor)
-            holder.debt.text = "+${MoneyDisplay.format(debtDomain.sum, currencyText)}"
+            holder.debt.text = "+${MoneyDisplay.formatExact(debtDomain.sum, currencyText)}"
         } else {
             holder.debt.setTextColor(holder.redColor)
             holder.currency.setTextColor(holder.redColor)
-            holder.debt.text = MoneyDisplay.format(debtDomain.sum, currencyText)
+            holder.debt.text = MoneyDisplay.formatExact(debtDomain.sum, currencyText)
         }
         holder.info.text = debtDomain.info
         holder.currency.text = currencyText

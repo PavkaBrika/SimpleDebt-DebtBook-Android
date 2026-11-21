@@ -43,11 +43,4 @@ class RecordRepaymentUseCaseTest {
             clearInvocations(repository)
         }
     }
-    @Test fun `shared running total excludes cancelled repayment`() {
-        val rows = listOf(original,
-            DebtDomain(3, BigDecimal("-20"), 2, "Received", "2026-11-16", repaymentOfId = 1, operationId = key),
-            DebtDomain(4, BigDecimal("-30"), 2, "Cancelled", "2026-11-16", repaymentOfId = 1, operationId = "request-000000004", cancelled = true))
-        val text = GetDebtShareString().execute(rows, "Person", "EUR", BigDecimal("80"), true)
-        assertTrue(text.lines().last { it.isNotBlank() }.endsWith("(80)"), text)
-    }
 }

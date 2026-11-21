@@ -26,6 +26,16 @@ class MoneyDisplayTest {
         assertEquals("10", DecimalInput.format("10.00".toBigDecimal(), Locale.US, "RUB"))
     }
 
+    @Test fun `exact ledger labels preserve extra precision and the usual currency formatting`() {
+        val russian = Locale.forLanguageTag("ru-RU")
+        assertEquals("0,00001", MoneyDisplay.formatExact("0.000010".toBigDecimal(), "RUB", russian))
+        assertEquals("-1 000,00001", MoneyDisplay.formatExact("-1000.00001".toBigDecimal(), "RUB", russian))
+        assertEquals("10.015", MoneyDisplay.formatExact("10.015".toBigDecimal(), "JPY", Locale.US))
+        assertEquals("10.500", MoneyDisplay.formatExact("10.5".toBigDecimal(), "KWD", Locale.US))
+        assertEquals("10,50", MoneyDisplay.formatExact("10.5".toBigDecimal(), "RUB", russian))
+        assertEquals("10", MoneyDisplay.formatExact("10.00".toBigDecimal(), "EUR", Locale.US))
+    }
+
     @Test fun `padding input does not change a precise stored amount`() {
         val russian = Locale.forLanguageTag("ru-RU")
         val precise = "10.5123".toBigDecimal()

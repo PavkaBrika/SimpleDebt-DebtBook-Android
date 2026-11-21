@@ -83,7 +83,8 @@ class PartialRepaymentScreenTest {
             val count = dao.getAllDebtsById(humanId).size
             scenario.onActivity {
                 val vm = ViewModelProvider(details(it))[DebtDetailsViewModel::class.java]
-                ready = vm.screenState.value == DebtDetailsState.SUCCESS && vm.isDeleting.value != true && vm.resultedDebtList.value?.size == count
+                ready = vm.screenState.value in listOf(DebtDetailsState.SUCCESS, DebtDetailsState.EMPTY) &&
+                    vm.isDeleting.value != true && vm.history.value?.size == count
             }
             ready
         }
@@ -95,7 +96,8 @@ class PartialRepaymentScreenTest {
     private fun scrollToRecord(scenario: ActivityScenario<MainActivity>, id: Int) {
         scenario.onActivity {
             val fragment = details(it)
-            val position = ViewModelProvider(fragment)[DebtDetailsViewModel::class.java].resultedDebtList.value!!.indexOfFirst { row -> row.id == id }
+            val position = ViewModelProvider(fragment)[DebtDetailsViewModel::class.java].visibleDebtRows.value!!.indexOfFirst { row -> row.id == id }
+            check(position >= 0) { "Missing row $id in the current debt section" }
             fragment.requireView().findViewById<RecyclerView>(R.id.debtsRecyclerView).scrollToPosition(position)
         }
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
@@ -156,6 +158,7 @@ class PartialRepaymentScreenTest {
                 ready(scenario)
                 assertAmount(0)
                 val last = dao.getAllDebtsById(humanId).maxBy { it.id }
+                onView(withId(R.id.settledDebtsTab)).perform(click())
                 scrollToRecord(scenario, last.id)
                 onView(withTagValue(equalTo(last.id))).perform(click())
                 compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
@@ -165,6 +168,8 @@ class PartialRepaymentScreenTest {
                 ready(scenario)
                 assertAmount(80 * sign)
                 assertEquals(3, dao.getAllDebtsById(humanId).size)
+                onView(withId(R.id.openDebtsTab)).perform(click())
+                scrollToRecord(scenario, originalId)
                 screenshot("cancelled-$sign")
             }
             cleanup()

@@ -111,7 +111,7 @@ interface AppDao {
                 "Debt has repayment history"
             }
         }
-        val updated = debt.copy(legacyDate = previous.legacyDate, dueDay = previous.dueDay,
+        val updated = debt.copy(recordedAsLoan = previous.recordedAsLoan, legacyDate = previous.legacyDate, dueDay = previous.dueDay,
             reminderMinute = previous.reminderMinute, reminderToken = previous.reminderToken,
             reminderDelivered = previous.reminderDelivered)
         val next = if (due != null) {

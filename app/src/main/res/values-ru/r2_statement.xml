@@ -1,0 +1,24 @@
+<resources>
+    <string name="statement_preview">Предпросмотр выписки</string>
+    <string name="statement_send">Отправить</string>
+    <string name="statement_title">История расчётов</string>
+    <string name="statement_you_owe">Ваш долг — %1$s</string>
+    <string name="statement_i_owe">Мой долг — %1$s</string>
+    <string name="statement_even">Баланс — %1$s</string>
+    <string name="statement_all">Операции:</string>
+    <string name="statement_positive">Операции (мои займы):</string>
+    <string name="statement_negative">Операции (ваши займы):</string>
+    <string name="statement_entry">Запись · %1$s</string>
+    <string name="statement_lent">Мой заём — %1$s</string>
+    <string name="statement_borrowed">Ваш заём — %1$s</string>
+    <string name="statement_from_you">Возврат от вас — %1$s</string>
+    <string name="statement_from_me">Возврат от меня — %1$s</string>
+    <string name="statement_cancelled">Отменённый возврат — %1$s</string>
+    <string name="statement_repaid">Возвращено — %1$s</string>
+    <string name="statement_remaining">Остаток — %1$s</string>
+    <string name="statement_subtotal">Сумма показанных движений по эту строку — %1$s</string>
+    <string name="statement_positive_entries">Операции (мои займы и записи ≥ 0):</string>
+    <string name="statement_negative_entries">Операции (ваши займы и записи ≤ 0):</string>
+    <string name="statement_include_settled">Включить погашенные долги</string>
+    <string name="statement_empty">Нет операций</string>
+</resources>

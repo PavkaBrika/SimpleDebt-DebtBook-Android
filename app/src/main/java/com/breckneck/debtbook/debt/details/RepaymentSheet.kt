@@ -50,7 +50,7 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
     val busy by vm.isDeleting.observeAsState(false)
     val ready = screen == DebtDetailsState.SUCCESS && !busy
     val currency = vm.humanCurrency.orEmpty()
-    val rest = MoneyDisplay.format(remaining, currency)
+    val rest = MoneyDisplay.formatExact(remaining, currency)
     val spacing = MaterialTheme.spacing
     val errorText = when (error) {
         RepaymentError.INVALID_AMOUNT -> stringResource(R.string.repayment_invalid)
