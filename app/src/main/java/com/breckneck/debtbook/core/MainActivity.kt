@@ -238,24 +238,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
         configureHostInsets()
         val bottomNavBar = findViewById<ComposeView>(R.id.bottomNavigationView)
-        val selectedTab = mutableIntStateOf(0)
-        // Reuse NavigationUI's tab options, including the saved back stack for each tab.
         tabMenu = PopupMenu(this, bottomNavBar).apply { inflate(R.menu.menu_bottom_nav) }.menu
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            // The Compose lists draw their own tabs so its entire surface participates in fragment transitions.
-            val showHostTabs = destination.id in TOP_LEVEL_DESTINATIONS && destination.id != R.id.goalsFragment && destination.id != R.id.settingsFragment && destination.id != R.id.financeFragment
-            selectedTab.intValue = if (showHostTabs) destination.id else 0
-            bottomNavBar.visibility = if (showHostTabs) View.VISIBLE else View.GONE
-        }
-        bottomNavBar.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-        bottomNavBar.setContent {
-            DebtBookTheme {
-                BubbleBottomBar(
-                    destination = selectedTab.intValue,
-                    onDestinationSelected = ::onTabSelected,
-                )
-            }
-        }
+        bottomNavBar.visibility = View.GONE
     }
 
     override fun onTabSelected(id: Int) {
@@ -496,8 +480,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         vm.onActionClick()
     }
 
-    override fun onAddButtonClick() {
-        navController.navigate(R.id.action_mainFragment_to_newDebtFragment)
+    override fun onAddButtonClick(currency: String?) {
+        navController.navigate(R.id.action_mainFragment_to_newDebtFragment, Bundle().apply { currency?.let { putString("currency", it) } })
         vm.onActionClick()
     }
 

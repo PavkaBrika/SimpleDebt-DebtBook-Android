@@ -36,19 +36,13 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class DebtFragment : Fragment() {
 
-    private val TAG = "MainFragment"
-
     private val vm by viewModels<DebtViewModel>()
-    private val mainActivityVM by activityViewModels<MainViewModel>()
-
-    private lateinit var filterButton: ImageView
-    private lateinit var humanAdapter: HumanAdapter
-    private lateinit var humanRecyclerView: RecyclerView
 
     interface OnButtonClickListener {
         fun onHumanClick(idHuman: Int, currency: String, name: String)
 
-        fun onAddButtonClick()
+        fun onAddButtonClick(currency: String? = null)
+        fun onTabSelected(id: Int)
 
         fun onFilterButtonLongClick()
 
@@ -61,179 +55,30 @@ class DebtFragment : Fragment() {
         buttonClickListener = context as OnButtonClickListener
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val humanClickListener = object : HumanAdapter.OnHumanClickListener {
-            override fun onHumanClick(humanDomain: HumanDomain, position: Int) {
-                buttonClickListener?.onHumanClick(
-                    idHuman = humanDomain.id,
-                    currency = humanDomain.currency,
-                    name = humanDomain.name
-                )
-                Log.e(TAG, "Click on human with id = ${humanDomain.id}")
-            }
-
-            override fun onHumanLongClick(humanDomain: HumanDomain, position: Int) {
-                openChangeDebtNameDialog(humanDomain = humanDomain, position = position)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
+        androidx.compose.ui.platform.ComposeView(requireContext()).apply {
+            id = R.id.humansLayout
+            setViewCompositionStrategy(androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                com.breckneck.debtbook.core.ui.theme.DebtBookTheme {
+                    DebtListScreen(vm, requireActivity() as OnButtonClickListener, ::showHumanSortDialog) {
+                        openChangeDebtNameDialog(it, 0)
+                    }
+                }
             }
         }
-        humanAdapter = HumanAdapter(listOf(), humanClickListener)
-        Log.e(TAG, "MainFragment created")
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        requireActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-        setFragmentResultListener("mainFragmentKey") { requestKey, bundle ->
-            if (bundle.getBoolean("isListModified"))
-                vm.setListStateLoading()
-            else if (mainActivityVM.isNeedDebtDataUpdate.value == true)
-                vm.setListStateLoading()
-            else if (mainActivityVM.isNeedUpdateDebtSums.value == true)
-                vm.getMainSums()
-        }
-        Log.e(TAG, "MainFragment create view")
-        return inflater.inflate(R.layout.fragment_main, container, false)
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        if (vm.isSortDialogOpened.value == true)
-            showHumanSortDialog()
-        if (vm.isChangeDebtNameDialogOpened.value == true)
-            openChangeDebtNameDialog(
-                humanDomain = vm.changedHuman.value!!,
-                position = vm.changedHumanPosition.value!!
-            )
-
-        val collaps: CollapsingToolbarLayout = view.findViewById(R.id.collaps)
-        collaps.apply {
-            setCollapsedTitleTypeface(Typeface.DEFAULT_BOLD)
-            setExpandedTitleTypeface(Typeface.DEFAULT_BOLD)
+        setFragmentResultListener("mainFragmentKey") { _, result ->
+            result.getString("currency")?.let(vm::selectCurrency)
+            vm.setListStateLoading()
         }
-
-        val emptyHumansLayout: ConstraintLayout = view.findViewById(R.id.emptyHumansLayout)
-        val humansLayout: ConstraintLayout = view.findViewById(R.id.humansLayout)
-        val loadingDebtsLayout: ConstraintLayout = view.findViewById(R.id.loadingHumansLayout)
-        val shimmerLayout: ShimmerFrameLayout = view.findViewById(R.id.shimmerLayout)
-
-        vm.screenState.observe(viewLifecycleOwner) { state ->
-            when (state) {
-                ScreenState.LOADING -> {
-                    humansLayout.visibility = View.GONE
-                    emptyHumansLayout.visibility = View.GONE
-                    loadingDebtsLayout.visibility = View.VISIBLE
-                    shimmerLayout.startShimmerAnimation()
-                }
-                ScreenState.SUCCESS -> {
-                    val transition = Fade()
-                    transition.duration = 200
-                    transition.addTarget(humansLayout)
-                    TransitionManager.beginDelayedTransition(view as ViewGroup?, transition)
-                    humansLayout.visibility = View.VISIBLE
-                    emptyHumansLayout.visibility = View.GONE
-                    loadingDebtsLayout.visibility = View.GONE
-                    shimmerLayout.stopShimmerAnimation()
-                }
-                ScreenState.EMPTY -> {
-                    val transition = Fade()
-                    transition.duration = 200
-                    transition.addTarget(emptyHumansLayout)
-                    TransitionManager.beginDelayedTransition(view as ViewGroup?, transition)
-                    emptyHumansLayout.visibility = View.VISIBLE
-                    humansLayout.visibility = View.GONE
-                    loadingDebtsLayout.visibility = View.GONE
-                    shimmerLayout.stopShimmerAnimation()
-                }
-            }
-        }
-
-        humanRecyclerView = view.findViewById(R.id.humanRecyclerView)
-        humanRecyclerView.adapter = humanAdapter
-
-        val addButton: FloatingActionButton = view.findViewById(R.id.addHumanButton)
-        addButton.setOnClickListener {
-            buttonClickListener?.onAddButtonClick()
-        }
-
-        filterButton = view.findViewById(R.id.filterHumanButton)
-        filterButton.setOnLongClickListener {
-            buttonClickListener?.onFilterButtonLongClick()
-            true
-        }
-        vm.isSearching.observe(viewLifecycleOwner) { isSearching ->
-            if (isSearching)
-                filterButton.visibility = View.GONE
-            else
-                filterButton.visibility = View.VISIBLE
-        }
-        filterButton.setOnClickListener {
-            showHumanSortDialog()
-        }
-
-        vm.humanFilter.observe(viewLifecycleOwner) {
-            changeFilterButtonColor(it)
-        }
-
-        val overallPositiveSumTextView: TextView =
-            view.findViewById(R.id.overallPositiveSumTextView)
-        val overallNegativeSumTextView: TextView =
-            view.findViewById(R.id.overallNegativeSumTextView)
-
-        vm.mainSums.observe(viewLifecycleOwner) {
-            overallPositiveSumTextView.text = it.first
-            if (it.first == "") {
-                overallPositiveSumTextView.visibility = View.GONE
-            } else {
-                overallPositiveSumTextView.visibility = View.VISIBLE
-                overallPositiveSumTextView.text = it.first
-            }
-
-            overallNegativeSumTextView.text = it.second
-            if (it.second == "") {
-                overallNegativeSumTextView.visibility = View.GONE
-            } else {
-                overallNegativeSumTextView.visibility = View.VISIBLE
-                overallNegativeSumTextView.text = it.second
-            }
-        }
-
-        val humanDebtSearchView = view.findViewById<SearchView>(R.id.humanSearchView)
-        humanDebtSearchView.setOnSearchClickListener {
-            if (vm.screenState.value != ScreenState.EMPTY) {
-                vm.onStartSearch()
-                vm.setIsSearching(isSearching = true)
-            }
-        }
-        humanDebtSearchView.setOnCloseListener {
-            vm.onStopSearch()
-            vm.setIsSearching(isSearching = false)
-            false
-        }
-        humanDebtSearchView.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return true
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                vm.setSearchQuery(newText!!)
-                return true
-            }
-        })
-
-        vm.resultedHumanList.observe(viewLifecycleOwner) {
-            humanAdapter.updateHumansList(it)
-            Log.e(TAG, "data in adapter link success")
-        }
+        if (vm.isSortDialogOpened.value == true) showHumanSortDialog()
+        if (vm.isChangeDebtNameDialogOpened.value == true) vm.changedHuman.value?.let { openChangeDebtNameDialog(it, 0) }
     }
 
-    override fun onStart() {
-        super.onStart()
-        // Also covers restores completed while this destination was on the back stack.
+    override fun onResume() {
+        super.onResume()
         vm.setListStateLoading()
     }
 
@@ -335,51 +180,6 @@ class DebtFragment : Fragment() {
         bottomSheetDialogFilter.show()
     }
 
-    private fun changeFilterButtonColor(humansFilter: Filter) {
-        if (view != null) {
-            when (humansFilter) {
-                Filter.ALL -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        if (resources.configuration.isNightModeActive)
-                            filterButton.setColorFilter(
-                                ContextCompat.getColor(
-                                    requireContext(),
-                                    R.color.white
-                                )
-                            )
-                        else
-                            filterButton.setColorFilter(
-                                ContextCompat.getColor(
-                                    requireContext(),
-                                    R.color.black
-                                )
-                            )
-                    } else {
-                        filterButton.setColorFilter(
-                            ContextCompat.getColor(
-                                requireContext(),
-                                R.color.black
-                            )
-                        )
-                    }
-                }
-
-                Filter.NEGATIVE -> {
-                    filterButton.setColorFilter(ContextCompat.getColor(requireActivity(), R.color.red))
-                }
-
-                Filter.POSITIVE -> {
-                    filterButton.setColorFilter(
-                        ContextCompat.getColor(
-                            requireActivity(),
-                            R.color.green
-                        )
-                    )
-                }
-            }
-        }
-    }
-
     private fun openChangeDebtNameDialog(humanDomain: HumanDomain, position: Int) {
         val dialog = BottomSheetDialog(requireActivity())
         dialog.setContentView(R.layout.dialog_change_debt_name)
@@ -395,8 +195,7 @@ class DebtFragment : Fragment() {
                 if (changedName == humanDomain.name)
                     dialog.dismiss()
                 else {
-                    humanDomain.name = changedName
-                    changeDebtName(humanDomain = humanDomain, position = position)
+                    vm.updateHuman(humanDomain.copy(name = changedName))
                     dialog.dismiss()
                 }
             }
@@ -417,8 +216,4 @@ class DebtFragment : Fragment() {
 
     }
 
-    private fun changeDebtName(humanDomain: HumanDomain, position: Int) {
-        humanAdapter.updateHuman(humanDomain = humanDomain, position = position)
-        vm.updateHuman(human = humanDomain)
-    }
 }

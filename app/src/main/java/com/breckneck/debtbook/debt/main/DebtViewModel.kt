@@ -35,9 +35,8 @@ class DebtViewModel @Inject constructor(
     private val getAllHumansUseCase: GetAllHumansUseCase,
     private val getAllDebts: GetAllDebts,
     private val transaction: DataTransaction,
-    private val getAllDebtsSumUseCase: GetAllDebtsSumUseCase,
-    private val getFirstMainCurrency: GetFirstMainCurrency,
-    private val getSecondMainCurrency: GetSecondMainCurrency,
+    getFirstMainCurrency: GetFirstMainCurrency,
+    saved: androidx.lifecycle.SavedStateHandle,
     private val getHumanOrder: GetHumanOrder,
     private val setHumanOrder: SetHumanOrder,
     private val updateHuman: UpdateHuman
@@ -50,11 +49,19 @@ class DebtViewModel @Inject constructor(
         get() = _screenState
     private var refreshJob: Job? = null
 
-    private val _mainSums = MutableLiveData<Pair<String, String>>()
-    val mainSums: LiveData<Pair<String, String>>
-        get() = _mainSums
+    val currency = saved.getLiveData("listCurrency", getFirstMainCurrency.execute())
+    private val _mainSums = MutableLiveData<Pair<java.math.BigDecimal, java.math.BigDecimal>>()
+    val mainSums: LiveData<Pair<java.math.BigDecimal, java.math.BigDecimal>> get() = _mainSums
+    private var people = emptyList<HumanDomain>()
+    private var histories = emptyMap<Int, PersonDebtHistory>()
+    fun nearestDeadline(id: Int) = histories[id]?.openLoans?.mapNotNull { it.original.dueDay }?.minOrNull()
+    fun isSettled(id: Int) = histories[id]?.let { it.openLoans.isEmpty() && it.settledLoans.isNotEmpty() } == true
 
-    private var peopleByFilter: Map<Filter, List<HumanDomain>> = emptyMap()
+    fun selectCurrency(value: String) {
+        currency.value = value
+        publishHumans()
+    }
+
     private val _resultedHumanList = MutableLiveData<List<HumanDomain>>()
     val resultedHumanList: LiveData<List<HumanDomain>>
         get() = _resultedHumanList
@@ -99,44 +106,18 @@ class DebtViewModel @Inject constructor(
         refreshJob = viewModelScope.launch {
             _screenState.value = ScreenState.LOADING
             try {
-                val (lists, sums) = withContext(Dispatchers.IO) {
-                    val (people, rows, totals) = transaction.run {
-                        Triple(
-                            getAllHumansUseCase.execute(),
-                            getAllDebts.execute(),
-                            getAllDebtsSumUseCase.execute(getFirstMainCurrency.execute(), getSecondMainCurrency.execute())
-                        )
-                    }
-                    val histories = rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
-                    val lists = Filter.entries.associateWith { filter ->
-                        if (filter == Filter.ALL) people else people.filter { histories[it.id]?.matches(filter) == true }
-                    }
-                    lists to totals
+                val (persons, loans) = withContext(Dispatchers.IO) {
+                    val (persons, rows) = transaction.run { getAllHumansUseCase.execute() to getAllDebts.execute() }
+                    persons to rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
                 }
-                peopleByFilter = lists
-                _mainSums.value = sums
+                people = persons
+                histories = loans
                 publishHumans()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Could not refresh debts", e)
                 publishHumans()
-            }
-        }
-    }
-
-    fun getMainSums() {
-        viewModelScope.launch {
-            try {
-                val sums = withContext(Dispatchers.IO) {
-                    getAllDebtsSumUseCase.execute(
-                        getFirstMainCurrency.execute(),
-                        getSecondMainCurrency.execute()
-                    )
-                }
-                _mainSums.value = sums
-            } catch (e: Exception) {
-                Log.e(TAG, e.stackTraceToString())
             }
         }
     }
@@ -153,7 +134,11 @@ class DebtViewModel @Inject constructor(
     }
 
     private fun publishHumans() {
-        val sorted = orderHumans(peopleByFilter[humanFilter.value].orEmpty())
+        val inCurrency = people.filter { it.currency == currency.value }
+        _mainSums.value = inCurrency.filter { it.sumDebt.signum() > 0 }.sumOf { it.sumDebt } to
+            inCurrency.filter { it.sumDebt.signum() < 0 }.sumOf { it.sumDebt }
+        val filter = humanFilter.value ?: Filter.ALL
+        val sorted = orderHumans(inCurrency.filter { filter == Filter.ALL || histories[it.id]?.matches(filter) == true })
         val query = if (_isSearching.value == true) _searchQuery.value.trim() else ""
         val visible = sorted.filter { it.name.contains(query, ignoreCase = true) }
         _resultedHumanList.value = visible
@@ -173,7 +158,11 @@ class DebtViewModel @Inject constructor(
     fun updateHuman(human: HumanDomain) {
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { updateHuman.execute(humanDomain = human) }
+                withContext(Dispatchers.IO) { transaction.run {
+                    val current = getAllHumansUseCase.execute().first { it.id == human.id }
+                    updateHuman.execute(current.copy(name = human.name))
+                } }
+                setListStateLoading()
                 Log.e(TAG, "human updated")
             } catch (e: Exception) {
                 Log.e(TAG, e.stackTraceToString())
