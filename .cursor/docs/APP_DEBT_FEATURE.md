@@ -50,7 +50,7 @@ app/src/main/java/com/breckneck/debtbook/debt/
 Главный ViewModel экрана долгов.
 
 ### Зависимости (use cases)
-- `GetAllHumansUseCase` — загрузка всех людей
+- `GetAllHumansUseCase` и `GetAllDebts` — люди и их операции, прочитанные в общей транзакции с итогами
 - `GetAllDebtsSumUseCase` — суммы по двум основным валютам
 - `GetFirstMainCurrency` / `GetSecondMainCurrency` — валюты для отображения итогов
 - `GetHumanOrder` / `SetHumanOrder` — сохранение/загрузка порядка сортировки
@@ -67,8 +67,7 @@ app/src/main/java/com/breckneck/debtbook/debt/
 | `isSearching` | `LiveData<Boolean>` | Режим поиска |
 
 ### Ключевая логика
-- **State machine** через `MutableStateFlow<DebtLogicListState>`: `Loading → Received → Sorted`
-- **Фильтрация**: ALL (все), POSITIVE (мне должны), NEGATIVE (я должен)
+- **Фильтрация людей.** `PersonDebtHistory.matches(Filter)` проверяет наличие открытого займа нужного направления. Встречные займы могут включить человека сразу в обе выборки. `ALL` включает каждого человека, в том числе с пустой историей или только с погашенными долгами.
 - **Сортировка**: по имени, сумме, дате; ASC/DESC — через `sortHumans()` из domain
 - **Поиск**: debounce 500ms через `StateFlow`, фильтр по имени (case-insensitive)
 - **Async**: `viewModelScope.launch` + `withContext(Dispatchers.IO/Default)` для всех IO-операций; `StateFlow` для state machine и поиска
@@ -101,8 +100,11 @@ ViewModel деталей долгов одного человека.
 ### State
 | Поле | Тип | Описание |
 |------|-----|---------|
-| `resultedDebtList` | `LiveData<List<DebtDomain>>` | Список долгов |
-| `overallSum` | `LiveData<Double>` | Суммарный долг человека |
+| `loans` | `LiveData<PersonDebtHistory>` | Исходные займы, их остатки и связанные возвраты |
+| `showSettledDebts` | `LiveData<Boolean>` | Выбранный раздел, хранится в SavedStateHandle |
+| `visibleDebtRows` | `LiveData<List<DebtDomain>>` | Отсортированные исходные записи выбранного раздела с историей под каждой записью |
+| `resultedDebtList` | `LiveData<List<DebtDomain>>` | История для текстового экспорта и XLS с учётом сортировки и фильтра направления |
+| `overallSum` | `LiveData<BigDecimal>` | Сальдо человека с начальной поправкой |
 | `debtOrder` | `LiveData<Pair<DebtOrderAttribute, Boolean>>` | Сортировка |
 | `debtFilter` | `LiveData<Filter>` | Фильтр |
 | `humanName` | `LiveData<String>` | Имя человека |
@@ -189,3 +191,9 @@ R1b: суммы и аргументы редактирования точные 
 | `reminders/ReminderEntryActivity.kt` | PIN до возврата в MainActivity |
 
 `DebtDetailsFragment` открывает настройку срока отдельно от защищённого редактирования суммы при возвратах. Adapter показывает срок/просрочку по остатку и состояние напоминания; день/зона обновляются при возвращении и системной смене даты. Создание долга остаётся прежним: срок назначается выбранной исходной записи в истории. `dialog_debt_due.xml`, `r2_due_dates.xml` (EN/RU/DE/FR) добавляют форму и тексты. Полное погашение выключает напоминание; отмена возврата не включает его автоматически. Контракт: `docs/r2-due-dates-reminders.md`.
+
+### R2.3 — архив и перенос карточки на Bubble
+
+В карточке человека переключатель «Открытые долги / Погашенные долги» вызывает `DebtDetailsViewModel.selectDebtSection(settled)`. Кнопка добавления доступна в открытых долгах. Для Compose этапа «Долги» используйте `loans`, `showSettledDebts` и `visibleDebtRows` этой же ViewModel. По ID исходной записи доступен `loans.value?.loan(id)`. Выбранное направление и сортировка применяются к исходным записям. Возвраты идут под своим займом по дате и ID.
+
+[PersonDebtHistory](../../domain/src/main/java/com/breckneck/deptbook/domain/model/PersonDebtHistory.kt) строится из истории одного человека. Каждый `LoanHistory` содержит `original`, `remaining` и `repayments`, включая отменённые. Валюту предоставляет карточка человека. Старые нулевые записи доступны через `zeroAmountEntries`. Для дробных остатков старых записей используйте `MoneyDisplay.formatExact`. Действия возврата и отмены вызывают существующие команды ViewModel. Полное погашение выключает напоминание в транзакции Room, отмена сохраняет его выключенным.
