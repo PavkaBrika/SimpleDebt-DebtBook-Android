@@ -95,47 +95,10 @@ class CreateDebtViewModel @Inject constructor(
         }
     }
 
-    private val TAG = "NewDebtFragmentVM"
-
-    private val _currency = MutableLiveData<String>()
-    val currency: LiveData<String>
-        get() = _currency
-    private val _selectedCurrencyPosition = MutableLiveData<Int>()
-    val selectedCurrencyPosition: LiveData<Int>
-        get() = _selectedCurrencyPosition
-    private val _isCurrencyDialogOpened = MutableLiveData<Boolean>()
-    val isCurrencyDialogOpened: LiveData<Boolean>
-        get() = _isCurrencyDialogOpened
+    val currency = savedState.getLiveData("draftCurrency", savedState.get<String>("currency") ?: getDefaultCurrency.execute())
     val date: LiveData<String> = savedState.getLiveData(
         "selectedDebtDate", savedState.get<String>("date") ?: getCurrentDateUseCase.execute()
     )
-
-    init {
-        Log.e(TAG, "NewDebtFragmentViewModel created")
-        getDefaultCurrency()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.e(TAG, "NewDebtFragmentViewModel cleared")
-    }
-
-    fun setCurrency(currency: String) {
-        _currency.value = currency
-    }
-
-    fun onCurrencyDialogOpen(selectedCurrencyPosition: Int) {
-        _isCurrencyDialogOpened.value = true
-        _selectedCurrencyPosition.value = selectedCurrencyPosition
-    }
-
-    fun onCurrencyDialogClose() {
-        _isCurrencyDialogOpened.value = false
-    }
-
-    private fun getDefaultCurrency() {
-        _currency.value = getDefaultCurrency.execute()
-    }
 
     fun setStoredDate(date: String) {
         savedState["selectedDebtDate"] = date

@@ -17,6 +17,6 @@
     <string name="due_save_failed">Не удалось сохранить срок. Попробуйте ещё раз.</string>
     <string name="debt_delete_question">Удалить этот долг?</string>
     <string name="due_optional">Необязательно</string>
-    <string name="debt_entry_date">Дата долга</string>
+    <string name="debt_entry_date">Дата записи</string>
     <string name="due_reminder_on">Напоминание включено</string>
 </resources>
