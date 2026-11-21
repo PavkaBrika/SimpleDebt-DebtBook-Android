@@ -30,20 +30,25 @@ class DebtStatementPreviewDialog : BottomSheetDialogFragment(R.layout.sheet_debt
             startActivity(Intent.createChooser(send, card.humanName.value))
             dismiss()
         }
-        card.screenState.observe(viewLifecycleOwner) { state ->
+        fun render(state: DebtDetailsState?) {
             val ready = state == DebtDetailsState.SUCCESS || state == DebtDetailsState.EMPTY
-            sheet.statementText.text = when {
-                ready -> formatPersonDebtStatement(
-                    resources, card.humanName.value.orEmpty(), card.humanCurrency.orEmpty(),
-                    requireNotNull(card.overallSum.value), requireNotNull(card.loans.value),
-                    requireNotNull(card.debtFilter.value), requireNotNull(card.debtOrder.value),
-                    getAddSumInShareText.execute()
-                )
-                state == DebtDetailsState.ERROR -> getString(R.string.history_load_failed)
-                else -> getString(R.string.loading)
-            }
             sheet.sendButton.isEnabled = ready
+            if (!ready) {
+                sheet.includeSettled.isEnabled = false
+                sheet.statementText.setText(if (state == DebtDetailsState.ERROR) R.string.history_load_failed else R.string.loading)
+                return
+            }
+            val history = requireNotNull(card.loans.value)
+            val filter = requireNotNull(card.debtFilter.value)
+            sheet.includeSettled.isEnabled = history.settledLoans.any { history.includesEntry(it.original, filter) }
+            sheet.statementText.text = formatPersonDebtStatement(
+                resources, card.humanName.value.orEmpty(), card.humanCurrency.orEmpty(),
+                requireNotNull(card.overallSum.value), history, filter, requireNotNull(card.debtOrder.value),
+                includeRunningTotals = getAddSumInShareText.execute(), includeSettled = sheet.includeSettled.isChecked
+            )
         }
+        sheet.includeSettled.setOnCheckedChangeListener { _, _ -> render(card.screenState.value) }
+        card.screenState.observe(viewLifecycleOwner, ::render)
     }
 
     override fun onStart() {

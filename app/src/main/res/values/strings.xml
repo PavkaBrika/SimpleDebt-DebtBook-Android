@@ -72,7 +72,7 @@
     <string name="second_main_currency">Second main currency</string>
     <string name="default_currency">Default currency</string>
     <string name="default_currencies_hint">This currency will be selected by default when adding new debts</string>
-    <string name="detailed_share_text_hint">Show a running total after each entry in the statement, in the order shown.</string>
+    <string name="detailed_share_text_hint">Include individual repayments, notes and a running total after each entry.</string>
     <string name="more_detailed_share_text">More detailed \'\'share\'\' text</string>
     <string name="app_theme">App Theme</string>
     <string name="rate_app">Rate app</string>
