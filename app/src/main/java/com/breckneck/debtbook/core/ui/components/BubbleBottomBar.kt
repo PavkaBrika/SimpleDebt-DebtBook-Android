@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -93,9 +94,10 @@ internal fun BubbleBottomBar(
                         val selected = tab.destination == destination
                         val tint = if (selected) Color(0xFF203D26) else colors.muted
                         Column(
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 50.dp)
+                                .clip(CircleShape)
                                 .selectable(selected, role = Role.Tab) { onDestinationSelected(tab.destination) }
-                                .fillMaxHeight().heightIn(min = 50.dp).padding(horizontal = 1.dp, vertical = 4.dp),
+                                .padding(horizontal = 1.dp, vertical = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
                         ) {
