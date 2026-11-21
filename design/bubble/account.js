@@ -28,6 +28,14 @@ function validSnapshot(s) {
   const date=v=>string(v)&&/^\d{4}-\d\d-\d\d$/.test(v)&&!isNaN(Date.parse(v))&&isoDay(dateUTC(v))===v;
   const optionalDate=v=>v===''||date(v),cur=v=>currencyCodes.includes(v);
   const rows=(list,test)=>Array.isArray(list)&&new Set(list.map(x=>x?.id)).size===list.length&&list.every(x=>x&&positive(x.id)&&test(x));
+  function validGoalHistory(goal) {
+    const valid = rows(goal.deposits, entry =>
+      num(entry.cents) && entry.cents !== 0 && date(entry.date) &&
+      (entry.isInitial === undefined || typeof entry.isInitial === 'boolean') &&
+      (!entry.isInitial || (entry.cents > 0 && entry.date === goal.created))
+    );
+    return valid && goal.deposits.filter(entry => entry.isInitial).length <= 1;
+  }
   try{
     if(s?.format!=='SimpleDebt-design-2'||!positive(s.serial)||!s.preferences)return false;
     const p=s.preferences;
@@ -36,7 +44,7 @@ function validSnapshot(s) {
     if(!rows(s.finance.categories,c=>string(c.name)&&directions.includes(c.dir)&&string(c.emoji)&&/^#[0-9a-f]{6}$/i.test(c.color)))return false;
     const cats=new Set(s.finance.categories.map(c=>c.id));
     if(!rows(s.finance.entries,e=>cats.has(e.category)&&positive(e.cents)&&cur(e.cur)&&string(e.note)&&date(e.date)))return false;
-    if(!rows(s.goals,g=>string(g.name)&&cur(g.cur)&&positive(g.target)&&num(g.opening)&&date(g.created)&&optionalDate(g.due)&&string(g.photo)&&(!g.photo||/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(g.photo))&&rows(g.deposits,r=>num(r.cents)&&r.cents!==0&&date(r.date))))return false;
+    if(!rows(s.goals,g=>string(g.name)&&cur(g.cur)&&positive(g.target)&&num(g.opening)&&date(g.created)&&optionalDate(g.due)&&string(g.photo)&&(!g.photo||/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(g.photo))&&validGoalHistory(g)))return false;
     const groups=[s.people,s.finance.categories,s.finance.entries,s.goals,...s.goals.map(g=>g.deposits)];
     for(const p of s.people){groups.push(p.loans);for(const l of p.loans)groups.push(l.returns);}
     return groups.every(group=>group.every(item=>item.id<s.serial));

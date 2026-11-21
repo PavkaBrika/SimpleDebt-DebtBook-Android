@@ -1,8 +1,8 @@
 'use strict';
 function freshGoals() {
-  return [{id:1,name:'Путешествие',target:9000000,cur:'RUB',due:'2027-03-01',created:'2026-10-01',photo:'',opening:1500000,
-    deposits:[{id:1,date:'2026-11-09',cents:1250000},{id:2,date:'2026-11-17',cents:850000}]},
-    {id:2,name:'Наушники',target:1800000,cur:'RUB',due:'',created:'2026-09-18',photo:'',opening:1200000,deposits:[{id:3,date:'2026-11-12',cents:600000}]}];
+  return [{id:1,name:'Путешествие',target:9000000,cur:'RUB',due:'2027-03-01',created:'2026-10-01',photo:'',opening:0,
+    deposits:[{id:4,date:'2026-10-01',cents:1500000,isInitial:true},{id:1,date:'2026-11-09',cents:1250000},{id:2,date:'2026-11-17',cents:850000}]},
+    {id:2,name:'Наушники',target:1800000,cur:'RUB',due:'',created:'2026-09-18',photo:'',opening:0,deposits:[{id:5,date:'2026-09-18',cents:1200000,isInitial:true},{id:3,date:'2026-11-12',cents:600000}]}];
 }
 let savings;
 const goalById=id=>savings.find(g=>g.id===id);
@@ -44,6 +44,10 @@ flowViews.goals=f=>{
   return layout(heading('Цели')+(cards||empty('Пока нет целей. Создайте первую цель накопления.')),primary('goal-new','Новая цель','plus'),nav('goals'),true);
 };
 flowActions['goal-open']=(i,v)=>{frames[i].goalId=Number(v);go(i,'goalDetail');};
+function goalMovementTitle(deposit) {
+  if(deposit.isInitial === true) return 'Уже накоплено';
+  return deposit.cents > 0 ? 'Пополнение' : 'Снятие';
+}
 function goalScreenLayout(title,body,{menu='',action=''}={}) {
   const footer=action?'<div class="goals-dock goal-form-dock"><div class="sticky-action">'+action+'</div>'+gesture+'</div>':gesture;
   return '<div class="scroll goal-screen-scroll"><div class="goal-screen-head">'+status+backbar(title,menu)+'</div>'+
@@ -51,7 +55,7 @@ function goalScreenLayout(title,body,{menu='',action=''}={}) {
 }
 flowViews.goalDetail=f=>{
   const g=goalById(f.goalId),sum=saved(g),done=sum>=g.target;
-  const history=[...g.deposits].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(d=>'<div data-motion-row="deposit-'+d.id+'" class="timeline-row'+(d.cents<0?' withdrawal':'')+'"><span class="event-icon">'+icon(d.cents>=0?'take':'give',16)+'</span><span class="event-text"><strong>'+(d.cents>=0?'Пополнение':'Снятие')+'</strong><small>'+dateText(d.date)+' '+d.date.slice(0,4)+'</small></span><span class="money">'+amount(d.cents,g.cur,true)+'</span></div>').join('');
+  const history=[...g.deposits].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(d=>'<div data-motion-row="deposit-'+d.id+'" class="timeline-row'+(d.cents<0?' withdrawal':'')+'"><span class="event-icon">'+icon(d.cents>=0?'take':'give',16)+'</span><span class="event-text"><strong>'+goalMovementTitle(d)+'</strong><small>'+dateText(d.date)+' '+d.date.slice(0,4)+'</small></span><span class="money">'+amount(d.cents,g.cur,true)+'</span></div>').join('');
   const controls=done?'':pairButtons(button('goal-add','Пополнить',g.id,'btn secondary','plus'),button('goal-sub','Снять',g.id,'btn withdrawal','give'));
   const menu=done?goalDeleteButton(g):goalMenu(g);
   return goalScreenLayout(g.name,goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+motionAmount('remaining',Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.')),{menu});
@@ -102,7 +106,7 @@ flowActions['goal-save']=i=>{
   const g=d.id?goalById(d.id):{id:newId(),created:TODAY,deposits:[]};
   if(d.id&&saved(g)!==d.initialSaved)return fail(i,'Накопления изменились в другой панели. Откройте цель заново, чтобы увидеть новый остаток.');
   if(d.due&&d.due<=TODAY&&d.due!==g.due)return fail(i,'Выберите будущую дату.');
-  if(!d.id&&current>0) g.deposits.push({id:newId(),date:g.created,cents:current});
+  if(!d.id&&current>0) g.deposits.push({id:newId(),date:g.created,cents:current,isInitial:true});
   Object.assign(g,{name:d.name.trim(),target:n,cur:d.cur,due:d.due,photo:d.photo,opening:current-g.deposits.reduce((sum,x)=>sum+x.cents,0)});
   if(!d.id)savings.unshift(g);
   f.goalId=g.id;pop(i,'Цель сохранена');
