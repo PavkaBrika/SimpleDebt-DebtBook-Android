@@ -216,7 +216,7 @@ class BubbleDebtJourneyTest {
             manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_SPOKEN)
                 .any { it.id.contains("talkback", ignoreCase = true) }
         }
-        fun focus(label: String) {
+        fun accessibleButton(label: String): AccessibilityNodeInfo {
             var target: AccessibilityNodeInfo? = null
             compose.waitUntil(8000) {
                 fun AccessibilityNodeInfo.findLabel(): AccessibilityNodeInfo? {
@@ -228,17 +228,21 @@ class BubbleDebtJourneyTest {
                 target = generateSequence(match) { it.parent }.firstOrNull { it.isClickable }
                 target != null
             }
-            val button = requireNotNull(target)
+            return requireNotNull(target)
+        }
+        fun focus(label: String) {
+            val button = accessibleButton(label)
             assertTrue(button.isAccessibilityFocused || button.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS))
             compose.waitUntil(5000) {
                 button.refresh() && button.isAccessibilityFocused
             }
         }
 
-        person()
-        compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("repay-$anna"))
+        compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$anna"))
+        assertTrue(accessibleButton("Анна").performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        compose.awaitTag("personHistory").performScrollToNode(hasTestTag("repay-$anna"))
         focus(context.getString(R.string.debt_repay))
-        compose.awaitTag("addDebtButton").performClick()
+        assertTrue(accessibleButton(context.getString(R.string.newdebt)).performAction(AccessibilityNodeInfo.ACTION_CLICK))
         compose.awaitTag("setFinanceButton")
         focus(context.getString(R.string.debt_save))
     }
