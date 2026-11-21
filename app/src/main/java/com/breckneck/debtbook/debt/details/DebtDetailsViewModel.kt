@@ -1,7 +1,6 @@
 package com.breckneck.debtbook.debt.details
 
 import java.math.BigDecimal
-
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -15,7 +14,6 @@ import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
 import com.breckneck.deptbook.domain.usecase.Human.AddSumUseCase
 import com.breckneck.deptbook.domain.usecase.Human.DeleteHumanUseCase
-import com.breckneck.deptbook.domain.usecase.Human.GetHumanSumDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetLastHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder

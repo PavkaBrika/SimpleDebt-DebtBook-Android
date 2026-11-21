@@ -1,19 +1,10 @@
 package com.breckneck.debtbook.debt.details
 
-import com.breckneck.deptbook.domain.util.MoneyDisplay
-import java.math.BigDecimal
-import com.breckneck.deptbook.domain.util.compareTo
-
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.*
-import android.graphics.Typeface
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.transition.Fade
-import android.transition.TransitionManager
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -26,10 +17,6 @@ import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import androidx.core.os.bundleOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.livedata.observeAsState
@@ -39,29 +26,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.setFragmentResult
-import androidx.recyclerview.widget.RecyclerView
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.debt.details.adapter.DebtDetailsAdapter
+import com.breckneck.debtbook.debt.reminders.DebtDateSheet
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.usecase.Debt.ExportDebtDataInExcelUseCase
 import com.breckneck.deptbook.domain.util.DebtOrderAttribute
+import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.Filter
+import com.breckneck.deptbook.domain.util.LedgerDate
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.deptbook.domain.util.ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_DECREASE
 import com.breckneck.deptbook.domain.util.ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_INCREASE
-import com.facebook.shimmer.ShimmerFrameLayout
-import com.google.android.material.appbar.CollapsingToolbarLayout
+import com.breckneck.deptbook.domain.util.compareTo
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.android.material.chip.ChipGroup
-import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
-import java.io.File
-import com.breckneck.deptbook.domain.util.LedgerDate
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 @AndroidEntryPoint
@@ -185,13 +173,17 @@ class DebtDetailsFragment : Fragment() {
                     },
                     onRemove = { sheet = DebtSheet.REMOVE }
                 )
-                DebtSheet.DUE -> com.breckneck.debtbook.debt.reminders.DebtDateSheet(
+                DebtSheet.DUE -> DebtDateSheet(
                     title = stringResource(R.string.due_settings), initialDay = debt.dueDay,
                     minDay = LedgerDate.canonical(debt.date), clearable = true,
-                    initialMinute = debt.reminderMinute ?: com.breckneck.deptbook.domain.util.DebtReminderPolicy.DEFAULT_MINUTE,
+                    initialMinute = debt.reminderMinute ?: DebtReminderPolicy.DEFAULT_MINUTE,
                     initialReminder = (debt.reminderMinute != null && !debt.reminderDelivered).takeIf { rest.signum() > 0 },
                     onDismiss = close
-                ) { day, minute -> vm.saveDue(debt.id, day, minute) }
+                ) { day, minute ->
+                    val pendingMinute = debt.reminderMinute.takeUnless { debt.reminderDelivered || rest.signum() <= 0 ||
+                        debt.dueDay.orEmpty() < LedgerDate.today() }
+                    if (day != debt.dueDay || minute != pendingMinute) vm.saveDue(debt.id, day, minute)
+                }
                 DebtSheet.REMOVE -> {
                     val repayment = debt.repaymentOfId != null
                     val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
@@ -221,38 +213,28 @@ class DebtDetailsFragment : Fragment() {
         }
 
         dialog.findViewById<Button>(R.id.editButton)!!.setOnClickListener {
-            var rootFolder = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-                    .toString()
-            )
-            rootFolder = File(rootFolder, "DebtBookFiles")
-            val sheetTitles = arrayOf(
-                getString(R.string.date),
-                "${getString(R.string.sum)} ($currency)",
-                getString(R.string.comment)
-            )
-            val excelFile = ExportDebtDataInExcelUseCase().execute(
-                debtList = vm.resultedDebtList.value!!.map(::withHistoryDescription),
-                sheetName = "${humanName}_debts",
-                rootFolder = rootFolder,
-                sheetTitles = sheetTitles
-            )
-            if (excelFile.exists())
-                Toast.makeText(
-                    requireContext(),
-                    R.string.excel_folder_toast_hint,
-                    Toast.LENGTH_SHORT
-                ).show()
-            val intent = Intent(ACTION_SEND)
-            val uriPath: Uri = FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.provider",
-                excelFile
-            )
-            intent.addFlags(FLAG_GRANT_READ_URI_PERMISSION)
-            intent.setDataAndType(uriPath, "application/vnd.ms-excel");
-            intent.putExtra(EXTRA_STREAM, uriPath)
-            startActivity(createChooser(intent, humanName))
+            dialog.dismiss()
+            val context = requireContext()
+            val rows = vm.resultedDebtList.value.orEmpty().map(::withHistoryDescription)
+            val titles = listOf(getString(R.string.date), "${getString(R.string.sum)} ($currency)", getString(R.string.comment))
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val uri = withContext(Dispatchers.IO) {
+                        context.writeDebtWorkbook(humanName.orEmpty()) { output ->
+                            ExportDebtDataInExcelUseCase().execute(rows, humanName.orEmpty(), currency.orEmpty(), titles, output)
+                        }
+                    }
+                    if (Build.VERSION.SDK_INT >= 29) Toast.makeText(context, R.string.excel_folder_toast_hint, Toast.LENGTH_SHORT).show()
+                    val send = Intent(ACTION_SEND).setType(EXCEL_MIME).putExtra(EXTRA_STREAM, uri)
+                        .addFlags(FLAG_GRANT_READ_URI_PERMISSION)
+                    startActivity(createChooser(send, humanName))
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    Log.e(TAG, "Could not export debt history", failure)
+                    Toast.makeText(context, R.string.error, Toast.LENGTH_LONG).show()
+                }
+            }
         }
 
         dialog.findViewById<Button>(R.id.cancelButton)!!.setOnClickListener {
@@ -396,7 +378,4 @@ class DebtDetailsFragment : Fragment() {
         super.onPause()
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-    }
 }

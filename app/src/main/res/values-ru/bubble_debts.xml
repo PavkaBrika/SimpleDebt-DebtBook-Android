@@ -12,4 +12,5 @@
     <string name="debt_time">Время напоминания</string>
     <string name="debt_manage">Управление</string>
     <string name="debt_repay">Учесть возврат</string>
+    <string name="debt_future_time">Выберите будущее время для напоминания.</string>
 </resources>

@@ -1,83 +1,28 @@
 package com.breckneck.deptbook.domain.usecase.Debt
 
-import java.math.BigDecimal
-
 import com.breckneck.deptbook.domain.model.DebtDomain
-import com.google.gson.Gson
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
-import org.apache.poi.ss.usermodel.Cell
-import java.io.File
-import java.io.FileOutputStream
-import java.text.DecimalFormat
+import org.apache.poi.ss.util.WorkbookUtil
+import java.io.OutputStream
 
 class ExportDebtDataInExcelUseCase {
-
-    fun execute(debtList: List<DebtDomain>, sheetName: String, rootFolder: File, sheetTitles: Array<String>): File {
-        val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
-
-        val classTitles = arrayOf("date", "sum", "info")
-        val gson = Gson()
-        val jsonArray = gson.toJsonTree(debtList).asJsonArray
-
-        val wb = HSSFWorkbook()
-        val sheet = wb.createSheet(sheetName)
-        var cell: Cell
-        var rowIndex = 0
-        val row = sheet.createRow(rowIndex)
-        ++rowIndex
-        //set titles
-        for ((i, title) in sheetTitles.withIndex()) {
-            cell = row.createCell(i)
-            cell.setCellValue(title)
-        }
-
-        for (j in 0..122) {
-            sheet.setColumnWidth(j, (30*200))
-        }
-
-        for (i in 0 until jsonArray.size()) {
-            val jsonObject = jsonArray.get(i).asJsonObject
-            if (jsonObject != null) {
-                val row1 = sheet.createRow(i + rowIndex)
-                for ((i, value) in classTitles.withIndex()) {
-                    cell = row1.createCell(i)
-                    try {
-                        if (i == 1) {
-                            var sumString = decimalFormat.format(jsonObject.get(value).asBigDecimal)
-                            if (!sumString.contains("-"))
-                                sumString = "+$sumString"
-                            cell.setCellValue(sumString)
-                        }
-                        else
-                            cell.setCellValue(jsonObject.get(value).asString)
-                    } catch (e: java.lang.NullPointerException) {
-                        e.printStackTrace()
-                        cell.setCellValue("")
-                    }
-                }
+    fun execute(debtList: List<DebtDomain>, sheetName: String, currency: String, titles: List<String>, output: OutputStream) {
+        HSSFWorkbook().use { workbook ->
+            val sheet = workbook.createSheet(WorkbookUtil.createSafeSheetName(sheetName))
+            val header = sheet.createRow(0)
+            titles.forEachIndexed { index, title ->
+                header.createCell(index).setCellValue(title)
+                sheet.setColumnWidth(index, 30 * 256)
             }
-        }
-
-        val filePath = File(rootFolder, "${sheetName}.xls")
-        try {
-            if (!filePath.exists())
-                filePath.mkdirs()
-            if (!filePath.exists()) {
-                filePath.createNewFile()
-            } else {
-                filePath.delete()
-                filePath.createNewFile()
+            debtList.forEachIndexed { index, debt ->
+                val row = sheet.createRow(index + 1)
+                row.createCell(0).setCellValue(debt.date)
+                val sign = if (debt.sum.signum() > 0) "+" else ""
+                row.createCell(1).setCellValue(sign + MoneyDisplay.formatExact(debt.sum, currency))
+                row.createCell(2).setCellValue(debt.info.orEmpty())
             }
-        } catch (e: java.lang.Exception) {
-            e.printStackTrace()
+            workbook.write(output)
         }
-
-        val file = filePath
-
-        val fileOutputStream = FileOutputStream(file.path)
-        wb.write(fileOutputStream)
-        fileOutputStream.close()
-        println("SUCCESS EXCEL ${file.absolutePath}")
-        return file
     }
 }

@@ -1,0 +1,16 @@
+<resources>
+    <string name="debt_total">Gesamtsaldo</string>
+    <string name="debt_people">Personen</string>
+    <string name="find_person">Person suchen</string>
+    <string name="debt_no_due">Ohne Fälligkeit</string>
+    <string name="debt_today">Heute fällig</string>
+    <string name="debt_overdue">Überfällig · %1$s</string>
+    <string name="debt_empty_currency">Keine passenden Einträge</string>
+    <string name="debt_save">Schuld speichern</string>
+    <string name="debt_deadline">Fälligkeit</string>
+    <string name="debt_clear_date">Fälligkeit entfernen</string>
+    <string name="debt_time">Erinnerungszeit</string>
+    <string name="debt_manage">Person verwalten</string>
+    <string name="debt_repay">Rückzahlung erfassen</string>
+    <string name="debt_future_time">Wähle eine zukünftige Erinnerungszeit.</string>
+</resources>

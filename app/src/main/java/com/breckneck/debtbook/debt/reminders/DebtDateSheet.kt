@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -27,10 +28,14 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -98,9 +103,13 @@ internal fun DebtDateSheet(
     val showReminder = initialReminder != null && day != null && DebtReminderPolicy.canSchedule(day)
     var allowed by remember { mutableStateOf(reminders.allowed()) }
     var enabled by rememberSaveable { mutableStateOf(initialReminder == true && allowed) }
-    var minute by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(initialMinute) }
+    var minute by rememberSaveable { mutableIntStateOf(initialMinute) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
     var clear by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(day) { if (day != null) clear = false }
+    val unchangedTime = day == initialDay && initialReminder == true && minute == initialMinute
+    val pastTime = day != null && showReminder && enabled && !unchangedTime &&
+        DebtReminderPolicy.trigger(day, minute) <= System.currentTimeMillis()
     var error by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
 
@@ -120,10 +129,10 @@ internal fun DebtDateSheet(
     }
 
     if (pickingTime) {
-        val time = androidx.compose.material3.rememberTimePickerState(minute / 60, minute % 60, is24Hour = true)
-        androidx.compose.material3.AlertDialog(onDismissRequest = { pickingTime = false },
+        val time = rememberTimePickerState(minute / 60, minute % 60, is24Hour = true)
+        AlertDialog(onDismissRequest = { pickingTime = false },
             title = { Text(stringResource(R.string.debt_time)) },
-            text = { androidx.compose.material3.TimeInput(time) },
+            text = { TimeInput(time, Modifier.testTag("timeInput")) },
             confirmButton = { TextButton({ minute = time.hour * 60 + time.minute; pickingTime = false },
                 modifier = Modifier.testTag("timeConfirm")) { Text(stringResource(R.string.due_apply)) } },
             dismissButton = { TextButton({ pickingTime = false }) { Text(stringResource(R.string.cancel)) } })
@@ -157,40 +166,42 @@ internal fun DebtDateSheet(
                         Text(stringResource(R.string.debt_clear_date))
                     }
                 }
-            AnimatedVisibility(visible = showReminder) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = spacing.space24)) {
-                    DebtBookSwitchRow(
-                        label = stringResource(R.string.due_enable),
-                        checked = enabled,
-                        modifier = Modifier.testTag("dueReminderSwitch"),
-                        enabled = !busy && showReminder,
-                        onCheckedChange = { checked ->
-                            allowed = reminders.allowed()
-                            enabled = checked && allowed
-                            if (checked && !allowed && Build.VERSION.SDK_INT >= 33 &&
-                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                                PackageManager.PERMISSION_GRANTED
-                            ) {
-                                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                AnimatedVisibility(visible = showReminder) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = spacing.space24)) {
+                        DebtBookSwitchRow(
+                            label = stringResource(R.string.due_enable),
+                            checked = enabled,
+                            modifier = Modifier.testTag("dueReminderSwitch"),
+                            enabled = !busy && showReminder,
+                            onCheckedChange = { checked ->
+                                allowed = reminders.allowed()
+                                enabled = checked && allowed
+                                if (checked && !allowed && Build.VERSION.SDK_INT >= 33 &&
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                    PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
                             }
-                        }
-                    )
-                    if (enabled) TextButton({ pickingTime = true }, modifier = Modifier.testTag("dueTimeButton")) {
-                        Text(stringResource(R.string.debt_time) + " · " + com.breckneck.debtbook.debt.details.formatMinute(minute))
-                    }
-                    if (!allowed) {
-                        Text(
-                            stringResource(R.string.due_permission_denied),
-                            modifier = Modifier.padding(top = spacing.space8).testTag("duePermissionStatus"),
-                            style = MaterialTheme.typography.bodyMedium
                         )
-                        TextButton(onClick = { openNotificationSettings(context) }, enabled = !busy) {
-                            Text(stringResource(R.string.due_notification_settings))
+                        if (enabled) TextButton({ pickingTime = true }, modifier = Modifier.testTag("dueTimeButton")) {
+                            Text(stringResource(R.string.debt_time) + " · " + formatMinute(minute))
+                        }
+                        if (!allowed) {
+                            Text(
+                                stringResource(R.string.due_permission_denied),
+                                modifier = Modifier.padding(top = spacing.space8).testTag("duePermissionStatus"),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            TextButton(onClick = { openNotificationSettings(context) }, enabled = !busy) {
+                                Text(stringResource(R.string.due_notification_settings))
+                            }
                         }
                     }
                 }
             }
-            }
+            if (pastTime) Text(stringResource(R.string.debt_future_time), Modifier.padding(horizontal = spacing.space24),
+                color = MaterialTheme.colorScheme.error)
             if (error) {
                 Text(
                     stringResource(R.string.due_save_failed),
@@ -208,7 +219,7 @@ internal fun DebtDateSheet(
                 }
                 Button(
                     modifier = Modifier.testTag("dueSaveButton"),
-                    enabled = (day != null || clear) && !busy,
+                    enabled = (day != null || clear) && !busy && !pastTime,
                     onClick = {
                         val selectedDay = day
                         busy = true
@@ -243,3 +254,5 @@ private fun openNotificationSettings(context: Context) {
     }
     context.startActivity(intent)
 }
+
+internal fun formatMinute(minute: Int): String = "%02d:%02d".format(minute / 60, minute % 60)

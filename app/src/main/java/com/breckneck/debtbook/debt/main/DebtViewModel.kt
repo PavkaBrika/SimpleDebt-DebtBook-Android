@@ -3,9 +3,9 @@ package com.breckneck.debtbook.debt.main
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.model.PersonDebtHistory
 import com.breckneck.deptbook.domain.repository.DataTransaction
@@ -13,21 +13,22 @@ import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.*
 import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
-import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
+import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
 import com.breckneck.deptbook.domain.util.ScreenState
+import com.breckneck.deptbook.domain.util.sortHumans
+import dagger.hilt.android.lifecycle.HiltViewModel
+import java.math.BigDecimal
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 @HiltViewModel
 @OptIn(FlowPreview::class)
@@ -36,7 +37,7 @@ class DebtViewModel @Inject constructor(
     private val getAllDebts: GetAllDebts,
     private val transaction: DataTransaction,
     getFirstMainCurrency: GetFirstMainCurrency,
-    saved: androidx.lifecycle.SavedStateHandle,
+    private val saved: SavedStateHandle,
     private val getHumanOrder: GetHumanOrder,
     private val setHumanOrder: SetHumanOrder,
     private val updateHuman: UpdateHuman
@@ -50,13 +51,14 @@ class DebtViewModel @Inject constructor(
     private var refreshJob: Job? = null
 
     val currency = saved.getLiveData("listCurrency", getFirstMainCurrency.execute())
-    private val _mainSums = MutableLiveData<Pair<java.math.BigDecimal, java.math.BigDecimal>>()
-    val mainSums: LiveData<Pair<java.math.BigDecimal, java.math.BigDecimal>> get() = _mainSums
+    private val _mainSums = MutableLiveData<Pair<BigDecimal, BigDecimal>>()
+    val mainSums: LiveData<Pair<BigDecimal, BigDecimal>> get() = _mainSums
     private var people = emptyList<HumanDomain>()
     private var histories = emptyMap<Int, PersonDebtHistory>()
-    fun nearestDeadline(id: Int) = histories[id]?.openLoans?.mapNotNull { it.original.dueDay }?.minOrNull()
-    fun isSettled(id: Int) = histories[id]?.let { it.openLoans.isEmpty() && it.settledLoans.isNotEmpty() } == true
-
+    val recordedCurrencies = MutableLiveData<List<String>>()
+    val loadFailed = MutableLiveData(false)
+    val deadlines = MutableLiveData<Map<Int, String?>>()
+    val settled = MutableLiveData<Set<Int>>()
     fun selectCurrency(value: String) {
         currency.value = value
         publishHumans()
@@ -66,7 +68,7 @@ class DebtViewModel @Inject constructor(
     val resultedHumanList: LiveData<List<HumanDomain>>
         get() = _resultedHumanList
 
-    private val _humanFilter = MutableLiveData<Filter>(Filter.ALL)
+    private val _humanFilter = saved.getLiveData("listFilter", Filter.ALL)
     val humanFilter: LiveData<Filter>
         get() = _humanFilter
     private val _humanOrder = MutableLiveData<Pair<HumanOrderAttribute, Boolean>>()
@@ -83,14 +85,11 @@ class DebtViewModel @Inject constructor(
     private val _changedHuman = MutableLiveData<HumanDomain>()
     val changedHuman: LiveData<HumanDomain>
         get() = _changedHuman
-    private val _changedHumanPosition = MutableLiveData<Int>()
-    val changedHumanPosition: LiveData<Int>
-        get() = _changedHumanPosition
-
-    private val _isSearching = MutableLiveData(false)
+    private val _isSearching = saved.getLiveData("listSearching", false)
     val isSearching: LiveData<Boolean>
         get() = _isSearching
-    private val _searchQuery = MutableStateFlow("")
+    val query get() = _searchQuery
+    private val _searchQuery = saved.getStateFlow("listQuery", "")
 
     init {
         getHumanOrder()
@@ -110,12 +109,17 @@ class DebtViewModel @Inject constructor(
                     val (persons, rows) = transaction.run { getAllHumansUseCase.execute() to getAllDebts.execute() }
                     persons to rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
                 }
+                recordedCurrencies.value = persons.map { it.currency }.distinct()
+                loadFailed.value = false
                 people = persons
                 histories = loans
+                deadlines.value = loans.mapValues { (_, history) -> history.openLoans.mapNotNull { it.original.dueDay }.minOrNull() }
+                settled.value = loans.filterValues { it.openLoans.isEmpty() && it.settledLoans.isNotEmpty() }.keys
                 publishHumans()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                loadFailed.value = true
                 Log.e(TAG, "Could not refresh debts", e)
                 publishHumans()
             }
@@ -123,11 +127,14 @@ class DebtViewModel @Inject constructor(
     }
 
     fun getHumanOrder() {
-        _humanOrder.value = getHumanOrder.execute()
+        val order = getHumanOrder.execute()
+        val byAmount = saved.get<Boolean>("listOrderByAmount")
+        _humanOrder.value = if (byAmount == null) order else
+            (if (byAmount) HumanOrderAttribute.Sum else HumanOrderAttribute.Date) to (saved.get<Boolean>("listAscending") ?: order.second)
     }
 
     private fun orderHumans(list: List<HumanDomain>): List<HumanDomain> {
-        return com.breckneck.deptbook.domain.util.sortHumans(
+        return sortHumans(
             debtList = list,
             order = humanOrder.value!!
         )
@@ -148,6 +155,8 @@ class DebtViewModel @Inject constructor(
     fun onSetHumanSort(filter: Filter, order: Pair<HumanOrderAttribute, Boolean>) {
         _humanFilter.value = filter
         _humanOrder.value = order
+        saved["listOrderByAmount"] = order.first == HumanOrderAttribute.Sum
+        saved["listAscending"] = order.second
         publishHumans()
     }
 
@@ -178,10 +187,9 @@ class DebtViewModel @Inject constructor(
         _isSortDialogOpened.value = false
     }
 
-    fun onChangeDebtNameDialogOpen(humanDomain: HumanDomain, position: Int) {
+    fun onChangeDebtNameDialogOpen(humanDomain: HumanDomain) {
         _isChangeDebtNameDialogOpened.value = true
         _changedHuman.value = humanDomain
-        _changedHumanPosition.value = position
     }
 
     fun onChangeDebtNameDialogClose() {
@@ -189,9 +197,7 @@ class DebtViewModel @Inject constructor(
     }
 
     fun setSearchQuery(query: String) {
-        viewModelScope.launch {
-            _searchQuery.emit(query)
-        }
+        saved["listQuery"] = query
     }
 
     fun onStartSearch() {
@@ -199,7 +205,7 @@ class DebtViewModel @Inject constructor(
     }
 
     fun onStopSearch() {
-        _searchQuery.value = ""
+        saved["listQuery"] = ""
         setIsSearching(false)
     }
 

@@ -7,7 +7,6 @@ import com.breckneck.deptbook.domain.util.MoneyPolicy
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.model.DebtDueChange
 import java.util.UUID
-
 import androidx.room.*
 import entity.Debt
 import entity.FinanceCategoryData

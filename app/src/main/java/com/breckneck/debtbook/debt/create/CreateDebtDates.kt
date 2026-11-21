@@ -34,7 +34,7 @@ internal fun CreateDebtDates(vm: CreateDebtViewModel) {
     BubbleFieldRow(Icons.Outlined.DateRange, dueLabel, Modifier.testTag("createDebtDue")
         .clickable(enabled = !saving) { openField = DateField.DUE }) {
         Text(draftDueDay?.let(LedgerDate::display) ?: stringResource(R.string.debt_no_due))
-        if (reminder) Text(stringResource(R.string.debt_time) + " · " + com.breckneck.debtbook.debt.details.formatMinute(minute))
+        if (reminder) Text(stringResource(R.string.debt_time) + " · " + com.breckneck.debtbook.debt.reminders.formatMinute(minute))
     }
     when (openField) {
         DateField.DEBT -> {

@@ -1,7 +1,6 @@
 package com.breckneck.deptbook.data.storage
 
 import java.math.BigDecimal
-
 import entity.Human
 
 interface HumanStorage  {

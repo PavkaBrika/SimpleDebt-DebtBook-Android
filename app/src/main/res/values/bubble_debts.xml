@@ -12,4 +12,5 @@
     <string name="debt_time">Reminder time</string>
     <string name="debt_manage">Manage person</string>
     <string name="debt_repay">Record repayment</string>
+    <string name="debt_future_time">Choose a future reminder time.</string>
 </resources>

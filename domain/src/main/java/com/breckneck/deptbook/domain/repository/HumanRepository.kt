@@ -1,7 +1,6 @@
 package com.breckneck.deptbook.domain.repository
 
 import java.math.BigDecimal
-
 import com.breckneck.deptbook.domain.model.HumanDomain
 
 interface HumanRepository {

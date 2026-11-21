@@ -1,27 +1,26 @@
 package com.breckneck.debtbook.debt.create
 
-import java.math.BigDecimal
-
 import android.util.Log
-import com.breckneck.deptbook.domain.repository.DataTransaction
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import com.breckneck.deptbook.domain.usecase.Human.*
-import com.breckneck.deptbook.domain.usecase.Debt.*
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.breckneck.deptbook.domain.usecase.Debt.GetCurrentDateUseCase
+import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.DebtDueChange
+import com.breckneck.deptbook.domain.repository.DataTransaction
+import com.breckneck.deptbook.domain.usecase.Debt.*
+import com.breckneck.deptbook.domain.usecase.Debt.GetCurrentDateUseCase
+import com.breckneck.deptbook.domain.usecase.Human.*
+import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
-import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.math.BigDecimal
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class CreateDebtViewModel @Inject constructor(
@@ -52,13 +51,17 @@ class CreateDebtViewModel @Inject constructor(
     val hasDueChange: Boolean
         get() = dueDay.value != initialDueDay || remind.value != initialRemind || (remind.value == true && minute.value != initialMinute)
 
+    fun hasPastReminder(): Boolean {
+        val day = dueDay.value ?: return false
+        val time = minute.value ?: return false
+        return hasDueChange && remind.value == true && DebtReminderPolicy.trigger(day, time) <= System.currentTimeMillis()
+    }
+
     fun setDueDraft(day: String?, selectedMinute: Int?) {
         savedState["dueDay"] = day
         savedState["remind"] = selectedMinute != null
         if (selectedMinute != null) savedState["draftMinute"] = selectedMinute
     }
-
-    fun consumeSaveResult() { savedHumanId.value = null }
 
     fun saveDebt(humanId: Int, debtId: Int, name: String, sum: BigDecimal,
                  date: String, info: String) {

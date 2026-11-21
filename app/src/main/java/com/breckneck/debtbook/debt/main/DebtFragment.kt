@@ -1,36 +1,24 @@
 package com.breckneck.debtbook.debt.main
 
 import android.content.Context
-import android.content.pm.ActivityInfo
-import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
-import android.transition.Fade
-import android.transition.TransitionManager
-import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.cardview.widget.CardView
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
-import androidx.recyclerview.widget.RecyclerView
+import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.debt.main.adapter.HumanAdapter
-import com.breckneck.debtbook.core.MainViewModel
+import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.*
 import com.breckneck.deptbook.domain.util.Filter
-import com.facebook.shimmer.ShimmerFrameLayout
-import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -56,13 +44,13 @@ class DebtFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        androidx.compose.ui.platform.ComposeView(requireContext()).apply {
+        ComposeView(requireContext()).apply {
             id = R.id.humansLayout
-            setViewCompositionStrategy(androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                com.breckneck.debtbook.core.ui.theme.DebtBookTheme {
+                DebtBookTheme {
                     DebtListScreen(vm, requireActivity() as OnButtonClickListener, ::showHumanSortDialog) {
-                        openChangeDebtNameDialog(it, 0)
+                        openChangeDebtNameDialog(it)
                     }
                 }
             }
@@ -74,7 +62,7 @@ class DebtFragment : Fragment() {
             vm.setListStateLoading()
         }
         if (vm.isSortDialogOpened.value == true) showHumanSortDialog()
-        if (vm.isChangeDebtNameDialogOpened.value == true) vm.changedHuman.value?.let { openChangeDebtNameDialog(it, 0) }
+        if (vm.isChangeDebtNameDialogOpened.value == true) vm.changedHuman.value?.let { openChangeDebtNameDialog(it) }
     }
 
     override fun onResume() {
@@ -180,10 +168,10 @@ class DebtFragment : Fragment() {
         bottomSheetDialogFilter.show()
     }
 
-    private fun openChangeDebtNameDialog(humanDomain: HumanDomain, position: Int) {
+    private fun openChangeDebtNameDialog(humanDomain: HumanDomain) {
         val dialog = BottomSheetDialog(requireActivity())
         dialog.setContentView(R.layout.dialog_change_debt_name)
-        vm.onChangeDebtNameDialogOpen(humanDomain = humanDomain, position = position)
+        vm.onChangeDebtNameDialogOpen(humanDomain)
         val humanNameTextInput: TextInputLayout = dialog.findViewById(R.id.humanNameTextInput)!!
         val humanNameEditText: TextInputEditText = dialog.findViewById(R.id.humanNameEditText)!!
         humanNameEditText.setText(humanDomain.name)

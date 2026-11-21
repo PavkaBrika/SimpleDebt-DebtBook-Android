@@ -29,7 +29,6 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
-import java.math.BigDecimal
 
 @Composable
 internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () -> Unit, feedback: () -> Unit,
@@ -102,6 +101,7 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () ->
                 name.text.isBlank() && personId <= 0 -> R.string.youmustentername
                 parsed == null || parsed.signum() < 0 -> R.string.invalid_decimal_amount
                 parsed.signum() == 0 -> R.string.zerodebt
+                vm.hasPastReminder() && DebtReminders.get(context).allowed() -> R.string.debt_future_time
                 else -> 0
             }
             if (error == 0 && parsed != null) {

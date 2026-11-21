@@ -1,0 +1,16 @@
+<resources>
+    <string name="debt_total">Solde total</string>
+    <string name="debt_people">Personnes</string>
+    <string name="find_person">Chercher une personne</string>
+    <string name="debt_no_due">Sans échéance</string>
+    <string name="debt_today">Échéance aujourd’hui</string>
+    <string name="debt_overdue">En retard · %1$s</string>
+    <string name="debt_empty_currency">Aucune personne correspondante</string>
+    <string name="debt_save">Enregistrer la dette</string>
+    <string name="debt_deadline">Échéance</string>
+    <string name="debt_clear_date">Effacer l’échéance</string>
+    <string name="debt_time">Heure du rappel</string>
+    <string name="debt_manage">Gérer la personne</string>
+    <string name="debt_repay">Enregistrer un remboursement</string>
+    <string name="debt_future_time">Choisissez une heure de rappel à venir.</string>
+</resources>

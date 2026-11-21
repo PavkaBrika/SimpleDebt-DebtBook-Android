@@ -23,6 +23,7 @@ import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.main.dueLabel
 import com.breckneck.debtbook.debt.main.signedMoney
+import com.breckneck.debtbook.debt.reminders.formatMinute
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.util.MoneyDisplay
@@ -141,5 +142,3 @@ private fun HistoryRow(row: DebtDomain, original: DebtDomain?, rest: BigDecimal,
         }
     }
 }
-
-internal fun formatMinute(minute: Int): String = "%02d:%02d".format(minute / 60, minute % 60)

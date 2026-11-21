@@ -1,6 +1,5 @@
 package com.breckneck.debtbook.core
 
-
 import android.content.ActivityNotFoundException
 import androidx.core.net.toUri
 import com.breckneck.debtbook.settings.openSettingsIntent
@@ -21,7 +20,6 @@ import android.widget.EditText
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.ui.onNavDestinationSelected
 import com.breckneck.debtbook.auth.ActivityAuthGate
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.*
@@ -43,18 +41,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
 import androidx.core.view.updateLayoutParams
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
-import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
-import com.breckneck.deptbook.domain.util.PINCodeAction
 import com.breckneck.debtbook.debt.details.DebtDetailsFragment
 import com.breckneck.debtbook.debt.main.DebtFragment
 import com.breckneck.debtbook.debt.create.CreateDebtFragment
@@ -71,7 +64,6 @@ import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.model.Goal
-import com.breckneck.deptbook.domain.util.CLICKS_QUANTITY_FOR_AD_SHOW
 import com.breckneck.deptbook.domain.util.DEBT_QUANTITY_FOR_LAST_SHOW_APP_RATE_DIALOG
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -237,9 +229,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         navController = navHostFragment.navController
 
         configureHostInsets()
-        val bottomNavBar = findViewById<ComposeView>(R.id.bottomNavigationView)
-        tabMenu = PopupMenu(this, bottomNavBar).apply { inflate(R.menu.menu_bottom_nav) }.menu
-        bottomNavBar.visibility = View.GONE
+        // NavigationUI keeps each tab's saved back stack. The destination draws its own bar.
+        tabMenu = PopupMenu(this, findViewById<View>(R.id.bottomDock)).apply { inflate(R.menu.menu_bottom_nav) }.menu
     }
 
     override fun onTabSelected(id: Int) {
