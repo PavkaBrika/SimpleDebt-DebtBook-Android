@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
@@ -53,6 +56,9 @@ fun GoalsScreen(vm: GoalsViewModel, hostInsets: PaddingValues) {
 @Composable
 private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction: (GoalsAction) -> Unit) {
     val colors = bubbleColors()
+    val direction = LocalLayoutDirection.current
+    val start = hostInsets.calculateStartPadding(direction) + 16.dp
+    val end = hostInsets.calculateEndPadding(direction) + 16.dp
     val listScroll = rememberLazyListState()
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -63,7 +69,7 @@ private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction:
             Column {
                 BubbleButton(
                     onClick = { onAction(GoalsAction.AddGoalClick) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = start, end = end, top = 4.dp, bottom = 4.dp),
                 ) {
                     Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                     Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))
@@ -81,7 +87,7 @@ private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction:
                 modifier = Modifier.fillMaxSize(),
                 state = listScroll,
                 contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp,
+                    start = start, end = end,
                     top = hostInsets.calculateTopPadding() + 8.dp,
                     bottom = insets.calculateBottomPadding() + 8.dp,
                 ),

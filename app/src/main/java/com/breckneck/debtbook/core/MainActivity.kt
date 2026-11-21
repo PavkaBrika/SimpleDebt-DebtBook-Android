@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.Insets
 import androidx.core.view.updateLayoutParams
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.ComposeView
@@ -107,7 +108,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         },
         lockDelayMillis = { vm.pinLockDelayMillis() }
     )
-    override var goalsListInsets by mutableStateOf(PaddingValues(0.dp))
+    override var goalsContentInsets by mutableStateOf(PaddingValues(0.dp))
         private set
     lateinit var navController: NavController
 
@@ -262,26 +263,36 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val host = findViewById<View>(R.id.frameLayout)
         val defaultContrast = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && window.isNavigationBarContrastEnforced
         var overlayGoals = false
-        var safeTop = 0
+        var safeBars = Insets.NONE
 
-        fun updateListInsets() {
+        fun updateGoalsInsets() {
             if (overlayGoals) {
                 val density = resources.displayMetrics.density
-                goalsListInsets = PaddingValues(top = (safeTop / density).dp, bottom = (dock.height / density).dp)
+                goalsContentInsets = PaddingValues.Absolute(
+                    left = (safeBars.left / density).dp,
+                    top = (safeBars.top / density).dp,
+                    right = (safeBars.right / density).dp,
+                    bottom = (dock.height / density).dp,
+                )
             }
         }
-        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateListInsets() }
+        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateGoalsInsets() }
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val bottom = maxOf(bars.bottom, ime.bottom)
             val revealInput = !overlayGoals && ime.bottom > bars.bottom && root.paddingBottom != ime.bottom
-            safeTop = bars.top
-            root.updatePadding(left = bars.left, top = if (overlayGoals) 0 else bars.top, right = bars.right,
-                bottom = if (overlayGoals) 0 else bottom)
-            dock.updatePadding(bottom = if (overlayGoals) bottom else 0)
-            updateListInsets()
+            safeBars = bars
+            root.updatePadding(
+                left = if (overlayGoals) 0 else bars.left, top = if (overlayGoals) 0 else bars.top,
+                right = if (overlayGoals) 0 else bars.right, bottom = if (overlayGoals) 0 else bottom,
+            )
+            dock.updatePadding(
+                left = if (overlayGoals) bars.left else 0, right = if (overlayGoals) bars.right else 0,
+                bottom = if (overlayGoals) bottom else 0,
+            )
+            updateGoalsInsets()
             if (revealInput) root.doOnNextLayout {
                 (root.findFocus() as? EditText)?.let { input ->
                     input.requestRectangleOnScreen(Rect(0, 0, input.width, input.height), true)
@@ -290,7 +301,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             WindowInsetsCompat.CONSUMED
         }
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            val goals = destination.id == R.id.goalsFragment
+            val goals = destination.id == R.id.goalsFragment || destination.id == R.id.goalDetailsFragment
             if (goals != overlayGoals) {
                 overlayGoals = goals
                 host.updateLayoutParams<ConstraintLayout.LayoutParams> {

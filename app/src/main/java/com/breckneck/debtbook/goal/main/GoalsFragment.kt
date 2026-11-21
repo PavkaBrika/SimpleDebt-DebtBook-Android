@@ -26,7 +26,7 @@ class GoalsFragment : Fragment() {
     private val vm by viewModels<GoalsViewModel>()
 
     interface OnClickListener {
-        val goalsListInsets: PaddingValues
+        val goalsContentInsets: PaddingValues
         fun onAddGoalButtonClick()
         fun onGoalClick(goal: Goal)
         fun onEditGoalButtonClick(goal: Goal)
@@ -58,7 +58,7 @@ class GoalsFragment : Fragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
-                    GoalsScreen(vm = vm, hostInsets = host.goalsListInsets)
+                    GoalsScreen(vm = vm, hostInsets = host.goalsContentInsets)
                 }
             }
         }

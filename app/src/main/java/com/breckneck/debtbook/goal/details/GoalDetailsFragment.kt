@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.BundleCompat
@@ -22,6 +23,7 @@ class GoalDetailsFragment : Fragment() {
     private val vm by viewModels<GoalDetailsViewModel>()
 
     interface OnClickListener {
+        val goalsContentInsets: PaddingValues
         fun onEditGoalButtonClick(goal: Goal)
         fun onBackButtonClick()
     }
@@ -30,9 +32,10 @@ class GoalDetailsFragment : Fragment() {
         ComposeView(requireContext()).apply {
             id = R.id.goalDetailsComposeView
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            val host = requireActivity() as OnClickListener
             setContent {
                 DebtBookTheme {
-                    GoalDetailsScreen(vm, onBack = { (activity as? OnClickListener)?.onBackButtonClick() })
+                    GoalDetailsScreen(vm, host.goalsContentInsets, onBack = host::onBackButtonClick)
                 }
             }
         }

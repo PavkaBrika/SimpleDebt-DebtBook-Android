@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.core.ui.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,7 @@ internal fun BubbleTopBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
+    titleModifier: Modifier = Modifier,
     action: @Composable () -> Unit = { Spacer(Modifier.size(48.dp)) },
 ) {
     val colors = bubbleColors()
@@ -41,16 +43,18 @@ internal fun BubbleTopBar(
         BubbleIconButton(onClick = onBack, enabled = backEnabled) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
         }
-        Text(
-            title,
-            modifier = Modifier.weight(1f).semantics { heading() },
-            color = colors.ink,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            Text(
+                title,
+                modifier = titleModifier.semantics { heading() },
+                color = colors.ink,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         action()
     }
 }

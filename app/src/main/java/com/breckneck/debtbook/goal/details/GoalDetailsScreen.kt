@@ -1,11 +1,17 @@
 package com.breckneck.debtbook.goal.details
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,12 +70,13 @@ import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
-internal fun GoalDetailsScreen(vm: GoalDetailsViewModel, onBack: () -> Unit) {
+internal fun GoalDetailsScreen(vm: GoalDetailsViewModel, hostInsets: PaddingValues, onBack: () -> Unit) {
     val state by vm.collectAsState()
     val goal = state.goal ?: return
     GoalDetailsContent(
         goal = goal,
         state = state,
+        hostInsets = hostInsets,
         onBack = onBack,
         onAdd = { vm.openAdjustment(withdraw = false) },
         onSubtract = { vm.openAdjustment(withdraw = true) },
@@ -106,8 +115,12 @@ private fun GoalDetailsContent(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onRetry: () -> Unit,
+    hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val colors = bubbleColors()
+    val direction = LocalLayoutDirection.current
+    val start = hostInsets.calculateStartPadding(direction) + 16.dp
+    val end = hostInsets.calculateEndPadding(direction) + 16.dp
     val secondaryColors = ButtonDefaults.buttonColors(containerColor = colors.mint, contentColor = colors.onMint)
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -115,14 +128,39 @@ private fun GoalDetailsContent(
         contentColor = colors.ink,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            BubbleTopBar(goal.name, onBack, Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+            BubbleTopBar(
+                title = goal.name,
+                onBack = onBack,
+                modifier = Modifier
+                    .background(Brush.verticalGradient(
+                        0f to colors.background.copy(alpha = .92f),
+                        .45f to colors.background.copy(alpha = .64f),
+                        1f to colors.background.copy(alpha = 0f),
+                    ))
+                    .padding(start = start, end = end, top = hostInsets.calculateTopPadding() + 6.dp, bottom = 6.dp),
+                titleModifier = Modifier
+                    .background(colors.paper.copy(alpha = .88f), CircleShape)
+                    .border(BorderStroke(1.dp, colors.border), CircleShape)
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+            ) {
                 GoalActionsMenu(goal.isReached, onEdit, onDelete)
             }
         },
+        bottomBar = {
+            Spacer(
+                Modifier.fillMaxWidth().height(hostInsets.calculateBottomPadding()).background(
+                    Brush.verticalGradient(listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = .9f))),
+                ),
+            )
+        },
     ) { insets ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(insets),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = start, end = end,
+                top = insets.calculateTopPadding() + 8.dp,
+                bottom = insets.calculateBottomPadding() + 8.dp,
+            ),
         ) {
             item { GoalBalanceCard(goal) }
             if (!goal.isReached) {

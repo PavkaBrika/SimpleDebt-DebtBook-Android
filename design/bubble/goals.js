@@ -19,6 +19,10 @@ flowViews.goals=f=>{
   return layout(heading('Цели')+(cards||empty('Пока нет целей. Создайте первую цель накопления.')),primary('goal-new','Новая цель','plus'),nav('goals'),true);
 };
 flowActions['goal-open']=(i,v)=>{frames[i].goalId=Number(v);go(i,'goalDetail');};
+function goalDetailLayout(title,body,menu='') {
+  return '<div class="scroll goal-detail-scroll"><div class="goal-detail-head">'+status+backbar(title,menu)+'</div>'+
+    '<div class="goal-detail-body">'+body+'</div></div>'+gesture;
+}
 flowViews.goalDetail=f=>{
   const g=goalById(f.goalId),sum=saved(g),done=sum>=g.target;
   const history=[...g.deposits].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(d=>'<div class="timeline-row'+(d.cents<0?' withdrawal':'')+'"><span class="event-icon">'+icon(d.cents>=0?'take':'give',16)+'</span><span class="event-text"><strong>'+(d.cents>=0?'Пополнение':'Снятие')+'</strong><small>'+dateText(d.date)+' '+d.date.slice(0,4)+'</small></span><span class="money">'+amount(d.cents,g.cur,true)+'</span></div>').join('');
@@ -26,7 +30,7 @@ flowViews.goalDetail=f=>{
   const menu='<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью">'+icon('more')+'</summary><div class="goal-menu">'
     +(done?'':button('goal-edit','Редактировать цель',g.id,'menu-action','edit'))
     +button('goal-delete','Удалить цель',g.id,'menu-action danger','trash')+'</div></details>';
-  return layout(backbar(g.name,menu)+goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+amount(Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.')));
+  return goalDetailLayout(g.name,goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+amount(Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.')),menu);
 };
 function goalAdjustment(i,v,b,sign) {
   const g=goalById(Number(v));if(!g||saved(g)>=g.target)return;
