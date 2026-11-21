@@ -21,6 +21,8 @@
     <string name="debts">Dette</string>
     <string name="nodebts">Il n\'y a pas encore de dettes. Cliquez sur le bouton ci-dessous pour ajouter.</string>
     <string name="show_all">Tous</string>
+    <string name="show_positive">On me doit</string>
+    <string name="show_negative">Je dois</string>
     <string name="filter">Filtre</string>
     <string name="contacts">Contacts</string>
     <string name="no_permission">Pas d\'autorisation</string>

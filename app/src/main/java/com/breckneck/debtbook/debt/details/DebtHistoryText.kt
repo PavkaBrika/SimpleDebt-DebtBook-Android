@@ -17,4 +17,4 @@ internal fun DebtDomain.historyTitle(): Int = when {
 }
 
 internal fun Context.originalDebtLabel(debt: DebtDomain, currency: String): String =
-    getString(R.string.repayment_context, MoneyDisplay.format(debt.sum.abs(), currency), currency, LedgerDate.display(debt.date))
+    getString(R.string.repayment_context, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency, LedgerDate.display(debt.date))

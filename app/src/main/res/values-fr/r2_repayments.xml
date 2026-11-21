@@ -3,8 +3,8 @@
     <string name="repayment_paid">J’ai remboursé</string>
     <string name="repayment_cancel">Annuler le remboursement</string>
     <string name="repayment_cancelled">Remboursement annulé · exclu du solde</string>
-    <string name="debt_lent">On me doit</string>
-    <string name="debt_borrowed">Je dois</string>
+    <string name="debt_lent">Prêt accordé</string>
+    <string name="debt_borrowed">Emprunt reçu</string>
     <string name="debt_remaining">Reste à rembourser : %1$s %2$s</string>
     <string name="debt_repaid">Remboursé : %1$s %2$s</string>
     <string name="repayment_context">Dette initiale : %1$s %2$s (%3$s)</string>

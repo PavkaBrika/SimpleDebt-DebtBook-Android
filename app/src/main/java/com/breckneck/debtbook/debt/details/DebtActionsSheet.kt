@@ -59,7 +59,7 @@ internal fun DebtActionsSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(debt.historyTitle()), style = MaterialTheme.typography.titleLarge)
-                    Text("${MoneyDisplay.format(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
+                    Text("${MoneyDisplay.formatExact(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
                         style = MaterialTheme.typography.bodyMedium)
                 }
                 if (!isRepayment && !hasRepayments) {
@@ -80,7 +80,7 @@ internal fun DebtActionsSheet(
                 }
             } else {
                 if (hasRepayments) {
-                    Text(stringResource(R.string.debt_remaining, MoneyDisplay.format(remaining, currency), currency),
+                    Text(stringResource(R.string.debt_remaining, MoneyDisplay.formatExact(remaining, currency), currency),
                         style = MaterialTheme.typography.bodyMedium)
                 }
                 if (remaining.signum() > 0) {

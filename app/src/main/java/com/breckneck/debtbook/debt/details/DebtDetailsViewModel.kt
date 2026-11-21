@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.model.PersonDebtHistory
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
@@ -21,7 +22,7 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder
 import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.Filter
-import com.breckneck.deptbook.domain.util.RepaymentPolicy
+import com.breckneck.deptbook.domain.util.sortDebts
 import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.RepaymentExceedsRemaining
@@ -61,6 +62,14 @@ class DebtDetailsViewModel @Inject constructor(
 
     private val _initialDebtList = MutableLiveData<List<DebtDomain>>()
     val history: LiveData<List<DebtDomain>> get() = _initialDebtList
+    private val _loans = MutableLiveData<PersonDebtHistory>()
+    val loans: LiveData<PersonDebtHistory> get() = _loans
+    private val _showSettledDebts = savedStateHandle.getLiveData("showSettledDebts", false)
+    val showSettledDebts: LiveData<Boolean> get() = _showSettledDebts
+    private val _visibleDebtRows = MutableLiveData<List<DebtDomain>>()
+    val visibleDebtRows: LiveData<List<DebtDomain>> get() = _visibleDebtRows
+
+    // Sharing and export continue to use the person's complete, sorted history.
     private val _resultedDebtList = MutableLiveData<List<DebtDomain>>()
     val resultedDebtList: LiveData<List<DebtDomain>>
         get() = _resultedDebtList
@@ -118,9 +127,17 @@ class DebtDetailsViewModel @Inject constructor(
     val repaymentError = MutableLiveData<RepaymentError?>(null)
     val repaymentRemaining = MutableLiveData<BigDecimal>()
 
-    fun originalDebt(id: Int): DebtDomain? = _initialDebtList.value?.firstOrNull { it.id == id && it.repaymentOfId == null }
-    fun hasRepayments(id: Int): Boolean = _initialDebtList.value.orEmpty().any { it.repaymentOfId == id }
-    fun remaining(debt: DebtDomain): BigDecimal = RepaymentPolicy.remaining(debt, _initialDebtList.value.orEmpty())
+    fun originalDebt(id: Int): DebtDomain? = _loans.value?.let { history ->
+        history.loan(id)?.original ?: history.zeroAmountEntries.firstOrNull { it.id == id }
+    }
+    fun hasRepayments(id: Int): Boolean = !_loans.value?.loan(id)?.repayments.isNullOrEmpty()
+    fun remaining(debt: DebtDomain): BigDecimal = _loans.value?.loan(debt.id)?.remaining ?: BigDecimal.ZERO
+
+    fun selectDebtSection(settled: Boolean) {
+        if (settled == _showSettledDebts.value) return
+        _showSettledDebts.value = settled
+        if (_screenState.value == DebtDetailsState.SUCCESS || _screenState.value == DebtDetailsState.EMPTY) updateVisibleRows()
+    }
 
     fun openRepayment(debt: DebtDomain) {
         if (_isDeleting.value == true || debt.repaymentOfId != null || remaining(debt).signum() <= 0) return
@@ -211,9 +228,13 @@ class DebtDetailsViewModel @Inject constructor(
                 _humanId = id
                 savedStateHandle["idHuman"] = id
                 savedStateHandle["newHuman"] = false
-                val (debts, sum) = withContext(Dispatchers.IO) {
-                    transaction.run { getAllDebtsByIdUseCase.execute(id) to getHumanSumDebtUseCase.execute(id) }
+                val (debts, sum, personLoans) = withContext(Dispatchers.IO) {
+                    val (rows, balance) = transaction.run {
+                        getAllDebtsByIdUseCase.execute(id) to getHumanSumDebtUseCase.execute(id)
+                    }
+                    Triple(rows, balance, PersonDebtHistory.from(rows))
                 }
+                _loans.value = personLoans
                 _initialDebtList.value = debts
                 _overallSum.value = sum
                 val request = savedStateHandle.get<String>("repaymentRequestId")
@@ -241,14 +262,35 @@ class DebtDetailsViewModel @Inject constructor(
                     Filter.POSITIVE -> direction >= 0
                 }
             }
-            val result = com.breckneck.deptbook.domain.util.sortDebts(filtered, _debtOrder.value!!)
-            _resultedDebtList.value = result
-            _screenState.value = if (result.isEmpty()) DebtDetailsState.EMPTY else DebtDetailsState.SUCCESS
+            _resultedDebtList.value = sortDebts(filtered, _debtOrder.value!!)
+            updateVisibleRows()
         } catch (_: Exception) {
             // Legacy locale-dependent dates can fail to sort. Keep the records unchanged;
             // the screen offers retry and lets the user select creation order instead.
             _screenState.value = DebtDetailsState.ERROR
         }
+    }
+
+    private fun updateVisibleRows() {
+        val history = _loans.value ?: return
+        val settled = _showSettledDebts.value == true
+        val section = if (settled) history.settledLoans else history.openLoans
+        val sectionById = section.associateBy { it.original.id }
+        val rows = buildList {
+            for (row in _resultedDebtList.value.orEmpty()) {
+                if (row.repaymentOfId != null) continue
+                val loan = sectionById[row.id]
+                if (loan != null) {
+                    add(loan.original)
+                    addAll(loan.repayments)
+                } else if (!settled && row.sum.signum() == 0) {
+                    // A legacy zero entry remains accessible in the person's records.
+                    add(row)
+                }
+            }
+        }
+        _visibleDebtRows.value = rows
+        _screenState.value = if (rows.isEmpty()) DebtDetailsState.EMPTY else DebtDetailsState.SUCCESS
     }
 
     fun saveDebtOrder(order: Pair<DebtOrderAttribute, Boolean>) {

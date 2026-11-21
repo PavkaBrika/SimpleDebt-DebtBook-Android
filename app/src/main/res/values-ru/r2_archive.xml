@@ -1,0 +1,6 @@
+<resources>
+    <string name="open_debts">Открытые долги</string>
+    <string name="settled_debts">Погашенные долги</string>
+    <string name="no_open_debts">Открытых долгов нет</string>
+    <string name="no_settled_debts">Погашенных долгов нет</string>
+</resources>

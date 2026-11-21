@@ -21,6 +21,8 @@
     <string name="debts">Долги</string>
     <string name="nodebts">Долгов пока что нет. Нажмите кнопку внизу, чтобы добавить.</string>
     <string name="show_all">Все</string>
+    <string name="show_positive">Мне должны</string>
+    <string name="show_negative">Я должен</string>
     <string name="filter">Фильтр</string>
     <string name="contacts">Контакты</string>
     <string name="no_permission">Нет разрешения</string>

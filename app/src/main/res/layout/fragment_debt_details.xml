@@ -105,6 +105,32 @@
 
             </com.google.android.material.appbar.CollapsingToolbarLayout>
 
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/debtSections"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/openDebtsTab"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:checkedIconVisible="true"
+                    android:text="@string/open_debts" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/settledDebtsTab"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:checkedIconVisible="true"
+                    android:text="@string/settled_debts" />
+            </com.google.android.material.chip.ChipGroup>
+
         </com.google.android.material.appbar.AppBarLayout>
 
         <androidx.cardview.widget.CardView
@@ -208,7 +234,7 @@
                             android:layout_marginTop="24dp"
                             android:elevation="11dp"
                             android:gravity="center"
-                            android:text="@string/nodebts"
+                            android:text="@string/no_open_debts"
                             android:textColor="@color/darkgray"
                             android:textSize="25sp"
                             app:layout_constraintEnd_toEndOf="parent"

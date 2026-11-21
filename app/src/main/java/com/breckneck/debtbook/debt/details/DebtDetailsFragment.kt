@@ -58,6 +58,7 @@ import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.chip.ChipGroup
 import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -143,6 +144,16 @@ class DebtDetailsFragment : Fragment() {
         recyclerView.adapter = debtDetailsAdapter
         attachDebtSheets(view as ViewGroup)
 
+        val sections = view.findViewById<ChipGroup>(R.id.debtSections)
+        val emptyMessage = view.findViewById<TextView>(R.id.noDebtTextView)
+        vm.showSettledDebts.observe(viewLifecycleOwner) { settled ->
+            sections.check(if (settled) R.id.settledDebtsTab else R.id.openDebtsTab)
+            emptyMessage.setText(if (settled) R.string.no_settled_debts else R.string.no_open_debts)
+        }
+        sections.setOnCheckedStateChangeListener { _, selected ->
+            vm.selectDebtSection(R.id.settledDebtsTab in selected)
+        }
+
         vm.apply {
             if ((isSortDialogShown.value != null) && (isSortDialogShown.value == true))
                 showSortDialog()
@@ -162,7 +173,8 @@ class DebtDetailsFragment : Fragment() {
 
             screenState.observe(viewLifecycleOwner) { state ->
                 errorDebtsLayout.visibility = if (state == DebtDetailsState.ERROR) View.VISIBLE else View.GONE
-                view.findViewById<View>(R.id.shareHumanButton).isEnabled = state == DebtDetailsState.SUCCESS
+                view.findViewById<View>(R.id.shareHumanButton).isEnabled =
+                    (state == DebtDetailsState.SUCCESS || state == DebtDetailsState.EMPTY) && !resultedDebtList.value.isNullOrEmpty()
                 sortButton.isEnabled = state != DebtDetailsState.LOADING && debtOrder.value != null
                 when (state) {
                     DebtDetailsState.LOADING -> {
@@ -259,7 +271,7 @@ class DebtDetailsFragment : Fragment() {
             buttonClickListener?.onBackButtonClick()
         }
 
-        vm.resultedDebtList.observe(viewLifecycleOwner) {
+        vm.visibleDebtRows.observe(viewLifecycleOwner) {
             debtDetailsAdapter.updateDebtList(it)
             val requested = arguments?.getInt("openDebtId", -1) ?: -1
             if (requested > 0 && vm.originalDebt(requested) != null) {
@@ -272,7 +284,7 @@ class DebtDetailsFragment : Fragment() {
 
     fun setOverallSumText(sum: BigDecimal, currency: String, view: View) {
         overallSumTextView = view.findViewById(R.id.overallSumTextView)
-        val formatted = MoneyDisplay.format(sum, currency)
+        val formatted = MoneyDisplay.formatExact(sum, currency)
         if (sum > 0) {
             overallSumTextView.setTextColor(ContextCompat.getColor(view.context, R.color.green))
             overallSumTextView.text = "+$formatted $currency"
@@ -348,7 +360,7 @@ class DebtDetailsFragment : Fragment() {
                                 ConfirmationBottomSheet(
                                     title = action,
                                     message = if (repayment) stringResource(R.string.repayment_cancel_confirm,
-                                        MoneyDisplay.format(debt.sum.abs(), currency), currency)
+                                        MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
                                     else stringResource(R.string.debt_delete_question),
                                     confirmText = action,
                                     dismissText = stringResource(R.string.cancel),
@@ -438,7 +450,7 @@ class DebtDetailsFragment : Fragment() {
         val details = if (debt.repaymentOfId != null) {
             debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, vm.humanCurrency.orEmpty()) }
         } else {
-            getString(R.string.debt_remaining, MoneyDisplay.format(vm.remaining(debt), vm.humanCurrency.orEmpty()), vm.humanCurrency)
+            getString(R.string.debt_remaining, MoneyDisplay.formatExact(vm.remaining(debt), vm.humanCurrency.orEmpty()), vm.humanCurrency)
         }
         val description = listOfNotNull(getString(debt.historyTitle()), details, debt.info?.takeIf { it.isNotBlank() })
         return debt.copy(info = description.joinToString("; "))

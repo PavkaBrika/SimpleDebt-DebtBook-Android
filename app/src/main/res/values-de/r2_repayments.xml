@@ -3,8 +3,8 @@
     <string name="repayment_paid">Ich habe zurückgezahlt</string>
     <string name="repayment_cancel">Rückzahlung stornieren</string>
     <string name="repayment_cancelled">Rückzahlung storniert · ohne Saldoänderung</string>
-    <string name="debt_lent">Mir geschuldet</string>
-    <string name="debt_borrowed">Ich schulde</string>
+    <string name="debt_lent">Geld verliehen</string>
+    <string name="debt_borrowed">Geld geliehen</string>
     <string name="debt_remaining">Offen: %1$s %2$s</string>
     <string name="debt_repaid">Zurückgezahlt: %1$s %2$s</string>
     <string name="repayment_context">Ursprüngliche Schuld: %1$s %2$s (%3$s)</string>
