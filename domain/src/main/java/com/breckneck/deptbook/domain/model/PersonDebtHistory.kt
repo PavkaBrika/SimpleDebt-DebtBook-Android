@@ -17,7 +17,7 @@ data class LoanHistory(
 data class PersonDebtHistory(
     val openLoans: List<LoanHistory>,
     val settledLoans: List<LoanHistory>,
-    val zeroAmountEntries: List<DebtDomain>
+    val earlyEntries: List<DebtDomain>
 ) {
     private val loansById by lazy {
         (openLoans.asSequence() + settledLoans.asSequence()).associateBy { it.original.id }
@@ -43,14 +43,13 @@ data class PersonDebtHistory(
     companion object {
         fun from(rows: List<DebtDomain>): PersonDebtHistory {
             val byOriginal = rows.groupBy { it.repaymentOfId }
-            val (originals, zeroAmountEntries) = byOriginal[null].orEmpty().partition { it.sum.signum() != 0 }
-            val loans = originals.map { original ->
+            val (loans, earlyEntries) = byOriginal[null].orEmpty().map { original ->
                 // Linked repayments use ISO days. IDs break ties for multiple payments on the same day.
                 val repayments = byOriginal[original.id].orEmpty().sortedWith(compareBy({ it.date }, { it.id }))
                 LoanHistory(original, repayments, RepaymentPolicy.remaining(original, repayments))
-            }
+            }.partition { it.original.sum.signum() != 0 && it.hasKnownPurpose }
             val (settled, open) = loans.partition { it.remaining.signum() == 0 }
-            return PersonDebtHistory(open, settled, zeroAmountEntries)
+            return PersonDebtHistory(open, settled, earlyEntries.map { it.original })
         }
     }
 }

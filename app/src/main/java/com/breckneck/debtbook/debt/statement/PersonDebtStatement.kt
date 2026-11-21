@@ -48,9 +48,9 @@ fun formatPersonDebtStatement(
     appendLine()
 
     val loans = if (includeSettled) history.openLoans + history.settledLoans else history.openLoans
-    val originals = loans.map { it.original } + history.zeroAmountEntries
+    val originals = loans.map { it.original } + history.earlyEntries
     val selected = originals.filter { history.includesEntry(it, filter) }
-    val unclassified = selected.any { history.loan(it.id)?.hasKnownPurpose != true }
+    val unclassified = selected.any { history.loan(it.id) == null }
     val heading = when (filter) {
         Filter.ALL -> R.string.statement_all
         Filter.POSITIVE -> if (unclassified) R.string.statement_positive_entries else R.string.statement_positive
@@ -61,7 +61,7 @@ fun formatPersonDebtStatement(
     for ((index, row) in sortDebts(selected, order).withIndex()) {
         if (index > 0) append("\n\n")
         val loan = history.loan(row.id)
-        if (loan == null || !loan.hasKnownPurpose) {
+        if (loan == null) {
             appendEntry(row, resources.getString(R.string.statement_entry, signed(row.sum)), includeNote = true)
             continue
         }

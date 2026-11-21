@@ -1,6 +1,12 @@
 package com.breckneck.debtbook.core.viewmodel
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.lifecycle.Observer
+import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.model.HumanDomain
+import com.breckneck.deptbook.domain.util.Filter
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
@@ -19,6 +25,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -79,6 +86,33 @@ class DebtViewModelTest {
             getHumanOrder,
         )
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `people filters use each persons open loans even with equal names and different balances`() {
+        val legacy = HumanDomain(1, "Anna", 1000.toBigDecimal(), "RUB")
+        val opposite = legacy.copy(id = 2, sumDebt = 0.toBigDecimal())
+        val adjustmentOnly = legacy.copy(id = 3)
+        val entry = DebtDomain(1, legacy.sumDebt, legacy.id, null, "2025-11-01")
+        val lent = entry.copy(id = 2, idHuman = opposite.id, recordedAsLoan = true)
+        val borrowed = lent.copy(id = 3, sum = -lent.sum)
+        whenever(getAllHumansUseCase.execute()).thenReturn(listOf(legacy, opposite, adjustmentOnly))
+        whenever(getAllDebts.execute()).thenReturn(listOf(entry, lent, borrowed))
+        val loaded = CountDownLatch(1)
+        val observer = Observer<List<HumanDomain>> { if (it.size == 3) loaded.countDown() }
+        viewModel.resultedHumanList.observeForever(observer)
+        try {
+            viewModel.setListStateLoading()
+            assertTrue(loaded.await(5, TimeUnit.SECONDS))
+            for (filter in listOf(Filter.POSITIVE, Filter.NEGATIVE)) {
+                viewModel.onSetHumanSort(filter, HumanOrderAttribute.Sum to true)
+                assertEquals(listOf(opposite), viewModel.resultedHumanList.value)
+            }
+            viewModel.onSetHumanSort(Filter.ALL, HumanOrderAttribute.Sum to true)
+            assertEquals(setOf(legacy, opposite, adjustmentOnly), viewModel.resultedHumanList.value!!.toSet())
+        } finally {
+            viewModel.resultedHumanList.removeObserver(observer)
+        }
     }
 
     @Test

@@ -3,4 +3,9 @@
     <string name="settled_debts">Beglichene Schulden</string>
     <string name="no_open_debts">Keine offenen Schulden</string>
     <string name="no_settled_debts">Keine beglichenen Schulden</string>
+    <string name="early_entries">Frühere Einträge</string>
+    <string name="early_entry">Früherer Eintrag</string>
+    <string name="no_early_entries">Keine passenden früheren Einträge</string>
+    <string name="opening_adjustment">Anfangskorrektur · %1$s %2$s</string>
+    <string name="early_entry_delete_question">Diesen Eintrag löschen?</string>
 </resources>

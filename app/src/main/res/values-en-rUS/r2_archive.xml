@@ -3,4 +3,9 @@
     <string name="settled_debts">Settled debts</string>
     <string name="no_open_debts">No open debts</string>
     <string name="no_settled_debts">No settled debts</string>
+    <string name="early_entries">Early entries</string>
+    <string name="early_entry">Early entry</string>
+    <string name="no_early_entries">No matching early entries</string>
+    <string name="opening_adjustment">Opening adjustment · %1$s %2$s</string>
+    <string name="early_entry_delete_question">Delete this entry?</string>
 </resources>

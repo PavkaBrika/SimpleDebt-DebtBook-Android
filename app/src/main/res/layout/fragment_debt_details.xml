@@ -131,7 +131,24 @@
                     android:layout_height="wrap_content"
                     app:checkedIconVisible="true"
                     android:text="@string/settled_debts" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/earlyEntriesTab"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    app:checkedIconVisible="true"
+                    android:text="@string/early_entries" />
             </com.google.android.material.chip.ChipGroup>
+
+            <TextView
+                android:id="@+id/openingAdjustment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone" />
 
         </com.google.android.material.appbar.AppBarLayout>
 

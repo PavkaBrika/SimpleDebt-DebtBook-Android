@@ -135,19 +135,40 @@ class DebtDetailsFragment : Fragment() {
                 Log.e(TAG, "Click on debt with id = ${debtDomain.id}")
             }
         }
-        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty(), vm::remaining, vm::originalDebt)
+        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty()) { vm.loans.value?.loan(it) }
         recyclerView.adapter = debtDetailsAdapter
         attachDebtSheets(view as ViewGroup)
 
         val sections = view.findViewById<ChipGroup>(R.id.debtSections)
         val emptyMessage = view.findViewById<TextView>(R.id.noDebtTextView)
-        vm.showSettledDebts.observe(viewLifecycleOwner) { settled ->
-            sections.check(if (settled) R.id.settledDebtsTab else R.id.openDebtsTab)
-            view.findViewById<View>(R.id.addDebtButton).visibility = if (settled) View.GONE else View.VISIBLE
-            emptyMessage.setText(if (settled) R.string.no_settled_debts else R.string.no_open_debts)
+        vm.loans.observe(viewLifecycleOwner) { history ->
+            sections.findViewById<View>(R.id.earlyEntriesTab).visibility =
+                if (history.earlyEntries.isEmpty()) View.GONE else View.VISIBLE
+        }
+        vm.section.observe(viewLifecycleOwner) { section ->
+            val (tab, emptyText) = when (section) {
+                DebtSection.OPEN -> R.id.openDebtsTab to R.string.no_open_debts
+                DebtSection.SETTLED -> R.id.settledDebtsTab to R.string.no_settled_debts
+                DebtSection.EARLY -> R.id.earlyEntriesTab to R.string.no_early_entries
+            }
+            sections.check(tab)
+            view.findViewById<View>(R.id.addDebtButton).visibility =
+                if (section == DebtSection.SETTLED) View.GONE else View.VISIBLE
+            emptyMessage.setText(emptyText)
         }
         sections.setOnCheckedStateChangeListener { _, selected ->
-            vm.selectDebtSection(R.id.settledDebtsTab in selected)
+            when (selected.singleOrNull()) {
+                R.id.openDebtsTab -> vm.selectDebtSection(DebtSection.OPEN)
+                R.id.settledDebtsTab -> vm.selectDebtSection(DebtSection.SETTLED)
+                R.id.earlyEntriesTab -> vm.selectDebtSection(DebtSection.EARLY)
+            }
+        }
+        vm.openingAdjustment.observe(viewLifecycleOwner) { adjustment ->
+            val label = view.findViewById<TextView>(R.id.openingAdjustment)
+            label.visibility = if (adjustment.signum() == 0) View.GONE else View.VISIBLE
+            val currency = vm.humanCurrency.orEmpty()
+            val sign = if (adjustment.signum() > 0) "+" else ""
+            label.text = getString(R.string.opening_adjustment, sign + MoneyDisplay.formatExact(adjustment, currency), currency)
         }
 
         vm.apply {
@@ -347,10 +368,12 @@ class DebtDetailsFragment : Fragment() {
                         val rest = vm.remaining(debt)
                         val currency = vm.humanCurrency.orEmpty()
                         val hasRepayments = vm.hasRepayments(debt.id)
+                        val earlyEntry = debt.repaymentOfId == null && vm.originalDebt(debt.id) == null
                         val close = { vm.selectDebtAction(null) }
                         when (sheet) {
                             DebtSheet.ACTIONS -> DebtActionsSheet(
                                 debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments,
+                                earlyEntry = earlyEntry,
                                 onDismiss = close,
                                 onRepay = { close(); vm.openRepayment(debt) },
                                 onEdit = {
@@ -369,7 +392,7 @@ class DebtDetailsFragment : Fragment() {
                                     title = action,
                                     message = if (repayment) stringResource(R.string.repayment_cancel_confirm,
                                         MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
-                                    else stringResource(R.string.debt_delete_question),
+                                    else stringResource(if (earlyEntry) R.string.early_entry_delete_question else R.string.debt_delete_question),
                                     confirmText = action,
                                     dismissText = stringResource(R.string.cancel),
                                     onConfirm = { close(); vm.deleteDebt(debt) },
@@ -446,7 +469,9 @@ class DebtDetailsFragment : Fragment() {
         val details = if (debt.repaymentOfId != null) {
             debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, vm.humanCurrency.orEmpty()) }
         } else {
-            getString(R.string.debt_remaining, MoneyDisplay.formatExact(vm.remaining(debt), vm.humanCurrency.orEmpty()), vm.humanCurrency)
+            // Keep the R2.4 spreadsheet description for unlinked historical movements.
+            val remaining = vm.loans.value?.loan(debt.id)?.remaining ?: debt.sum.abs()
+            getString(R.string.debt_remaining, MoneyDisplay.formatExact(remaining, vm.humanCurrency.orEmpty()), vm.humanCurrency)
         }
         val description = listOfNotNull(getString(debt.historyTitle()), details, debt.info?.takeIf { it.isNotBlank() })
         return debt.copy(info = description.joinToString("; "))

@@ -8,7 +8,8 @@ import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.LedgerDate
 
 @StringRes
-internal fun DebtDomain.historyTitle(): Int = when {
+internal fun DebtDomain.historyTitle(earlyEntry: Boolean = false): Int = when {
+    earlyEntry -> R.string.early_entry
     cancelled -> R.string.repayment_cancelled
     repaymentOfId != null && sum.signum() < 0 -> R.string.repayment_received
     repaymentOfId != null -> R.string.repayment_paid
