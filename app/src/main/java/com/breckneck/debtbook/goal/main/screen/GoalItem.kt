@@ -36,7 +36,7 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleOutlinedButton
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.model.GoalUi
-import com.breckneck.debtbook.goal.ui.GoalActionsMenu
+import com.breckneck.debtbook.goal.ui.GoalDeleteButton
 import java.text.NumberFormat
 
 @Composable
@@ -95,7 +95,7 @@ private fun CompletedGoalRow(goal: GoalUi, onOpen: () -> Unit, onDelete: () -> U
                 }
                 Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
             }
-            GoalActionsMenu(onDelete = onDelete)
+            GoalDeleteButton(goalName = goal.name, onDelete = onDelete)
         }
     }
 }

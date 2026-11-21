@@ -196,8 +196,7 @@ svg { display:block; flex-shrink:0 }
 .completed-open > svg:first-child {color:var(--forest)}
 .completed-open > svg:last-child {color:var(--soft)}
 .completed-open small {font-size:.8125rem}
-.completed-goal .goal-actions summary {width:48px;height:48px;border:0;background:none;color:var(--soft)}
-.completed-goal .goal-menu {top:auto;bottom:100%}
+.completed-goal .goal-delete {width:48px;height:48px;border:0;background:transparent}
 .goal-item .button-pair {margin:8px 2px}.goal-photo {display:block;width:100%;max-height:150px;object-fit:cover;border-radius:15px;margin-bottom:12px}
 .goal-card .goal-photo {height:150px}
 .photo-picker label {display:block;position:relative;cursor:pointer;padding:12px;text-align:center}

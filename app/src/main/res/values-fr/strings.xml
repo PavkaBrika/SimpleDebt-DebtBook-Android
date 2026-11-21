@@ -193,6 +193,7 @@
     <string name="goal_new">Nouvel objectif</string>
     <string name="goal_edit">Modifier l’objectif</string>
     <string name="goal_delete">Supprimer l’objectif</string>
+    <string name="goal_delete_named">Supprimer l’objectif « %1$s »</string>
     <string name="goal_delete_title">Supprimer cet objectif ?</string>
     <string name="goal_actions">Actions sur l’objectif</string>
     <string name="goal_delete_message">« %1$s » et son historique de versements et de retraits seront supprimés.</string>

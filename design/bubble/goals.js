@@ -14,9 +14,12 @@ function goalBalance(g, overview=false) {
   const heading=overview?`<button class="goal-link" data-act="goal-open" data-value="${g.id}"><strong>${escapeHtml(g.name)}</strong>${icon('chevron')}</button>`:'';
   return '<div class="goal-hero goal-card">'+photo+heading+(due?'<div class="eyebrow">'+due+'</div>':'')+'<div class="big-money">'+amount(total,g.cur)+'</div><div class="track"><i style="width:'+percent+'%"></i></div><div class="loan-numbers"><span>из '+amount(g.target,g.cur)+'</span><strong>'+percent+'%</strong></div></div>';
 }
-function goalMenu(g, done) {
+function goalDeleteButton(g) {
+  return `<button type="button" class="icon-button goal-delete danger" data-act="goal-delete" data-value="${g.id}" aria-label="Удалить цель «${escapeHtml(g.name)}»">${icon('trash',22)}</button>`;
+}
+function goalMenu(g) {
   return '<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью '+escapeHtml(g.name)+'">'+icon('more')+'</summary><div class="goal-menu">'
-    +(done?'':button('goal-edit','Редактировать цель',g.id,'menu-action','edit'))
+    +button('goal-edit','Редактировать цель',g.id,'menu-action','edit')
     +button('goal-delete','Удалить цель',g.id,'menu-action danger','trash')+'</div></details>';
 }
 function goalListItem(g) {
@@ -26,7 +29,7 @@ function goalListItem(g) {
     return `<article class="goal-item completed-goal">
       <button class="completed-open" data-act="goal-open" data-value="${g.id}" aria-label="${name}. Цель достигнута. ${caption}. История">
         ${icon('check',20)}<span class="person-text"><strong>${name}</strong><small>${caption}</small></span>${icon('chevron',16)}
-      </button>${goalMenu(g,true)}
+      </button>${goalDeleteButton(g)}
     </article>`;
   }
   return '<article class="goal-item">'+goalBalance(g,true)+pairButtons(
@@ -48,7 +51,7 @@ flowViews.goalDetail=f=>{
   const g=goalById(f.goalId),sum=saved(g),done=sum>=g.target;
   const history=[...g.deposits].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(d=>'<div class="timeline-row'+(d.cents<0?' withdrawal':'')+'"><span class="event-icon">'+icon(d.cents>=0?'take':'give',16)+'</span><span class="event-text"><strong>'+(d.cents>=0?'Пополнение':'Снятие')+'</strong><small>'+dateText(d.date)+' '+d.date.slice(0,4)+'</small></span><span class="money">'+amount(d.cents,g.cur,true)+'</span></div>').join('');
   const controls=done?'':pairButtons(button('goal-add','Пополнить',g.id,'btn secondary','plus'),button('goal-sub','Снять',g.id,'btn withdrawal','give'));
-  const menu=goalMenu(g,done);
+  const menu=done?goalDeleteButton(g):goalMenu(g);
   return goalScreenLayout(g.name,goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+amount(Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.')),{menu});
 };
 function goalAdjustment(i,v,b,sign) {

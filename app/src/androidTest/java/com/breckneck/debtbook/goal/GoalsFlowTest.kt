@@ -187,18 +187,18 @@ class GoalsFlowTest {
         compose.onAllNodesWithText(context.getString(R.string.goal_target_caption, total)).assertCountEquals(0)
         capture("complete")
 
-        chooseGoalAction(R.string.goal_delete)
+        val deleteButton = compose.onNodeWithContentDescription(context.getString(R.string.goal_delete_named, finalName))
+        deleteButton.assertIsDisplayed().performClick()
+        node(R.string.goal_delete_title).assertIsDisplayed()
         click(R.string.cancel)
         openGoal(finalName)
         awaitHistory()
-        openGoalActions()
-        compose.onAllNodesWithText(context.getString(R.string.goal_edit)).assertCountEquals(0)
-        click(R.string.goal_delete)
+        deleteButton.assertIsDisplayed().performClick()
         node(R.string.goal_delete_title).assertIsDisplayed()
         capture("delete-sheet")
         click(R.string.cancel)
         assertBalance(finalName, "20000", 3)
-        chooseGoalAction(R.string.goal_delete)
+        deleteButton.performClick()
         click(R.string.delete)
         awaitDestination(R.id.goalsFragment)
         awaitText(R.string.goal_empty_list)
@@ -562,7 +562,8 @@ class GoalsFlowTest {
                 false
             }
         }
-        scrollToGoalContent(R.string.goal_deposit).assertIsDisplayed()
+        val initialDeposit = "2500".toBigDecimal().formatGoalMoney("RUB", showPlus = true)
+        scrollToGoalContent(initialDeposit).assertIsDisplayed()
     }
     private fun scrollToGoalContent(id: Int): SemanticsNodeInteraction =
         scrollToGoalContent(context.getString(id))

@@ -26,34 +26,27 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 @Composable
 internal fun GoalActionsMenu(
     onDelete: () -> Unit,
-    onEdit: (() -> Unit)? = null,
-    diameter: Dp? = null,
+    onEdit: () -> Unit,
+    diameter: Dp,
 ) {
     val colors = bubbleColors()
     var expanded by remember { mutableStateOf(false) }
     Box {
-        val icon: @Composable () -> Unit = {
+        BubbleIconButton(onClick = { expanded = true }, diameter = diameter) {
             Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.goal_actions))
-        }
-        if (diameter == null) {
-            IconButton(onClick = { expanded = true }, content = icon)
-        } else {
-            BubbleIconButton(onClick = { expanded = true }, diameter = diameter, content = icon)
         }
         DropdownMenu(
             expanded = expanded, onDismissRequest = { expanded = false },
             shape = RoundedCornerShape(18.dp), containerColor = colors.paper,
         ) {
-            if (onEdit != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.goal_edit), color = colors.ink) },
-                    leadingIcon = { Icon(Icons.Outlined.Edit, null, tint = colors.ink) },
-                    onClick = {
-                        expanded = false
-                        onEdit()
-                    },
-                )
-            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.goal_edit), color = colors.ink) },
+                leadingIcon = { Icon(Icons.Outlined.Edit, null, tint = colors.ink) },
+                onClick = {
+                    expanded = false
+                    onEdit()
+                },
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.goal_delete), color = colors.danger) },
                 leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = colors.danger) },
@@ -63,5 +56,21 @@ internal fun GoalActionsMenu(
                 },
             )
         }
+    }
+}
+
+@Composable
+internal fun GoalDeleteButton(goalName: String, onDelete: () -> Unit, diameter: Dp? = null) {
+    val icon: @Composable () -> Unit = {
+        Icon(
+            Icons.Outlined.DeleteOutline,
+            contentDescription = stringResource(R.string.goal_delete_named, goalName),
+            tint = bubbleColors().danger,
+        )
+    }
+    if (diameter == null) {
+        IconButton(onClick = onDelete, content = icon)
+    } else {
+        BubbleIconButton(onClick = onDelete, diameter = diameter, content = icon)
     }
 }

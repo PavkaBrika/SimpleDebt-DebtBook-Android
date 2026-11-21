@@ -56,6 +56,7 @@ import com.breckneck.debtbook.goal.main.screen.GoalAdjustmentSheet
 import com.breckneck.debtbook.goal.main.screen.GoalBalanceCard
 import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
 import com.breckneck.debtbook.goal.ui.GoalActionsMenu
+import com.breckneck.debtbook.goal.ui.GoalDeleteButton
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
@@ -121,8 +122,12 @@ private fun GoalDetailsContent(
                 title = goal.name,
                 onBack = onBack,
                 hostInsets = hostInsets,
-            ) {
-                GoalActionsMenu(onDelete = onDelete, onEdit = if (goal.isReached) null else onEdit, diameter = it)
+            ) { diameter ->
+                if (goal.isReached) {
+                    GoalDeleteButton(goalName = goal.name, onDelete = onDelete, diameter = diameter)
+                } else {
+                    GoalActionsMenu(onDelete = onDelete, onEdit = onEdit, diameter = diameter)
+                }
             }
         },
         bottomBar = {
