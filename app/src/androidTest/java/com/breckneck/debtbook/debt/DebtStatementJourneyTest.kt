@@ -2,6 +2,7 @@ package com.breckneck.debtbook.debt
 
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -9,7 +10,9 @@ import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.scrollTo
+import androidx.test.espresso.action.ViewActions.swipeUp
 import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.RootMatchers.withDecorView
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.intent.IntentCallback
@@ -21,6 +24,7 @@ import database.AppDataBase
 import entity.Debt
 import entity.Human
 import org.hamcrest.Matchers.allOf
+import org.hamcrest.Matchers.sameInstance
 import org.junit.Assert.*
 import org.junit.Test
 import java.math.BigDecimal
@@ -34,10 +38,11 @@ class DebtStatementJourneyTest {
     private fun preview() {
         tap(R.id.shareHumanButton)
         tap(R.id.deleteButton) // Text in the share format sheet
+        onView(withId(R.id.sendButton)).check(matches(isCompletelyDisplayed()))
     }
     private fun displayedText(): String {
         var text = ""
-        onView(withId(android.R.id.message)).check { view, _ -> text = (view as TextView).text.toString() }
+        onView(withId(R.id.statementText)).check { view, _ -> text = (view as TextView).text.toString() }
         return text
     }
 
@@ -54,7 +59,7 @@ class DebtStatementJourneyTest {
         val monitor = IntentMonitorRegistry.getInstance()
         monitor.addIntentCallback(callback)
         try {
-            val lent = add(16000, 1, "Original loan")
+            val lent = add(16000, 1, "Original loan\n" + "Instalment details\n".repeat(40))
             add(-3600, 4, "First payment", lent.id)
             add(-2400, 7, "Second payment", lent.id)
             dao.removeDebt(add(-800, 8, "Voided payment", lent.id))
@@ -65,6 +70,15 @@ class DebtStatementJourneyTest {
                 onView(allOf(withId(R.id.humanCardView), hasDescendant(withText(name)))).perform(scrollTo(), click())
                 tap(R.id.settledDebtsTab)
                 preview()
+                onView(withId(R.id.statementText)).check(matches(
+                    isDescendantOfA(withId(com.google.android.material.R.id.design_bottom_sheet))
+                ))
+                onView(withId(R.id.statementScroll)).perform(swipeUp()).check { view, error ->
+                    if (error != null) throw error
+                    assertTrue("Long statements must scroll inside the sheet", view.scrollY > 0)
+                }
+                onView(withId(R.id.sendButton)).check(matches(isCompletelyDisplayed()))
+                onView(withId(R.id.cancelButton)).check(matches(isCompletelyDisplayed()))
                 val all = displayedText()
                 fun line(id: Int, value: String) = screen.screenString(id).format(value)
                 for (expected in listOf(
@@ -75,7 +89,7 @@ class DebtStatementJourneyTest {
                     line(R.string.statement_from_me, "500 RUB"), line(R.string.statement_remaining, "0 RUB")
                 )) assertTrue(expected, all.contains(expected))
                 assertTrue(all.indexOf("First payment") < all.indexOf("Second payment"))
-                tap(android.R.id.button2)
+                tap(R.id.cancelButton)
                 onView(withId(R.id.settledDebtsTab)).check(matches(isChecked()))
                 onView(withText("Settled loan")).check(matches(isDisplayed()))
                 assertTrue(sent.isEmpty())
@@ -90,14 +104,9 @@ class DebtStatementJourneyTest {
                 assertTrue(selected.contains("Repaid in full"))
                 assertFalse(selected.contains("Original loan"))
                 screen.recreate()
-                assertEquals(selected, displayedText())
-                pressBack()
-                assertTrue(sent.isEmpty())
-                onView(withId(R.id.settledDebtsTab)).check(matches(isChecked()))
-
-                preview()
                 val shown = displayedText()
-                tap(android.R.id.button1)
+                assertEquals(selected, shown)
+                tap(R.id.sendButton)
                 val intent = sent.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
                 assertEquals(Intent.ACTION_SEND, intent.action)
                 assertEquals("text/plain", intent.type)
@@ -105,6 +114,13 @@ class DebtStatementJourneyTest {
                 InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("input keyevent 4")
                     .use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
                 onView(withId(R.id.settledDebtsTab)).check(matches(isChecked()))
+                lateinit var cardWindow: View
+                screen.onActivity { cardWindow = it.window.decorView }
+                preview()
+                pressBack()
+                onView(withId(R.id.settledDebtsTab)).inRoot(withDecorView(sameInstance(cardWindow)))
+                    .check(matches(isChecked()))
+                assertEquals(1, sent.size)
             }
         } finally {
             monitor.removeIntentCallback(callback)

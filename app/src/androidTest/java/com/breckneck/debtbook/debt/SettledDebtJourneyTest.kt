@@ -138,12 +138,12 @@ class SettledDebtJourneyTest {
         onView(withId(R.id.overallSumTextView)).check(matches(withText("0 RUB")))
         tap(R.id.shareHumanButton)
         tap(R.id.deleteButton) // Text
-        val statement = onView(withId(android.R.id.message))
+        val statement = onView(withId(R.id.statementText))
         for ((label, total) in listOf(R.string.statement_lent to 1000, R.string.statement_borrowed to 1000,
             R.string.statement_even to 0)) {
             statement.check(matches(withText(containsString(screen.screenString(label).format("${amount(total)} RUB")))))
         }
-        tap(android.R.id.button2)
+        tap(R.id.cancelButton)
         tap(R.id.settledDebtsTab)
         awaitRows()
         reopenFromPeople(positive = true, negative = true, balance = 0)
