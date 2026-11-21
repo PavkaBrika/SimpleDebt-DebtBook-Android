@@ -303,12 +303,24 @@ class DebtDetailsFragment : Fragment() {
         dialog.setContentView(R.layout.dialog_are_you_sure)
         vm.onHumanDeleteDialogOpen()
 
-        dialog.findViewById<Button>(R.id.okButton)!!.setOnClickListener {
+        val personName = vm.humanName.value
+        dialog.findViewById<TextView>(R.id.dialogTitle)!!.text = if (personName.isNullOrBlank()) {
+            getString(R.string.person_delete_action)
+        } else {
+            getString(R.string.person_delete_title, personName)
+        }
+        dialog.findViewById<TextView>(R.id.dialogMessage)!!.setText(R.string.person_delete_message)
+
+        val confirm = dialog.findViewById<Button>(R.id.okButton)!!
+        confirm.setText(R.string.delete)
+        confirm.setOnClickListener {
             vm.deleteHuman()
             dialog.dismiss()
         }
 
-        dialog.findViewById<Button>(R.id.cancelButton)!!.setOnClickListener {
+        val cancel = dialog.findViewById<Button>(R.id.cancelButton)!!
+        cancel.setText(R.string.cancel)
+        cancel.setOnClickListener {
             dialog.dismiss()
         }
 

@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:text="@string/change_debt_name"
+        android:text="@string/person_rename"
         android:textSize="24sp" />
 
     <com.google.android.material.textfield.TextInputLayout
@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
-        android:hint="@string/name"
+        android:hint="@string/person_name"
         app:endIconMode="clear_text"
         app:errorEnabled="true">
 

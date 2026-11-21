@@ -71,6 +71,7 @@
                     <ImageView
                         android:id="@+id/deleteHumanButton"
                         style="@style/imageViewButton"
+                        android:contentDescription="@string/person_delete_action"
                         android:layout_width="30dp"
                         android:layout_height="30dp"
                         android:layout_gravity="end"
@@ -93,6 +94,7 @@
                     <ImageView
                         android:id="@+id/shareHumanButton"
                         style="@style/imageViewButton"
+                        android:contentDescription="@string/share_debt_history"
                         android:layout_width="30dp"
                         android:layout_height="30dp"
                         android:layout_gravity="end"

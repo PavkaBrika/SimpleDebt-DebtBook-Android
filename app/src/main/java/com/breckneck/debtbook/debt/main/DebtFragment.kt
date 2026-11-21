@@ -240,6 +240,7 @@ class DebtFragment : Fragment() {
     private fun showHumanSortDialog() {
         val bottomSheetDialogFilter = BottomSheetDialog(requireContext())
         bottomSheetDialogFilter.setContentView(R.layout.dialog_sort)
+        bottomSheetDialogFilter.findViewById<RadioButton>(R.id.orderSumRadioButton)!!.setText(R.string.order_by_balance)
         bottomSheetDialogFilter.behavior.state = BottomSheetBehavior.STATE_EXPANDED
         vm.onHumanSortDialogOpen()
 
