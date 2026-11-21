@@ -1,0 +1,9 @@
+<resources>
+    <string name="finance_add_expense">Add expense</string>
+    <string name="finance_add_income">Add income</string>
+    <string name="finance_categories">Categories</string>
+    <string name="finance_previous">Previous period</string>
+    <string name="finance_next">Next period</string>
+    <string name="finance_today">Back to today</string>
+    <string name="finance_empty_period">No entries in this period.</string>
+</resources>

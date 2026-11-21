@@ -1,0 +1,9 @@
+<resources>
+    <string name="finance_add_expense">Добавить расход</string>
+    <string name="finance_add_income">Добавить доход</string>
+    <string name="finance_categories">Категории</string>
+    <string name="finance_previous">Предыдущий период</string>
+    <string name="finance_next">Следующий период</string>
+    <string name="finance_today">К текущей дате</string>
+    <string name="finance_empty_period">За этот период записей нет.</string>
+</resources>

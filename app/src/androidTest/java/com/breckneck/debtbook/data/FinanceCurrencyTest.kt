@@ -46,9 +46,9 @@ class FinanceCurrencyTest {
                     vm = ViewModelProvider(fragment)[FinanceViewModel::class.java]
                     vm.setCurrency("EUR")
                 }
-                await { vm.overallSum.value?.compareTo("10.01".toBigDecimal()) == 0 }
+                await { vm.summary.value.total.compareTo("10.01".toBigDecimal()) == 0 }
                 scenario.onActivity { vm.setCurrency("USD"); vm.setCurrency("EUR"); vm.setCurrency("USD") }
-                await { vm.overallSum.value?.compareTo("20.02".toBigDecimal()) == 0 }
+                await { vm.summary.value.total.compareTo("20.02".toBigDecimal()) == 0 }
                 assertEquals(listOf("EUR", "USD"), repo.getAllAppData().financeList.sortedBy { it.id }.map { it.currency })
             }
         } finally {

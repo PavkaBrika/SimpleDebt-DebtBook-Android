@@ -1,0 +1,9 @@
+<resources>
+    <string name="finance_add_expense">Ausgabe hinzufügen</string>
+    <string name="finance_add_income">Einnahme hinzufügen</string>
+    <string name="finance_categories">Kategorien</string>
+    <string name="finance_previous">Vorheriger Zeitraum</string>
+    <string name="finance_next">Nächster Zeitraum</string>
+    <string name="finance_today">Zum heutigen Tag</string>
+    <string name="finance_empty_period">Keine Buchungen in diesem Zeitraum.</string>
+</resources>

@@ -1,338 +1,130 @@
 package com.breckneck.debtbook.finance.main
 
-import java.math.BigDecimal
-
-import android.text.format.DateFormat
-import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.breckneck.deptbook.domain.model.Finance
+import com.breckneck.deptbook.domain.model.FinanceCategory
 import com.breckneck.deptbook.domain.model.FinanceCategoryWithFinances
 import com.breckneck.deptbook.domain.usecase.FinanceCategory.GetAllCategoriesWithFinances
 import com.breckneck.deptbook.domain.usecase.Settings.GetFinanceCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetFinanceCurrency
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.breckneck.deptbook.domain.util.FinanceInterval
-import com.breckneck.deptbook.domain.util.ListState
-import kotlinx.coroutines.Dispatchers
+import com.breckneck.deptbook.domain.util.LedgerDate
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.Calendar
 import javax.inject.Inject
-import kotlin.math.roundToInt
+
+internal data class FinancePeriod(val interval: FinanceInterval, val day: String) {
+    private fun calendar() = Calendar.getInstance().apply { time = requireNotNull(LedgerDate.localDate(day)) }
+
+    private val field get() = when (interval) {
+        FinanceInterval.DAY -> Calendar.DATE
+        FinanceInterval.WEEK -> Calendar.WEEK_OF_YEAR
+        FinanceInterval.MONTH -> Calendar.MONTH
+        FinanceInterval.YEAR -> Calendar.YEAR
+    }
+
+    fun step(count: Int): String = calendar().apply {
+        if (interval == FinanceInterval.MONTH || interval == FinanceInterval.YEAR) set(Calendar.DAY_OF_MONTH, 1)
+        add(field, count)
+    }.let { LedgerDate.fromDate(it.time) }
+
+    fun days(): ClosedRange<String> {
+        val calendar = calendar()
+        when (interval) {
+            FinanceInterval.DAY -> Unit
+            FinanceInterval.WEEK -> calendar.add(Calendar.DATE, -(calendar.get(Calendar.DAY_OF_WEEK) + 5).mod(7))
+            FinanceInterval.MONTH -> calendar.set(Calendar.DAY_OF_MONTH, 1)
+            FinanceInterval.YEAR -> calendar.set(Calendar.DAY_OF_YEAR, 1)
+        }
+        val start = LedgerDate.fromDate(calendar.time)
+        calendar.add(field, 1)
+        calendar.add(Calendar.DATE, -1)
+        return start..LedgerDate.fromDate(calendar.time)
+    }
+}
+
+internal data class CategoryTotal(val category: FinanceCategory, val amount: BigDecimal, val percent: Int = 0)
+
+internal data class FinanceSummary(
+    val currency: String,
+    val direction: FinanceCategoryState,
+    val period: FinancePeriod,
+    val categories: List<CategoryTotal> = emptyList(),
+    val total: BigDecimal = BigDecimal.ZERO,
+    val loading: Boolean = true,
+    val failed: Boolean = false,
+) {
+    fun withEntries(data: List<FinanceCategoryWithFinances>): FinanceSummary {
+        val days = period.days()
+        val rows = data.filter { it.financeCategory.state == direction }.mapNotNull { group ->
+            val entries = group.financeList.filter {
+                it.currency == currency && (it.calendarDay ?: LedgerDate.fromDate(it.date)) in days
+            }
+            if (entries.isEmpty()) null else CategoryTotal(group.financeCategory, entries.sumOf { it.sum })
+        }.sortedByDescending { it.amount }
+        val total = rows.sumOf { it.amount }
+        return copy(total = total, loading = false, failed = false, categories = rows.map {
+            val percent = if (total.signum() == 0) 0 else it.amount.movePointRight(2)
+                .divide(total, 0, RoundingMode.HALF_UP).toInt()
+            it.copy(percent = percent)
+        })
+    }
+}
 
 @HiltViewModel
 class FinanceViewModel @Inject constructor(
-    private val getFinanceCurrency: GetFinanceCurrency,
-    private val setFinanceCurrency: SetFinanceCurrency,
-    private val getAllCategoriesWithFinances: GetAllCategoriesWithFinances
-): ViewModel() {
-
-    private val TAG = "FinanceFragmentVM"
-
-    private val _categoriesWithFinancesList = MutableLiveData<List<FinanceCategoryWithFinances>>()
-    val categoriesWithFinancesList: LiveData<List<FinanceCategoryWithFinances>>
-        get() = _categoriesWithFinancesList
-    private val _financeCategoryState = MutableLiveData<FinanceCategoryState>(FinanceCategoryState.EXPENSE)
-    val financeCategoryState: LiveData<FinanceCategoryState>
-        get() = _financeCategoryState
-    private val _isCurrencyDialogOpened = MutableLiveData<Boolean>(false)
-    val isCurrencyDialogOpened: LiveData<Boolean>
-        get() = _isCurrencyDialogOpened
-    private val _selectedIntervalPosition = MutableLiveData<Int>()
-    val selectedIntervalPosition: LiveData<Int>
-        get() = _selectedIntervalPosition
-    private val _isFinanceIntervalDialogOpened = MutableLiveData(false)
-    val isFinanceIntervalDialogOpened: LiveData<Boolean>
-        get() = _isFinanceIntervalDialogOpened
-    private val _selectedCurrencyPosition = MutableLiveData<Int>()
-    val selectedCurrencyPosition: LiveData<Int>
-        get() = _selectedCurrencyPosition
-    private val _currency = MutableLiveData<String>()
-    val currency: LiveData<String>
-        get() = _currency
-    private val _financeInterval = MutableLiveData(FinanceInterval.DAY)
-    val financeInterval: LiveData<FinanceInterval>
-        get() = _financeInterval
-    private val _financeIntervalString = MutableLiveData<String>()
-    val financeIntervalString: LiveData<String>
-        get() = _financeIntervalString
-    private val _financeIntervalUnix = MutableLiveData<Pair<Long, Long>>() // 1 - left border in millis, 2 - right border in millis
-    val financeIntervalUnix: LiveData<Pair<Long, Long>>
-        get() = _financeIntervalUnix
-    private val _currentDayInSeconds = MutableLiveData<Long>()
-    val currentDayInSeconds: LiveData<Long>
-        get() = _currentDayInSeconds
-    private val _overallSum = MutableLiveData<BigDecimal>(BigDecimal.ZERO)
-    val overallSum: LiveData<BigDecimal>
-        get() = _overallSum
-    private val _financeListState = MutableLiveData<ListState>(ListState.LOADING)
-    val financeListState: LiveData<ListState>
-        get() = _financeListState
-
-    init {
-        getFinanceCurrency()
-        getFinanceInterval()
-        getCurrentDayInSeconds()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.e(TAG, "Cleared")
-    }
-
-    private fun getCurrentDayInSeconds() {
-        _currentDayInSeconds.value = financeIntervalUnix.value!!.first!! / 1000
-    }
-
-    private fun getFinanceInterval() {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.HOUR, 0)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        when (financeInterval.value) {
-            FinanceInterval.DAY -> {
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.get(Calendar.DAY_OF_YEAR) + 1)
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("dd MMM", leftIntervalBorder).toString()
-            }
-            FinanceInterval.WEEK -> {
-                calendar.set(Calendar.DAY_OF_YEAR, 0)
-                calendar.set(Calendar.DAY_OF_MONTH, 0)
-                calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.set(Calendar.SECOND, 59)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.HOUR, 23)
-                calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = "${DateFormat.format("dd MMM", leftIntervalBorder)} - ${DateFormat.format("dd MMM", rightIntervalBorder)}"
-            }
-            FinanceInterval.MONTH ->  {
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMinimum(Calendar.DAY_OF_MONTH))
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) + 1)
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMinimum(Calendar.DAY_OF_MONTH))
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("MMM yyyy", leftIntervalBorder).toString()
-            }
-            FinanceInterval.YEAR -> {
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMinimum(Calendar.DAY_OF_YEAR))
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.set(Calendar.YEAR, calendar.get(Calendar.YEAR) + 1)
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMinimum(Calendar.DAY_OF_YEAR))
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("yyyy", leftIntervalBorder).toString()
-            }
-            null -> {}
-        }
-        getAllCategoriesWithFinances()
-    }
-
-    fun getNextFinanceInterval() {
-        val calendar = Calendar.getInstance()
-        when (financeInterval.value) {
-            FinanceInterval.DAY -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.second
-                val leftIntervalBorder = financeIntervalUnix.value!!.second
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.get(Calendar.DAY_OF_YEAR) + 1)
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("dd MMM", leftIntervalBorder).toString()
-            }
-            FinanceInterval.WEEK -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.second
-                val leftIntervalBorder = financeIntervalUnix.value!!.second
-                calendar.set(Calendar.WEEK_OF_YEAR, calendar.get(Calendar.WEEK_OF_YEAR) + 1)
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = "${DateFormat.format("dd MMM", leftIntervalBorder)} - ${DateFormat.format("dd MMM", rightIntervalBorder)}"
-            }
-            FinanceInterval.MONTH -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.first
-                calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) + 1)
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMinimum(Calendar.DAY_OF_MONTH))
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.timeInMillis = financeIntervalUnix.value!!.second
-                calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) + 1)
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMinimum(Calendar.DAY_OF_MONTH))
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("MMM yyyy", leftIntervalBorder).toString()
-            }
-            FinanceInterval.YEAR -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.first
-                calendar.set(Calendar.YEAR, calendar.get(Calendar.YEAR) + 1)
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMinimum(Calendar.DAY_OF_YEAR))
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.timeInMillis = financeIntervalUnix.value!!.second
-                calendar.set(Calendar.YEAR, calendar.get(Calendar.YEAR) + 1)
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMinimum(Calendar.DAY_OF_YEAR))
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("yyyy", leftIntervalBorder).toString()
-            }
-            null -> {}
-        }
-        getAllCategoriesWithFinances()
-    }
-
-    fun getPastFinanceInterval() {
-        val calendar = Calendar.getInstance()
-        when (financeInterval.value) {
-            FinanceInterval.DAY -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.first
-                val rightIntervalBorder = financeIntervalUnix.value!!.first
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.get(Calendar.DAY_OF_YEAR) - 1)
-                val leftIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("dd MMM", leftIntervalBorder).toString()
-            }
-            FinanceInterval.WEEK -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.first
-                val rightIntervalBorder = financeIntervalUnix.value!!.first
-                calendar.set(Calendar.WEEK_OF_YEAR, calendar.get(Calendar.WEEK_OF_YEAR) - 1)
-                val leftIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = "${DateFormat.format("dd MMM", leftIntervalBorder)} - ${DateFormat.format("dd MMM", rightIntervalBorder)}"
-            }
-            FinanceInterval.MONTH -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.first
-                calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) - 1)
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMinimum(Calendar.DAY_OF_MONTH))
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.timeInMillis = financeIntervalUnix.value!!.second
-                calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) - 1)
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMinimum(Calendar.DAY_OF_MONTH))
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("MMM yyyy", leftIntervalBorder).toString()
-            }
-            FinanceInterval.YEAR -> {
-                calendar.timeInMillis = financeIntervalUnix.value!!.first
-                calendar.set(Calendar.YEAR, calendar.get(Calendar.YEAR) - 1)
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMinimum(Calendar.DAY_OF_YEAR))
-                val leftIntervalBorder = calendar.timeInMillis
-                calendar.timeInMillis = financeIntervalUnix.value!!.second
-                calendar.set(Calendar.YEAR, calendar.get(Calendar.YEAR) - 1)
-                calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMinimum(Calendar.DAY_OF_YEAR))
-                val rightIntervalBorder = calendar.timeInMillis
-                _financeIntervalUnix.value = Pair(leftIntervalBorder, rightIntervalBorder)
-                _financeIntervalString.value = DateFormat.format("yyyy", leftIntervalBorder).toString()
-            }
-            null -> {}
-        }
-        getAllCategoriesWithFinances()
-    }
-
-    private var financeLoadGeneration = 0
-
-    fun getAllCategoriesWithFinances() {
-        val generation = ++financeLoadGeneration
-        val currentCurrency = currency.value
-        _financeListState.value = ListState.LOADING
-        val currentCategoryState = financeCategoryState.value
-        val currentInterval = financeIntervalUnix.value!!
-        viewModelScope.launch {
-            try {
-                val (list, sum) = withContext(Dispatchers.IO) {
-                    var overallSum = BigDecimal.ZERO
-                    val categoriesWithFinancesList = getAllCategoriesWithFinances.execute()
-                    val deleteFinancesList: MutableList<Finance> = mutableListOf()
-                    val deleteCategoriesList: MutableList<FinanceCategoryWithFinances> = mutableListOf()
-                    for (categoriesWithFinances in categoriesWithFinancesList) {
-                        if (categoriesWithFinances.financeCategory.state == currentCategoryState) {
-                            if (categoriesWithFinances.financeList.isEmpty())
-                                deleteCategoriesList.add(categoriesWithFinances)
-                            else {
-                                for (finance in categoriesWithFinances.financeList) {
-                                    if ((finance.currency != currentCurrency) || (finance.presentationDate.time < currentInterval.first) || (finance.presentationDate.time > currentInterval.second))
-                                        deleteFinancesList.add(finance)
-                                    else {
-                                        overallSum += finance.sum
-                                        categoriesWithFinances.categorySum += finance.sum
-                                    }
-                                }
-                                categoriesWithFinances.financeList.removeAll(deleteFinancesList)
-                                if (categoriesWithFinances.financeList.isEmpty())
-                                    deleteCategoriesList.add(categoriesWithFinances)
-                                deleteFinancesList.clear()
-                            }
-                        } else {
-                            deleteCategoriesList.add(categoriesWithFinances)
-                        }
-                    }
-                    categoriesWithFinancesList.removeAll(deleteCategoriesList)
-
-                    for (categoriesWithFinances in categoriesWithFinancesList) {
-                        categoriesWithFinances.categoryPercentage = if (overallSum.signum() == 0) 0 else categoriesWithFinances.categorySum.multiply(BigDecimal(100)).divide(overallSum, 0, java.math.RoundingMode.HALF_EVEN).toInt()
-                    }
-                    categoriesWithFinancesList.sortBy { financeCategoryWithFinances -> financeCategoryWithFinances.categoryPercentage }
-
-                    Pair(categoriesWithFinancesList, overallSum)
-                }
-                if (generation != financeLoadGeneration) return@launch
-                _categoriesWithFinancesList.value = list
-                _overallSum.value = sum
-                if (_categoriesWithFinancesList.value!!.isEmpty())
-                    _financeListState.value = ListState.EMPTY
-                Log.e(TAG, "Categories with finances load success")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
-            }
-        }
-    }
-
-    fun onCurrencyDialogOpen(selectedCurrencyPosition: Int) {
-        _isCurrencyDialogOpened.value = true
-        _selectedCurrencyPosition.value = selectedCurrencyPosition
-    }
-
-    fun onCurrencyDialogClose() {
-        _isCurrencyDialogOpened.value = false
-    }
-
-    fun onIntervalDialogOpen(selectedIntervalPosition: Int) {
-        _isFinanceIntervalDialogOpened.value = true
-        _selectedIntervalPosition.value = selectedIntervalPosition
-    }
-
-    fun onIntervalDialogClose() {
-        _isFinanceIntervalDialogOpened.value = false
-    }
+    private val saved: SavedStateHandle,
+    getCurrency: GetFinanceCurrency,
+    private val saveCurrency: SetFinanceCurrency,
+    private val getEntries: GetAllCategoriesWithFinances,
+) : ViewModel() {
+    private val current = MutableStateFlow(FinanceSummary(
+        getCurrency.execute(), saved["direction"] ?: FinanceCategoryState.EXPENSE,
+        FinancePeriod(saved["interval"] ?: FinanceInterval.DAY, saved["day"] ?: LedgerDate.today()),
+    ))
+    internal val summary = current.asStateFlow()
+    private var load: Job? = null
 
     fun setCurrency(currency: String) {
-        _currency.value = currency
-        setFinanceCurrency.execute(currency = currency)
-        getAllCategoriesWithFinances()
+        saveCurrency.execute(currency)
+        refresh(current.value.copy(currency = currency, loading = true))
     }
 
-    private fun getFinanceCurrency() {
-        _currency.value = getFinanceCurrency.execute()
+    internal fun setDirection(direction: FinanceCategoryState) {
+        saved["direction"] = direction
+        refresh(current.value.copy(direction = direction, loading = true))
     }
 
-    fun onChangeFinanceCategoryState() {
-        _financeCategoryState.value = when (_financeCategoryState.value!!) {
-            FinanceCategoryState.EXPENSE -> FinanceCategoryState.INCOME
-            FinanceCategoryState.INCOME -> FinanceCategoryState.EXPENSE
+    internal fun setPeriod(period: FinancePeriod) {
+        saved["interval"] = period.interval
+        saved["day"] = period.day
+        refresh(current.value.copy(period = period, loading = true))
+    }
+
+    fun refresh() = refresh(current.value)
+
+    private fun refresh(selection: FinanceSummary) {
+        load?.cancel()
+        current.value = selection.copy(failed = false)
+        load = viewModelScope.launch {
+            try {
+                current.value = withContext(Dispatchers.IO) { selection.withEntries(getEntries.execute()) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                current.value = selection.copy(loading = false, failed = true)
+            }
         }
-    }
-
-    fun setInterval(interval: FinanceInterval) {
-        _financeInterval.value = interval
-        getFinanceInterval()
-    }
-
-    fun setFinanceListState(state: ListState) {
-        _financeListState.value = state
     }
 }

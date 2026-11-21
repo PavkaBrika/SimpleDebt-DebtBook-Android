@@ -243,7 +243,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         tabMenu = PopupMenu(this, bottomNavBar).apply { inflate(R.menu.menu_bottom_nav) }.menu
         navController.addOnDestinationChangedListener { _, destination, _ ->
             // The Compose lists draw their own tabs so its entire surface participates in fragment transitions.
-            val showHostTabs = destination.id in TOP_LEVEL_DESTINATIONS && destination.id != R.id.goalsFragment && destination.id != R.id.settingsFragment
+            val showHostTabs = destination.id in TOP_LEVEL_DESTINATIONS && destination.id != R.id.goalsFragment && destination.id != R.id.settingsFragment && destination.id != R.id.financeFragment
             selectedTab.intValue = if (showHostTabs) destination.id else 0
             bottomNavBar.visibility = if (showHostTabs) View.VISIBLE else View.GONE
         }
@@ -579,10 +579,12 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     //finance interface
-    override fun onAddFinanceButtonClick(financeCategoryState: FinanceCategoryState, dayInMillis: Long) {
+    override fun onAddFinanceButtonClick(financeCategoryState: FinanceCategoryState, day: String, currency: String) {
         val args = Bundle()
         args.putString("categoryState", financeCategoryState.toString())
-        args.putLong("dayInMillis", dayInMillis)
+        args.putString("day", day)
+        args.putString("currency", currency)
+        args.putLong("dayInMillis", requireNotNull(com.breckneck.deptbook.domain.util.LedgerDate.localDate(day)).time)
         args.putBoolean("isEditFinance", false)
         navController.navigate(R.id.action_financeFragment_to_createFinanceFragment, args)
         vm.onActionClick()
@@ -599,9 +601,11 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         categoryName: String,
         categoryId: Int,
         financeCategoryState: FinanceCategoryState,
-        currency: String
+        currency: String,
+        day: String
     ) {
         val args = Bundle()
+        args.putString("day", day)
         args.putString("categoryName", categoryName)
         args.putInt("categoryId", categoryId)
         args.putString("categoryState", financeCategoryState.name)
