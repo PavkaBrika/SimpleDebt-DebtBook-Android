@@ -20,5 +20,6 @@
     <string name="statement_positive_entries">Opérations (mes prêts et écritures ≥ 0) :</string>
     <string name="statement_negative_entries">Opérations (vos prêts et écritures ≤ 0) :</string>
     <string name="statement_include_settled">Inclure les prêts remboursés</string>
+    <string name="statement_include_early_entries">Inclure les écritures anciennes</string>
     <string name="statement_empty">Aucune opération</string>
 </resources>

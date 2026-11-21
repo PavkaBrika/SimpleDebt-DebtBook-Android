@@ -29,10 +29,11 @@ class PersonDebtHistory private constructor(
     fun loan(id: Int): LoanHistory? = loansById[id]
 
     /** Preserve R2.4 ordering for equal dates or amounts, including in running totals. */
-    fun statementOriginals(includeSettled: Boolean): List<DebtDomain> = buildList {
-        unsettledEntries.mapTo(this) { it.original }
+    fun statementOriginals(includeSettled: Boolean, includeEarlyEntries: Boolean): List<DebtDomain> = buildList {
+        val entries = if (includeEarlyEntries) unsettledEntries else openLoans
+        entries.mapTo(this) { it.original }
         if (includeSettled) settledLoans.mapTo(this) { it.original }
-        addAll(zeroAmountEntries)
+        if (includeEarlyEntries) addAll(zeroAmountEntries)
     }
 
     fun includesEntry(row: DebtDomain, filter: Filter): Boolean {

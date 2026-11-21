@@ -138,6 +138,7 @@ class SettledDebtJourneyTest {
         onView(withId(R.id.overallSumTextView)).check(matches(withText("0 RUB")))
         tap(R.id.shareHumanButton)
         tap(R.id.deleteButton) // Text
+        onView(withId(R.id.includeEarlyEntries)).check(matches(withEffectiveVisibility(Visibility.GONE)))
         val statement = onView(withId(R.id.statementText))
         for ((label, total) in listOf(R.string.statement_lent to 1000, R.string.statement_borrowed to 1000,
             R.string.statement_even to 0)) {

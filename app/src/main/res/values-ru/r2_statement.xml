@@ -20,5 +20,6 @@
     <string name="statement_positive_entries">Операции (мои займы и записи ≥ 0):</string>
     <string name="statement_negative_entries">Операции (ваши займы и записи ≤ 0):</string>
     <string name="statement_include_settled">Включить погашенные долги</string>
+    <string name="statement_include_early_entries">Добавить ранние записи</string>
     <string name="statement_empty">Нет операций</string>
 </resources>

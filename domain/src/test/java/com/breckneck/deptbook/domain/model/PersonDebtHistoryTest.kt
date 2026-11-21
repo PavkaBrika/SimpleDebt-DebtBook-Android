@@ -99,8 +99,10 @@ class PersonDebtHistoryTest {
         val zero = early.copy(id = 4, sum = BigDecimal.ZERO)
         val full = payment(closed, 5, "-1000", "2026-10-05")
         val history = PersonDebtHistory.from(listOf(zero, closed, early, open, full))
-        assertEquals(listOf(early, open, zero), history.statementOriginals(false))
-        assertEquals(listOf(early, open, closed, zero), history.statementOriginals(true))
+        assertEquals(listOf(open), history.statementOriginals(includeSettled = false, includeEarlyEntries = false))
+        assertEquals(listOf(open, closed), history.statementOriginals(includeSettled = true, includeEarlyEntries = false))
+        assertEquals(listOf(early, open, zero), history.statementOriginals(includeSettled = false, includeEarlyEntries = true))
+        assertEquals(listOf(early, open, closed, zero), history.statementOriginals(includeSettled = true, includeEarlyEntries = true))
     }
 
     @Test fun `due date and linked payments identify loans independently of origin`() {

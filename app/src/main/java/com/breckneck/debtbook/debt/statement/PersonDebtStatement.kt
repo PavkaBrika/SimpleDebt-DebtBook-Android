@@ -22,7 +22,8 @@ fun formatPersonDebtStatement(
     filter: Filter,
     order: Pair<DebtOrderAttribute, Boolean>,
     includeRunningTotals: Boolean,
-    includeSettled: Boolean = false
+    includeSettled: Boolean = false,
+    includeEarlyEntries: Boolean = false
 ): String = buildString {
     val locale = ConfigurationCompat.getLocales(resources.configuration)[0] ?: java.util.Locale.getDefault()
     fun money(value: BigDecimal) = "${MoneyDisplay.formatExact(value, currency, locale)} $currency"
@@ -47,7 +48,7 @@ fun formatPersonDebtStatement(
     appendLine(resources.getString(balanceLabel, money(balance.abs())))
     appendLine()
 
-    val selected = history.statementOriginals(includeSettled).filter { history.includesEntry(it, filter) }
+    val selected = history.statementOriginals(includeSettled, includeEarlyEntries).filter { history.includesEntry(it, filter) }
     val unclassified = selected.any { history.loan(it.id) == null }
     val heading = when (filter) {
         Filter.ALL -> R.string.statement_all

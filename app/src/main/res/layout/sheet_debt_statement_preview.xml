@@ -22,6 +22,16 @@
         android:textSize="16sp"
         android:theme="@style/SwitchTheme" />
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/includeEarlyEntries"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/statement_include_early_entries"
+        android:textSize="16sp"
+        android:theme="@style/SwitchTheme"
+        android:visibility="gone" />
+
     <androidx.core.widget.NestedScrollView
         android:id="@+id/statementScroll"
         android:layout_width="match_parent"

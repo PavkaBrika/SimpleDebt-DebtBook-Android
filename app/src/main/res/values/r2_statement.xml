@@ -20,5 +20,6 @@
     <string name="statement_positive_entries">Transactions (loans from me and entries ≥ 0):</string>
     <string name="statement_negative_entries">Transactions (loans from you and entries ≤ 0):</string>
     <string name="statement_include_settled">Include repaid loans</string>
+    <string name="statement_include_early_entries">Include early entries</string>
     <string name="statement_empty">No matching transactions</string>
 </resources>
