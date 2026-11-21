@@ -212,7 +212,7 @@ R1b: суммы и аргументы редактирования точные 
 
 ### R2.5 — история карточки и перенос на Bubble
 
-Основа для Bubble D1/D2 — ветка `codex/r2-legacy-debt-history`, включающая R2.3 и R2.4. [PersonDebtHistory](../../domain/src/main/java/com/breckneck/deptbook/domain/model/PersonDebtHistory.kt) принимает операции одного человека. У исходной ненулевой операции назначение подтверждает `LoanHistory.hasKnownPurpose` по любому из трёх признаков: `recordedAsLoan`, связанный возврат (включая отменённый) или назначенный срок.
+Основа для Bubble D1/D2 — ветка `codex/r2-legacy-debt-history`, включающая R2.3 и R2.4. [PersonDebtHistory](../../domain/src/main/java/com/breckneck/deptbook/domain/model/PersonDebtHistory.kt) принимает операции одного человека. У исходной ненулевой операции `LoanHistory.hasKnownPurpose` учитывает явное создание займа (`recordedAsLoan`), связанный возврат (включая отменённый) или назначенный срок. Достаточно одного признака.
 
 | Данные | Использование |
 | --- | --- |
