@@ -20,9 +20,7 @@
     <string name="editdebtcollaps">Изменить долг</string>
     <string name="debts">Долги</string>
     <string name="nodebts">Долгов пока что нет. Нажмите кнопку внизу, чтобы добавить.</string>
-    <string name="show_all">Показать все долги</string>
-    <string name="show_positive">Показать, кто должен мне</string>
-    <string name="show_negative">Показать, кому должен я</string>
+    <string name="show_all">Все</string>
     <string name="filter">Фильтр</string>
     <string name="contacts">Контакты</string>
     <string name="no_permission">Нет разрешения</string>

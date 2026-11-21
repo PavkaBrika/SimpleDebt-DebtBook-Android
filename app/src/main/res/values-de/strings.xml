@@ -20,9 +20,7 @@
     <string name="editdebtcollaps">Schulden bearbeiten</string>
     <string name="debts">Schulden</string>
     <string name="nodebts">Es sind noch keine Schulden vorhanden. Klicken Sie auf die Schaltfläche unten, um hinzuzufügen.</string>
-    <string name="show_all">Alle Schulden anzeigen</string>
-    <string name="show_positive">Positive Schulden ausweisen</string>
-    <string name="show_negative">Negative Schulden anzeigen</string>
+    <string name="show_all">Alle</string>
     <string name="filter">Filter</string>
     <string name="contacts">Kontakte</string>
     <string name="no_permission">Keine Genehmigung</string>

@@ -181,7 +181,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:buttonTint="@color/green"
-                        android:text="@string/show_positive"
+                        android:text="@string/debt_lent"
                         android:textAlignment="textStart" />
 
                     <RadioButton
@@ -189,7 +189,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:buttonTint="@color/red"
-                        android:text="@string/show_negative"
+                        android:text="@string/debt_borrowed"
                         android:textAlignment="textStart" />
 
                 </RadioGroup>

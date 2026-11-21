@@ -2,6 +2,8 @@ package com.breckneck.debtbook.core.viewmodel
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.breckneck.debtbook.debt.main.DebtViewModel
+import com.breckneck.deptbook.domain.repository.DataTransaction
+import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.GetAllDebtsSumUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetAllHumansUseCase
 import com.breckneck.deptbook.domain.usecase.Human.UpdateHuman
@@ -30,6 +32,7 @@ class DebtViewModelTest {
     @get:Rule
     val instantTaskRule = InstantTaskExecutorRule()
 
+    private val getAllDebts = Mockito.mock(GetAllDebts::class.java)
     private val getAllHumansUseCase = Mockito.mock(GetAllHumansUseCase::class.java)
     private val getAllDebtsSumUseCase = Mockito.mock(GetAllDebtsSumUseCase::class.java)
     private val getFirstMainCurrency = Mockito.mock(GetFirstMainCurrency::class.java)
@@ -48,7 +51,12 @@ class DebtViewModelTest {
         whenever(getSecondMainCurrency.execute()).thenReturn("$")
         whenever(getAllDebtsSumUseCase.execute(anyString(), anyString())).thenReturn(Pair("0", "0"))
         whenever(getAllHumansUseCase.execute()).thenReturn(emptyList())
+        whenever(getAllDebts.execute()).thenReturn(emptyList())
         viewModel = DebtViewModel(
+            getAllDebts = getAllDebts,
+            transaction = object : DataTransaction {
+                override fun <T> run(block: () -> T): T = block()
+            },
             getAllHumansUseCase = getAllHumansUseCase,
             getAllDebtsSumUseCase = getAllDebtsSumUseCase,
             getFirstMainCurrency = getFirstMainCurrency,

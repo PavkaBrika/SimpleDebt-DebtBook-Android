@@ -20,9 +20,7 @@
     <string name="editdebtcollaps">Editer la dette</string>
     <string name="debts">Dette</string>
     <string name="nodebts">Il n\'y a pas encore de dettes. Cliquez sur le bouton ci-dessous pour ajouter.</string>
-    <string name="show_all">Afficher toutes les dettes</string>
-    <string name="show_positive">Montrer des dettes positives</string>
-    <string name="show_negative">Afficher les dettes négatives</string>
+    <string name="show_all">Tous</string>
     <string name="filter">Filtre</string>
     <string name="contacts">Contacts</string>
     <string name="no_permission">Pas d\'autorisation</string>
