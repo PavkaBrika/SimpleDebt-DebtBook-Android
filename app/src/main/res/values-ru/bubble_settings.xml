@@ -5,4 +5,6 @@
     <string name="enable_pin">Установить PIN</string>
     <string name="disable_pin">Отключить PIN</string>
     <string name="backup_local_title">Копия в файл</string>
+    <string name="settings_rating">Оценить на %1$d из 5</string>
+    <string name="settings_no_handler">Нет приложения для этого действия.</string>
 </resources>

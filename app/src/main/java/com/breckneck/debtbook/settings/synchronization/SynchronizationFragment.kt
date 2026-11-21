@@ -2,7 +2,8 @@ package com.breckneck.debtbook.settings.synchronization
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
+import com.breckneck.debtbook.settings.openSettingsIntent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -27,6 +28,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.Scope
 import com.google.api.client.extensions.android.http.AndroidHttp
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
@@ -50,12 +53,16 @@ class SynchronizationFragment : Fragment() {
         uri?.let(vm::restoreFile)
     }
     private val signIn = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        result.data?.let { data ->
+            GoogleSignIn.getSignedInAccountFromIntent(data)
                 .addOnSuccessListener { account ->
                     connect(account)
                     vm.setIsAuthorized(true)
-                }.addOnFailureListener(vm::failDriveConnection)
+                }.addOnFailureListener { error ->
+                    if ((error as? ApiException)?.statusCode != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+                        vm.failDriveConnection(error)
+                    }
+                }
         }
     }
     private val authorize = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -79,7 +86,7 @@ class SynchronizationFragment : Fragment() {
                             onExport = { export.launch("SimpleDebt-backup.json") },
                             onImport = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
                             onSignIn = ::requestSignIn, onReconnect = ::reconnect, onSignOut = ::requestSignOut,
-                            onPrivacy = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.privacy_policy_url)))) },
+                            onPrivacy = { requireContext().openSettingsIntent(Intent(Intent.ACTION_VIEW, getString(R.string.privacy_policy_url).toUri())) },
                         )
                     }
                 }
@@ -122,6 +129,7 @@ class SynchronizationFragment : Fragment() {
     }
 
     private fun requestSignIn() {
+        vm.dismissOperationError()
         val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail().requestProfile().requestScopes(Scope(DriveScopes.DRIVE_APPDATA)).build()
         signIn.launch(GoogleSignIn.getClient(requireActivity(), options).signInIntent)

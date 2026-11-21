@@ -1,16 +1,15 @@
 package com.breckneck.debtbook.settings.main
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.net.Uri
+import androidx.core.net.toUri
+import com.breckneck.debtbook.settings.openSettingsIntent
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -106,24 +105,18 @@ class SettingsFragment : Fragment() {
                     .setAllowedAuthenticators(BIOMETRIC_STRONG)
                     .setNegativeButtonText(getString(R.string.cancel)).build()
             )
-            Build.VERSION.SDK_INT >= 30 -> launchExternal(Intent(Settings.ACTION_BIOMETRIC_ENROLL)
+            Build.VERSION.SDK_INT >= 30 -> requireContext().openSettingsIntent(Intent(Settings.ACTION_BIOMETRIC_ENROLL)
                 .putExtra(Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED, BIOMETRIC_STRONG))
         }
     }
 
     private fun openExternal(action: Int) {
         val intent = when (action) {
-            R.string.write_email_to_developer -> Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:pavlikbrichkin@yandex.ru"))
+            R.string.write_email_to_developer -> Intent(Intent.ACTION_SENDTO, "mailto:pavlikbrichkin@yandex.ru".toUri())
                 .putExtra(Intent.EXTRA_SUBJECT, "${getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}")
-            R.string.support_us -> Intent(Intent.ACTION_VIEW, Uri.parse("https://pay.cloudtips.ru/p/5c867537"))
-            else -> Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.privacy_policy_url)))
+            R.string.support_us -> Intent(Intent.ACTION_VIEW, "https://pay.cloudtips.ru/p/5c867537".toUri())
+            else -> Intent(Intent.ACTION_VIEW, getString(R.string.privacy_policy_url).toUri())
         }
-        launchExternal(intent)
-    }
-
-    private fun launchExternal(intent: Intent) {
-        try { startActivity(intent) } catch (_: ActivityNotFoundException) {
-            Toast.makeText(requireContext(), R.string.something_went_wrong, Toast.LENGTH_LONG).show()
-        }
+        requireContext().openSettingsIntent(intent)
     }
 }

@@ -1,6 +1,9 @@
 package com.breckneck.debtbook.core
 
 
+import android.content.ActivityNotFoundException
+import androidx.core.net.toUri
+import com.breckneck.debtbook.settings.openSettingsIntent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -706,176 +709,36 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             vm.setAppRate(0)
         }
 
-        val rateStar1ImageView: ImageView =
-            rateAppBottomSheetDialog.findViewById(R.id.rateStar1ImageView)!!
-        val rateStar2ImageView: ImageView =
-            rateAppBottomSheetDialog.findViewById(R.id.rateStar2ImageView)!!
-        val rateStar3ImageView: ImageView =
-            rateAppBottomSheetDialog.findViewById(R.id.rateStar3ImageView)!!
-        val rateStar4ImageView: ImageView =
-            rateAppBottomSheetDialog.findViewById(R.id.rateStar4ImageView)!!
-        val rateStar5ImageView: ImageView =
-            rateAppBottomSheetDialog.findViewById(R.id.rateStar5ImageView)!!
-        rateStar1ImageView.setOnClickListener {
-            rateStar1ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar2ImageView.clearColorFilter()
-            rateStar3ImageView.clearColorFilter()
-            rateStar4ImageView.clearColorFilter()
-            rateStar5ImageView.clearColorFilter()
-            onTickVibration()
-            vm.setAppRate(1)
+        val stars = listOf(R.id.rateStar1ImageView, R.id.rateStar2ImageView, R.id.rateStar3ImageView,
+            R.id.rateStar4ImageView, R.id.rateStar5ImageView).map {
+            requireNotNull(rateAppBottomSheetDialog.findViewById<ImageView>(it))
         }
-        rateStar2ImageView.setOnClickListener {
-            rateStar1ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar2ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar3ImageView.clearColorFilter()
-            rateStar4ImageView.clearColorFilter()
-            rateStar5ImageView.clearColorFilter()
-            onTickVibration()
-            vm.setAppRate(2)
-        }
-        rateStar3ImageView.setOnClickListener {
-            rateStar1ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar2ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar3ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar4ImageView.clearColorFilter()
-            rateStar5ImageView.clearColorFilter()
-            onTickVibration()
-            vm.setAppRate(3)
-        }
-        rateStar4ImageView.setOnClickListener {
-            rateStar1ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar2ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar3ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar4ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar5ImageView.clearColorFilter()
-            onTickVibration()
-            vm.setAppRate(4)
-        }
-        rateStar5ImageView.setOnClickListener {
-            rateStar1ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar2ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar3ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar4ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            rateStar5ImageView.setColorFilter(ContextCompat.getColor(it.context, R.color.yellow))
-            onTickVibration()
-            vm.setAppRate(5)
-        }
-
-        when (vm.appRate.value) {
-            1 -> {
-                rateStar1ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-            }
-
-            2 -> {
-                rateStar1ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar2ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-            }
-
-            3 -> {
-                rateStar1ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar2ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar3ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-            }
-
-            4 -> {
-                rateStar1ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar2ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar3ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar4ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-            }
-
-            5 -> {
-                rateStar1ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar2ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar3ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar4ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
-                rateStar5ImageView.setColorFilter(
-                    ContextCompat.getColor(
-                        applicationContext,
-                        R.color.yellow
-                    )
-                )
+        fun showRating(rating: Int) {
+            stars.forEachIndexed { index, star ->
+                star.isSelected = index + 1 == rating
+                if (index < rating) star.setColorFilter(ContextCompat.getColor(this, R.color.yellow))
+                else star.clearColorFilter()
             }
         }
-
+        stars.forEachIndexed { index, star ->
+            val rating = index + 1
+            star.contentDescription = getString(R.string.settings_rating, rating)
+            star.setOnClickListener {
+                onTickVibration()
+                vm.setAppRate(rating)
+                showRating(rating)
+            }
+        }
+        showRating(vm.appRate.value ?: 0)
         rateAppBottomSheetDialog.show()
     }
 
     private fun launchMarketIntent() {
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.setData(Uri.parse("market://details?id=${packageName}"))
-        startActivity(intent)
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, "market://details?id=$packageName".toUri()))
+        } catch (_: ActivityNotFoundException) {
+            openSettingsIntent(Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=$packageName".toUri()))
+        }
     }
 
     private fun showLowAppRateDialog(fromSettings: Boolean) {
@@ -896,8 +759,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 "${getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}"
             )
             intent.putExtra(Intent.EXTRA_TEXT, reviewEditText.text.toString())
-            startActivity(intent)
-            lowRateBottomSheetDialog.dismiss()
+            if (openSettingsIntent(intent)) lowRateBottomSheetDialog.dismiss()
         }
 
         if (vm.appReviewText.value?.isEmpty() == false) {

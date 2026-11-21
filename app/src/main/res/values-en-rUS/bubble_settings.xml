@@ -5,4 +5,6 @@
     <string name="enable_pin">Set PIN</string>
     <string name="disable_pin">Disable PIN</string>
     <string name="backup_local_title">Backup file</string>
+    <string name="settings_rating">Rate %1$d out of 5</string>
+    <string name="settings_no_handler">No app is available for this action.</string>
 </resources>
