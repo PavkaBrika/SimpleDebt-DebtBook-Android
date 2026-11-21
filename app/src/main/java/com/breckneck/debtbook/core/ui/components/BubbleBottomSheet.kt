@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.core.ui.components
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,10 +48,11 @@ internal fun BubbleBottomSheet(
     shape: Shape = BottomSheetDefaults.ExpandedShape,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
     hideRequested: Boolean = false,
+    scrollState: ScrollState = rememberScrollState(),
     content: @Composable (enabled: Boolean, close: () -> Unit) -> Unit,
 ) {
     val colors = bubbleColors()
-    var closeRequested by rememberSaveable { mutableStateOf(false) }
+    var closeRequested by remember { mutableStateOf(false) }
     val closing = closeRequested || hideRequested
     val canDismiss by rememberUpdatedState(dismissEnabled || hideRequested)
     val sheetState = rememberModalBottomSheetState(
@@ -67,7 +69,7 @@ internal fun BubbleBottomSheet(
         contentColor = colors.ink,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(contentPadding),
+            modifier = Modifier.fillMaxWidth().verticalScroll(scrollState).padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) { content(dismissEnabled && !closing) { closeRequested = true } }
     }

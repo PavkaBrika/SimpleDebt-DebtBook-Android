@@ -32,15 +32,14 @@
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.breckneck.debtbook.settings.main.SettingsFragment"
-        android:label="SettingsFragment"
-        tools:layout="@layout/fragment_settings">
+        android:label="SettingsFragment">
         <action
             android:id="@+id/action_settingsFragment_to_synchronizationFragment"
             app:destination="@id/synchronizationFragment"
-            app:enterAnim="@anim/slide_in"
-            app:exitAnim="@anim/fade_out"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_out" />
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
     </fragment>
     <fragment
         android:id="@+id/newDebtFragment"
@@ -116,8 +115,7 @@
     <fragment
         android:id="@+id/synchronizationFragment"
         android:name="com.breckneck.debtbook.settings.synchronization.SynchronizationFragment"
-        android:label="SynchronizationFragment"
-        tools:layout="@layout/fragment_synchronization" />
+        android:label="SynchronizationFragment" />
     <fragment
         android:id="@+id/financeFragment"
         android:name="com.breckneck.debtbook.finance.main.FinanceFragment"

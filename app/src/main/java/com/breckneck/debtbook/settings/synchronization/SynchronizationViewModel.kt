@@ -50,7 +50,7 @@ class SynchronizationViewModel @Inject constructor(
     private val backupTransfer = BackupTransfer(getAllAppData::execute, replaceAllAppData::execute, backupFiles::retainPrevious, backupFiles, getFinanceCurrency::execute)
     enum class RestoreSource { FILE, DRIVE_LATEST, DRIVE_PREVIOUS, BEFORE_RESTORE }
     enum class CompletedOperation { FILE_SAVED, DRIVE_SAVED, RESTORED }
-    data class RestorePreview(val createdAt: Long?, val records: Int, val photoCount: Int,
+    class RestorePreview(val createdAt: Long?, val records: Int, val photoCount: Int,
         val legacy: Boolean, val legacyFinanceCurrency: String,
         val source: RestoreSource, val fileName: String? = null)
     data class DriveBackup(val source: RestoreSource, val content: String?, val preview: RestorePreview?)
@@ -86,12 +86,6 @@ class SynchronizationViewModel @Inject constructor(
     private val _isRestoring = MutableLiveData<Boolean>(false)
     val isRestoring: LiveData<Boolean>
         get() = _isRestoring
-    private val _isLogOutDialogOpened = MutableLiveData<Boolean>(false)
-    val isLogOutDialogOpened: LiveData<Boolean>
-        get() = _isLogOutDialogOpened
-    private val _isListModified = MutableLiveData<Boolean>(false)
-    val isListModified: LiveData<Boolean>
-        get() = _isListModified
     private val _lastSyncDate = MutableLiveData<String>()
     val lastSyncDate: LiveData<String>
         get() = _lastSyncDate
@@ -190,6 +184,8 @@ class SynchronizationViewModel @Inject constructor(
     }
 
     private fun transferring() = isSynchronizing.value == true || isRestoring.value == true
+    val blocksExit: Boolean get() = transferring() && driveBackups.value == null
+
     private fun busy() = transferring() || restorePreview.value != null || driveBackups.value != null
 
     /** Read-only listing. Opening this sheet never replaces local records or a Drive file. */
@@ -290,7 +286,6 @@ class SynchronizationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 backupTransfer.restore { content }
-                _isListModified.value = true
                 hasPrevious.value = backupFiles.hasPrevious()
                 operationSucceeded.value = CompletedOperation.RESTORED
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -329,6 +324,7 @@ class SynchronizationViewModel @Inject constructor(
     }
 
     fun setDriveServiceHelper(helper: BackupDrive) {
+        _operationError.value = null
         driveReady.value = false
         driveConnectionFailed.value = false
         _driveServiceHelper.value = helper
@@ -339,9 +335,6 @@ class SynchronizationViewModel @Inject constructor(
         _operationError.value = error
     }
 
-    fun setIsLogOutDialogOpened(opened: Boolean) {
-        _isLogOutDialogOpened.value = opened
-    }
     companion object {
         const val BACKUP_FILE_NAME = "DebtBookSync.json"
         const val PREVIOUS_FILE_NAME = "DebtBookBackup.previous.json"

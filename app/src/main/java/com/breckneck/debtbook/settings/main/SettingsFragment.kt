@@ -18,6 +18,8 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Surface
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
@@ -76,18 +78,20 @@ class SettingsFragment : Fragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
-                    SettingsScreen(vm, main, host,
-                        showBiometrics = biometricStatus == BiometricManager.BIOMETRIC_SUCCESS ||
-                            (Build.VERSION.SDK_INT >= 30 && biometricStatus == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED),
-                        onBiometrics = ::changeBiometrics,
-                        onPin = { action -> authorize.launch(Intent(requireContext(), AuthorizationActivity::class.java)
-                            .putExtra("PINCodeState", action.name)) },
-                        onTheme = { theme ->
-                            vm.setAppTheme(theme)
-                            main.getAppTheme()
-                        },
-                        onExternal = ::openExternal,
-                    )
+                    Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
+                        SettingsScreen(vm, main, host,
+                            showBiometrics = biometricStatus == BiometricManager.BIOMETRIC_SUCCESS ||
+                                (Build.VERSION.SDK_INT >= 30 && biometricStatus == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED),
+                            onBiometrics = ::changeBiometrics,
+                            onPin = { action -> authorize.launch(Intent(requireContext(), AuthorizationActivity::class.java)
+                                .putExtra("PINCodeState", action.name)) },
+                            onTheme = { theme ->
+                                vm.setAppTheme(theme)
+                                main.getAppTheme()
+                            },
+                            onExternal = ::openExternal,
+                        )
+                    }
                 }
             }
         }
