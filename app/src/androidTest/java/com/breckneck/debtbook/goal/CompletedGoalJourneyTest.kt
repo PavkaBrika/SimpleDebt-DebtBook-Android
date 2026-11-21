@@ -164,6 +164,28 @@ class CompletedGoalJourneyTest {
         trash("Other goal").assertIsDisplayed()
     }
 
+    @Test fun completedRowOpensHistoryPastTheDeleteButtonAndKeepsDeletionSeparate() {
+        val name = "Completed trip"
+        val id = seed(name, "100", "100", "EUR")
+        openGoals(name)
+
+        val row = compose.onNodeWithText(name)
+        val delete = trash(name)
+        val rowBounds = row.fetchSemanticsNode().boundsInRoot
+        val deleteBounds = delete.fetchSemanticsNode().boundsInRoot
+        assertTrue(rowBounds.contains(deleteBounds.center))
+        assertTrue("Leave room for the trailing arrow", rowBounds.right - deleteBounds.right >= with(compose.density) { 16.dp.toPx() })
+
+        row.performTouchInput { click(Offset(right - 22.dp.toPx(), centerY)) }
+        awaitDestination(R.id.goalDetailsFragment)
+        backTo(R.id.goalsFragment)
+        delete.performTouchInput { click(center) }
+        confirmSheet(name)
+        text(R.string.cancel).performClick()
+        awaitDestination(R.id.goalsFragment)
+        assertNotNull(dao.getGoal(id))
+    }
+
     @Test fun completionInDetailsReplacesTheMenuAndRefreshesTheList() {
         val name = "New speakers"
         val id = seed(name, "500", "420", "USD")
