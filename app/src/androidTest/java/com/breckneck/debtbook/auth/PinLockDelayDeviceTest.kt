@@ -1,18 +1,16 @@
 package com.breckneck.debtbook.auth
 
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import org.junit.Rule
+import com.breckneck.debtbook.settings.edgeSwipe
+import com.breckneck.debtbook.settings.requirePredictiveGestures
 import android.content.Context
-import android.graphics.Rect
-import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.View
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.action.ViewActions.click
-import androidx.core.widget.NestedScrollView
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
@@ -25,6 +23,12 @@ import sharedprefs.SharedPrefsSettingsStorageImpl
 import java.io.File
 
 class PinLockDelayDeviceTest {
+    @get:Rule val compose = createEmptyComposeRule()
+    private fun action(id: Int): SemanticsNodeInteraction {
+        val matcher = hasText(context.getString(id)) and hasClickAction()
+        compose.waitUntil(10_000) { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+        return compose.onNode(matcher)
+    }
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val prefs get() = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
     private val file get() = File(context.filesDir, CRYPTO_FILE_NAME)
@@ -61,52 +65,18 @@ class PinLockDelayDeviceTest {
         AuthSession.lock()
     }
 
-    private fun openSecuritySettings() {
-        val target = Rect()
-        repeat(12) {
-            var visible = false
-            onView(withId(R.id.securityLayout)).check { view, _ ->
-                visible = isDisplayingAtLeast(90).matches(view)
-                val location = IntArray(2)
-                view.getLocationOnScreen(location)
-                target.set(location[0], location[1], location[0] + view.width, location[1] + view.height)
-            }
-            if (visible) {
-                onView(withId(R.id.securityLayout)).perform(click())
-                return
-            }
-            // The collapsing header clips part of this scroll view. Swipe its visible
-            // area, just as a user would, rather than requiring 90% of the whole view.
-            val bounds = Rect()
-            onView(isAssignableFrom(NestedScrollView::class.java)).check { view, _ ->
-                assertTrue(view.getGlobalVisibleRect(bounds))
-            }
-            val from = bounds.centerY()
-            val to = from + if (target.centerY() < bounds.top) bounds.height() / 3 else -bounds.height() / 3
-            ParcelFileDescriptor.AutoCloseInputStream(
-                InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
-                    "input swipe ${bounds.centerX()} $from ${bounds.centerX()} $to 600"
-                )
-            ).bufferedReader().use { it.readText() }
-            Thread.sleep(300) // wait for the final scroll animation before tapping a row
-        }
-        fail("PIN settings did not become visible after scrolling; last position: $target")
-    }
-
     @Test fun settingPersistsAndIsShownAfterRecreation() {
         prefs.edit().remove("pin_lock_delay_millis").commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity {
-                it.navController.navigate(R.id.settingsFragment)
-            }
-            openSecuritySettings()
-            onView(withId(R.id.pinLockDelayText)).check(matches(withText(R.string.pin_lock_immediately)))
-            onView(withId(R.id.pinLockDelayLayout)).perform(click())
-            onView(withText(R.string.pin_lock_1_minute)).perform(click())
+            action(R.string.settings).performClick()
+            action(R.string.pin_code_lock).performScrollTo().performClick()
+            action(R.string.pin_lock_immediately).assertIsDisplayed()
+            action(R.string.pin_lock_delay_title).performClick()
+            action(R.string.pin_lock_1_minute).performClick()
+            compose.waitUntil(5000) { SharedPrefsSettingsStorageImpl(context).getPinLockDelayMillis() == 60_000L }
             assertEquals(60_000L, SharedPrefsSettingsStorageImpl(context).getPinLockDelayMillis())
             scenario.recreate()
-            openSecuritySettings()
-            onView(withId(R.id.pinLockDelayText)).check(matches(withText(R.string.pin_lock_1_minute)))
+            action(R.string.pin_lock_1_minute).assertIsDisplayed()
         }
     }
 
@@ -125,6 +95,49 @@ class PinLockDelayDeviceTest {
                 assertTrue(ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
                     .any { it is MainActivity })
             }
+        }
+    }
+
+    @Test fun settingsCanSetChangeAndDisablePin() {
+        prefs.edit().putBoolean("pin_code_is_enabled", false).commit()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            action(R.string.settings).performClick()
+            action(R.string.pin_code_lock).performScrollTo().performClick()
+            fun enter(pin: String) {
+                for (digit in pin) compose.onNodeWithText(digit.toString()).performClick()
+            }
+            action(R.string.enable_pin).performClick()
+            enter("2468")
+            enter("2468")
+            action(R.string.change_pin_code).performClick()
+            enter("2468")
+            enter("5678")
+            action(R.string.disable_pin).performClick()
+            enter("5678")
+            action(R.string.enable_pin).assertIsDisplayed()
+            assertFalse(prefs.getBoolean("pin_code_is_enabled", true))
+        }
+    }
+
+    @Test fun cancelledEdgeSwipeFromLockedEntryKeepsContentHidden() {
+        requirePredictiveGestures(context)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        prefs.edit().putLong("pin_lock_delay_millis", 0).commit()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            action(R.string.settings).performClick()
+            lateinit var main: MainActivity
+            scenario.onActivity { main = it }
+            scenario.moveToState(Lifecycle.State.CREATED)
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            action(R.string.pin_recovery_title).assertExists()
+            instrumentation.edgeSwipe(cancel = true) {
+                instrumentation.runOnMainSync {
+                    assertFalse(main.window.decorView.isShown)
+                    assertFalse(AuthSession.isUnlocked)
+                }
+            }
+            action(R.string.pin_recovery_title).assertIsDisplayed()
+            assertFalse(AuthSession.isUnlocked)
         }
     }
 

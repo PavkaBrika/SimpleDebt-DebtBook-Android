@@ -88,13 +88,15 @@ class PinRecoveryDeviceTest {
     }
     private fun credentialField(node: AccessibilityNodeInfo?, requireFocused: Boolean = false): Boolean {
         if (node == null) return false
+        // Android 17 SystemUI renders its own PIN pad instead of an editable text field.
+        if (node.packageName == "com.android.systemui" && node.viewIdResourceName == "cred_pin_pad") return true
         if (node.isEditable && node.isPassword && (!requireFocused || node.isFocused)) return true
         return (0 until node.childCount).any { credentialField(node.getChild(it), requireFocused) }
     }
     private fun waitForSystemCredential(requireFocused: Boolean = false) {
         val deadline = System.currentTimeMillis() + 15_000
         while (!credentialField(instrumentation.uiAutomation.rootInActiveWindow, requireFocused)) {
-            if (System.currentTimeMillis() > deadline) fail("Android device credential field did not appear")
+            if (System.currentTimeMillis() > deadline) fail("Android device credential prompt did not appear")
             Thread.sleep(100)
         }
     }
@@ -209,7 +211,7 @@ class PinRecoveryDeviceTest {
             openRecovery()
             waitForSystemCredential(requireFocused = true)
             assertUnchanged()
-            shell("input text $pin")
+            pin.forEach { shell("input keyevent KEYCODE_$it") }
             shell("input keyevent KEYCODE_ENTER")
             waitForText(R.string.enter_new_pin)
             // Every key must be reachable without scrolling on a portrait phone.

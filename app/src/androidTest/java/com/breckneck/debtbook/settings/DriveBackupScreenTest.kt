@@ -1,21 +1,16 @@
 package com.breckneck.debtbook.settings
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import org.junit.Rule
 import android.content.Context
 import android.view.View
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
-import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.action.ViewActions.scrollTo
-import androidx.test.espresso.action.ViewActions.swipeUp
-import androidx.test.espresso.matcher.RootMatchers.isDialog
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.isCompletelyDisplayed
-import androidx.test.espresso.matcher.ViewMatchers.withId
-import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
@@ -36,6 +31,16 @@ import java.math.BigDecimal
 
 /** The real screen and Room with a deterministic Drive gateway; no account/network access. */
 class DriveBackupScreenTest {
+    @get:Rule val compose = createEmptyComposeRule()
+    private fun action(id: Int): SemanticsNodeInteraction {
+        val matcher = hasText(context.getString(id)) and hasClickAction()
+        compose.waitUntil(10_000) { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+        return compose.onNode(matcher)
+    }
+    private fun sheetScroll() = compose.onNode(
+        SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and hasAnyAncestor(isDialog())
+    ).fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
+    private fun closeSheet() = compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val repo = AppDataRepositoryImpl(context)
     private fun snapshot(id: Int) = AppDataLists(
@@ -45,11 +50,7 @@ class DriveBackupScreenTest {
         (activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
             .childFragmentManager.primaryNavigationFragment!!
     private fun await(condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 15_000
-        while (!condition()) {
-            if (System.currentTimeMillis() > deadline) fail("Backup operation timed out")
-            Thread.sleep(50)
-        }
+        compose.waitUntil(15_000, condition)
     }
     private fun capture(name: String) {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
@@ -65,6 +66,7 @@ class DriveBackupScreenTest {
         var writes = 0
         var reads = 0
         var queries = 0
+        var pendingWrite: Task<Void?>? = null
         var pendingQuery: Task<FileList>? = null
         override fun createFile(name: String): Task<String> {
             writes++; files[name] = ""; return Tasks.forResult(name)
@@ -78,7 +80,7 @@ class DriveBackupScreenTest {
                 if (files.containsKey(fileName)) listOf(com.google.api.services.drive.model.File().setId(fileName)) else emptyList()))
         }
         override fun saveFile(fileId: String?, name: String?, content: String?): Task<Void?> {
-            writes++; files[fileId!!] = content!!; return Tasks.forResult(null)
+            writes++; files[fileId!!] = content!!; return pendingWrite ?: Tasks.forResult(null)
         }
     }
     private fun withScreen(block: (ActivityScenario<MainActivity>, SynchronizationViewModel, FakeDrive) -> Unit) {
@@ -97,11 +99,9 @@ class DriveBackupScreenTest {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 val drive = FakeDrive()
                 lateinit var vm: SynchronizationViewModel
-                scenario.onActivity { activity ->
-                    activity.navController.navigate(R.id.settingsFragment)
-                    activity.onAuthorizationButtonClick()
-                }
-                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+                action(R.string.settings).performClick()
+                action(R.string.synchronization).performScrollTo().performClick()
+                action(R.string.backup_export_file).assertIsEnabled()
                 scenario.onActivity { activity ->
                     vm = ViewModelProvider(current(activity))[SynchronizationViewModel::class.java]
                     vm.setUser("Backup test", "backup-test@example.invalid")
@@ -121,58 +121,48 @@ class DriveBackupScreenTest {
         drive.files[SynchronizationViewModel.BACKUP_FILE_NAME] = BackupCodec().encode(latest)
         drive.files[SynchronizationViewModel.PREVIOUS_FILE_NAME] = BackupCodec().encode(previous)
         capture("polish-backup-menu-top.png")
-        onView(withId(R.id.googleLogoutButtonLayout)).perform(scrollTo())
+        action(R.string.log_out).performScrollTo()
         capture("polish-backup-menu-bottom.png")
-        onView(withId(R.id.restoreButtonLayout)).perform(scrollTo(), click())
+        action(R.string.backup_drive_choose).performScrollTo().performClick()
         await { vm.driveBackups.value?.size == 2 && vm.isRestoring.value == false }
         assertTrue(vm.driveBackups.value!!.all { it.preview?.createdAt != null })
-        onView(withId(R.id.cancelButton)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
+        compose.onNodeWithContentDescription(context.getString(R.string.cancel)).assertIsDisplayed()
         capture("fix-drive-copies.png")
         assertEquals(snapshot(990010), repo.getAllAppData())
         assertEquals(0, drive.writes)
-        onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(scrollTo())
-        var listScrollY = 0
-        onView(withId(R.id.cloudCopiesScroll)).inRoot(isDialog()).check { view, error ->
-            if (error != null) throw error
-            listScrollY = view.scrollY
-        }
-        onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(click())
+        action(R.string.backup_drive_previous).performScrollTo()
+        val listScrollY = sheetScroll()
+        action(R.string.backup_drive_previous).performClick()
         await { vm.restorePreview.value != null && vm.isRestoring.value == false }
         assertEquals(SynchronizationViewModel.RestoreSource.DRIVE_PREVIOUS, vm.restorePreview.value!!.source)
-        onView(withId(R.id.backupPreviewScroll)).inRoot(isDialog()).perform(swipeUp())
+        action(R.string.backup_confirm_restore).performScrollTo()
         val reads = drive.reads; val queries = drive.queries
         val copies = vm.driveBackups.value
-        onView(withText(R.string.backup_back_to_copies)).inRoot(isDialog()).perform(click())
-        assertNull(vm.restorePreview.value)
+        action(R.string.backup_back_to_copies).performClick()
+        await { vm.restorePreview.value == null }
         assertSame("Back must retain the downloaded list", copies, vm.driveBackups.value)
-        onView(withId(R.id.cloudCopiesScroll)).inRoot(isDialog()).check { view, error ->
-            if (error != null) throw error
-            assertEquals("Returning to the list must keep its scroll position", listScrollY, view.scrollY)
-        }
+        assertEquals("Returning to the list must keep its scroll position", listScrollY, sheetScroll())
         assertEquals(snapshot(990010), repo.getAllAppData())
-        onView(withText(R.string.backup_drive_latest)).inRoot(isDialog()).perform(scrollTo(), click())
+        action(R.string.backup_drive_latest).performScrollTo().performClick()
         await { vm.restorePreview.value != null }
-        onView(withId(R.id.backupPreviewScroll)).inRoot(isDialog()).check { view, error ->
-            if (error != null) throw error
-            assertEquals("Another backup must open with its date and source visible", 0, view.scrollY)
-        }
+        assertEquals("Another preview starts at its source", 0f, sheetScroll())
         // A system Back from details returns to the same list as the explicit action.
         pressBack()
         await { vm.restorePreview.value == null }
-        onView(withId(R.id.cancelButton)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
+        compose.onNodeWithContentDescription(context.getString(R.string.cancel)).assertIsDisplayed()
         assertSame(copies, vm.driveBackups.value)
         assertEquals(reads, drive.reads)
         assertEquals(queries, drive.queries)
-        onView(withText(R.string.backup_drive_latest)).inRoot(isDialog()).perform(scrollTo(), click())
+        action(R.string.backup_drive_latest).performScrollTo().performClick()
         await { vm.restorePreview.value != null && vm.isRestoring.value == false }
         scenario.recreate()
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         assertNotNull("Downloaded preview must survive recreation", vm.restorePreview.value)
-        onView(withText(R.string.backup_back_to_copies)).inRoot(isDialog()).perform(click())
+        action(R.string.backup_back_to_copies).performClick()
         await { vm.restorePreview.value == null }
         assertSame("List lost across Activity recreation", copies, vm.driveBackups.value)
-        onView(withText(R.string.backup_drive_latest)).inRoot(isDialog()).perform(scrollTo(), click())
-        onView(withId(R.id.okButton)).inRoot(isDialog()).perform(click())
+        action(R.string.backup_drive_latest).performScrollTo().performClick()
+        action(R.string.backup_confirm_restore).performScrollTo().performClick()
         await { vm.isRestoring.value == false && repo.getAllAppData() == latest }
         assertEquals(0, drive.writes)
         scenario.onActivity { activity ->
@@ -188,42 +178,91 @@ class DriveBackupScreenTest {
         drive.files[SynchronizationViewModel.BACKUP_FILE_NAME] = latest
         drive.files[SynchronizationViewModel.PREVIOUS_FILE_NAME] = BackupCodec().encode(snapshot(990012))
         scenario.onActivity { vm.setFileId(SynchronizationViewModel.BACKUP_FILE_NAME) }
-        onView(withId(R.id.synchronizeButtonLayout)).perform(scrollTo(), click())
+        action(R.string.synchronize).performScrollTo().performClick()
         assertEquals(0, drive.writes)
-        onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
+        closeSheet()
         assertEquals(0, drive.writes)
-        onView(withId(R.id.synchronizeButtonLayout)).perform(scrollTo(), click())
-        onView(withId(R.id.okButton)).inRoot(isDialog()).perform(click())
+        action(R.string.synchronize).performScrollTo().performClick()
+        compose.onNode(hasText(context.getString(R.string.synchronize)) and hasClickAction() and hasAnyAncestor(isDialog())).performScrollTo().performClick()
         await { drive.writes == 2 && vm.isSynchronizing.value == false }
         assertEquals(2, drive.files.size)
         assertEquals(latest, drive.files[SynchronizationViewModel.PREVIOUS_FILE_NAME])
         assertEquals(snapshot(990010), BackupCodec().decode(drive.files.getValue(SynchronizationViewModel.BACKUP_FILE_NAME)).data)
         assertEquals(snapshot(990010), repo.getAllAppData())
     }
+    @Test fun signingOutLeavesLocalRecordsAndRequiresConfirmation() = withScreen { _, vm, drive ->
+        val local = repo.getAllAppData()
+        action(R.string.log_out).performScrollTo().performClick()
+        closeSheet()
+        compose.waitForIdle()
+        assertTrue(vm.isAuthorized.value == true)
+        action(R.string.log_out).performScrollTo().performClick()
+        compose.onNode(hasText(context.getString(R.string.log_out)) and hasClickAction() and hasAnyAncestor(isDialog()))
+            .performScrollTo().performClick()
+        await { vm.isAuthorized.value == false }
+        assertNull(vm.driveServiceHelper.value)
+        assertEquals(local, repo.getAllAppData())
+        assertEquals(0, drive.writes)
+    }
+
+    @Test fun pendingWritePreventsSecondOperationAndBackUntilFinished() = withScreen { scenario, vm, drive ->
+        val pending = TaskCompletionSource<Void?>()
+        drive.pendingWrite = pending.task
+        action(R.string.synchronize).performScrollTo().performClick()
+        compose.onNode(hasText(context.getString(R.string.synchronize)) and hasClickAction() and hasAnyAncestor(isDialog()))
+            .performScrollTo().performClick()
+        await { drive.writes == 2 && vm.isSynchronizing.value == true }
+        action(R.string.synchronize).assertIsNotEnabled()
+        scenario.onActivity {
+            vm.uploadBackup()
+            it.onBackPressedDispatcher.onBackPressed()
+            assertEquals(R.id.synchronizationFragment, it.navController.currentDestination?.id)
+        }
+        assertEquals(2, drive.writes)
+        pending.setResult(null)
+        await { vm.isSynchronizing.value == false }
+        scenario.onActivity {
+            it.onBackPressedDispatcher.onBackPressed()
+            assertEquals(R.id.settingsFragment, it.navController.currentDestination?.id)
+        }
+    }
+
+    @Test fun failedDriveReadCanBeRetriedWithoutWriting() = withScreen { _, vm, drive ->
+        drive.pendingQuery = Tasks.forException(java.io.IOException("Offline"))
+        action(R.string.backup_drive_choose).performScrollTo().performClick()
+        await { vm.operationError.value != null && vm.driveBackups.value == null }
+        compose.onNodeWithText(context.getString(R.string.backup_transfer_failed)).assertExists()
+        drive.pendingQuery = null
+        action(R.string.backup_drive_choose).performScrollTo().performClick()
+        await { vm.driveBackups.value != null && vm.isRestoring.value == false }
+        compose.onNodeWithText(context.getString(R.string.backup_drive_empty)).assertExists()
+        assertEquals(0, drive.writes)
+    }
+
     @Test fun emptyDriveAndDamagedLatestStillAllowTheValidEarlierCopy() = withScreen { _, vm, drive ->
-        onView(withId(R.id.restoreButtonLayout)).perform(scrollTo(), click())
+        action(R.string.backup_drive_choose).performScrollTo().performClick()
         await { vm.driveBackups.value != null && vm.isRestoring.value == false }
         assertTrue(vm.driveBackups.value!!.isEmpty())
-        onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
+        closeSheet()
         drive.files[SynchronizationViewModel.BACKUP_FILE_NAME] = "{broken"
         drive.files[SynchronizationViewModel.PREVIOUS_FILE_NAME] = BackupCodec().encode(snapshot(990012))
-        onView(withId(R.id.restoreButtonLayout)).perform(scrollTo(), click())
+        action(R.string.backup_drive_choose).performScrollTo().performClick()
         await { vm.driveBackups.value?.size == 2 && vm.isRestoring.value == false }
         assertNull(vm.driveBackups.value!![0].preview)
         assertNotNull(vm.driveBackups.value!![1].preview)
         assertEquals(0, drive.writes)
-        onView(withText(R.string.backup_drive_previous)).inRoot(isDialog()).perform(scrollTo(), click())
+        action(R.string.backup_drive_previous).performScrollTo().performClick()
         await { vm.restorePreview.value != null && vm.isRestoring.value == false }
-        onView(withText(R.string.backup_back_to_copies)).inRoot(isDialog()).perform(click())
-        onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
+        action(R.string.backup_back_to_copies).performClick()
+        closeSheet()
         assertEquals(snapshot(990010), repo.getAllAppData())
     }
     @Test fun cancellingLoadingDoesNotReopenTheSheetOrChangeData() = withScreen { _, vm, drive ->
         val pending = TaskCompletionSource<FileList>()
         drive.pendingQuery = pending.task
-        onView(withId(R.id.restoreButtonLayout)).perform(scrollTo(), click())
+        action(R.string.backup_drive_choose).performScrollTo().performClick()
         await { vm.driveBackups.value != null && vm.isRestoring.value == true }
-        onView(withId(R.id.cancelButton)).inRoot(isDialog()).perform(click())
+        closeSheet()
         await { vm.driveBackups.value == null && vm.isRestoring.value == false }
         pending.setResult(FileList().setFiles(emptyList()))
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
