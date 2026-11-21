@@ -11,12 +11,10 @@ import android.view.accessibility.AccessibilityWindowInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.recyclerview.widget.RecyclerView
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
@@ -93,18 +91,9 @@ class PartialRepaymentScreenTest {
         scenario.onActivity { it.onHumanClick(humanId, "EUR", "R2 test") }
         ready(scenario)
     }
-    private fun scrollToRecord(scenario: ActivityScenario<MainActivity>, id: Int) {
-        scenario.onActivity {
-            val fragment = details(it)
-            val position = ViewModelProvider(fragment)[DebtDetailsViewModel::class.java].visibleDebtRows.value!!.indexOfFirst { row -> row.id == id }
-            check(position >= 0) { "Missing row $id in the current debt section" }
-            fragment.requireView().findViewById<RecyclerView>(R.id.debtsRecyclerView).scrollToPosition(position)
-        }
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-    }
     private fun openPayment(scenario: ActivityScenario<MainActivity>) {
-        scrollToRecord(scenario, originalId)
-        onView(withTagValue(equalTo(originalId))).perform(click())
+        ready(scenario)
+        compose.record(originalId).performClick()
         compose.onNodeWithTag("repaymentButton").performClick()
         compose.onNodeWithTag("repaymentAmountInput").assertIsDisplayed()
     }
@@ -130,13 +119,14 @@ class PartialRepaymentScreenTest {
             seed(sign)
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 open(scenario)
-                onView(withTagValue(equalTo(originalId))).perform(click())
+                compose.record(originalId).performClick()
                 compose.onNodeWithTag("repaymentButton")
                     .assertTextEquals(context.getString(if (sign > 0) R.string.repayment_received else R.string.repayment_paid))
                     .performClick()
                 compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("101")
                 compose.onNodeWithTag("repaymentSaveButton").performClick()
-                compose.onNodeWithText(context.getString(R.string.repayment_over, "100", "EUR")).assertIsDisplayed()
+                val over = compose.onNodeWithText(context.getString(R.string.repayment_over, "100", "EUR"))
+                compose.waitUntil(6000) { over.isDisplayed() }
                 assertAmount(100 * sign)
                 compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("20")
                 scenario.recreate()
@@ -158,9 +148,9 @@ class PartialRepaymentScreenTest {
                 ready(scenario)
                 assertAmount(0)
                 val last = dao.getAllDebtsById(humanId).maxBy { it.id }
-                onView(withId(R.id.settledDebtsTab)).perform(click())
-                scrollToRecord(scenario, last.id)
-                onView(withTagValue(equalTo(last.id))).perform(click())
+                compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("settledDebtsTab"))
+                compose.onNodeWithTag("settledDebtsTab").performClick()
+                compose.record(last.id).performClick()
                 compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
                 compose.onNodeWithTag("deleteButton").performClick()
                 compose.onNode(hasText(context.getString(R.string.repayment_cancel)) and hasClickAction()).performClick()
@@ -168,8 +158,9 @@ class PartialRepaymentScreenTest {
                 ready(scenario)
                 assertAmount(80 * sign)
                 assertEquals(3, dao.getAllDebtsById(humanId).size)
-                onView(withId(R.id.openDebtsTab)).perform(click())
-                scrollToRecord(scenario, originalId)
+                compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("openDebtsTab"))
+                compose.onNodeWithTag("openDebtsTab").performClick()
+                compose.record(originalId)
                 screenshot("cancelled-$sign")
             }
             cleanup()

@@ -1,13 +1,11 @@
 package com.breckneck.debtbook.debt
 
-import java.math.BigDecimal
-
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.content.Context
 import android.graphics.Bitmap
 import java.io.File
 import android.view.View
-import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
@@ -18,7 +16,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
-import com.breckneck.debtbook.core.customview.CustomSwitchView
 import com.breckneck.debtbook.debt.details.DebtDetailsViewModel
 import com.breckneck.deptbook.domain.model.DebtDomain
 import database.AppDataBase
@@ -32,6 +29,7 @@ import repository.RoomDataTransaction
 
 /** Disposable emulator integration tests; database fixtures use a reserved test-only name/ID. */
 class DebtReliabilityTest {
+    @get:org.junit.Rule val compose = createEmptyComposeRule()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val dao get() = AppDataBase(context).appDao()
     private val prefs get() = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
@@ -61,10 +59,10 @@ class DebtReliabilityTest {
         }
     }
     private fun await(message: String, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 10_000
-        while (!condition()) {
-            if (System.currentTimeMillis() > deadline) fail(message)
-            Thread.sleep(50)
+        try {
+            compose.waitUntil(12_000, condition)
+        } catch (timeout: ComposeTimeoutException) {
+            throw AssertionError(message, timeout)
         }
     }
     private fun capture(label: String) {
@@ -83,13 +81,10 @@ class DebtReliabilityTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { it.onAddButtonClick() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            scenario.onActivity { activity ->
-                val view = current(activity).requireView()
-                view.findViewById<EditText>(R.id.humanNameEditText).setText(name)
-                view.findViewById<EditText>(R.id.debtSumEditText).setText("12,34")
-                view.findViewById<View>(R.id.setFinanceButton).performClick()
-                view.findViewById<View>(R.id.setFinanceButton).performClick() // duplicate tap
-            }
+            compose.awaitTag("humanNameEditText").performTextReplacement(name)
+            compose.awaitTag("debtSumEditText").performTextReplacement("12,34")
+            val save = compose.awaitTag("setFinanceButton").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action!!
+            compose.runOnIdle { save(); save() }
             await("debt was not created") { dao.getAllHuman().any { it.name == name } && dao.getAllDebts().any { it.sum == "12.34".toBigDecimal().stripTrailingZeros() } }
             val human = dao.getAllHuman().single { it.name == name }
             val initial = dao.getAllDebtsById(human.id).single()
@@ -105,14 +100,11 @@ class DebtReliabilityTest {
                 activity.editDebt(DebtDomain(initial.id, initial.sum, human.id, null, initial.date), human.currency, name)
             }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            scenario.onActivity { activity ->
-                val view = current(activity).requireView()
-                val input = view.findViewById<EditText>(R.id.debtSumEditText)
-                assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(com.breckneck.deptbook.domain.util.DecimalInput.parse(input.text.toString())!!!!))
-                input.setText("20,55")
-                view.findViewById<CustomSwitchView>(R.id.customSwitch).setChecked(false)
-                view.findViewById<View>(R.id.setFinanceButton).performClick()
-            }
+            val input = compose.awaitTag("debtSumEditText")
+            input.assertTextContains(com.breckneck.deptbook.domain.util.DecimalInput.format(initial.sum, currency = human.currency))
+            input.performTextReplacement("20,55")
+            compose.onNodeWithTag("directionNegative").performClick()
+            compose.awaitTag("setFinanceButton").performClick()
             await("edited amount not persisted") { dao.getAllDebtsById(human.id).single().sum == -"20.55".toBigDecimal().stripTrailingZeros() }
             assertEquals(0, (-"20.55".toBigDecimal().stripTrailingZeros()).compareTo(dao.getHumanSumDebt(human.id)!!))
             await("details after edit") {
@@ -157,16 +149,12 @@ class DebtReliabilityTest {
                 val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
                 assertTrue(root.paddingTop >= bars.top)
                 assertTrue(root.paddingBottom >= bars.bottom)
-                assertTrue(activity.findViewById<View>(R.id.bottomNavigationView).isShown)
-                activity.onAddButtonClick()
+
             }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            scenario.onActivity { activity ->
-                val input = current(activity).requireView().findViewById<EditText>(R.id.debtSumEditText)
-                input.requestFocus()
-                (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                    .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
-            }
+            compose.onNode(hasText(context.getString(R.string.settings)) and hasClickAction()).assertIsDisplayed()
+            compose.awaitTag("addHumanButton").performClick()
+            compose.awaitTag("debtSumEditText").performClick()
             var lastImeBottom = 0
             var stableImeFrames = 0
             await("keyboard did not finish opening") {
@@ -185,15 +173,14 @@ class DebtReliabilityTest {
                 val root = activity.findViewById<View>(R.id.rootLayout)
                 val ime = ViewCompat.getRootWindowInsets(root)!!.getInsets(WindowInsetsCompat.Type.ime())
                 assertTrue("root must avoid IME", root.paddingBottom >= ime.bottom)
-                val save = current(activity).requireView().findViewById<View>(R.id.setFinanceButton)
-                assertTrue("save must remain visible with the keyboard", save.isShown)
-                val position = IntArray(2)
-                save.getLocationOnScreen(position)
-                assertTrue("save must stay above IME", position[1] + save.height <= activity.window.decorView.height - ime.bottom)
-                val input = current(activity).requireView().findViewById<EditText>(R.id.debtSumEditText)
-                input.getLocationOnScreen(position)
-                assertTrue("focused amount must stay above IME", position[1] + input.height <= activity.window.decorView.height - ime.bottom)
-                assertTrue("focused amount must stay inside the viewport", position[1] >= root.paddingTop)
+            }
+            val save = compose.awaitTag("setFinanceButton").assertIsDisplayed().fetchSemanticsNode().boundsInWindow
+            val amount = compose.awaitTag("debtSumEditText").assertIsFocused().fetchSemanticsNode().boundsInWindow
+            scenario.onActivity { activity ->
+                val root = activity.findViewById<View>(R.id.rootLayout)
+                val keyboardTop = activity.window.decorView.height - lastImeBottom
+                assertTrue(save.bottom <= keyboardTop + 1 && amount.bottom <= keyboardTop + 1)
+                assertTrue(amount.top >= root.paddingTop)
             }
             capture("keyboard")
         }

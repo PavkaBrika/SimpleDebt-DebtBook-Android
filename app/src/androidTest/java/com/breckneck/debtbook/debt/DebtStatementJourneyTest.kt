@@ -1,8 +1,9 @@
 package com.breckneck.debtbook.debt
 
+import androidx.compose.ui.test.*
+import com.breckneck.debtbook.debt.record
 import android.content.Context
 import android.content.Intent
-import android.view.View
 import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -13,7 +14,6 @@ import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.action.ViewActions.swipeUp
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.RootMatchers.isDialog
-import androidx.test.espresso.matcher.RootMatchers.withDecorView
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.intent.IntentCallback
@@ -24,22 +24,30 @@ import com.breckneck.debtbook.debt.reminders.screenString
 import database.AppDataBase
 import entity.Debt
 import entity.Human
-import org.hamcrest.Matchers.allOf
-import org.hamcrest.Matchers.sameInstance
 import org.junit.Assert.*
 import org.junit.Test
 import java.math.BigDecimal
 import java.util.UUID
 
 class DebtStatementJourneyTest {
+    @get:org.junit.Rule val compose = androidx.compose.ui.test.junit4.createEmptyComposeRule()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val dao = AppDataBase(context).appDao()
     private val name = "Statement " + System.nanoTime().toString(36)
-    private fun tap(id: Int) = onView(withId(id)).perform(click())
+    private fun tap(id: Int) {
+        if (id in listOf(R.id.shareHumanButton, R.id.sortButton, R.id.settledDebtsTab)) {
+            val tag = context.resources.getResourceEntryName(id)
+            compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
+            compose.onNodeWithTag(tag).performClick()
+        } else onView(withId(id)).perform(click())
+    }
     private fun preview() {
         tap(R.id.shareHumanButton)
+        android.os.SystemClock.sleep(500)
         onView(withId(R.id.deleteButton)).inRoot(isDialog()).perform(click()) // Text in the share format sheet
-        onView(withId(R.id.sendButton)).check(matches(isCompletelyDisplayed()))
+        compose.waitUntil(8000) { runCatching {
+            onView(withId(R.id.sendButton)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
+        }.isSuccess }
     }
     private fun displayedText(): String {
         var text = ""
@@ -55,7 +63,7 @@ class DebtStatementJourneyTest {
                 repaymentOfId = parent, operationId = parent?.let { UUID.randomUUID().toString() }))
             return dao.getAllDebtsById(person.id).single { it.info == note }
         }
-        val sent = mutableListOf<Intent>()
+        val sent = java.util.concurrent.CopyOnWriteArrayList<Intent>()
         val callback = IntentCallback { if (it.action == Intent.ACTION_CHOOSER) sent.add(it) }
         val monitor = IntentMonitorRegistry.getInstance()
         monitor.addIntentCallback(callback)
@@ -77,7 +85,10 @@ class DebtStatementJourneyTest {
             }
 
             ActivityScenario.launch(MainActivity::class.java).use { screen ->
-                onView(allOf(withId(R.id.humanCardView), hasDescendant(withText(name)))).perform(scrollTo(), click())
+                compose.onNodeWithText("USD").performClick()
+                compose.onNodeWithText("RUB", substring = true).performClick()
+                compose.onNodeWithTag("peopleList").performScrollToNode(hasText(name))
+                compose.onNodeWithText(name).performClick()
                 tap(R.id.settledDebtsTab)
                 preview()
                 onView(withId(R.id.statementText)).check(matches(
@@ -106,21 +117,18 @@ class DebtStatementJourneyTest {
                 tap(R.id.includeSettled)
                 assertEquals(open, displayedText())
                 tap(R.id.cancelButton)
-                onView(withId(R.id.settledDebtsTab)).check(matches(isChecked()))
-                onView(withText("Settled loan")).check(matches(isDisplayed()))
+                compose.awaitTag("settledDebtsTab").assertIsSelected()
+                compose.record(borrowed.id).assertTextContains("Settled loan")
                 assertTrue(sent.isEmpty())
 
-                lateinit var cardWindow: View
-                screen.onActivity { cardWindow = it.window.decorView }
                 preview()
                 pressBack()
-                onView(withId(R.id.settledDebtsTab)).inRoot(withDecorView(sameInstance(cardWindow)))
-                    .check(matches(isChecked()))
+                compose.awaitTag("settledDebtsTab").assertIsSelected()
                 assertTrue(sent.isEmpty())
 
                 tap(R.id.sortButton)
-                onView(withId(R.id.showNegativeRadioButton)).perform(scrollTo(), click())
-                onView(withId(R.id.confirmButton)).perform(scrollTo(), click())
+                onView(withId(R.id.showNegativeRadioButton)).inRoot(isDialog()).perform(scrollTo(), click())
+                onView(withId(R.id.confirmButton)).inRoot(isDialog()).perform(scrollTo(), click())
                 preview()
                 onView(withId(R.id.includeSettled)).check(matches(isNotChecked()))
                 assertTrue(displayedText().contains(screen.screenString(R.string.statement_empty)))
@@ -134,17 +142,33 @@ class DebtStatementJourneyTest {
                 onView(withId(R.id.includeSettled)).check(matches(isChecked()))
                 val shown = displayedText()
                 assertEquals(selected, shown)
-                tap(R.id.sendButton)
+                compose.waitUntil(8000) {
+                    runCatching { onView(withId(R.id.sendButton)).check(matches(isCompletelyDisplayed())) }.isSuccess
+                }
+                val send = onView(withId(R.id.sendButton)).inRoot(isDialog())
+                compose.waitUntil(8000) { runCatching { send.check(matches(androidx.test.espresso.matcher.ViewMatchers.isEnabled())) }.isSuccess }
+                // Wait for the recreated sheet's entrance transition before a physical button tap.
+                android.os.SystemClock.sleep(500)
+                send.perform(click())
+                compose.waitUntil(8000) { sent.size == 1 }
                 val intent = sent.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
                 assertEquals(Intent.ACTION_SEND, intent.action)
                 assertEquals("text/plain", intent.type)
                 assertEquals(shown, intent.getStringExtra(Intent.EXTRA_TEXT))
                 InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("input keyevent 4")
                     .use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
-                screen.onActivity { cardWindow = it.window.decorView }
-                onView(withId(R.id.settledDebtsTab)).inRoot(withDecorView(sameInstance(cardWindow)))
-                    .check(matches(isChecked()))
+                compose.awaitTag("settledDebtsTab").assertIsSelected()
                 assertEquals(1, sent.size)
+                tap(R.id.shareHumanButton)
+                android.os.SystemClock.sleep(500)
+                onView(withId(R.id.editButton)).inRoot(isDialog()).perform(click())
+                compose.waitUntil(10000) { sent.size == 2 }
+                val excel = requireNotNull(sent.last().getParcelableExtra<Intent>(Intent.EXTRA_INTENT))
+                assertEquals("application/vnd.ms-excel", excel.type)
+                val uri = requireNotNull(excel.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM))
+                context.contentResolver.openInputStream(uri)!!.use {
+                    assertArrayEquals(byteArrayOf(0xd0.toByte(), 0xcf.toByte(), 0x11, 0xe0.toByte()), ByteArray(4).also { header -> java.io.DataInputStream(it).readFully(header) })
+                }
             }
         } finally {
             prefs.edit().apply {

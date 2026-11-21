@@ -33,6 +33,18 @@ def call(*parts, check=True, binary=False):
                           text=not binary, timeout=30)
 
 
+def process_pid():
+    result = call('shell', 'pidof', pkg, check=False).stdout.strip()
+    if result.isdigit():
+        return result
+    # Android 6 toybox can return every PID. Its ps output includes the full process name.
+    for line in call('shell', 'ps').stdout.splitlines():
+        columns = line.split()
+        if len(columns) >= 2 and columns[-1] == pkg:
+            return columns[1]
+    return ''
+
+
 def read_private(path):
     return call('exec-out', 'run-as', pkg, 'cat', path, binary=True).stdout
 
@@ -73,6 +85,10 @@ def seed():
         if node is None:
             node = ET.SubElement(prefs, 'boolean', name=name)
         node.set('value', value)
+    currency = next((item for item in prefs if item.get('name') == 'main_currency_first'), None)
+    if currency is None:
+        currency = ET.SubElement(prefs, 'string', name='main_currency_first')
+    currency.text = 'EUR'
     write_private(path, ET.tostring(prefs, encoding='utf-8', xml_declaration=True))
 
 
@@ -135,9 +151,9 @@ for phase in phases:
     print(phase + ': seeding the disposable AVD and launching the ordinary app', flush=True)
     seed()
     launch(fresh=True)
-    tap_when(resource=pkg + ':id/name', text='R2 test')
+    tap_when(resource='person-900030')
     print(phase + ': opening the original record', flush=True)
-    tap_when(resource=pkg + ':id/infoTextView', text='Process fixture')
+    tap_when(resource='record-900030')
     tap_when(resource='repaymentButton')
     tap_when(resource='repaymentAmountInput')
     call('shell', 'input', 'text', '20')
@@ -152,16 +168,16 @@ for phase in phases:
         dump = call('shell', 'dumpsys', 'activity', 'activities').stdout
         blocks = re.split(r'\* Hist\s+#', dump)[1:]
         saved = any(pkg + '/.core.MainActivity' in block.splitlines()[0] and
-                    'mHaveState=true' in block and 'state=STOPPED' in block for block in blocks)
+                    re.search(r'\b(?:mHaveState|haveState)=true', block) is not None and 'state=STOPPED' in block for block in blocks)
         if saved:
             (args.output / (phase + '-saved-activity.txt')).write_text(dump)
         return saved
     until('Android has not received the stopped activity state', state_saved)
-    old_pid = call('shell', 'pidof', pkg).stdout.strip()
+    old_pid = process_pid()
     assert old_pid.isdigit(), old_pid
     print(phase + ': killing stopped PID ' + old_pid, flush=True)
     call('shell', 'am', 'kill', pkg)
-    until('Old process has not exited', lambda: call('shell', 'pidof', pkg, check=False).stdout.strip() != old_pid)
+    until('Old process has not exited', lambda: process_pid() != old_pid)
     launch()
     print(phase + ': checking the restored task', flush=True)
     if phase == 'pending':
@@ -174,10 +190,10 @@ for phase in phases:
         tap_when(resource='repaymentSaveButton')
         until('Restored form did not save', lambda: not find(resource='repaymentAmountInput'))
     else:
-        content, _ = until('History did not restore', lambda: find(resource=pkg + ':id/infoTextView', text='Process fixture'))
+        content, _ = until('History did not restore', lambda: find(resource='record-900030'))
         assert not find(resource='repaymentAmountInput')
         (args.output / (phase + '-restored.xml')).write_text(content)
-    new_pid = call('shell', 'pidof', pkg).stdout.strip()
+    new_pid = process_pid()
     assert new_pid.isdigit() and new_pid != old_pid, (old_pid, new_pid)
     balance, rows = ledger(phase + '-after-restore')
     assert balance == 80 and len(rows) == 2, (balance, rows)

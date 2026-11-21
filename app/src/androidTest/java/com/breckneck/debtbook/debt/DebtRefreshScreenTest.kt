@@ -1,11 +1,10 @@
 package com.breckneck.debtbook.debt
 
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.content.Context
-import android.view.View
-import android.widget.EditText
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
-import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
@@ -22,6 +21,7 @@ import java.math.BigDecimal
 
 /** Run on a disposable AVD: temporarily replaces the database and restores it afterwards. */
 class DebtRefreshScreenTest {
+    @get:org.junit.Rule val compose = createEmptyComposeRule()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val repo = AppDataRepositoryImpl(context)
     private val empty = AppDataLists(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
@@ -29,11 +29,7 @@ class DebtRefreshScreenTest {
         (activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
             .childFragmentManager.primaryNavigationFragment!!
     private fun await(condition: () -> Boolean) {
-        val end = System.currentTimeMillis() + 15_000
-        while (!condition()) {
-            if (System.currentTimeMillis() > end) fail("Debt list did not refresh")
-            Thread.sleep(50)
-        }
+        compose.waitUntil(15_000, condition)
     }
     @Test fun emptyListThenCreateThenReplaceThenEmptyRefreshWithoutRestart() {
         val original = repo.getAllAppData()
@@ -51,12 +47,9 @@ class DebtRefreshScreenTest {
                 await { vm.screenState.value == ScreenState.EMPTY }
                 scenario.onActivity { it.onAddButtonClick() }
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-                scenario.onActivity {
-                    val view = current(it).requireView()
-                    view.findViewById<EditText>(R.id.humanNameEditText).setText("Refresh test")
-                    view.findViewById<EditText>(R.id.debtSumEditText).setText("123.45")
-                    view.findViewById<View>(R.id.setFinanceButton).performClick()
-                }
+                compose.awaitTag("humanNameEditText").performTextReplacement("Refresh test")
+                compose.awaitTag("debtSumEditText").performTextReplacement("123.45")
+                compose.awaitTag("setFinanceButton").performClick()
                 await {
                     var ready = false
                     scenario.onActivity { ready = it.navController.currentDestination?.id == R.id.debtDetailsFragment }
@@ -66,7 +59,7 @@ class DebtRefreshScreenTest {
                 await { vm.resultedHumanList.value?.singleOrNull()?.name == "Refresh test" && vm.screenState.value == ScreenState.SUCCESS }
                 scenario.onActivity {
                     assertSame(vm, ViewModelProvider(current(it))[DebtViewModel::class.java])
-                    assertEquals(1, current(it).requireView().findViewById<RecyclerView>(R.id.humanRecyclerView).adapter!!.itemCount)
+                    vm.selectCurrency("EUR")
                     it.navController.navigate(R.id.settingsFragment)
                 }
                 repo.replaceAllAppData(empty.copy(humanList = listOf(HumanDomain(990001, "Replaced data", BigDecimal.TEN, "EUR"))))

@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.debt.reminders
 
+import com.breckneck.debtbook.debt.awaitTag
+import androidx.compose.ui.test.*
+import com.breckneck.debtbook.debt.record
 import android.content.Context
 import android.os.Build
 import android.view.accessibility.AccessibilityNodeInfo
@@ -12,12 +15,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.*
-import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
-import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import database.AppDataBase
 import entity.Debt
@@ -28,7 +28,6 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import java.math.BigDecimal
-import java.time.LocalDate
 
 /** Run separately after pm revoke + clear-permission-flags, API33+. */
 class DeniedReminderScreenTest {
@@ -55,13 +54,13 @@ class DeniedReminderScreenTest {
             dao.saveDebt(Debt(id, BigDecimal("100"), id, null, "2026-11-16"))
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.onHumanClick(id, "EUR", "Denied reminder") }
-                waitFor("history missing") { try { onView(withTagValue(equalTo(id))).check(matches(isDisplayed())); true } catch (_: Exception) { false } }
-                onView(withTagValue(equalTo(id))).perform(click())
+                waitFor("history missing") { try { compose.record(id).assertIsDisplayed(); true } catch (_: Exception) { false } }
+                compose.record(id).performClick()
                 compose.onNodeWithTag("editButton").performClick()
                 compose.openDueCalendarInForm()
                 compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
-                compose.enterDebtDate(scenario, LocalDate.of(2099, 12, 31))
-                compose.onNodeWithTag("dueReminderSwitch").performClick()
+                compose.enterDebtDate(scenario, "2099-12-31")
+                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
                 val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
                 automation.serviceInfo = automation.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
                 var button: AccessibilityNodeInfo? = null
@@ -90,7 +89,7 @@ class DeniedReminderScreenTest {
                 compose.onNodeWithTag("dueSaveButton").performClick()
                 compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
                 assertNull(dao.getAllDebtsById(id).single().dueDay)
-                onView(withId(R.id.setFinanceButton)).perform(click())
+                compose.awaitTag("setFinanceButton").performClick()
                 waitFor("due date not saved after denial") { dao.getAllDebtsById(id).single().dueDay == "2099-12-31" }
                 val row = dao.getAllDebtsById(id).single()
                 if (allow) assertNotNull(row.reminderToken) else assertNull(row.reminderToken)
