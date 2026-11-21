@@ -17,6 +17,7 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
@@ -68,7 +69,7 @@ class PartialRepaymentScreenTest {
     }
     private fun seed(sign: Int) {
         dao.insertHuman(Human(humanId, "R2 test", BigDecimal.ZERO, "EUR"))
-        dao.saveDebt(Debt(originalId, (100 * sign).toBigDecimal(), humanId, "Original loan", "2026-11-16"))
+        dao.saveDebt(Debt(originalId, (100 * sign).toBigDecimal(), humanId, "Original loan", "2026-11-16", recordedAsLoan = true))
     }
     private fun details(activity: MainActivity) =
         ((activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
@@ -103,8 +104,14 @@ class PartialRepaymentScreenTest {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
     }
     private fun openPayment(scenario: ActivityScenario<MainActivity>) {
+        compose.waitUntil(10_000) {
+            var cardFocused = false
+            scenario.onActivity { cardFocused = it.hasWindowFocus() }
+            cardFocused
+        }
         scrollToRecord(scenario, originalId)
-        onView(withTagValue(equalTo(originalId))).perform(click())
+        onView(allOf(withId(R.id.debtTextView), isDescendantOfA(withTagValue(equalTo(originalId)))))
+            .perform(scrollTo(), click())
         compose.onNodeWithTag("repaymentButton").performClick()
         compose.onNodeWithTag("repaymentAmountInput").assertIsDisplayed()
     }

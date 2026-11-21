@@ -90,9 +90,9 @@ class DebtViewModelTest {
 
     @Test
     fun `people filters use each persons open loans even with equal names and different balances`() {
-        val legacy = HumanDomain(1, "Anna", 1000.toBigDecimal(), "RUB")
+        val legacy = HumanDomain(1, "Anna", 1000.toBigDecimal(), "RUB", openingAdjustment = 0.toBigDecimal())
         val opposite = legacy.copy(id = 2, sumDebt = 0.toBigDecimal())
-        val adjustmentOnly = legacy.copy(id = 3)
+        val adjustmentOnly = legacy.copy(id = 3, openingAdjustment = legacy.sumDebt)
         val entry = DebtDomain(1, legacy.sumDebt, legacy.id, null, "2025-11-01")
         val lent = entry.copy(id = 2, idHuman = opposite.id, recordedAsLoan = true)
         val borrowed = lent.copy(id = 3, sum = -lent.sum)

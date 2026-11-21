@@ -101,7 +101,7 @@ class DebtDetailsViewModelTest {
     @Test fun `committed request recovered from saved state closes form without another payment`() {
         val saved = SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR", "repaymentDebtId" to 9,
             "repaymentRequestId" to "request-000000001", "repaymentAmount" to "2.34", "repaymentDay" to "2026-11-16"))
-        val payment = record.copy(id = 10, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, operationId = "request-000000001")
+        val payment = record.copy(id = 10, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, recordedAsLoan = false, operationId = "request-000000001")
         whenever(debts.execute(7)).thenReturn(listOf(record, payment))
         val model = vm(saved)
         model.screenState.await { it == DebtDetailsState.SUCCESS }
@@ -192,8 +192,8 @@ class DebtDetailsViewModelTest {
 
     @Test fun `archive selection survives recreation and groups repayments without narrowing exports`() {
         val other = record.copy(id = 10, sum = record.sum.negate())
-        val first = record.copy(id = 11, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, date = "2026-11-10")
-        val last = record.copy(id = 12, sum = "-10".toBigDecimal(), repaymentOfId = 9, date = "2026-11-20")
+        val first = record.copy(id = 11, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, recordedAsLoan = false, date = "2026-11-10")
+        val last = record.copy(id = 12, sum = "-10".toBigDecimal(), repaymentOfId = 9, recordedAsLoan = false, date = "2026-11-20")
         val history = listOf(record, other, last, first)
         whenever(debts.execute(7)).thenReturn(history)
         val saved = SavedStateHandle(mapOf("idHuman" to 7))

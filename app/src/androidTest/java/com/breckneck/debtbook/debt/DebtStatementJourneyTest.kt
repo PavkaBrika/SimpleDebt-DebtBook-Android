@@ -77,7 +77,7 @@ class DebtStatementJourneyTest {
             }
 
             ActivityScenario.launch(MainActivity::class.java).use { screen ->
-                onView(allOf(withId(R.id.humanCardView), hasDescendant(withText(name)))).perform(scrollTo(), click())
+                onView(allOf(withId(R.id.name), withText(name))).perform(scrollTo(), click())
                 tap(R.id.settledDebtsTab)
                 preview()
                 onView(withId(R.id.statementText)).check(matches(

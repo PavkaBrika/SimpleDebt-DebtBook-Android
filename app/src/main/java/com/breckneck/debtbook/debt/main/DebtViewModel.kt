@@ -89,7 +89,9 @@ class DebtViewModel @Inject constructor(
         getHumanOrder()
         setListStateLoading()
         viewModelScope.launch {
-            _searchQuery.debounce(500).collectLatest { publishHumans() }
+            _searchQuery.debounce(500).collectLatest {
+                if (_isSearching.value == true) publishHumans()
+            }
         }
     }
 

@@ -35,7 +35,7 @@ import org.hamcrest.Matchers.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import java.time.LocalDate
+import java.util.Calendar
 
 /** On a dedicated test AVD, run settle and reopen separately to check a real process restart. */
 class SettledDebtJourneyTest {
@@ -114,7 +114,7 @@ class SettledDebtJourneyTest {
         onView(withId(R.id.humanNameEditText)).perform(replaceText(name), closeSoftKeyboard())
         onView(withId(R.id.debtSumEditText)).perform(replaceText("1000"), closeSoftKeyboard())
         compose.openDueCalendarInForm()
-        compose.enterDebtDate(screen, LocalDate.now().plusDays(10))
+        compose.enterDebtDate(screen, Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 10) }.time)
         compose.onNodeWithTag("dueReminderSwitch").performClick()
         compose.onNodeWithTag("dueSaveButton").performClick()
         tap(R.id.setFinanceButton)
@@ -297,7 +297,8 @@ class SettledDebtJourneyTest {
         card.check(matches(hasDescendant(withText(if (debt.sum.signum() > 0) "+$formatted" else formatted))))
             .check(matches(hasDescendant(withText("RUB"))))
             .check(matches(hasDescendant(withText(title))))
-            .perform(click())
+        onView(allOf(withId(R.id.debtTextView), isDescendantOfA(withTagValue(equalTo(debt.id)))))
+            .perform(scrollTo(), click())
         val line = "${MoneyDisplay.format(debt.sum.abs(), "RUB")} RUB · ${LedgerDate.display(debt.date)}"
         compose.onNodeWithText(line).assertIsDisplayed()
         compose.onNodeWithTag("debtActionsCancel").performClick()
