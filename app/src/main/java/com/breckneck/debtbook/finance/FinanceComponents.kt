@@ -41,7 +41,7 @@ internal fun FinanceDirection(selected: FinanceCategoryState, select: (FinanceCa
         val width = maxWidth / directions.size
         val offset by animateDpAsState(width * directions.indexOf(selected), tween(200), label = "Direction")
         Box(Modifier.matchParentSize()) {
-            Box(Modifier.offset(x = offset).width(width).fillMaxHeight().background(colors.action, CircleShape))
+            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.roundToPx(), 0) }.width(width).fillMaxHeight().background(colors.action, CircleShape))
         }
         Row(Modifier.fillMaxWidth().selectableGroup()) {
             for (direction in directions) {

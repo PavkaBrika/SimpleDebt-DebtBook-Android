@@ -14,6 +14,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
@@ -88,8 +90,9 @@ internal fun FinanceHistoryRow(entry: Finance, categoryName: String, onClick: ()
                 Text(label, fontWeight = FontWeight.Bold)
                 Text(date, color = colors.muted, style = MaterialTheme.typography.bodySmall)
             }
-            IconButton({ onEdit() }) {
-                Icon(Icons.Outlined.Edit, stringResource(R.string.finance_edit_named, "$label, $date, $money"))
+            val editLabel = stringResource(R.string.finance_edit_named, "$label, $date, $money")
+            IconButton(onEdit, Modifier.semantics { contentDescription = editLabel }) {
+                Icon(Icons.Outlined.Edit, null)
             }
         }
     }
