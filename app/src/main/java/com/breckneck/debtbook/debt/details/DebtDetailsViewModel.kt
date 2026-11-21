@@ -51,6 +51,7 @@ class DebtDetailsViewModel @Inject constructor(
     private val setDebtOrder: SetDebtOrder,
     private val transaction: DataTransaction,
     private val savedStateHandle: SavedStateHandle,
+    private val editDebt: com.breckneck.deptbook.domain.usecase.Debt.EditDebtUseCase,
     private val recordRepayment: RecordRepaymentUseCase
 ) : ViewModel() {
 
@@ -244,6 +245,12 @@ class DebtDetailsViewModel @Inject constructor(
                     val original = debts.firstOrNull { it.id == selected && it.repaymentOfId == null }
                     if (original == null) closeRepayment() else repaymentRemaining.value = remaining(original)
                 }
+                savedStateHandle.remove<Int>("openDebtId")?.let { requested ->
+                    personLoans.loan(requested)?.let { loan ->
+                        selectDebtSection(loan.remaining.signum() == 0)
+                        selectDebtAction(requested)
+                    }
+                }
                 applySort()
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -291,6 +298,16 @@ class DebtDetailsViewModel @Inject constructor(
 
     fun saveDebtOrder(order: Pair<DebtOrderAttribute, Boolean>) {
         setDebtOrder.execute(order)
+    }
+
+    suspend fun saveDue(id: Int, day: String?, minute: Int?) {
+        val owner = requireNotNull(humanId)
+        withContext(Dispatchers.IO) { transaction.run {
+            val current = getAllDebtsByIdUseCase.execute(owner).first { it.id == id }
+            editDebt.execute(id, current.sum, owner, current.info, current.date,
+                com.breckneck.deptbook.domain.model.DebtDueChange(day, minute))
+        } }
+        retry()
     }
 
     fun rename(name: String) {

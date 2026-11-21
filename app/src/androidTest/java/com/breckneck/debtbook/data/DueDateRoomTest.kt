@@ -38,7 +38,7 @@ class DueDateRoomTest {
             db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_due_balance BEFORE UPDATE ON Human BEGIN SELECT RAISE(ABORT, 'test'); END")
             val original = dao.getAllDebts().first()
             try {
-                dao.reviseDebt(original.copy(info = "Draft edit"), DebtDueChange("2099-12-29", true))
+                dao.reviseDebt(original.copy(info = "Draft edit"), DebtDueChange("2099-12-29", 600))
                 fail("Combined debt edit was not rolled back")
             } catch (_: android.database.sqlite.SQLiteException) { }
             assertEquals(original, dao.getAllDebts().first())

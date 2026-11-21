@@ -60,7 +60,7 @@ class DebtDetailsViewModelTest {
         DebtDetailsViewModel(debts, latestId, people, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
-            }, state, recordRepayment)
+            }, state, mock(), recordRepayment)
 
     @Test fun `repayment validates positive amount and refuses more than selected record`() {
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))

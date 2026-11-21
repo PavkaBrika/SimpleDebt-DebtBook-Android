@@ -115,12 +115,8 @@ interface AppDao {
             reminderMinute = previous.reminderMinute, reminderToken = previous.reminderToken,
             reminderDelivered = previous.reminderDelivered)
         val next = if (due != null) {
-            val minute = if (due.remind) {
-                previous.reminderMinute.takeIf { due.day == previous.dueDay && !previous.reminderDelivered }
-                    ?: DebtReminderPolicy.DEFAULT_MINUTE
-            } else null
-            withDueSettings(updated, history, due.day, minute,
-                minute?.let { UUID.randomUUID().toString() }, System.currentTimeMillis())
+            withDueSettings(updated, history, due.day, due.minute,
+                due.minute?.let { UUID.randomUUID().toString() }, System.currentTimeMillis())
         } else {
             if (debt.date != previous.date) {
                 previous.dueDay?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }

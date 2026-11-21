@@ -106,7 +106,7 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () ->
             }
             if (error == 0 && parsed != null) {
                 if (vm.remind.value == true && vm.hasDueChange && !DebtReminders.get(context).allowed()) {
-                    vm.dueDay.value?.let { vm.setDueDraft(it, false) }
+                    vm.dueDay.value?.let { vm.setDueDraft(it, null) }
                 }
                 feedback()
                 vm.saveDebt(personId, debtId, name.text.toString().trim(), if (positive) parsed else -parsed,

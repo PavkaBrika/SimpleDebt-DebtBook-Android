@@ -44,15 +44,18 @@ class CreateDebtViewModel @Inject constructor(
     private val initialRemind = savedState.get<Boolean>("remindOnEdit") == true
     val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", initialDueDay)
     val remind: LiveData<Boolean> = savedState.getLiveData("remind", initialRemind)
+    private val initialMinute = savedState.get<Int>("minuteOnEdit") ?: DebtReminderPolicy.DEFAULT_MINUTE
+    val minute: LiveData<Int> = savedState.getLiveData("draftMinute", initialMinute)
     val hasRepayments = savedState.get<Boolean>("hasRepayments") == true
     val canRemind = savedState.get<Boolean>("canRemind") ?: true
 
     val hasDueChange: Boolean
-        get() = dueDay.value != initialDueDay || remind.value != initialRemind
+        get() = dueDay.value != initialDueDay || remind.value != initialRemind || (remind.value == true && minute.value != initialMinute)
 
-    fun setDueDraft(day: String, remind: Boolean) {
+    fun setDueDraft(day: String?, selectedMinute: Int?) {
         savedState["dueDay"] = day
-        savedState["remind"] = remind
+        savedState["remind"] = selectedMinute != null
+        if (selectedMinute != null) savedState["draftMinute"] = selectedMinute
     }
 
     fun consumeSaveResult() { savedHumanId.value = null }
@@ -62,8 +65,8 @@ class CreateDebtViewModel @Inject constructor(
         if (isSaving.value == true || savedHumanId.value != null) return
         val selectedDay = dueDay.value
         val reminderEnabled = remind.value == true
-        val selectedMinute = DebtReminderPolicy.DEFAULT_MINUTE.takeIf { reminderEnabled }
-        val due = selectedDay?.takeIf { hasDueChange }?.let { DebtDueChange(it, reminderEnabled) }
+        val selectedMinute = minute.value.takeIf { reminderEnabled }
+        val due = if (hasDueChange) DebtDueChange(selectedDay, selectedMinute) else null
         isSaving.value = true
         saveError.value = false
         viewModelScope.launch {

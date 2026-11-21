@@ -64,9 +64,11 @@ internal fun DebtDateSheet(
     minDay: String? = null,
     maxDay: String? = null,
     initialReminder: Boolean? = null,
+    initialMinute: Int = DebtReminderPolicy.DEFAULT_MINUTE,
+    clearable: Boolean = false,
     confirmText: String = stringResource(R.string.save),
     onDismiss: () -> Unit,
-    onSave: suspend (day: String, remind: Boolean) -> Unit
+    onSave: suspend (day: String?, minute: Int?) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -96,6 +98,9 @@ internal fun DebtDateSheet(
     val showReminder = initialReminder != null && day != null && DebtReminderPolicy.canSchedule(day)
     var allowed by remember { mutableStateOf(reminders.allowed()) }
     var enabled by rememberSaveable { mutableStateOf(initialReminder == true && allowed) }
+    var minute by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(initialMinute) }
+    var pickingTime by rememberSaveable { mutableStateOf(false) }
+    var clear by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
 
@@ -114,6 +119,15 @@ internal fun DebtDateSheet(
         onDispose { lifecycle.removeObserver(observer) }
     }
 
+    if (pickingTime) {
+        val time = androidx.compose.material3.rememberTimePickerState(minute / 60, minute % 60, is24Hour = true)
+        androidx.compose.material3.AlertDialog(onDismissRequest = { pickingTime = false },
+            title = { Text(stringResource(R.string.debt_time)) },
+            text = { androidx.compose.material3.TimeInput(time) },
+            confirmButton = { TextButton({ minute = time.hour * 60 + time.minute; pickingTime = false },
+                modifier = Modifier.testTag("timeConfirm")) { Text(stringResource(R.string.due_apply)) } },
+            dismissButton = { TextButton({ pickingTime = false }) { Text(stringResource(R.string.cancel)) } })
+    }
     DebtBookBottomSheet(
         onDismiss = { if (!busy) onDismiss() },
         gesturesEnabled = !busy,
@@ -137,7 +151,12 @@ internal fun DebtDateSheet(
                     modifier = Modifier.fillMaxWidth().testTag("dueDatePicker"),
                     colors = DatePickerDefaults.colors(containerColor = Color.Transparent)
                 )
-            }
+                if (clearable && initialDay != null) {
+                    TextButton({ calendar.selectedDateMillis = null; clear = true; enabled = false },
+                        modifier = Modifier.padding(horizontal = spacing.space24).testTag("clearDueDate")) {
+                        Text(stringResource(R.string.debt_clear_date))
+                    }
+                }
             AnimatedVisibility(visible = showReminder) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = spacing.space24)) {
                     DebtBookSwitchRow(
@@ -156,6 +175,9 @@ internal fun DebtDateSheet(
                             }
                         }
                     )
+                    if (enabled) TextButton({ pickingTime = true }, modifier = Modifier.testTag("dueTimeButton")) {
+                        Text(stringResource(R.string.debt_time) + " · " + com.breckneck.debtbook.debt.details.formatMinute(minute))
+                    }
                     if (!allowed) {
                         Text(
                             stringResource(R.string.due_permission_denied),
@@ -167,6 +189,7 @@ internal fun DebtDateSheet(
                         }
                     }
                 }
+            }
             }
             if (error) {
                 Text(
@@ -185,15 +208,16 @@ internal fun DebtDateSheet(
                 }
                 Button(
                     modifier = Modifier.testTag("dueSaveButton"),
-                    enabled = day != null && !busy,
+                    enabled = (day != null || clear) && !busy,
                     onClick = {
-                        val selectedDay = day ?: return@Button
+                        val selectedDay = day
                         busy = true
                         error = false
                         scope.launch(Dispatchers.Main.immediate) {
                             try {
-                                onSave(selectedDay, showReminder && enabled && reminders.allowed() &&
-                                    DebtReminderPolicy.canSchedule(selectedDay))
+                                val selectedMinute = minute.takeIf { selectedDay != null && showReminder && enabled &&
+                                    reminders.allowed() && DebtReminderPolicy.canSchedule(selectedDay) }
+                                onSave(selectedDay, selectedMinute)
                                 onDismiss()
                             } catch (cancelled: CancellationException) {
                                 throw cancelled

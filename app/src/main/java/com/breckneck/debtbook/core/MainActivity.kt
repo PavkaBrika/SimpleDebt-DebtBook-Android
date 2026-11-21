@@ -356,7 +356,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 if (result == null) Toast.makeText(this@MainActivity, R.string.due_missing, Toast.LENGTH_SHORT).show()
                 else {
                     navController.popBackStack(R.id.mainFragment, false)
-                    navController.navigate(R.id.debtDetailsFragment, Bundle().apply {
+                    navController.navigate(R.id.action_mainFragment_to_debtDetailsFragment, Bundle().apply {
                         putInt("idHuman", result.id); putString("currency", result.currency)
                         putString("name", result.name); putInt("openDebtId", id)
                     })
@@ -546,6 +546,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val pending = canRemind && debtDomain.reminderMinute != null && !debtDomain.reminderDelivered &&
             debtDomain.dueDay?.let { DebtReminderPolicy.canSchedule(it) } == true
         args.putBoolean("remindOnEdit", pending)
+        debtDomain.reminderMinute?.let { args.putInt("minuteOnEdit", it) }
         if (debtDomain.info == null)
             args.putString("info", "")
         else

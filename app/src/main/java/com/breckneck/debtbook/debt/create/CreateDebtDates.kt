@@ -21,6 +21,7 @@ private enum class DateField { DEBT, DUE }
 internal fun CreateDebtDates(vm: CreateDebtViewModel) {
     val date by vm.date.observeAsState()
     val draftDueDay by vm.dueDay.observeAsState()
+    val minute by vm.minute.observeAsState(com.breckneck.deptbook.domain.util.DebtReminderPolicy.DEFAULT_MINUTE)
     val reminder by vm.remind.observeAsState(false)
     val saving by vm.isSaving.observeAsState(false)
     var openField by rememberSaveable { mutableStateOf<DateField?>(null) }
@@ -33,6 +34,7 @@ internal fun CreateDebtDates(vm: CreateDebtViewModel) {
     BubbleFieldRow(Icons.Outlined.DateRange, dueLabel, Modifier.testTag("createDebtDue")
         .clickable(enabled = !saving) { openField = DateField.DUE }) {
         Text(draftDueDay?.let(LedgerDate::display) ?: stringResource(R.string.debt_no_due))
+        if (reminder) Text(stringResource(R.string.debt_time) + " · " + com.breckneck.debtbook.debt.details.formatMinute(minute))
     }
     when (openField) {
         DateField.DEBT -> {
@@ -43,12 +45,14 @@ internal fun CreateDebtDates(vm: CreateDebtViewModel) {
                 maxDay = draftDueDay?.let { minOf(today, it) } ?: today,
                 confirmText = stringResource(R.string.due_apply),
                 onDismiss = { openField = null }
-            ) { day, _ -> vm.setStoredDate(day) }
+            ) { day, _ -> day?.let(vm::setStoredDate) }
         }
         DateField.DUE -> DebtDateSheet(
             title = dueLabel,
             initialDay = draftDueDay,
             minDay = date?.let(LedgerDate::canonical),
+            clearable = true,
+            initialMinute = minute,
             initialReminder = reminder.takeIf { vm.canRemind },
             confirmText = stringResource(R.string.due_apply),
             onDismiss = { openField = null },

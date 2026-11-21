@@ -45,6 +45,7 @@ internal fun DebtActionsSheet(
     onDismiss: () -> Unit,
     onRepay: () -> Unit,
     onEdit: () -> Unit,
+    onDue: () -> Unit,
     onRemove: () -> Unit
 ) {
     val spacing = MaterialTheme.spacing
@@ -88,6 +89,8 @@ internal fun DebtActionsSheet(
                         Text(stringResource(if (debt.sum.signum() > 0) R.string.repayment_received else R.string.repayment_paid))
                     }
                 }
+                if (debt.sum.signum() != 0) DebtBookOutlinedAction(stringResource(R.string.due_settings), onDue,
+                    modifier = Modifier.fillMaxWidth().testTag("dueSettingsButton"))
                 DebtBookOutlinedAction(
                     stringResource(R.string.edit), onEdit,
                     modifier = Modifier.fillMaxWidth().testTag("editButton"),

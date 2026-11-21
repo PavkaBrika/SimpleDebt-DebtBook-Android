@@ -69,7 +69,7 @@ class DebtDetailsFragment : Fragment() {
 
     private val TAG = "DebtDetailsFragment"
 
-    private enum class DebtSheet { ACTIONS, REMOVE }
+    private enum class DebtSheet { ACTIONS, DUE, REMOVE }
 
     interface OnButtonClickListener {
         fun addNewDebtFragment(idHuman: Int, currency: String, name: String)
@@ -117,13 +117,6 @@ class DebtDetailsFragment : Fragment() {
             Toast.makeText(requireContext(), R.string.history_change_failed, Toast.LENGTH_LONG).show()
             vm.dismissOperationError()
         } }
-        vm.visibleDebtRows.observe(viewLifecycleOwner) {
-            val requested = arguments?.getInt("openDebtId", -1) ?: -1
-            if (requested > 0 && vm.originalDebt(requested) != null) {
-                arguments?.remove("openDebtId")
-                vm.selectDebtAction(requested)
-            }
-        }
     }
 
     private fun showDeleteHumanDialog() {
@@ -182,6 +175,7 @@ class DebtDetailsFragment : Fragment() {
                     debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments,
                     onDismiss = close,
                     onRepay = { close(); vm.openRepayment(debt) },
+                    onDue = { sheet = DebtSheet.DUE },
                     onEdit = {
                         close()
                         buttonClickListener?.editDebt(
@@ -191,6 +185,13 @@ class DebtDetailsFragment : Fragment() {
                     },
                     onRemove = { sheet = DebtSheet.REMOVE }
                 )
+                DebtSheet.DUE -> com.breckneck.debtbook.debt.reminders.DebtDateSheet(
+                    title = stringResource(R.string.due_settings), initialDay = debt.dueDay,
+                    minDay = LedgerDate.canonical(debt.date), clearable = true,
+                    initialMinute = debt.reminderMinute ?: com.breckneck.deptbook.domain.util.DebtReminderPolicy.DEFAULT_MINUTE,
+                    initialReminder = (debt.reminderMinute != null && !debt.reminderDelivered).takeIf { rest.signum() > 0 },
+                    onDismiss = close
+                ) { day, minute -> vm.saveDue(debt.id, day, minute) }
                 DebtSheet.REMOVE -> {
                     val repayment = debt.repaymentOfId != null
                     val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
