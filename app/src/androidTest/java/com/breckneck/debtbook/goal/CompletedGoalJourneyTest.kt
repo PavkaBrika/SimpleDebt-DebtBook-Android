@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.view.KeyEvent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -179,6 +180,47 @@ class CompletedGoalJourneyTest {
         backTo(R.id.goalsFragment)
         trash(name).assertIsDisplayed()
         assertEquals(1, dao.getGoalDepositsByGoalId(id).size)
+    }
+
+    @Test fun amountSheetKeepsKeyboardFocusDuringScrimCloseAndConfirm() {
+        val name = "Keyboard transitions"
+        val id = seed(name, "100", "0", "EUR")
+        openGoals(name)
+        val dismissActions = listOf<() -> Unit>(
+            { compose.onNode(isDialog()).performTouchInput { click(Offset(centerX, 32.dp.toPx())) } },
+            { compose.onNodeWithContentDescription(str(R.string.cancel)).performClick() },
+            { compose.onNodeWithTag("goal_adjustment_confirm").performClick() },
+        )
+        for ((index, dismiss) in dismissActions.withIndex()) {
+            val save = index == dismissActions.lastIndex
+            text(R.string.goal_top_up).performClick()
+            val titles = compose.onAllNodesWithText(str(R.string.goal_add_money))
+            val topBeforeKeyboard = titles.fetchSemanticsNodes().single().positionInWindow.y
+            val field = compose.onNode(hasSetTextAction())
+            field.performClick().performTextReplacement("25")
+            compose.waitUntil(8000) { titles.fetchSemanticsNodes().single().positionInWindow.y < topBeforeKeyboard - 20 }
+            field.assertIsFocused()
+            val initialTop = titles.fetchSemanticsNodes().single().positionInWindow.y
+            var sawFocusedExit = false
+            compose.mainClock.autoAdvance = false
+            try {
+                dismiss()
+                if (save) compose.waitUntil(8000) { dao.getGoalDepositsByGoalId(id).isNotEmpty() }
+                repeat(32) {
+                    compose.mainClock.advanceTimeByFrame()
+                    val title = titles.fetchSemanticsNodes().singleOrNull()
+                    if (title != null && title.positionInWindow.y > initialTop + 1) {
+                        field.assertIsFocused()
+                        sawFocusedExit = true
+                    }
+                }
+            } finally {
+                compose.mainClock.autoAdvance = true
+            }
+            assertTrue("The field must keep focus during the downward slide", sawFocusedExit)
+            titles.assertCountEquals(0)
+            assertEquals(if (save) 1 else 0, dao.getGoalDepositsByGoalId(id).size)
+        }
     }
 
     @Test fun deletingFromTheListSlidesTheSheetDownAndMovesTheNextRowUp() {

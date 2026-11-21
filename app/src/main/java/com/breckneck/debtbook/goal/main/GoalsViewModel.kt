@@ -46,7 +46,11 @@ class GoalsViewModel @Inject constructor(
             reduce { state.copy(adjustment = GoalAdjustment(action.goalId)) }
         }
         GoalsAction.DismissAddDepositPopup -> intent {
-            if (state.adjustment?.phase != GoalSheetPhase.SAVING) reduce { state.copy(adjustment = null) }
+            when (state.adjustment?.phase) {
+                GoalSheetPhase.SAVED -> reduce { state.copy(goalList = domainGoals.map { it.toUi() }, adjustment = null) }
+                GoalSheetPhase.READY -> reduce { state.copy(adjustment = null) }
+                else -> Unit
+            }
         }
         is GoalsAction.UpdateDepositSum -> intent {
             val adjustment = state.adjustment ?: return@intent
@@ -119,12 +123,7 @@ class GoalsViewModel @Inject constructor(
         }
         val updated = goal.copy(savedSum = goal.savedSum + amount)
         domainGoals = domainGoals.map { if (it.id == updated.id) updated else it }
-        reduce {
-            state.copy(
-                goalList = domainGoals.map { it.toUi() },
-                adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null),
-            )
-        }
+        reduce { state.copy(adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null)) }
     }
 
     private fun deleteGoal() = intent {

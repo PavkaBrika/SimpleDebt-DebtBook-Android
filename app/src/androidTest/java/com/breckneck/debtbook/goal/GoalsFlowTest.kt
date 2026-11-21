@@ -129,7 +129,11 @@ class GoalsFlowTest {
         node(R.string.goal_add_money).assertIsDisplayed()
         capture("deposit-sheet")
         textField(R.string.sum).performTextReplacement("99")
-        compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.cancel))
+            .performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(8000) {
+            compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() && onMain { it.hasWindowFocus() } == true
+        }
         assertBalance(initialName, "1000", 0)
         click(R.string.goal_top_up)
         textField(R.string.sum).performClick().performTextReplacement("2500")

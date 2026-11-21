@@ -12,8 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -54,8 +52,6 @@ internal fun GoalAdjustmentSheet(
         hideRequested = adjustment.phase == GoalSheetPhase.SAVED,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) { enabled, close ->
-        val focus = LocalFocusManager.current
-        val keyboard = LocalSoftwareKeyboardController.current
         BubbleSheetHeader(
             title = stringResource(if (withdraw) R.string.goal_withdraw_money else R.string.goal_add_money),
             onClose = close,
@@ -69,7 +65,7 @@ internal fun GoalAdjustmentSheet(
             state = input,
             currency = goal.currency,
             onValueChange = onSumChange,
-            enabled = enabled,
+            acceptEdits = enabled,
             errorMessage = errorMessage,
             containerColor = if (withdraw) colors.dangerContainer else colors.mint,
             contentColor = if (withdraw) colors.danger else colors.onMint,
@@ -78,11 +74,7 @@ internal fun GoalAdjustmentSheet(
             Text(errorMessage, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = colors.danger)
         }
         BubbleButton(
-            onClick = {
-                focus.clearFocus()
-                keyboard?.hide()
-                onConfirm()
-            },
+            onClick = onConfirm,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().testTag("goal_adjustment_confirm"),
             colors = sheetActionColors(

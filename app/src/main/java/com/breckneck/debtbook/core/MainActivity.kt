@@ -282,7 +282,9 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val bottom = maxOf(bars.bottom, ime.bottom)
-            val drawBehindBars = overlayGoals && ime.bottom <= bars.bottom
+            // Amount fields on the list and in details use a separate modal window.
+            val goalForm = navController.currentDestination?.id == R.id.createGoalsFragment
+            val drawBehindBars = overlayGoals && (!goalForm || ime.bottom <= bars.bottom)
             val revealInput = !overlayGoals && ime.bottom > bars.bottom && root.paddingBottom != ime.bottom
             safeBars = bars
             root.updatePadding(
@@ -315,8 +317,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = !goals && defaultContrast
                 }
-                ViewCompat.requestApplyInsets(root)
             }
+            ViewCompat.requestApplyInsets(root)
         }
         ViewCompat.requestApplyInsets(root)
     }

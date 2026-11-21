@@ -83,7 +83,7 @@ class GoalDetailsViewModel @Inject constructor(
     fun dismissAdjustment() = intent {
         val phase = state.adjustment?.phase ?: return@intent
         if (phase == GoalSheetPhase.SAVING) return@intent
-        reduce { state.copy(adjustment = null) }
+        reduce { state.copy(goal = currentGoal.toUi(), adjustment = null) }
         if (phase == GoalSheetPhase.SAVED) loadHistory()
     }
 
@@ -123,7 +123,7 @@ class GoalDetailsViewModel @Inject constructor(
         val updated = goal.copy(savedSum = goal.savedSum + amountChange)
         currentGoal = updated
         savedState["goal"] = updated
-        reduce { state.copy(goal = updated.toUi(), adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null)) }
+        reduce { state.copy(adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null)) }
         postSideEffect(GoalDetailsEffect.BalanceChanged(updated))
     }
 

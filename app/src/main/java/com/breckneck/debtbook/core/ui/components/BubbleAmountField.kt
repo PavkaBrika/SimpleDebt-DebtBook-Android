@@ -38,7 +38,7 @@ internal fun BubbleAmountField(
     currency: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    acceptEdits: Boolean = true,
     errorMessage: String? = null,
     containerColor: Color = bubbleColors().mint,
     contentColor: Color = bubbleColors().onMint,
@@ -49,10 +49,10 @@ internal fun BubbleAmountField(
     val amountStyle = MaterialTheme.typography.displaySmall.copy(color = contentColor, fontWeight = FontWeight.SemiBold)
     BasicTextField(
         state = state,
-        enabled = enabled,
         modifier = modifier.fillMaxWidth().background(containerColor, RoundedCornerShape(25.dp))
             .semantics { if (errorMessage != null) error(errorMessage) },
-        inputTransformation = validatedInput({ DecimalInput.isEditable(it, currency) }, onValueChange),
+        // Keep the input connection alive until the modal leaves the window, also when a save is pending.
+        inputTransformation = validatedInput({ acceptEdits && DecimalInput.isEditable(it, currency) }, onValueChange),
         lineLimits = TextFieldLineLimits.SingleLine,
         textStyle = amountStyle,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
