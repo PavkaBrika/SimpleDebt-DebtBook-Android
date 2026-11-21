@@ -48,7 +48,7 @@
     <string name="second_main_currency">Zweite Hauptwährung</string>
     <string name="default_currency">Standardwährung</string>
     <string name="default_currencies_hint">Diese Währung wird beim Hinzufügen neuer Schulden standardmäßig ausgewählt</string>
-    <string name="detailed_share_text_hint">Addieren Sie den Gesamtbetrag zum Zeitpunkt der Verschuldung zum Text \'\'Anteil\'\' Beispiel: 01.01.2001: 10 USD (Kommentar) (25 USD)</string>
+    <string name="detailed_share_text_hint">Nach jeder Buchung die laufende Summe in der Reihenfolge der Abrechnung anzeigen.</string>
     <string name="more_detailed_share_text">Ausführlicherer Text zum Thema \'\'Teilen\'\'</string>
     <string name="app_theme">App Thema</string>
     <string name="rate_app">App bewerten</string>

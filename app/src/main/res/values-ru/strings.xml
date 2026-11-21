@@ -48,7 +48,7 @@
     <string name="second_main_currency">Вторая основная валюта</string>
     <string name="default_currency">Валюта по умолчанию</string>
     <string name="default_currencies_hint">Эта валюта будет выбрана по умолчанию при добавлении новых долгов</string>
-    <string name="detailed_share_text_hint">Добавить к тексту для \"Поделиться\" общую задолженность на момент долга.\nПример: 01.01.2001: 10 USD (Комментарий) (25 USD)</string>
+    <string name="detailed_share_text_hint">Показывать после каждой операции сумму движений с начала выписки в порядке строк.</string>
     <string name="more_detailed_share_text">Расширенный текст для \"Поделиться\"</string>
     <string name="app_theme">Тема приложения</string>
     <string name="rate_app">Оценить приложение</string>

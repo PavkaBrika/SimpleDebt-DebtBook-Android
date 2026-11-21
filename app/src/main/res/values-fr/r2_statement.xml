@@ -1,0 +1,23 @@
+<resources>
+    <string name="statement_preview">Aperçu du relevé</string>
+    <string name="statement_send">Envoyer</string>
+    <string name="statement_title">Relevé · %1$s</string>
+    <string name="statement_you_owe">Solde global · Vous me devez %1$s</string>
+    <string name="statement_i_owe">Solde global · Je vous dois %1$s</string>
+    <string name="statement_even">Solde global · %1$s</string>
+    <string name="statement_all">Toutes les opérations, y compris les prêts intégralement remboursés.</string>
+    <string name="statement_positive">Prêts que je vous ai accordés et leurs remboursements, y compris les prêts soldés.</string>
+    <string name="statement_negative">Prêts que vous m’avez accordés et leurs remboursements, y compris les prêts soldés.</string>
+    <string name="statement_entry">Écriture sans motif précisé · %1$s</string>
+    <string name="statement_lent">Prêt de ma part · %1$s</string>
+    <string name="statement_borrowed">Prêt de votre part · %1$s</string>
+    <string name="statement_from_you">Votre remboursement · %1$s</string>
+    <string name="statement_from_me">Mon remboursement · %1$s</string>
+    <string name="statement_cancelled">Remboursement annulé · %1$s (exclu des totaux)</string>
+    <string name="statement_repaid">Total remboursé · %1$s</string>
+    <string name="statement_remaining">Reste à rembourser sur ce prêt · %1$s</string>
+    <string name="statement_subtotal">Cumul des écritures affichées · %1$s</string>
+    <string name="statement_entry_signs">Pour les écritures sans motif précisé, + est en ma faveur et − en votre faveur.</string>
+    <string name="statement_positive_entries">Les écritures sans motif précisé de montant positif ou nul sont incluses.</string>
+    <string name="statement_negative_entries">Les écritures sans motif précisé de montant négatif ou nul sont incluses.</string>
+</resources>

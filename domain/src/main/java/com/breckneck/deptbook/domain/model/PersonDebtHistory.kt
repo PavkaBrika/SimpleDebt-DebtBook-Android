@@ -25,6 +25,15 @@ data class PersonDebtHistory(
 
     fun loan(id: Int): LoanHistory? = loansById[id]
 
+    fun includesEntry(row: DebtDomain, filter: Filter): Boolean {
+        val direction = row.repaymentOfId?.let { loan(it)?.original?.sum } ?: row.sum
+        return when (filter) {
+            Filter.ALL -> true
+            Filter.POSITIVE -> direction.signum() >= 0
+            Filter.NEGATIVE -> direction.signum() <= 0
+        }
+    }
+
     fun matches(filter: Filter): Boolean = when (filter) {
         Filter.ALL -> true
         Filter.POSITIVE -> openLoans.any { it.original.sum.signum() > 0 }

@@ -1,7 +1,6 @@
 package com.breckneck.debtbook.debt.details
 
 import java.math.BigDecimal
-import com.breckneck.deptbook.domain.util.compareTo
 
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.lifecycle.LiveData
@@ -254,14 +253,9 @@ class DebtDetailsViewModel @Inject constructor(
 
     private fun applySort() {
         try {
-            val filtered = (_initialDebtList.value ?: emptyList()).filter { debt ->
-                val direction = debt.repaymentOfId?.let { id -> originalDebt(id)?.sum } ?: debt.sum
-                when (_debtFilter.value ?: Filter.ALL) {
-                    Filter.ALL -> true
-                    Filter.NEGATIVE -> direction <= 0
-                    Filter.POSITIVE -> direction >= 0
-                }
-            }
+            val history = _loans.value ?: return
+            val filter = _debtFilter.value ?: Filter.ALL
+            val filtered = _initialDebtList.value.orEmpty().filter { history.includesEntry(it, filter) }
             _resultedDebtList.value = sortDebts(filtered, _debtOrder.value!!)
             updateVisibleRows()
         } catch (_: Exception) {

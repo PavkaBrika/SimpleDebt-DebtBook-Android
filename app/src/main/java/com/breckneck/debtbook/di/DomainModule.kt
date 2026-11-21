@@ -21,7 +21,6 @@ import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetAllDebtsSumUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetCurrentDateUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetDebtQuantity
-import com.breckneck.deptbook.domain.usecase.Debt.GetDebtShareString
 import com.breckneck.deptbook.domain.usecase.Debt.ReplaceAllDebts
 import com.breckneck.deptbook.domain.usecase.Debt.SetDateUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.SetDebtUseCase
@@ -170,9 +169,6 @@ object DomainModule {
 
     @Provides
     fun provideSetDateUseCase() = SetDateUseCase()
-
-    @Provides
-    fun provideGetDebtShareString() = GetDebtShareString()
 
     @Provides
     fun provideEditDebtUseCase(debtRepository: DebtRepository) =

@@ -47,8 +47,7 @@ import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.debt.details.adapter.DebtDetailsAdapter
 import com.breckneck.deptbook.domain.model.DebtDomain
-import com.breckneck.deptbook.domain.usecase.Debt.*
-import com.breckneck.deptbook.domain.usecase.Settings.GetAddSumInShareText
+import com.breckneck.deptbook.domain.usecase.Debt.ExportDebtDataInExcelUseCase
 import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_DECREASE
@@ -62,7 +61,6 @@ import com.google.android.material.chip.ChipGroup
 import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
-import javax.inject.Inject
 import com.breckneck.deptbook.domain.util.LedgerDate
 
 
@@ -96,9 +94,6 @@ class DebtDetailsFragment : Fragment() {
     }
 
     private val vm by viewModels<DebtDetailsViewModel>()
-
-    @Inject lateinit var getDebtShareString: GetDebtShareString
-    @Inject lateinit var getAddSumInShareText: GetAddSumInShareText
 
     private lateinit var debtClickListener: DebtDetailsAdapter.OnDebtClickListener
     private lateinit var overallSumTextView: TextView
@@ -394,20 +389,8 @@ class DebtDetailsFragment : Fragment() {
         vm.onShareDialogOpen()
 
         dialog.findViewById<Button>(R.id.deleteButton)!!.setOnClickListener {
-            val intent = Intent(ACTION_SEND)
-            intent.type = "text/plain"
-            intent.putExtra(EXTRA_SUBJECT, humanName)
-            intent.putExtra(
-                EXTRA_TEXT,
-                getDebtShareString.execute(
-                    debtList = vm.resultedDebtList.value!!.map(::withHistoryDescription),
-                    name = humanName!!,
-                    currency = currency!!,
-                    sum = vm.overallSum.value!!,
-                    getAddSumInShareText.execute()
-                )
-            )
-            startActivity(createChooser(intent, humanName))
+            dialog.dismiss()
+            DebtStatementPreviewDialog().show(childFragmentManager, "debtStatementPreview")
         }
 
         dialog.findViewById<Button>(R.id.editButton)!!.setOnClickListener {

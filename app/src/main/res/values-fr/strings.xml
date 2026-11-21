@@ -48,7 +48,7 @@
     <string name="second_main_currency">Deuxième monnaie principale</string>
     <string name="default_currency">Devise par défaut</string>
     <string name="default_currencies_hint">Cette devise sera sélectionnée par défaut lors de l\'ajout de nouvelles dettes.</string>
-    <string name="detailed_share_text_hint">Ajouter le montant total au moment de la dette au texte \'\'action\'\' Exemple : 01.01.2001 : 10 USD (Commentaire) (25 USD)</string>
+    <string name="detailed_share_text_hint">Afficher après chaque écriture le cumul des opérations dans l’ordre du relevé.</string>
     <string name="more_detailed_share_text">Texte de l\'action plus détaillé</string>
     <string name="app_theme">Thème de l\'application</string>
     <string name="rate_app">Noter l\'application</string>
