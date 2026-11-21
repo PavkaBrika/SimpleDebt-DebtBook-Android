@@ -112,7 +112,7 @@ class PartialRepaymentRoomTest {
             }
             open().use { db ->
                 val dao = db.appDao()
-                assertTrue(dao.getAllDebts().all { it.repaymentOfId == null && !it.cancelled && it.operationId == null })
+                assertTrue(dao.getAllDebts().all { it.repaymentOfId == null && !it.cancelled && it.operationId == null && !it.recordedAsLoan })
                 assertEquals("raw", dao.getAllDebts().first().legacyDate)
                 dao.saveDebt(repayment("-20"))
                 assertAmount("67.01", dao.getHumanSumDebt(1))
