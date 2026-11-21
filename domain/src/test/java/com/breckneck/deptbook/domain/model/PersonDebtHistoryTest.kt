@@ -88,6 +88,17 @@ class PersonDebtHistoryTest {
         }
     }
 
+    @Test fun `statement preserves the order of tied early entries and loans`() {
+        val early = lent.copy(recordedAsLoan = false)
+        val open = lent.copy(id = 3)
+        val closed = open.copy(id = 2)
+        val zero = early.copy(id = 4, sum = BigDecimal.ZERO)
+        val full = payment(closed, 5, "-1000", "2026-10-05")
+        val history = PersonDebtHistory.from(listOf(zero, closed, early, open, full))
+        assertEquals(listOf(early, open, zero), history.statementOriginals(false))
+        assertEquals(listOf(early, open, closed, zero), history.statementOriginals(true))
+    }
+
     @Test fun `due date and linked payments identify loans independently of origin`() {
         val old = borrowed.copy(recordedAsLoan = false)
         val scheduled = lent.copy(recordedAsLoan = false, dueDay = "2026-12-10")
@@ -121,7 +132,7 @@ class PersonDebtHistoryTest {
     }
 
     @Test fun `legacy zero entries and opening adjustment do not create open or settled loans`() {
-        val legacy = lent.copy(sum = BigDecimal("0.00"), date = "undated")
+        val legacy = lent.copy(recordedAsLoan = false, sum = BigDecimal("0.00"), date = "undated")
         val adjustment = BigDecimal("30.5001")
         val person = HumanDomain(1, "Анна", adjustment, "RUB", adjustment)
         val backup = AppDataLists(listOf(person), listOf(legacy), emptyList(), emptyList(), emptyList(), emptyList())

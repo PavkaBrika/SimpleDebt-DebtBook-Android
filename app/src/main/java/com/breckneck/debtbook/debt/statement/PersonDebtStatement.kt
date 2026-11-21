@@ -47,9 +47,7 @@ fun formatPersonDebtStatement(
     appendLine(resources.getString(balanceLabel, money(balance.abs())))
     appendLine()
 
-    val loans = if (includeSettled) history.openLoans + history.settledLoans else history.openLoans
-    val originals = loans.map { it.original } + history.earlyEntries
-    val selected = originals.filter { history.includesEntry(it, filter) }
+    val selected = history.statementOriginals(includeSettled).filter { history.includesEntry(it, filter) }
     val unclassified = selected.any { history.loan(it.id) == null }
     val heading = when (filter) {
         Filter.ALL -> R.string.statement_all

@@ -14,16 +14,26 @@ data class LoanHistory(
 }
 
 /** Derived from a single person's ledger. Currency and opening adjustment belong to the person. */
-data class PersonDebtHistory(
-    val openLoans: List<LoanHistory>,
+class PersonDebtHistory private constructor(
+    private val unsettledEntries: List<LoanHistory>,
     val settledLoans: List<LoanHistory>,
-    val earlyEntries: List<DebtDomain>
+    private val zeroAmountEntries: List<DebtDomain>
 ) {
+    val openLoans = unsettledEntries.filter(LoanHistory::hasKnownPurpose)
+    val earlyEntries = unsettledEntries.filterNot(LoanHistory::hasKnownPurpose).map { it.original } + zeroAmountEntries
+
     private val loansById by lazy {
         (openLoans.asSequence() + settledLoans.asSequence()).associateBy { it.original.id }
     }
 
     fun loan(id: Int): LoanHistory? = loansById[id]
+
+    /** Preserve R2.4 ordering for equal dates or amounts, including in running totals. */
+    fun statementOriginals(includeSettled: Boolean): List<DebtDomain> = buildList {
+        unsettledEntries.mapTo(this) { it.original }
+        if (includeSettled) settledLoans.mapTo(this) { it.original }
+        addAll(zeroAmountEntries)
+    }
 
     fun includesEntry(row: DebtDomain, filter: Filter): Boolean {
         val direction = row.repaymentOfId?.let { loan(it)?.original?.sum } ?: row.sum
@@ -43,13 +53,14 @@ data class PersonDebtHistory(
     companion object {
         fun from(rows: List<DebtDomain>): PersonDebtHistory {
             val byOriginal = rows.groupBy { it.repaymentOfId }
-            val (loans, earlyEntries) = byOriginal[null].orEmpty().map { original ->
+            val (originals, zeroAmountEntries) = byOriginal[null].orEmpty().partition { it.sum.signum() != 0 }
+            val histories = originals.map { original ->
                 // Linked repayments use ISO days. IDs break ties for multiple payments on the same day.
                 val repayments = byOriginal[original.id].orEmpty().sortedWith(compareBy({ it.date }, { it.id }))
                 LoanHistory(original, repayments, RepaymentPolicy.remaining(original, repayments))
-            }.partition { it.original.sum.signum() != 0 && it.hasKnownPurpose }
-            val (settled, open) = loans.partition { it.remaining.signum() == 0 }
-            return PersonDebtHistory(open, settled, earlyEntries.map { it.original })
+            }
+            val (settled, unsettled) = histories.partition { it.hasKnownPurpose && it.remaining.signum() == 0 }
+            return PersonDebtHistory(unsettled, settled, zeroAmountEntries)
         }
     }
 }
