@@ -136,7 +136,12 @@ private fun GoalDetailsContent(
                             Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                             Text(stringResource(R.string.goal_top_up), Modifier.padding(start = 6.dp))
                         }
-                        BubbleButton(onClick = onSubtract, modifier = Modifier.weight(1f), colors = secondaryColors, enabled = goal.hasSavings) {
+                        BubbleButton(
+                            onClick = onSubtract,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.dangerContainer, contentColor = colors.danger),
+                            enabled = goal.hasSavings,
+                        ) {
                             Icon(Icons.AutoMirrored.Outlined.CallMade, null, Modifier.size(18.dp))
                             Text(stringResource(R.string.goal_withdraw), Modifier.padding(start = 6.dp))
                         }
@@ -228,8 +233,8 @@ private fun GoalHistoryRow(row: GoalMovement, first: Boolean, last: Boolean) {
                     Icon(
                         if (row.isDeposit) Icons.AutoMirrored.Outlined.CallReceived else Icons.AutoMirrored.Outlined.CallMade,
                         null,
-                        Modifier.size(36.dp).background(colors.mint, CircleShape).padding(10.dp),
-                        tint = colors.onMint,
+                        Modifier.size(36.dp).background(if (row.isDeposit) colors.mint else colors.dangerContainer, CircleShape).padding(10.dp),
+                        tint = if (row.isDeposit) colors.onMint else colors.danger,
                     )
                 },
                 trailing = {

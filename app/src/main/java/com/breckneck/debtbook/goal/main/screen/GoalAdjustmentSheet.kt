@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -66,11 +66,21 @@ internal fun GoalAdjustmentSheet(
             onValueChange = onSumChange,
             enabled = enabled,
             errorMessage = errorMessage,
+            containerColor = if (withdraw) colors.dangerContainer else colors.mint,
+            contentColor = if (withdraw) colors.danger else colors.onMint,
         )
         if (errorMessage != null) {
             Text(errorMessage, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = colors.danger)
         }
-        BubbleButton(onClick = onConfirm, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("goal_adjustment_confirm")) {
+        BubbleButton(
+            onClick = onConfirm,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth().testTag("goal_adjustment_confirm"),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (withdraw) colors.danger else colors.action,
+                contentColor = if (withdraw) colors.paper else colors.onAction,
+            ),
+        ) {
             Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
             Text(stringResource(if (withdraw) R.string.goal_withdraw else R.string.goal_top_up), Modifier.padding(start = 8.dp))
         }

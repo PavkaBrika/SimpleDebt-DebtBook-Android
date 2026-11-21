@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.error
@@ -39,31 +40,32 @@ internal fun BubbleAmountField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     errorMessage: String? = null,
+    containerColor: Color = bubbleColors().mint,
+    contentColor: Color = bubbleColors().onMint,
     currencyContent: @Composable () -> Unit = {
-        Text(currency, fontSize = 16.sp, color = bubbleColors().onMint, fontWeight = FontWeight.Bold)
+        Text(currency, fontSize = 16.sp, color = contentColor, fontWeight = FontWeight.Bold)
     },
 ) {
-    val colors = bubbleColors()
-    val amountStyle = MaterialTheme.typography.displaySmall.copy(color = colors.onMint, fontWeight = FontWeight.SemiBold)
+    val amountStyle = MaterialTheme.typography.displaySmall.copy(color = contentColor, fontWeight = FontWeight.SemiBold)
     BasicTextField(
         state = state,
         enabled = enabled,
-        modifier = modifier.fillMaxWidth().background(colors.mint, RoundedCornerShape(25.dp))
+        modifier = modifier.fillMaxWidth().background(containerColor, RoundedCornerShape(25.dp))
             .semantics { if (errorMessage != null) error(errorMessage) },
         inputTransformation = validatedInput({ DecimalInput.isEditable(it, currency) }, onValueChange),
         lineLimits = TextFieldLineLimits.SingleLine,
         textStyle = amountStyle,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-        cursorBrush = SolidColor(colors.onMint),
+        cursorBrush = SolidColor(contentColor),
         decorator = { editor ->
             Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
-                Text(stringResource(R.string.sum), color = colors.onMint, style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.sum), color = contentColor, style = MaterialTheme.typography.labelLarge)
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 50.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Box(Modifier.weight(1f)) {
-                        if (state.text.isEmpty()) Text("0", style = amountStyle, color = colors.onMint.copy(alpha = .65f))
+                        if (state.text.isEmpty()) Text("0", style = amountStyle, color = contentColor.copy(alpha = .65f))
                         editor()
                     }
                     currencyContent()

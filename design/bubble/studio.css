@@ -169,7 +169,9 @@ svg { display:block; flex-shrink:0 }
 .goal-actions summary::-webkit-details-marker {display:none}
 .goal-menu {position:absolute;right:0;top:100%;z-index:1;width:max-content;max-width:72cqw;padding:4px;background:var(--paper);border:1px solid var(--edge);border-radius:18px;box-shadow:0 5px 16px #10231720}
 .goal-menu .menu-action {display:flex;align-items:center;gap:10px;text-align:left;width:100%;min-height:48px;padding:8px 12px}
-.sheet .btn.destructive {background:var(--coral);color:var(--paper)}
+.btn.withdrawal,.sheet.withdrawal .amount-field,.timeline-row.withdrawal .event-icon {background:var(--coral-tint);color:var(--coral)}
+.timeline-row.withdrawal .money,.sheet.withdrawal .amount-line input::placeholder {color:var(--coral)}
+.sheet.withdrawal .btn,.sheet .btn.destructive {background:var(--coral);color:var(--paper)}
 /* The scroll viewport reaches both system bars. Only the resting list has insets. */
 .goals-scroll {position:absolute;inset:0;padding-block:39px calc(var(--goals-dock-height,0px) + 8px);scroll-padding-block:39px var(--goals-dock-height)}
 .phone:has(.goals-scroll) .status {position:relative;z-index:1;isolation:isolate;pointer-events:none}

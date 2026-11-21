@@ -21,8 +21,8 @@ flowViews.goals=f=>{
 flowActions['goal-open']=(i,v)=>{frames[i].goalId=Number(v);go(i,'goalDetail');};
 flowViews.goalDetail=f=>{
   const g=goalById(f.goalId),sum=saved(g),done=sum>=g.target;
-  const history=[...g.deposits].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(d=>'<div class="timeline-row"><span class="event-icon">'+icon(d.cents>=0?'take':'give',16)+'</span><span class="event-text"><strong>'+(d.cents>=0?'Пополнение':'Снятие')+'</strong><small>'+dateText(d.date)+' '+d.date.slice(0,4)+'</small></span><span class="money">'+amount(d.cents,g.cur,true)+'</span></div>').join('');
-  const controls=done?'':pairButtons(button('goal-add','Пополнить',g.id,'btn secondary','plus'),button('goal-sub','Снять',g.id,'btn secondary','give'));
+  const history=[...g.deposits].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(d=>'<div class="timeline-row'+(d.cents<0?' withdrawal':'')+'"><span class="event-icon">'+icon(d.cents>=0?'take':'give',16)+'</span><span class="event-text"><strong>'+(d.cents>=0?'Пополнение':'Снятие')+'</strong><small>'+dateText(d.date)+' '+d.date.slice(0,4)+'</small></span><span class="money">'+amount(d.cents,g.cur,true)+'</span></div>').join('');
+  const controls=done?'':pairButtons(button('goal-add','Пополнить',g.id,'btn secondary','plus'),button('goal-sub','Снять',g.id,'btn withdrawal','give'));
   const menu='<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью">'+icon('more')+'</summary><div class="goal-menu">'
     +(done?'':button('goal-edit','Редактировать цель',g.id,'menu-action','edit'))
     +button('goal-delete','Удалить цель',g.id,'menu-action danger','trash')+'</div></details>';
@@ -34,7 +34,7 @@ function goalAdjustment(i,v,b,sign) {
     const n=readMoney(s.sum,g.cur);if(!n)return fail(i,'Введите положительную сумму в валюте цели.');
     if(sign<0&&n>saved(g))return fail(i,'Сумма превышает накопления.');
     g.deposits.push({id:newId(),date:TODAY,cents:n*sign});changed(i,sign>0?'Пополнение записано':'Снятие записано');
-  },sign>0?'Пополнить':'Снять',{sum:''});
+  },sign>0?'Пополнить':'Снять',{sum:'',withdrawal:sign<0});
 }
 flowActions['goal-add']=(i,v,b)=>goalAdjustment(i,v,b,1);
 flowActions['goal-sub']=(i,v,b)=>goalAdjustment(i,v,b,-1);
