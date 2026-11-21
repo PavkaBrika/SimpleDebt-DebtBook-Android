@@ -18,7 +18,7 @@
     <string name="person_name">Person’s name</string>
     <string name="yes">Yes</string>
     <string name="No">No</string>
-    <string name="newdebt">Add new debt</string>
+    <string name="newdebt">New debt</string>
     <string name="editdebtcollaps">Edit debt</string>
     <string name="debts">Debts</string>
     <string name="nodebts">There are no debts yet. Click the button below to add.</string>
@@ -26,7 +26,7 @@
     <string name="show_positive">Owed to me</string>
     <string name="show_negative">I owe</string>
     <string name="filter">Filter</string>
-    <string name="contacts">Contacts</string>
+    <string name="contacts">Choose from contacts</string>
     <string name="no_permission">No permission</string>
     <string name="contact_name">Contact name</string>
     <string name="settings">Settings</string>
@@ -47,9 +47,8 @@
     <string name="second_main_currency">Second main currency</string>
     <string name="default_currency">Default currency</string>
     <string name="default_currencies_hint">This currency will be selected by default when adding new debts</string>
-    <string name="detailed_share_text_hint">Include individual repayments, notes and a running total after each entry.</string>
-    <string name="more_detailed_share_text">More detailed \'\'share\'\' text</string>
-    <string name="app_theme">App Theme</string>
+    <string name="more_detailed_share_text">Balance in shared history</string>
+    <string name="app_theme">Appearance</string>
     <string name="rate_app">Rate app</string>
     <string name="write_email_to_developer">Write email to developer</string>
     <string name="main_recycler_view_hint">Tap for more information</string>
@@ -62,7 +61,7 @@
     <string name="order_debt_sum">Debt sum</string>
     <string name="order_by_balance">By balance</string>
     <string name="order_by_creation_date">Creation date</string>
-    <string name="order_by">Order by</string>
+    <string name="order_by">Order</string>
     <string name="remember_choice">Remember choice</string>
     <string name="confirm">Confirm</string>
     <string name="save">Save</string>
@@ -70,7 +69,7 @@
     <string name="cancel">Cancel</string>
     <string name="order_by_last_debt_date">Last debt date</string>
     <string name="application">Application</string>
-    <string name="info">Info</string>
+    <string name="info">About the app</string>
     <string name="support">Support</string>
     <string name="something_went_wrong">Something went wrong</string>
     <string name="privacy_policy">Privacy policy</string>
@@ -80,8 +79,8 @@
     <string name="a11y_currency_picker">Select currency, %1$s</string>
     <string name="order_by_date">Date</string>
     <string name="loading">Loading…</string>
-    <string name="synchronization">Backups</string>
-    <string name="authorize_to_avoid_losing_your_data">Google Drive backup</string>
+    <string name="synchronization">Backup</string>
+    <string name="authorize_to_avoid_losing_your_data">Google Drive</string>
     <string name="authorization">Authorization</string>
     <string name="account">Account</string>
     <string name="synchronize">Save to Google Drive</string>
@@ -102,9 +101,9 @@
     <string name="expenses">Expenses</string>
     <string name="categories">Categories</string>
     <string name="history">History</string>
-    <string name="create_new_category">Create new category</string>
+    <string name="create_new_category">New category</string>
     <string name="adding">Adding</string>
-    <string name="image">Image</string>
+    <string name="image">Icon</string>
     <string name="color">Color</string>
     <string name="you_must_select_color">You must select color!</string>
     <string name="you_must_select_image">You must select image!</string>
@@ -146,7 +145,7 @@
     <string name="goal_deadline">Goal deadline</string>
     <string name="goal_sum_must_be_positive">Enter a positive amount</string>
     <string name="privacy_and_security">Privacy and Security</string>
-    <string name="pin_code_lock">PIN-code Lock</string>
+    <string name="pin_code_lock">Sign-in protection</string>
     <string name="change_pin_code">Change PIN-code</string>
     <string name="unlock_with_fingerprint">Unlock with Fingerprint</string>
     <string name="set_pin_code">PIN-code Lock</string>
@@ -179,7 +178,7 @@
     <string name="emoji_tab_home">Home</string>
     <string name="emoji_tab_nature">Nature</string>
     <string name="backup_file_hint">A file contains your records and available goal photos. Save it before reinstalling the app or moving to another phone.</string>
-    <string name="backup_export_file">Save to a file</string>
+    <string name="backup_export_file">Save file</string>
     <string name="backup_import_file">Restore from a file</string>
     <string name="backup_restore_previous_local">Undo last restore</string>
     <string name="backup_restore_previous_cloud">Previous backup</string>

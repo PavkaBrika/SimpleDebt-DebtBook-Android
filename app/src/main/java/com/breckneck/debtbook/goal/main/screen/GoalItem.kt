@@ -136,29 +136,27 @@ internal fun GoalItem(
 private fun CompletedGoalRow(goal: GoalUi, check: State<Float>, onOpen: () -> Unit, onDelete: () -> Unit) {
     val colors = bubbleColors()
     val showCheck by remember(check) { derivedStateOf { check.value > 0f } }
-    Row(
-        modifier = Modifier.fillMaxWidth()
-            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.history), onClick = onOpen)
-            .heightIn(min = 60.dp)
-            .padding(horizontal = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Outlined.Check,
-            if (showCheck) stringResource(R.string.goal_reached) else null,
-            Modifier.size(20.dp).drawWithContent {
-                clipRect(right = size.width * check.value) { this@drawWithContent.drawContent() }
-            },
-            tint = colors.onMint,
-        )
-        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
-            Text(goal.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = colors.ink)
-            Text(stringResource(R.string.goal_balance, goal.savedAmount), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+    Row(Modifier.fillMaxWidth().padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = stringResource(R.string.history), onClick = onOpen)
+                .heightIn(min = 60.dp).padding(start = 14.dp, end = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.Check, if (showCheck) stringResource(R.string.goal_reached) else null,
+                Modifier.size(20.dp).drawWithContent {
+                    clipRect(right = size.width * check.value) { this@drawWithContent.drawContent() }
+                }, tint = colors.onMint,
+            )
+            Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                Text(goal.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = colors.ink)
+                Text(stringResource(R.string.goal_balance, goal.savedAmount), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+            }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
         }
         if (showCheck) GoalDeleteButton(goalName = goal.name, onDelete = onDelete)
         else Spacer(Modifier.size(48.dp))
-        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
     }
 }
 

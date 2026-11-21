@@ -86,8 +86,8 @@ import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.debtbook.goal.create.model.SavedSumError
 import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
-import org.orbitmvi.orbit.compose.collectAsState
 import java.util.Date
+import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
 internal fun CreateGoalsScreen(vm: CreateGoalsViewModel, hostInsets: PaddingValues) {
@@ -128,6 +128,7 @@ internal fun CreateGoalsContent(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             BubbleTopBar(
+                floatingTitle = true,
                 title = title,
                 onBack = { onAction(CreateGoalsAction.BackClick) },
                 hostInsets = hostInsets,

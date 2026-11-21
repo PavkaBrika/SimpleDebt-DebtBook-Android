@@ -7,6 +7,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -15,11 +18,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
@@ -34,6 +42,8 @@ import com.breckneck.deptbook.domain.util.LedgerDate
 internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () -> Unit, feedback: () -> Unit,
     saved: (Int, String, String) -> Unit) {
     val context = LocalContext.current
+    val colors = bubbleColors()
+    val haptic = LocalHapticFeedback.current
     val personId = args.getInt("idHuman", -1)
     val debtId = args.getInt("idDebt", -1)
     val previous = args.getString("sum")?.toBigDecimalOrNull()
@@ -63,35 +73,61 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () ->
             PaddingValues(0.dp), backEnabled = !busy)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(true, false).forEach { direction ->
-                    FilterChip(positive == direction, { positive = direction; feedback() },
-                        { Text(stringResource(if (direction) R.string.show_positive else R.string.show_negative)) },
-                        Modifier.weight(1f).testTag(if (direction) "directionPositive" else "directionNegative"),
-                        enabled = !busy && !vm.hasRepayments)
+            Row(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp).selectableGroup()) {
+                for (direction in listOf(true, false)) {
+                    val active = positive == direction
+                    val enabled = !busy && !vm.hasRepayments
+                    Row(Modifier.weight(1f).clip(CircleShape)
+                        .background(if (active) colors.action else colors.fill)
+                        .selectable(active, enabled = enabled, role = Role.Tab) {
+                            if (!active) {
+                                positive = direction
+                                haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            }
+                        }
+                        .testTag(if (direction) "directionPositive" else "directionNegative")
+                        .heightIn(min = 48.dp).padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        val ink = if (active) colors.onAction else colors.muted
+                        Icon(if (direction) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast, null, Modifier.size(16.dp), tint = ink)
+                        Text(stringResource(if (direction) R.string.show_positive else R.string.show_negative),
+                            color = ink, style = MaterialTheme.typography.titleSmall)
+                    }
                 }
             }
             if (vm.hasRepayments) {
                 BubbleGroup { BubbleValueRow(stringResource(R.string.sum), "${amount.text} $currency",
                     Modifier.testTag("lockedAmount")) }
-            } else BubbleAmountField(amount, currency, { error = 0 }, Modifier.testTag("debtSumEditText"), acceptEdits = !busy)
+            } else BubbleAmountField(amount, currency, { error = 0 }, Modifier.testTag("debtSumEditText"), acceptEdits = !busy) {
+                if (personId > 0) Text(currency)
+                else BubbleOutlinedButton({ picker = true }, enabled = !busy) {
+                    Text(currency)
+                    Icon(Icons.Outlined.ExpandMore, stringResource(R.string.select_currency), Modifier.size(16.dp))
+                }
+            }
             BubbleGroup {
                 if (personId > 0) BubbleValueRow(stringResource(R.string.person_name), name.text.toString())
                 else {
-                    BubbleTextFieldRow(Icons.Outlined.Person, stringResource(R.string.person_name), name, "", !busy,
+                    BubbleTextFieldRow(Icons.Outlined.Person, stringResource(R.string.person_name), name, stringResource(R.string.debt_name_hint), !busy,
                         null, { true }, { error = 0 }, Modifier.testTag("humanNameEditText"))
-                    TextButton({
-                        try { contact.launch(null) } catch (_: android.content.ActivityNotFoundException) {
-                            Toast.makeText(context, R.string.no_permission, Toast.LENGTH_SHORT).show()
-                        }
-                    }, enabled = !busy) { Text(stringResource(R.string.contacts)) }
                 }
-                BubbleFieldRow(Icons.Outlined.Payments, stringResource(R.string.goal_currency),
-                    Modifier.clickable(enabled = !busy && personId <= 0) { picker = true }) { Text(currency) }
-                BubbleTextFieldRow(Icons.Outlined.Edit, stringResource(R.string.comment), note, "", !busy, null,
+                HorizontalDivider(color = colors.border)
+                BubbleTextFieldRow(Icons.Outlined.Edit, stringResource(R.string.comment), note, stringResource(R.string.debt_note_hint), !busy, null,
                     { true }, {}, Modifier.testTag("debtInfoEditText"))
-                CreateDebtDates(vm)
+                HorizontalDivider(color = colors.border)
+                DebtEntryDate(vm)
             }
+            if (personId <= 0) TextButton({
+                try { contact.launch(null) } catch (_: android.content.ActivityNotFoundException) {
+                    Toast.makeText(context, R.string.no_permission, Toast.LENGTH_SHORT).show()
+                }
+            }, enabled = !busy) {
+                Icon(Icons.Outlined.Person, null, Modifier.size(16.dp))
+                Text(stringResource(R.string.contacts), Modifier.padding(start = 6.dp))
+            }
+            BubbleSectionTitle(stringResource(R.string.debt_return_section))
+            BubbleGroup { DebtDueFields(vm) }
         }
         if (error != 0 || failed) Text(stringResource(if (error != 0) error else R.string.history_change_failed),
             Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
@@ -112,8 +148,9 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () ->
                 vm.saveDebt(personId, debtId, name.text.toString().trim(), if (positive) parsed else -parsed,
                     vm.date.value ?: LedgerDate.today(), note.text.toString())
             }
-        }, Modifier.fillMaxWidth().padding(12.dp).testTag("setFinanceButton"), enabled = !busy && savedId == null) {
-            Text(stringResource(R.string.debt_save))
+        }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("setFinanceButton"), enabled = !busy && savedId == null) {
+            Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
+            Text(stringResource(R.string.debt_save), Modifier.padding(start = 8.dp))
         }
     }
     if (picker) {

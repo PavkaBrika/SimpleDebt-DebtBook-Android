@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.debt.details
 
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.ViewCompat
+import com.breckneck.debtbook.common.launchOnLifecycleStarted
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.*
@@ -89,14 +92,27 @@ class DebtDetailsFragment : Fragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
+                    var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
                     DebtDetailsScreen(vm, requireActivity() as OnButtonClickListener, ::showSortDialog,
-                        ::showDeleteHumanDialog, { showShareDialog(vm.humanName.value, vm.humanCurrency) })
-                    DebtSheets()
+                        ::showDeleteHumanDialog, { showShareDialog(vm.humanName.value, vm.humanCurrency) },
+                        onRecord = { id -> initialSheet = DebtSheet.ACTIONS; vm.selectDebtAction(id) },
+                        onDue = { id -> initialSheet = DebtSheet.DUE; vm.selectDebtAction(id) },
+                        onUndo = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
+                    DebtSheets(initialSheet) { initialSheet = DebtSheet.ACTIONS }
                 }
             }
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        launchOnLifecycleStarted {
+            vm.repaymentFeedback.collect { event ->
+                val feedback = when (event) {
+                    RepaymentFeedback.SETTLED -> HapticFeedbackConstantsCompat.CONFIRM
+                    RepaymentFeedback.OVER_LIMIT -> HapticFeedbackConstantsCompat.REJECT
+                }
+                ViewCompat.performHapticFeedback(view, feedback)
+            }
+        }
         if (vm.isSortDialogShown.value == true) showSortDialog()
         if (vm.isHumanDeleteDialogShown.value == true) showDeleteHumanDialog()
         if (vm.isShareDialogShown.value == true) showShareDialog(vm.humanName.value, vm.humanCurrency)
@@ -144,7 +160,7 @@ class DebtDetailsFragment : Fragment() {
     }
 
     @androidx.compose.runtime.Composable
-    private fun DebtSheets() {
+    private fun DebtSheets(initialSheet: DebtSheet, resetSheet: () -> Unit) {
         val repaymentId by vm.repaymentDebtId.observeAsState()
         val debtId by vm.debtActionId.observeAsState()
         val history by vm.history.observeAsState()
@@ -153,11 +169,11 @@ class DebtDetailsFragment : Fragment() {
         if (debt != null && repaymentId != null) {
             RepaymentSheet(vm, debt)
         } else if (debt != null) key(debt.id) {
-            var sheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
+            var sheet by rememberSaveable { mutableStateOf(initialSheet) }
             val rest = vm.remaining(debt)
             val currency = vm.humanCurrency.orEmpty()
             val hasRepayments = vm.hasRepayments(debt.id)
-            val close = { vm.selectDebtAction(null) }
+            val close = { resetSheet(); vm.selectDebtAction(null) }
             when (sheet) {
                 DebtSheet.ACTIONS -> DebtActionsSheet(
                     debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments,
@@ -189,13 +205,16 @@ class DebtDetailsFragment : Fragment() {
                     val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
                     ConfirmationBottomSheet(
                         title = action,
-                        message = if (repayment) stringResource(R.string.repayment_cancel_confirm,
-                            MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
+                        message = if (repayment) listOfNotNull(
+                            "${MoneyDisplay.formatExact(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
+                            debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) },
+                            stringResource(R.string.repayment_cancel_confirm, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
+                        ).joinToString("\n")
                         else stringResource(R.string.debt_delete_question),
                         confirmText = action,
                         dismissText = stringResource(R.string.cancel),
                         onConfirm = { close(); vm.deleteDebt(debt) },
-                        onDismiss = { sheet = DebtSheet.ACTIONS }
+                        onDismiss = { if (initialSheet == DebtSheet.REMOVE) close() else sheet = DebtSheet.ACTIONS }
                     )
                 }
             }

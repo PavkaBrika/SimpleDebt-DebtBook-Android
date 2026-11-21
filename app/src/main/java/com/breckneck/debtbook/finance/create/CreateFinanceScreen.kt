@@ -4,9 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
@@ -61,7 +64,7 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
             if (amountError != null) Text(amountError, color = colors.danger)
 
             BubbleGroup {
-                BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.date),
+                BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.finance_entry_date),
                     Modifier.clickable(enabled = enabled, role = Role.Button) { focus.clearFocus(); calendar = true }) {
                     Text(LedgerDate.display(day))
                 }
@@ -79,10 +82,13 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
                                 vm.categoryId.value = category.id
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
                             } },
-                            { Text(category.localizedName()) }, enabled = enabled, leadingIcon = { CategoryBadge(category) })
+                            { Text(category.localizedName()) }, enabled = enabled, shape = CircleShape,
+                            colors = FilterChipDefaults.filterChipColors(containerColor = colors.paper, selectedContainerColor = colors.mint),
+                            leadingIcon = { CategoryBadge(category, Modifier.size(23.dp)) })
                     }
                     AssistChip({ focus.clearFocus(); host.onAddCategoryButtonClick(direction) },
-                        { Text(stringResource(R.string.create_new_category)) }, enabled = enabled)
+                        { Text(stringResource(R.string.create_new_category)) }, enabled = enabled, shape = CircleShape,
+                        leadingIcon = { Icon(Icons.Outlined.Add, null, Modifier.size(16.dp)) })
                 }
                 if (attempted && selected == null) Text(stringResource(R.string.you_must_select_category), color = colors.danger)
                 if (selected != null) TextButton({ confirmDelete = true }, enabled = enabled) {
@@ -96,7 +102,8 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
         }
         BubbleButton({ attempted = true; focus.clearFocus(); vm.save() },
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), enabled = enabled) {
-            Text(stringResource(R.string.finance_save_entry))
+            Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
+            Text(stringResource(R.string.finance_save_entry), Modifier.padding(start = 8.dp))
         }
     }
     if (calendar) FinanceDatePicker(day, onSelect = { vm.day.value = it; calendar = false }, onDismiss = { calendar = false })

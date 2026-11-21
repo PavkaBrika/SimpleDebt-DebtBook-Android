@@ -13,4 +13,15 @@
     <string name="debt_manage">Управление</string>
     <string name="debt_repay">Учесть возврат</string>
     <string name="debt_future_time">Выберите будущее время для напоминания.</string>
+    <string name="debt_empty_search">Никого не нашли. Попробуйте другое имя.</string>
+    <string name="debt_person_balance">Баланс с человеком</string>
+    <string name="debt_tomorrow">Срок завтра</string>
+    <string name="debt_share_short">Поделиться</string>
+    <string name="debt_return_section">Возврат</string>
+    <string name="debt_name_hint">Имя или название</string>
+    <string name="debt_note_hint">На что одолжили</string>
+    <string name="debt_record_actions">Действия с записью</string>
+    <string name="debt_record_remaining">Остаток по записи</string>
+    <string name="debt_after_repayment">После возврата останется %1$s</string>
+    <string name="debt_out_of">из %1$s</string>
 </resources>

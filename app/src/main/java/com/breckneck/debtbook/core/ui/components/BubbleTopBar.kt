@@ -28,8 +28,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -45,6 +45,8 @@ internal fun BubbleTopBar(
     hostInsets: PaddingValues,
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
+    floatingTitle: Boolean = false,
+    leadingTitle: (@Composable () -> Unit)? = null,
     action: @Composable (Dp) -> Unit = { Spacer(Modifier.size(it)) },
 ) {
     val colors = bubbleColors()
@@ -79,14 +81,16 @@ internal fun BubbleTopBar(
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Box(
+            Row(
                 modifier = Modifier.height(bubbleHeight)
-                    .background(colors.headerBubble, CircleShape)
-                    .border(1.dp, colors.border, CircleShape)
+                    .then(if (floatingTitle) Modifier.background(colors.headerBubble, CircleShape)
+                        .border(1.dp, colors.border, CircleShape) else Modifier)
                     .semantics(mergeDescendants = true) { heading() }
-                    .padding(horizontal = 14.dp),
-                contentAlignment = Alignment.Center,
+                    .padding(horizontal = if (floatingTitle) 14.dp else 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                leadingTitle?.invoke()
                 Text(
                     title,
                     color = colors.ink,

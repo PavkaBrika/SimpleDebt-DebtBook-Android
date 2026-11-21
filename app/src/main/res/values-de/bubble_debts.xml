@@ -13,4 +13,15 @@
     <string name="debt_manage">Person verwalten</string>
     <string name="debt_repay">Rückzahlung erfassen</string>
     <string name="debt_future_time">Wähle eine zukünftige Erinnerungszeit.</string>
+    <string name="debt_empty_search">Niemand gefunden. Versuche einen anderen Namen.</string>
+    <string name="debt_person_balance">Saldo mit dieser Person</string>
+    <string name="debt_tomorrow">Morgen fällig</string>
+    <string name="debt_share_short">Teilen</string>
+    <string name="debt_return_section">Rückzahlung</string>
+    <string name="debt_name_hint">Name oder Firma</string>
+    <string name="debt_note_hint">Wofür war das Geld?</string>
+    <string name="debt_record_actions">Buchungsaktionen</string>
+    <string name="debt_record_remaining">Restbetrag dieser Schuld</string>
+    <string name="debt_after_repayment">Nach der Rückzahlung verbleiben %1$s</string>
+    <string name="debt_out_of">von %1$s</string>
 </resources>

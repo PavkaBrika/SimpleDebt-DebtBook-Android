@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -60,16 +61,19 @@ internal fun SettingsScreen(
             BubbleGroup {
                 for ((label, code) in listOf(R.string.first_main_currency to first, R.string.second_main_currency to second,
                     R.string.default_currency to default)) {
-                    SettingsRow(stringResource(label), currency.firstOrNull { it.substringAfterLast(' ') == code } ?: code) { sheet = label }
+                    SettingsRow(stringResource(label), value = code) { sheet = label }
+                    HorizontalDivider(color = colors.border)
                 }
-                SettingsRow(stringResource(R.string.app_theme), theme.ifEmpty { themes.first() }) { sheet = R.string.app_theme }
-                SettingsRow(stringResource(R.string.more_detailed_share_text), stringResource(R.string.detailed_share_text_hint),
+                SettingsRow(stringResource(R.string.app_theme), value = theme.ifEmpty { themes.first() }) { sheet = R.string.app_theme }
+                HorizontalDivider(color = colors.border)
+                SettingsRow(stringResource(R.string.more_detailed_share_text),
                     checked = share) { vm.setSumInShareText(!share) }
             }
             BubbleSectionTitle(stringResource(R.string.settings_data_security))
             BubbleGroup {
-                SettingsRow(stringResource(R.string.synchronization), onClick = host::onAuthorizationButtonClick)
-                SettingsRow(stringResource(R.string.pin_code_lock), stringResource(if (locked) R.string.pin_on else R.string.pin_off)) {
+                SettingsRow(stringResource(R.string.synchronization), value = stringResource(R.string.backup_formats), onClick = host::onAuthorizationButtonClick)
+                HorizontalDivider(color = colors.border)
+                SettingsRow(stringResource(R.string.pin_code_lock), value = stringResource(if (locked) R.string.pin_on else R.string.pin_off)) {
                     sheet = R.string.pin_code_lock
                 }
             }
@@ -77,9 +81,11 @@ internal fun SettingsScreen(
             BubbleGroup {
                 SettingsRow(stringResource(R.string.rate_app), onClick = host::onRateAppButtonClick)
                 for (label in listOf(R.string.write_email_to_developer, R.string.support_us, R.string.privacy_policy)) {
+                    HorizontalDivider(color = colors.border)
                     SettingsRow(stringResource(label)) { onExternal(label) }
                 }
-                SettingsRow(stringResource(R.string.app_version), BuildConfig.VERSION_NAME)
+                HorizontalDivider(color = colors.border)
+                SettingsRow(stringResource(R.string.app_version), value = BuildConfig.VERSION_NAME)
             }
         }
         BubbleBottomBar(R.id.settingsFragment, host::onTabSelected)

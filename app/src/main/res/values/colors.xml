@@ -27,4 +27,5 @@
     <color name="green">#59CB72</color>
     <color name="red">#E25D56</color>
     <color name="yellow">#e4cb23</color>
+    <color name="bubble_window_background">#F6F7EF</color>
 </resources>

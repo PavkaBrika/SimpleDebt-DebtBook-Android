@@ -1,6 +1,4 @@
 <resources>
-    <string name="backup_export_hint">Выберите папку и сохраните файл с записями и фото целей.</string>
-    <string name="backup_import_hint">Выберите сохранённый файл. Перед заменой записей можно проверить копию.</string>
     <string name="backup_undo_hint">Вернуть записи, которые были до последнего восстановления на этом телефоне.</string>
     <string name="backup_confirm_restore">Заменить записи</string>
     <string name="backup_confirm_restore_title">Восстановить эту копию?</string>
@@ -19,6 +17,5 @@
     <string name="backup_drive_connecting">Подключаемся к Google Drive…</string>
     <string name="backup_drive_retry">Повторить подключение</string>
     <string name="backup_drive_connection_failed">Не удалось подключиться. Нажмите, чтобы попробовать снова.</string>
-    <string name="backup_drive_save_hint">Обновить копию записями с этого телефона. Перед сохранением будет подтверждение.</string>
     <string name="backup_back_to_copies">К списку копий</string>
 </resources>

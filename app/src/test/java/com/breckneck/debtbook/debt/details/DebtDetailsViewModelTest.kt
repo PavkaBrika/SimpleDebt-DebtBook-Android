@@ -112,7 +112,7 @@ class DebtDetailsViewModelTest {
     @Test fun `repeated repayment tap submits one request while write is pending`() {
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
-        doAnswer { started.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)); Unit }
+        doAnswer { started.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)); false }
             .whenever(recordRepayment).execute(any(), any(), any(), any(), any())
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))
         model.screenState.await { it == DebtDetailsState.SUCCESS }

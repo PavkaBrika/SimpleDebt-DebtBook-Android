@@ -19,4 +19,10 @@
     <string name="finance_delete_entry">Supprimer l’opération</string>
     <string name="finance_delete_entry_message">Le total de la catégorie sera recalculé.</string>
     <string name="finance_edit_named">Modifier l’opération · %1$s</string>
+    <string name="finance_share_of_total">%1$d%% du total</string>
+    <string name="finance_icon_set">Groupe d’icônes</string>
+    <string name="finance_period">Période</string>
+    <string name="finance_period_day">Date de la période</string>
+    <string name="finance_apply_period">Afficher</string>
+    <string name="finance_entry_date">Date de l’opération</string>
 </resources>

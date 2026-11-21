@@ -1,19 +1,22 @@
 package com.breckneck.debtbook.finance.main
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
@@ -29,8 +33,8 @@ import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.finance.*
-import com.breckneck.deptbook.domain.util.*
 import com.breckneck.deptbook.domain.model.FinanceCategory
+import com.breckneck.deptbook.domain.util.*
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -56,45 +60,53 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
     val period = state.period
     Column(Modifier.fillMaxSize().background(colors.background)) {
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            verticalArrangement = Arrangement.Top) {
             item {
                 Text(stringResource(R.string.finances), color = colors.ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             }
-            item { FinanceDirection(state.direction, selectDirection) }
+            item { Box(Modifier.padding(vertical = 8.dp)) { FinanceDirection(state.direction, selectDirection) } }
             item {
                 BubbleBalanceCard(direction, state.currency,
                     if (state.loading || state.failed) "…" else state.total.financeMoney(state.currency),
                     onCurrencyClick = { picker = R.string.select_currency }, balanceValue = state.total.takeUnless { state.loading || state.failed }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton({ setPeriod(period.copy(day = period.step(-1))) }) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton({ setPeriod(period.copy(day = period.step(-1))) },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = colors.heroBorder, contentColor = colors.onHero)) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
                         }
                         TextButton({ picker = R.string.select_interval }, Modifier.weight(1f)) {
+                            Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = colors.onHero)
+                            Spacer(Modifier.width(5.dp))
                             AnimatedContent(period, transitionSpec = {
                                 val sign = if (targetState.day < initialState.day) -1 else 1
                                 (slideInHorizontally(tween(180)) { sign * slideDistance } + fadeIn(tween(180))) togetherWith fadeOut(tween(100))
                             }, label = "Period") { Text(it.label(), color = colors.onHero) }
                         }
-                        IconButton({ setPeriod(period.copy(day = period.step(1))) }) {
+                        IconButton({ setPeriod(period.copy(day = period.step(1))) },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = colors.heroBorder, contentColor = colors.onHero)) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
                         }
                     }
                 }
             }
             item {
-                BubbleSectionTitle(stringResource(R.string.finance_categories)) { Text(intervals[period.interval.ordinal], color = colors.muted) }
+                BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) { Text(intervals[period.interval.ordinal], color = colors.muted) }
             }
             when {
                 state.failed -> item { BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) } }
                 state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                state.categories.isEmpty() -> item { Text(stringResource(R.string.finance_empty_period), color = colors.muted) }
-                else -> items(state.categories, key = { it.category.id }) { row ->
-                    BubbleGroup(Modifier.animateItem(fadeInSpec = tween(260))) {
+                state.categories.isEmpty() -> item { Text(stringResource(R.string.finance_empty_period), Modifier.fillMaxWidth().padding(22.dp),
+                    textAlign = TextAlign.Center, color = colors.muted) }
+                else -> itemsIndexed(state.categories, key = { _, row -> row.category.id }) { index, row ->
+                    BubbleGroupedRow(index, state.categories.size, Modifier.animateItem(fadeInSpec = tween(260))) {
                         BubbleListRow(Modifier.clickable { onCategory(row.category) }.padding(12.dp),
                             leading = { CategoryBadge(row.category) },
-                            trailing = { AnimatedAmount(row.amount, row.amount.financeMoney(state.currency)) }) {
+                            trailing = {
+                                AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
+                            }) {
                             Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
-                            Text("${row.percent}%", color = colors.muted)
+                            Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -104,27 +116,50 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
             }
         }
         BubbleButton(onAdd, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-            Text(stringResource(if (expenses) R.string.finance_add_expense else R.string.finance_add_income))
+            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+            Text(stringResource(if (expenses) R.string.finance_add_expense else R.string.finance_add_income), Modifier.padding(start = 8.dp))
         }
         BubbleBottomBar(R.id.financeFragment, onTab)
     }
-    if (picker == R.string.goal_choose_date) {
-        FinanceDatePicker(period.day, onSelect = { setPeriod(period.copy(day = it)); picker = 0 }, onDismiss = { picker = 0 })
-    } else if (picker != 0) {
-        val currencyPicker = picker == R.string.select_currency
-        val options = if (currencyPicker) stringArrayResource(R.array.currencies).toList() else intervals + stringResource(R.string.goal_choose_date)
-        SettingsPickerBottomSheet(stringResource(picker), options,
-            if (currencyPicker) options.indexOfFirst { it.substringAfterLast(' ') == state.currency } else period.interval.ordinal,
-            onItemSelected = {
-                if (!currencyPicker && it == intervals.size) {
-                    picker = R.string.goal_choose_date
-                } else {
-                    if (currencyPicker) setCurrency(options[it].substringAfterLast(' '))
-                    else setPeriod(period.copy(interval = FinanceInterval.entries[it]))
-                    picker = 0
-                }
-            }, onDismiss = { picker = 0 })
+    when (picker) {
+        R.string.select_interval -> PeriodSheet(period, intervals, onApply = { setPeriod(it); picker = 0 }, onDismiss = { picker = 0 })
+        R.string.select_currency -> {
+            val options = stringArrayResource(R.array.currencies).toList()
+            SettingsPickerBottomSheet(stringResource(picker), options,
+                options.indexOfFirst { it.substringAfterLast(' ') == state.currency },
+                onItemSelected = { setCurrency(options[it].substringAfterLast(' ')); picker = 0 }, onDismiss = { picker = 0 })
+        }
     }
+}
+
+@Composable
+private fun PeriodSheet(period: FinancePeriod, intervals: List<String>, onApply: (FinancePeriod) -> Unit, onDismiss: () -> Unit) {
+    var interval by rememberSaveable { mutableStateOf(period.interval) }
+    var day by rememberSaveable { mutableStateOf(period.day) }
+    var calendar by rememberSaveable { mutableStateOf(false) }
+    var choices by remember { mutableStateOf(false) }
+    BubbleBottomSheet(onDismiss) { active, close ->
+        BubbleSheetHeader(stringResource(R.string.finance_period), close, enabled = active)
+        BubbleGroup {
+            Box {
+                BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.select_interval), Modifier.clickable { choices = true },
+                    trailing = { Icon(Icons.Outlined.ExpandMore, null) }) { Text(intervals[interval.ordinal]) }
+                DropdownMenu(choices, { choices = false }) {
+                    intervals.forEachIndexed { index, label ->
+                        DropdownMenuItem({ Text(label) }, { interval = FinanceInterval.entries[index]; choices = false })
+                    }
+                }
+            }
+            HorizontalDivider(color = bubbleColors().border)
+            BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.finance_period_day), Modifier.clickable { calendar = true }) {
+                Text(LedgerDate.display(day))
+            }
+        }
+        BubbleButton({ onApply(FinancePeriod(interval, day)) }, Modifier.fillMaxWidth(), enabled = active) {
+            Text(stringResource(R.string.finance_apply_period))
+        }
+    }
+    if (calendar) FinanceDatePicker(day, onSelect = { day = it; calendar = false }, onDismiss = { calendar = false })
 }
 
 private fun FinancePeriod.label(): String = when (interval) {

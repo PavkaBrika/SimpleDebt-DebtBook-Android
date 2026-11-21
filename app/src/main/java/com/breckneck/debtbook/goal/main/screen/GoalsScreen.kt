@@ -7,20 +7,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Savings
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -28,18 +26,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
-import com.breckneck.debtbook.core.ui.components.EmptyListPlaceholder
+import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.GoalsAction
@@ -74,15 +72,12 @@ private fun GoalsContent(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             Column(Modifier.fillMaxWidth()) {
-                ExtendedFloatingActionButton(
+                BubbleButton(
                     onClick = { onAction(GoalsAction.AddGoalClick) },
-                    modifier = Modifier.align(Alignment.End).padding(start = start, end = end, top = 8.dp, bottom = 6.dp),
-                    shape = CircleShape,
-                    containerColor = colors.action,
-                    contentColor = colors.onAction,
+                    modifier = Modifier.fillMaxWidth().padding(start = start, end = end, top = 5.dp, bottom = 5.dp),
                 ) {
-                    Icon(Icons.Outlined.Add, null)
-                    Text(stringResource(R.string.goal_new), Modifier.padding(start = 12.dp))
+                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                    Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))
                 }
                 Column(
                     Modifier.fillMaxWidth().background(
@@ -132,11 +127,8 @@ private fun GoalsContent(
                 when (state.listState) {
                     ListState.LOADING -> if (!state.loadFailed) item { ShimmerListPlaceholder(rowCount = 2, rowHeight = 156.dp) }
                     ListState.EMPTY -> if (!state.loadFailed) item(key = "empty-goals") {
-                        EmptyListPlaceholder(
-                            stringResource(R.string.goal_empty_list),
-                            Icons.Outlined.Savings,
-                            modifier = Modifier.animateItem(),
-                        )
+                        Text(stringResource(R.string.goal_empty_list), Modifier.fillMaxWidth().animateItem().padding(22.dp),
+                            color = colors.muted, textAlign = TextAlign.Center)
                     }
                     ListState.RECEIVED -> items(state.goalList, key = { it.goalId }) { goal ->
                         GoalItem(

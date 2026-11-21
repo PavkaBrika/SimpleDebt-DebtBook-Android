@@ -44,6 +44,7 @@ data class GoalMovement(val id: Int, val amount: String, val date: String, val t
 sealed interface GoalDetailsEffect {
     data class Edit(val goal: Goal) : GoalDetailsEffect
     data class BalanceChanged(val goal: Goal) : GoalDetailsEffect
+    data object WithdrawalRejected : GoalDetailsEffect
     data object Deleted : GoalDetailsEffect
 }
 
@@ -108,6 +109,7 @@ class GoalDetailsViewModel @Inject constructor(
             else -> null
         }
         if (error != null) {
+            if (error == GoalAdjustment.Error.EXCEEDS_BALANCE) postSideEffect(GoalDetailsEffect.WithdrawalRejected)
             reduce { state.copy(adjustment = adjustment.copy(error = error)) }
             return@intent
         }

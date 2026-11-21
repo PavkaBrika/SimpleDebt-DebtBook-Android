@@ -2,42 +2,42 @@ package com.breckneck.debtbook.finance
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.ui.platform.LocalConfiguration
-import com.breckneck.deptbook.domain.util.LedgerDate
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
-import java.math.BigDecimal
-import java.util.Currency
-import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.finance.util.GetFinanceCategoryNameInLocalLanguage
 import com.breckneck.deptbook.domain.model.FinanceCategory
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
+import com.breckneck.deptbook.domain.util.LedgerDate
+import com.breckneck.deptbook.domain.util.MoneyDisplay
+import java.math.BigDecimal
+import java.util.Currency
 
 @Composable
 internal fun FinanceDirection(selected: FinanceCategoryState, select: (FinanceCategoryState) -> Unit) {
     val colors = bubbleColors()
     val haptic = LocalHapticFeedback.current
     val directions = listOf(FinanceCategoryState.EXPENSE, FinanceCategoryState.INCOME)
-    BoxWithConstraints(Modifier.fillMaxWidth().clip(CircleShape).background(colors.paper).padding(3.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp)) {
         val width = maxWidth / directions.size
         val offset by animateDpAsState(width * directions.indexOf(selected), tween(200), label = "Direction")
         Box(Modifier.matchParentSize()) {
@@ -66,8 +66,8 @@ internal fun FinanceDirection(selected: FinanceCategoryState, select: (FinanceCa
 internal fun FinanceCategory.localizedName() = GetFinanceCategoryNameInLocalLanguage().execute(name, state, LocalContext.current)
 
 @Composable
-internal fun CategoryBadge(category: FinanceCategory) {
-    Box(Modifier.size(34.dp).background(Color(category.color.toColorInt()), CircleShape), contentAlignment = Alignment.Center) {
+internal fun CategoryBadge(category: FinanceCategory, modifier: Modifier = Modifier) {
+    Box(modifier.size(38.dp).background(Color(category.color.toColorInt()), CircleShape), contentAlignment = Alignment.Center) {
         Text(String(Character.toChars(category.image)), color = Color.Black)
     }
 }

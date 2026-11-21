@@ -122,6 +122,7 @@ class GoalsViewModel @Inject constructor(
             return@intent
         }
         val updated = goal.copy(savedSum = goal.savedSum + amount)
+        if (goal.savedSum < goal.sum && updated.savedSum >= goal.sum) postSideEffect(GoalsSideEffect.GoalReached)
         domainGoals = domainGoals.map { if (it.id == updated.id) updated else it }
         reduce { state.copy(adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null)) }
     }

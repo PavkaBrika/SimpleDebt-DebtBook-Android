@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -81,13 +81,14 @@ internal fun BubbleBalanceCard(
                     }
                 }
                 val balanceStyle = MaterialTheme.typography.displaySmall.copy(
+                    fontSize = if (largeText) 36.sp else 42.sp, lineHeight = if (largeText) 40.sp else 47.sp,
                     fontFeatureSettings = "tnum", letterSpacing = (-1.2).sp, fontWeight = FontWeight.SemiBold,
                 )
                 val balanceModifier = Modifier.padding(end = if (drawCoins) 70.dp else 0.dp)
                 if (balanceValue == null) Text(balance, balanceModifier, style = balanceStyle)
                 else AnimatedAmount(balanceValue, balance, balanceModifier, balanceStyle)
                 if (footer != null) {
-                    Spacer(Modifier.height(spacing.space4))
+                    HorizontalDivider(color = colors.heroBorder)
                     footer(largeText)
                 }
             }

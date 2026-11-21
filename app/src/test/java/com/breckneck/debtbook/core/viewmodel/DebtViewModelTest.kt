@@ -32,6 +32,7 @@ class DebtViewModelTest {
     private val getAllDebts = Mockito.mock(GetAllDebts::class.java)
     private val getAllHumansUseCase = Mockito.mock(GetAllHumansUseCase::class.java)
     private val getFirstMainCurrency = Mockito.mock(GetFirstMainCurrency::class.java)
+    private val getSecondMainCurrency = Mockito.mock(com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency::class.java)
     private val updateHuman = Mockito.mock(UpdateHuman::class.java)
     private val setHumanOrder = Mockito.mock(SetHumanOrder::class.java)
     private val getHumanOrder = Mockito.mock(GetHumanOrder::class.java)
@@ -42,6 +43,7 @@ class DebtViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         whenever(getHumanOrder.execute()).thenReturn(Pair(HumanOrderAttribute.Sum, true))
+        whenever(getSecondMainCurrency.execute()).thenReturn("EUR")
         whenever(getFirstMainCurrency.execute()).thenReturn("$")
         whenever(getAllHumansUseCase.execute()).thenReturn(emptyList())
         whenever(getAllDebts.execute()).thenReturn(emptyList())
@@ -53,6 +55,7 @@ class DebtViewModelTest {
             },
             getAllHumansUseCase = getAllHumansUseCase,
             getFirstMainCurrency = getFirstMainCurrency,
+            getSecondMainCurrency = getSecondMainCurrency,
             getHumanOrder = getHumanOrder,
             setHumanOrder = setHumanOrder,
             updateHuman = updateHuman

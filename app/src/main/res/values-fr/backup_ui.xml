@@ -1,6 +1,4 @@
 <resources>
-    <string name="backup_export_hint">Choisissez un dossier et enregistrez un fichier avec vos données et photos des objectifs.</string>
-    <string name="backup_import_hint">Choisissez un fichier enregistré. Vous pourrez vérifier la copie avant de remplacer les données.</string>
     <string name="backup_undo_hint">Retrouver les données présentes avant la dernière restauration sur ce téléphone.</string>
     <string name="backup_confirm_restore">Remplacer les données</string>
     <string name="backup_confirm_restore_title">Restaurer cette sauvegarde ?</string>
@@ -19,6 +17,5 @@
     <string name="backup_drive_connecting">Connexion à Google Drive…</string>
     <string name="backup_drive_retry">Réessayer la connexion</string>
     <string name="backup_drive_connection_failed">Connexion impossible. Appuyez pour réessayer.</string>
-    <string name="backup_drive_save_hint">Mettre à jour la copie avec les données de ce téléphone. Une confirmation sera demandée.</string>
     <string name="backup_back_to_copies">Retour aux copies</string>
 </resources>

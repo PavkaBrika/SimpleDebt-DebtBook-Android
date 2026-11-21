@@ -67,6 +67,7 @@ internal fun BackupScreen(
             BubbleSectionTitle(stringResource(R.string.backup_local_title))
             BubbleGroup {
                 SettingsRow(stringResource(R.string.backup_export_file), enabled = enabled, onClick = onExport)
+                androidx.compose.material3.HorizontalDivider(color = colors.border)
                 SettingsRow(stringResource(R.string.backup_import_file), enabled = enabled, onClick = onImport)
                 if (hasPrevious) SettingsRow(stringResource(R.string.backup_restore_previous_local),
                     stringResource(R.string.backup_undo_hint), enabled, onClick = vm::restorePreviousLocalBackup)

@@ -1,8 +1,8 @@
 package com.breckneck.debtbook.debt.reminders
 
-import com.breckneck.debtbook.debt.awaitTag
-import androidx.compose.ui.test.*
 import android.text.format.DateFormat
+import androidx.compose.material3.R as MaterialR
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -13,10 +13,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import com.breckneck.debtbook.core.MainActivity
-import java.text.SimpleDateFormat
+import com.breckneck.debtbook.debt.awaitTag
 import com.breckneck.deptbook.domain.util.LedgerDate
+import java.text.SimpleDateFormat
 import java.util.GregorianCalendar
-import androidx.compose.material3.R as MaterialR
 
 internal fun ActivityScenario<MainActivity>.screenString(id: Int): String {
     var value = ""
@@ -25,9 +25,10 @@ internal fun ActivityScenario<MainActivity>.screenString(id: Int): String {
 }
 
 internal fun ComposeTestRule.enterDebtDate(scenario: ActivityScenario<MainActivity>, date: String) {
-    val inputMode = onNodeWithContentDescription(scenario.screenString(MaterialR.string.m3c_date_picker_switch_to_input_mode))
+    val inputMode = hasContentDescription(scenario.screenString(MaterialR.string.m3c_date_picker_switch_to_input_mode))
     val dateInput = hasSetTextAction() and hasAnyAncestor(hasTestTag("dueDatePicker"))
-    if (onAllNodes(dateInput).fetchSemanticsNodes(atLeastOneRootRequired = false).isEmpty()) inputMode.performClick()
+    waitUntil(5_000) { onAllNodes(dateInput or inputMode).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
+    if (onAllNodes(dateInput).fetchSemanticsNodes().isEmpty()) onNode(inputMode).performClick()
     var input = ""
     scenario.onActivity { activity ->
         val locale = androidx.core.os.ConfigurationCompat.getLocales(activity.resources.configuration)[0]!!

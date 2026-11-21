@@ -19,4 +19,10 @@
     <string name="finance_delete_entry">Buchung löschen</string>
     <string name="finance_delete_entry_message">Die Kategoriesumme wird neu berechnet.</string>
     <string name="finance_edit_named">Buchung bearbeiten · %1$s</string>
+    <string name="finance_share_of_total">%1$d%% der Summe</string>
+    <string name="finance_icon_set">Symbolgruppe</string>
+    <string name="finance_period">Zeitraum</string>
+    <string name="finance_period_day">Datum im Zeitraum</string>
+    <string name="finance_apply_period">Anzeigen</string>
+    <string name="finance_entry_date">Buchungsdatum</string>
 </resources>

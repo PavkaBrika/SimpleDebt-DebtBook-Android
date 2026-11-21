@@ -1,8 +1,11 @@
 package com.breckneck.debtbook.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -14,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.core.ui.components.BubbleListRow
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -24,6 +29,7 @@ internal fun SettingsRow(
     detail: String? = null,
     enabled: Boolean = true,
     checked: Boolean? = null,
+    value: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val action = when {
@@ -31,15 +37,20 @@ internal fun SettingsRow(
         checked != null -> Modifier.toggleable(checked, enabled, Role.Switch) { onClick() }
         else -> Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
     }
-    BubbleListRow(
-        modifier = action.alpha(if (enabled) 1f else .55f)
-            .heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 10.dp),
-        trailing = {
-            if (checked != null) Switch(checked, onCheckedChange = null, enabled = enabled)
-            else if (onClick != null) Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = bubbleColors().muted)
-        },
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
-        if (!detail.isNullOrBlank()) Text(detail, style = MaterialTheme.typography.bodyMedium, color = bubbleColors().muted)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val valueWidth = maxWidth * .36f
+        BubbleListRow(
+            modifier = action.alpha(if (enabled) 1f else .55f)
+                .heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+            trailing = {
+                if (value != null) Text(value, Modifier.widthIn(max = valueWidth), color = bubbleColors().muted,
+                    style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End)
+                if (checked != null) Switch(checked, onCheckedChange = null, enabled = enabled)
+                else if (onClick != null) Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = bubbleColors().muted)
+            },
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            if (!detail.isNullOrBlank()) Text(detail, style = MaterialTheme.typography.bodyMedium, color = bubbleColors().muted)
+        }
     }
 }

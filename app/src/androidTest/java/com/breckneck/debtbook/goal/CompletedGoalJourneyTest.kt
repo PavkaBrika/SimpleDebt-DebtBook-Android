@@ -164,7 +164,7 @@ class CompletedGoalJourneyTest {
         trash("Other goal").assertIsDisplayed()
     }
 
-    @Test fun completedRowOpensHistoryPastTheDeleteButtonAndKeepsDeletionSeparate() {
+    @Test fun completedRowOpensHistoryAndKeepsTheTrailingDeleteButtonSeparate() {
         val name = "Completed trip"
         val id = seed(name, "100", "100", "EUR")
         openGoals(name)
@@ -173,8 +173,8 @@ class CompletedGoalJourneyTest {
         val delete = trash(name)
         val rowBounds = row.fetchSemanticsNode().boundsInRoot
         val deleteBounds = delete.fetchSemanticsNode().boundsInRoot
-        assertTrue(rowBounds.contains(deleteBounds.center))
-        assertTrue("Leave room for the trailing arrow", rowBounds.right - deleteBounds.right >= with(compose.density) { 16.dp.toPx() })
+        assertTrue("History and delete have separate hit targets", rowBounds.right <= deleteBounds.left)
+        assertTrue("Delete remains at least 48 dp wide", deleteBounds.width >= with(compose.density) { 48.dp.toPx() })
 
         row.performTouchInput { click(Offset(right - 22.dp.toPx(), centerY)) }
         awaitDestination(R.id.goalDetailsFragment)

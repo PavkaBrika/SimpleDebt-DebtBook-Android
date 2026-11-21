@@ -7,4 +7,5 @@
     <string name="backup_local_title">Копия в файл</string>
     <string name="settings_rating">Оценить на %1$d из 5</string>
     <string name="settings_no_handler">Нет приложения для этого действия.</string>
+    <string name="backup_formats">Файл / Drive</string>
 </resources>

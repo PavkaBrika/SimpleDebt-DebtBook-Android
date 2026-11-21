@@ -34,7 +34,7 @@ class DriveBackupScreenTest {
     @get:Rule val compose = createEmptyComposeRule()
     private fun action(id: Int): SemanticsNodeInteraction {
         val matcher = hasText(context.getString(id)) and hasClickAction()
-        compose.waitUntil(10_000) { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { compose.onAllNodes(matcher).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         return compose.onNode(matcher)
     }
     private fun sheetScroll() = compose.onNode(

@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.details
 
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import java.math.BigDecimal
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.lifecycle.LiveData
@@ -34,6 +36,8 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 enum class DebtDetailsState { LOADING, SUCCESS, EMPTY, ERROR }
+enum class RepaymentFeedback { SETTLED, OVER_LIMIT }
+
 enum class RepaymentError { INVALID_AMOUNT, EXCEEDS_REMAINING, SAVE_FAILED }
 
 @HiltViewModel
@@ -123,6 +127,8 @@ class DebtDetailsViewModel @Inject constructor(
     val repaymentDebtId = savedStateHandle.getLiveData<Int?>("repaymentDebtId", null)
     val repaymentAmount = savedStateHandle.getLiveData("repaymentAmount", "")
     val repaymentError = MutableLiveData<RepaymentError?>(null)
+    private val feedback = MutableSharedFlow<RepaymentFeedback>(extraBufferCapacity = 1)
+    val repaymentFeedback = feedback.asSharedFlow()
     val repaymentRemaining = MutableLiveData<BigDecimal>()
 
     fun originalDebt(id: Int): DebtDomain? = _loans.value?.let { history ->
@@ -170,6 +176,7 @@ class DebtDetailsViewModel @Inject constructor(
             return
         }
         if (amount > rest) {
+            feedback.tryEmit(RepaymentFeedback.OVER_LIMIT)
             repaymentError.value = RepaymentError.EXCEEDS_REMAINING
             return
         }
@@ -180,12 +187,14 @@ class DebtDetailsViewModel @Inject constructor(
         viewModelScope.launch {
             var saved = false
             try {
-                withContext(Dispatchers.IO) { recordRepayment.execute(debt.id, debt.idHuman, amount, day, request) }
+                val settled = withContext(Dispatchers.IO) { recordRepayment.execute(debt.id, debt.idHuman, amount, day, request) }
+                if (settled) feedback.tryEmit(RepaymentFeedback.SETTLED)
                 saved = true
                 _debtDeleted.value = Unit
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (exceeded: RepaymentExceedsRemaining) {
+                feedback.tryEmit(RepaymentFeedback.OVER_LIMIT)
                 repaymentRemaining.value = exceeded.remaining
                 repaymentError.value = RepaymentError.EXCEEDS_REMAINING
             } catch (_: Exception) {

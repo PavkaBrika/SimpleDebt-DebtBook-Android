@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.details
 
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.ViewCompat
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -50,8 +52,11 @@ class GoalDetailsFragment : Fragment() {
             vm.container.sideEffectFlow.collect { effect ->
                 when (effect) {
                     is GoalDetailsEffect.Edit -> (activity as? OnClickListener)?.onEditGoalButtonClick(effect.goal)
-                    is GoalDetailsEffect.BalanceChanged ->
+                    GoalDetailsEffect.WithdrawalRejected -> ViewCompat.performHapticFeedback(view, HapticFeedbackConstantsCompat.REJECT)
+                    is GoalDetailsEffect.BalanceChanged -> {
+                        if (effect.goal.savedSum >= effect.goal.sum) ViewCompat.performHapticFeedback(view, HapticFeedbackConstantsCompat.CONFIRM)
                         setFragmentResult("goalsFragmentKey", bundleOf("isListModified" to true, "goal" to effect.goal))
+                    }
                     GoalDetailsEffect.Deleted -> {
                         setFragmentResult("goalsFragmentKey", bundleOf("isListModified" to true))
                         (activity as? OnClickListener)?.onBackButtonClick()

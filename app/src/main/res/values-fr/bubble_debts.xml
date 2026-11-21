@@ -13,4 +13,15 @@
     <string name="debt_manage">Gérer la personne</string>
     <string name="debt_repay">Enregistrer un remboursement</string>
     <string name="debt_future_time">Choisissez une heure de rappel à venir.</string>
+    <string name="debt_empty_search">Aucun résultat. Essayez un autre nom.</string>
+    <string name="debt_person_balance">Solde avec cette personne</string>
+    <string name="debt_tomorrow">Échéance demain</string>
+    <string name="debt_share_short">Partager</string>
+    <string name="debt_return_section">Remboursement</string>
+    <string name="debt_name_hint">Nom ou entreprise</string>
+    <string name="debt_note_hint">Motif du prêt</string>
+    <string name="debt_record_actions">Actions sur l’écriture</string>
+    <string name="debt_record_remaining">Reste sur cette dette</string>
+    <string name="debt_after_repayment">Après le remboursement, il restera %1$s</string>
+    <string name="debt_out_of">sur %1$s</string>
 </resources>

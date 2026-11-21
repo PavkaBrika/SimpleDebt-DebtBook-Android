@@ -178,7 +178,6 @@ class SettledDebtJourneyTest {
         checkClosedHistory()
         val (first, last) = repayments()
         compose.record(last.id).performClick()
-        compose.onNodeWithTag("deleteButton").performClick()
         compose.onNode(hasText(screen.screenString(R.string.repayment_cancel)) and hasClickAction()).performClick()
         await { records().single { it.id == last.id }.cancelled }
         awaitRows()
@@ -277,10 +276,18 @@ class SettledDebtJourneyTest {
 
     private fun checkRow(debt: Debt, title: Int) {
         val formatted = MoneyDisplay.format(debt.sum, "RUB")
-        compose.record(debt.id).assertTextContains((if (debt.sum.signum() > 0) "+" else "") + formatted + "\u00a0₽")
+        val displayed = if (debt.repaymentOfId == null && debt.sum.signum() != 0)
+            screen.screenString(R.string.debt_out_of).format(MoneyDisplay.format(debt.sum.abs(), "RUB") + "\u00a0₽")
+        else (if (debt.sum.signum() > 0) "+" else "") + formatted + "\u00a0₽"
+        compose.record(debt.id).assertTextContains(displayed)
             .assertTextContains(screen.screenString(title)).performClick()
         val line = "${MoneyDisplay.format(debt.sum.abs(), "RUB")} RUB · ${LedgerDate.display(debt.date)}"
-        compose.onNodeWithText(line).assertIsDisplayed()
-        compose.onNodeWithTag("debtActionsCancel").performClick()
+        if (debt.repaymentOfId != null && !debt.cancelled) {
+            compose.onNodeWithText(line, substring = true).assertIsDisplayed()
+            compose.onNode(hasClickAction() and hasText(screen.screenString(R.string.cancel))).performClick()
+        } else {
+            compose.onNodeWithText(line).assertIsDisplayed()
+            compose.onNodeWithTag("debtActionsCancel").performClick()
+        }
     }
 }

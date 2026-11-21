@@ -77,6 +77,7 @@ class FinanceFlowTest {
         input(R.string.comment, note)
         act(R.string.create_new_category)
         node(hasSetTextAction() and hasText(str(R.string.name))).performTextReplacement(books)
+        act(R.string.finance_icon_set)
         act(R.string.emoji_tab_education)
         act("📚")
         compose.onNodeWithContentDescription(context.getString(R.string.finance_color, 10)).performScrollTo().performClick()
@@ -241,8 +242,8 @@ class FinanceFlowTest {
         // The compact date picker uses the device's numeric date order.
         val day = LedgerDate.today()
         act(LedgerDate.display(day))
-        act(R.string.goal_choose_date)
-        compose.waitUntil(8000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isNotEmpty() }
+        act(R.string.finance_period_day)
+        compose.waitUntil(8000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         if (compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isEmpty()) {
             compose.onNodeWithContentDescription(str(androidx.compose.material3.R.string.m3c_date_picker_switch_to_input_mode)).performClick()
         }
@@ -253,9 +254,12 @@ class FinanceFlowTest {
         }
         field.performTextReplacement(digits)
         act(str(android.R.string.ok))
+        act(R.string.finance_apply_period)
         val january = LedgerDate.fromDate(date)
         act(LedgerDate.display(january))
+        act(R.string.select_interval)
         act(R.string.month)
+        act(R.string.finance_apply_period)
         desc(R.string.finance_next)
         total("0")
         act(R.string.finance_add_expense)
@@ -342,7 +346,7 @@ class FinanceFlowTest {
 
     private fun str(id: Int) = context.getString(id)
     private fun node(match: SemanticsMatcher): SemanticsNodeInteraction {
-        compose.waitUntil(20000) { compose.onAllNodes(match).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(20000) { compose.onAllNodes(match).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         return compose.onNode(match)
     }
     private fun awaitText(text: String) { node(hasText(text)) }

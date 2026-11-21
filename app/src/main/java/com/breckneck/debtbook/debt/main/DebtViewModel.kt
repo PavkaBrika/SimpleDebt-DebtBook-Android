@@ -13,6 +13,7 @@ import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.*
 import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
+import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
@@ -36,7 +37,8 @@ class DebtViewModel @Inject constructor(
     private val getAllHumansUseCase: GetAllHumansUseCase,
     private val getAllDebts: GetAllDebts,
     private val transaction: DataTransaction,
-    getFirstMainCurrency: GetFirstMainCurrency,
+    private val getFirstMainCurrency: GetFirstMainCurrency,
+    private val getSecondMainCurrency: GetSecondMainCurrency,
     private val saved: SavedStateHandle,
     private val getHumanOrder: GetHumanOrder,
     private val setHumanOrder: SetHumanOrder,
@@ -55,7 +57,7 @@ class DebtViewModel @Inject constructor(
     val mainSums: LiveData<Pair<BigDecimal, BigDecimal>> get() = _mainSums
     private var people = emptyList<HumanDomain>()
     private var histories = emptyMap<Int, PersonDebtHistory>()
-    val recordedCurrencies = MutableLiveData<List<String>>()
+    val overviewCurrencies = MutableLiveData<List<String>>()
     val loadFailed = MutableLiveData(false)
     val deadlines = MutableLiveData<Map<Int, String?>>()
     val settled = MutableLiveData<Set<Int>>()
@@ -109,7 +111,8 @@ class DebtViewModel @Inject constructor(
                     val (persons, rows) = transaction.run { getAllHumansUseCase.execute() to getAllDebts.execute() }
                     persons to rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
                 }
-                recordedCurrencies.value = persons.map { it.currency }.distinct()
+                overviewCurrencies.value = (listOf(getFirstMainCurrency.execute(), getSecondMainCurrency.execute()) +
+                    persons.map { it.currency }).distinct()
                 loadFailed.value = false
                 people = persons
                 histories = loans

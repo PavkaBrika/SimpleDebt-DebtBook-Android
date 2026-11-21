@@ -44,6 +44,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.fragment.NavHostFragment
@@ -261,9 +262,11 @@ class GoalsFlowTest {
         assertEquals(screenHeight.toFloat(), viewport.bottom, 1f)
         compose.waitUntil(10000) { !keyboardVisible() }
         val createButton = node(R.string.goal_new).fetchSemanticsNode().boundsInRoot
-        assertTrue("The extended FAB should sit at the trailing edge", createButton.center.x > viewport.center.x)
+        val sidePadding = with(compose.density) { 16.dp.toPx() }
+        assertEquals(viewport.left + sidePadding, createButton.left, 1f)
+        assertEquals(viewport.right - sidePadding, createButton.right, 1f)
         val goalsTab = compose.onNode(hasText(context.getString(R.string.goals)) and isSelectable())
-        assertTrue("The FAB should clear the tabs", createButton.bottom < goalsTab.fetchSemanticsNode().boundsInRoot.top)
+        assertTrue("The create button should clear the tabs", createButton.bottom < goalsTab.fetchSemanticsNode().boundsInRoot.top)
         list.performScrollToIndex(3)
         val statusHeight = checkNotNull(onMain { activity ->
             ViewCompat.getRootWindowInsets(activity.window.decorView)!!.getInsets(WindowInsetsCompat.Type.statusBars()).top

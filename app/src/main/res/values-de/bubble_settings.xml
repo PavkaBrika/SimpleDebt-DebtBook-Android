@@ -7,4 +7,5 @@
     <string name="backup_local_title">Sicherungsdatei</string>
     <string name="settings_rating">Mit %1$d von 5 bewerten</string>
     <string name="settings_no_handler">Für diese Aktion ist keine App verfügbar.</string>
+    <string name="backup_formats">Datei / Drive</string>
 </resources>

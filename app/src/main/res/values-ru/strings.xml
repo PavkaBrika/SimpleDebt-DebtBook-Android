@@ -19,7 +19,7 @@
     <string name="payoffMessage">Вы уверены?</string>
     <string name="yes">Да</string>
     <string name="No">Нет</string>
-    <string name="newdebt">Добавить новый долг</string>
+    <string name="newdebt">Новый долг</string>
     <string name="editdebtcollaps">Изменить долг</string>
     <string name="debts">Долги</string>
     <string name="nodebts">Долгов пока что нет. Нажмите кнопку внизу, чтобы добавить.</string>
@@ -27,7 +27,7 @@
     <string name="show_positive">Мне должны</string>
     <string name="show_negative">Я должен</string>
     <string name="filter">Фильтр</string>
-    <string name="contacts">Контакты</string>
+    <string name="contacts">Выбрать из контактов</string>
     <string name="no_permission">Нет разрешения</string>
     <string name="contact_name">Имя контакта</string>
     <string name="settings">Настройки</string>
@@ -48,9 +48,8 @@
     <string name="second_main_currency">Вторая основная валюта</string>
     <string name="default_currency">Валюта по умолчанию</string>
     <string name="default_currencies_hint">Эта валюта будет выбрана по умолчанию при добавлении новых долгов</string>
-    <string name="detailed_share_text_hint">Показывать отдельные возвраты, примечания и промежуточный итог после каждой операции.</string>
-    <string name="more_detailed_share_text">Расширенный текст для \"Поделиться\"</string>
-    <string name="app_theme">Тема приложения</string>
+    <string name="more_detailed_share_text">Баланс в тексте истории</string>
+    <string name="app_theme">Оформление</string>
     <string name="rate_app">Оценить приложение</string>
     <string name="write_email_to_developer">Написать разработчикам</string>
     <string name="main_recycler_view_hint">Коснитесь для дополнительной информации</string>
@@ -63,7 +62,7 @@
     <string name="order_debt_sum">По сумме долга</string>
     <string name="order_by_balance">По балансу</string>
     <string name="order_by_creation_date">По дате создания</string>
-    <string name="order_by">Сортировка</string>
+    <string name="order_by">Порядок</string>
     <string name="remember_choice">Запомнить выбор</string>
     <string name="confirm">Подтвердить</string>
     <string name="save">Сохранить</string>
@@ -71,7 +70,7 @@
     <string name="cancel">Отмена</string>
     <string name="order_by_last_debt_date">По дате последнего долга</string>
     <string name="application">Приложение</string>
-    <string name="info">Информация</string>
+    <string name="info">О приложении</string>
     <string name="support">Поддежка</string>
     <string name="something_went_wrong">Что-то пошло не так</string>
     <string name="privacy_policy">Политика конфиденциальности</string>
@@ -81,8 +80,8 @@
     <string name="a11y_currency_picker">Валюта, %1$s. Нажмите, чтобы сменить</string>
     <string name="order_by_date">По дате</string>
     <string name="loading">Загрузка...</string>
-    <string name="synchronization">Резервные копии</string>
-    <string name="authorize_to_avoid_losing_your_data">Копии в Google Drive</string>
+    <string name="synchronization">Резервная копия</string>
+    <string name="authorize_to_avoid_losing_your_data">Google Drive</string>
     <string name="authorization">Авторизация</string>
     <string name="account">Аккаунт</string>
     <string name="synchronize">Сохранить в Google Drive</string>
@@ -103,9 +102,9 @@
     <string name="expenses">Расходы</string>
     <string name="categories">Категории</string>
     <string name="history">История</string>
-    <string name="create_new_category">Создать новую категорию</string>
+    <string name="create_new_category">Новая категория</string>
     <string name="adding">Добавление</string>
-    <string name="image">Изображение</string>
+    <string name="image">Значок</string>
     <string name="color">Цвет</string>
     <string name="you_must_select_color">Вы должны выбрать цвет!</string>
     <string name="you_must_select_image">Вы должны выбрать изображение!</string>
@@ -147,7 +146,7 @@
     <string name="goal_deadline">Срок выполнения цели</string>
     <string name="goal_sum_must_be_positive">Укажите положительную сумму</string>
     <string name="privacy_and_security">Конфиденциальность и безопасность</string>
-    <string name="pin_code_lock">Блокировка PIN-кодом</string>
+    <string name="pin_code_lock">Защита входа</string>
     <string name="change_pin_code">Изменить PIN-код</string>
     <string name="unlock_with_fingerprint">Разблокировка отпечатком пальца</string>
     <string name="set_pin_code">Блокировка PIN-кодом</string>
@@ -180,7 +179,7 @@
     <string name="emoji_tab_home">Дом</string>
     <string name="emoji_tab_nature">Природа</string>
     <string name="backup_file_hint">В файле будут ваши записи и доступные фото целей. Сохраните его перед переустановкой приложения или сменой телефона.</string>
-    <string name="backup_export_file">Сохранить в файл</string>
+    <string name="backup_export_file">Сохранить файл</string>
     <string name="backup_import_file">Восстановить из файла</string>
     <string name="backup_restore_previous_local">Отменить последнее восстановление</string>
     <string name="backup_restore_previous_cloud">Резервная копия</string>

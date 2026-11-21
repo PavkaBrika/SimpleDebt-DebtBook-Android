@@ -19,7 +19,7 @@
     <string name="person_name">Name der Person</string>
     <string name="yes">Ja</string>
     <string name="No">Nein</string>
-    <string name="newdebt">Neue Schulden hinzufügen</string>
+    <string name="newdebt">Neue Schuld</string>
     <string name="editdebtcollaps">Schulden bearbeiten</string>
     <string name="debts">Schulden</string>
     <string name="nodebts">Es sind noch keine Schulden vorhanden. Klicken Sie auf die Schaltfläche unten, um hinzuzufügen.</string>
@@ -27,7 +27,7 @@
     <string name="show_positive">Mir geschuldet</string>
     <string name="show_negative">Ich schulde</string>
     <string name="filter">Filter</string>
-    <string name="contacts">Kontakte</string>
+    <string name="contacts">Aus Kontakten wählen</string>
     <string name="no_permission">Keine Genehmigung</string>
     <string name="contact_name">Name der Kontaktperson</string>
     <string name="settings">Einstellungen</string>
@@ -48,9 +48,8 @@
     <string name="second_main_currency">Zweite Hauptwährung</string>
     <string name="default_currency">Standardwährung</string>
     <string name="default_currencies_hint">Diese Währung wird beim Hinzufügen neuer Schulden standardmäßig ausgewählt</string>
-    <string name="detailed_share_text_hint">Einzelne Rückzahlungen, Notizen und die laufende Summe nach jeder Buchung anzeigen.</string>
-    <string name="more_detailed_share_text">Ausführlicherer Text zum Thema \'\'Teilen\'\'</string>
-    <string name="app_theme">App Thema</string>
+    <string name="more_detailed_share_text">Saldo im geteilten Verlauf</string>
+    <string name="app_theme">Darstellung</string>
     <string name="rate_app">App bewerten</string>
     <string name="write_email_to_developer">E-Mail an Entwickler schreiben</string>
     <string name="main_recycler_view_hint">Tippen Sie für weitere Informationen auf</string>
@@ -64,14 +63,14 @@
     <string name="order_by_balance">Nach Saldo</string>
     <string name="order_by_creation_date">Datum der Erstellung</string>
     <string name="order_by_last_debt_date">Datum der letzten Forderung</string>
-    <string name="order_by">Bestellen nach</string>
+    <string name="order_by">Sortierung</string>
     <string name="remember_choice">Auswahl merken</string>
     <string name="confirm">Bestätigen Sie</string>
     <string name="save">Speichern</string>
     <string name="not_selected">Nicht ausgewählt</string>
     <string name="cancel">Abbrechen</string>
     <string name="application">Anmeldung</string>
-    <string name="info">Infos</string>
+    <string name="info">Über die App</string>
     <string name="support">Unterstützung</string>
     <string name="something_went_wrong">Etwas ist schief gelaufen</string>
     <string name="privacy_policy">Datenschutzbestimmungen</string>
@@ -81,8 +80,8 @@
     <string name="a11y_currency_picker">Währung: %1$s. Tippen, um zu ändern</string>
     <string name="order_by_date">Datum</string>
     <string name="loading">Laden...</string>
-    <string name="synchronization">Sicherungen</string>
-    <string name="authorize_to_avoid_losing_your_data">Google Drive-Sicherungen</string>
+    <string name="synchronization">Sicherung</string>
+    <string name="authorize_to_avoid_losing_your_data">Google Drive</string>
     <string name="authorization">Autorisierung</string>
     <string name="account">Konto</string>
     <string name="synchronize">In Google Drive speichern</string>
@@ -103,9 +102,9 @@
     <string name="expenses">Ausgaben</string>
     <string name="categories">Kategorien</string>
     <string name="history">Geschichte</string>
-    <string name="create_new_category">Neue Kategorie erstellen</string>
+    <string name="create_new_category">Neue Kategorie</string>
     <string name="adding">Hinzufügen von</string>
-    <string name="image">Bild</string>
+    <string name="image">Symbol</string>
     <string name="color">Farbe</string>
     <string name="you_must_select_color">Sie müssen Farbe wählen!</string>
     <string name="you_must_select_image">Sie müssen ein Bild auswählen!</string>
@@ -147,7 +146,7 @@
     <string name="goal_deadline">Zielfrist</string>
     <string name="goal_sum_must_be_positive">Geben Sie einen positiven Betrag ein</string>
     <string name="privacy_and_security">Datenschutz und Sicherheit</string>
-    <string name="pin_code_lock">PIN-Code-Sperre</string>
+    <string name="pin_code_lock">Anmeldeschutz</string>
     <string name="change_pin_code">PIN-Code ändern</string>
     <string name="unlock_with_fingerprint">Entsperren mit Fingerabdruck</string>
     <string name="set_pin_code">PIN-Code-Sperre</string>
@@ -180,7 +179,7 @@
     <string name="emoji_tab_home">Zuhause</string>
     <string name="emoji_tab_nature">Natur</string>
     <string name="backup_file_hint">Die Datei enthält Ihre Einträge und vorhandene Zielfotos. Speichern Sie sie vor einer Neuinstallation oder einem Telefonwechsel.</string>
-    <string name="backup_export_file">In Datei speichern</string>
+    <string name="backup_export_file">Datei speichern</string>
     <string name="backup_import_file">Aus Datei wiederherstellen</string>
     <string name="backup_restore_previous_local">Letzte Wiederherstellung rückgängig machen</string>
     <string name="backup_restore_previous_cloud">Vorherige Sicherung</string>

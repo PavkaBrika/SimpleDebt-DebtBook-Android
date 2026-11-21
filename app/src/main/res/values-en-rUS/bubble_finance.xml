@@ -19,4 +19,10 @@
     <string name="finance_delete_entry">Delete transaction</string>
     <string name="finance_delete_entry_message">The category total will be recalculated.</string>
     <string name="finance_edit_named">Edit transaction · %1$s</string>
+    <string name="finance_share_of_total">%1$d%% of total</string>
+    <string name="finance_icon_set">Icon set</string>
+    <string name="finance_period">Period</string>
+    <string name="finance_period_day">Date in period</string>
+    <string name="finance_apply_period">Show</string>
+    <string name="finance_entry_date">Transaction date</string>
 </resources>

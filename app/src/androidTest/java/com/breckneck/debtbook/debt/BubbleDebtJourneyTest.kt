@@ -19,6 +19,8 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.settings.edgeSwipe
 import com.breckneck.debtbook.settings.requirePredictiveGestures
+import com.breckneck.deptbook.domain.util.DecimalInput
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.deptbook.domain.util.LedgerDate
 import database.AppDataBase
 import entity.Debt
@@ -134,9 +136,13 @@ class BubbleDebtJourneyTest {
         capture("list")
         person()
         compose.record(anna).assertTextContains(dueRemaining("12 400"))
+        text(context.getString(R.string.debt_today)).performClick()
+        compose.onNodeWithTag("dueSaveButton").assertExists()
+        pressBack()
         compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("repay-$anna"))
         compose.onNodeWithTag("repay-$anna").performClick()
         compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("2400")
+        text(context.getString(R.string.debt_after_repayment, "10 000\u00a0₽")).assertExists()
         compose.onNodeWithTag("repaymentSaveButton").performClick()
         compose.waitUntil(8000) { dao.getAllDebtsById(anna).size == 2 }
         compose.record(anna).assertTextContains(dueRemaining("10 000"))
@@ -146,7 +152,6 @@ class BubbleDebtJourneyTest {
         person()
         val payment = dao.getAllDebtsById(anna).single { it.repaymentOfId == anna }
         compose.record(payment.id).performClick()
-        compose.onNodeWithTag("deleteButton").performClick()
         compose.onNode(hasText(context.getString(R.string.repayment_cancel)) and hasClickAction()).performClick()
         compose.waitUntil(8000) { dao.getAllDebtsById(anna).any { it.cancelled } }
         compose.record(anna).assertTextContains(dueRemaining("12 400"))
@@ -168,15 +173,16 @@ class BubbleDebtJourneyTest {
         dao.updateDebt(dao.getAllDebtsById(anna).single().copy(sum = principal))
         dao.updateHuman(requireNotNull(dao.getHuman(anna)).copy(openingAdjustment = opening, sumDebt = opening + principal))
         person()
-        balance("+20.2356")
-        compose.record(anna).assertTextContains(dueRemaining("12.3456"))
+        balance(MoneyDisplay.formatExact(opening + principal, "RUB"))
+        compose.record(anna).assertTextContains(dueRemaining(MoneyDisplay.formatExact(principal, "RUB")))
         compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("repay-$anna"))
         compose.onNodeWithTag("repay-$anna").performClick()
         compose.awaitTag("repaymentFullButton").performClick()
-        compose.onNodeWithTag("repaymentAmountInput").assertTextContains("12.3456")
+        compose.onNodeWithTag("repaymentAmountInput").assertTextContains(DecimalInput.format(principal, currency = "RUB"))
         compose.onNodeWithTag("repaymentSaveButton").performClick()
         compose.waitUntil(8000) { dao.getAllDebtsById(anna).size == 2 }
-        balance("+7.89")
+        compose.awaitTag("personHistory").performScrollToIndex(0)
+        balance(MoneyDisplay.formatExact(opening, "RUB"))
         assertEquals(0, dao.getAllDebtsById(anna).single { it.repaymentOfId == anna }.sum.compareTo(-principal))
         fun manage(action: Int) {
             val button = context.getString(R.string.debt_manage)

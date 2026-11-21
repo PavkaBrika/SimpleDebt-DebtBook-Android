@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.main
 
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.ViewCompat
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Bundle
@@ -71,6 +73,7 @@ class GoalsFragment : Fragment() {
         launchOnLifecycleStarted {
             vm.container.sideEffectFlow.collect { effect ->
                 when (effect) {
+                    GoalsSideEffect.GoalReached -> ViewCompat.performHapticFeedback(view, HapticFeedbackConstantsCompat.CONFIRM)
                     GoalsSideEffect.NavigateToAddGoal ->
                         onButtonClickListener?.onAddGoalButtonClick()
                     is GoalsSideEffect.NavigateToEditGoal ->

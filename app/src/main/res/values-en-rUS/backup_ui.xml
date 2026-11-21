@@ -1,6 +1,4 @@
 <resources>
-    <string name="backup_export_hint">Choose a folder and save a file with your records and goal photos.</string>
-    <string name="backup_import_hint">Choose a saved file. You can review it before replacing any records.</string>
     <string name="backup_undo_hint">Return to the records from before the last restore on this phone.</string>
     <string name="backup_confirm_restore">Replace records</string>
     <string name="backup_confirm_restore_title">Restore this backup?</string>
@@ -19,6 +17,5 @@
     <string name="backup_drive_connecting">Connecting to Google Drive…</string>
     <string name="backup_drive_retry">Try connecting again</string>
     <string name="backup_drive_connection_failed">Could not connect. Tap to try again.</string>
-    <string name="backup_drive_save_hint">Update the backup with this phone’s records. You will confirm before saving.</string>
     <string name="backup_back_to_copies">Back to backups</string>
 </resources>

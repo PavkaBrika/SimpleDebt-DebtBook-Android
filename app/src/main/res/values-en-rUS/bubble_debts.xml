@@ -13,4 +13,15 @@
     <string name="debt_manage">Manage person</string>
     <string name="debt_repay">Record repayment</string>
     <string name="debt_future_time">Choose a future reminder time.</string>
+    <string name="debt_empty_search">No one found. Try another name.</string>
+    <string name="debt_person_balance">Balance with this person</string>
+    <string name="debt_tomorrow">Due tomorrow</string>
+    <string name="debt_share_short">Share</string>
+    <string name="debt_return_section">Repayment</string>
+    <string name="debt_name_hint">Name or business</string>
+    <string name="debt_note_hint">What was it for?</string>
+    <string name="debt_record_actions">Record actions</string>
+    <string name="debt_record_remaining">Remaining on this debt</string>
+    <string name="debt_after_repayment">After repayment: %1$s</string>
+    <string name="debt_out_of">of %1$s</string>
 </resources>

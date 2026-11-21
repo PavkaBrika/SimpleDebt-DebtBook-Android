@@ -152,7 +152,6 @@ class PartialRepaymentScreenTest {
                 compose.onNodeWithTag("settledDebtsTab").performClick()
                 compose.record(last.id).performClick()
                 compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
-                compose.onNodeWithTag("deleteButton").performClick()
                 compose.onNode(hasText(context.getString(R.string.repayment_cancel)) and hasClickAction()).performClick()
                 await("cancellation not stored") { dao.getAllDebtsById(humanId).any { it.id == last.id && it.cancelled } }
                 ready(scenario)

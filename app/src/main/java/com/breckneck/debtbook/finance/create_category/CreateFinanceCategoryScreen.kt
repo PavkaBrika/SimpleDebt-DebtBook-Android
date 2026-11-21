@@ -11,25 +11,17 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.layout.PaddingValues
-import com.breckneck.debtbook.core.ui.components.BubbleButton
-import com.breckneck.debtbook.core.ui.components.BubbleTopBar
-import com.breckneck.debtbook.core.ui.theme.bubbleColors
-import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import com.breckneck.debtbook.core.ui.components.validatedInput
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,35 +29,33 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -73,7 +63,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
+import com.breckneck.debtbook.core.ui.components.BubbleGroup
+import com.breckneck.debtbook.core.ui.components.BubbleSectionTitle
+import com.breckneck.debtbook.core.ui.components.BubbleTextFieldRow
+import com.breckneck.debtbook.core.ui.components.BubbleTopBar
+import com.breckneck.debtbook.core.ui.components.SettingsPickerBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.debtbook.finance.create_category.model.emojiGroups
 import com.breckneck.deptbook.domain.util.categoryColorList
@@ -82,7 +80,6 @@ import org.orbitmvi.orbit.compose.collectAsState
 private val errorEnterAnimation: EnterTransition = expandVertically() + fadeIn(tween(200))
 private val errorExitAnimation: ExitTransition = shrinkVertically() + fadeOut(tween(150))
 
-private const val EMOJI_GRID_COLUMNS = 5
 
 @Composable
 fun CreateFinanceCategoryScreen(
@@ -117,18 +114,19 @@ fun CreateFinanceCategoryContent(
     val imageError = if (state.isImageErrorVisible) stringResource(R.string.you_must_select_image) else null
     val colorError = if (state.isColorErrorVisible) stringResource(R.string.you_must_select_color) else null
 
-    var pickersReady by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { pickersReady = true }
+    var group by rememberSaveable { mutableIntStateOf(0) }
+    var choosingGroup by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = bubbleColors().background,
+        containerColor = bubbleColors().background, contentColor = bubbleColors().ink,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
         topBar = { BubbleTopBar(stringResource(R.string.create_new_category), onBackClick, PaddingValues(0.dp), backEnabled = !state.saving) },
         bottomBar = {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                 if (state.saveFailed) Text(stringResource(R.string.save_failed_retry), color = bubbleColors().danger)
                 BubbleButton(onSaveClick, Modifier.fillMaxWidth(), enabled = !state.saving) {
-                    Text(stringResource(R.string.finance_save_category))
+                    Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                    Text(stringResource(R.string.finance_save_category), Modifier.padding(start = 8.dp))
                 }
             }
         }
@@ -145,88 +143,24 @@ fun CreateFinanceCategoryContent(
                 selectedColor = state.selectedColor
             )
 
-            Spacer(modifier = Modifier.height(spacing.space24))
+            BubbleGroup(Modifier.padding(horizontal = spacing.space16)) {
+                BubbleTextFieldRow(Icons.Outlined.Edit, stringResource(R.string.name), rememberTextFieldState(state.categoryName),
+                    "", !state.saving, nameError, { it.length <= 60 }, onNameChange)
+            }
 
-            OutlinedTextField(
-                state = rememberTextFieldState(state.categoryName),
-                inputTransformation = validatedInput({ it.length <= 60 }, onNameChange),
-                label = { Text(stringResource(R.string.name)) },
-                isError = state.isNameErrorVisible,
-                lineLimits = TextFieldLineLimits.SingleLine,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = spacing.space16)
-            )
-            SectionError(error = nameError, startPadding = spacing.space32)
-
-            if (pickersReady) {
-                Spacer(modifier = Modifier.height(spacing.space32))
-
-                Text(
-                    text = stringResource(R.string.image),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (state.isImageErrorVisible)
-                        MaterialTheme.colorScheme.error
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = spacing.space16, bottom = spacing.space8)
-                )
-
-                val pagerState = rememberPagerState(pageCount = { emojiGroups.size })
-                val coroutineScope = rememberCoroutineScope()
-
-                SecondaryScrollableTabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    edgePadding = spacing.space16,
-                    divider = {},
-                    containerColor = Color.Transparent,
-                ) {
-                    emojiGroups.forEachIndexed { index, group ->
-                        Tab(
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                            },
-                            text = { Text(text = stringResource(group.labelResId)) }
-                        )
+            Column(Modifier.padding(horizontal = spacing.space16), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                BubbleSectionTitle(stringResource(R.string.image), Modifier.padding(top = 16.dp))
+                BubbleFieldRow(Icons.Outlined.Flag, stringResource(R.string.finance_icon_set),
+                    Modifier.clickable(enabled = !state.saving) { choosingGroup = true },
+                    trailing = { Icon(Icons.Outlined.ExpandMore, null) }) { Text(stringResource(emojiGroups[group].labelResId)) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    emojiGroups[group].emojis.forEach { image ->
+                        CategoryImageItem(image, state.selectedImage == image, { onImageSelected(image) })
                     }
                 }
-
-                Spacer(modifier = Modifier.height(spacing.space8))
-
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxWidth()
-                ) { page ->
-                    EmojiGrid(
-                        emojis = emojiGroups[page].emojis,
-                        selectedImage = state.selectedImage,
-                        onImageSelected = onImageSelected,
-                        modifier = Modifier.padding(horizontal = spacing.space16)
-                    )
-                }
-
-                SectionError(error = imageError, startPadding = spacing.space16)
-
-                Spacer(modifier = Modifier.height(spacing.space16))
-
-                Text(
-                    text = stringResource(R.string.color),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (state.isColorErrorVisible)
-                        MaterialTheme.colorScheme.error
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = spacing.space16, bottom = spacing.space8)
-                )
-
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.space16),
-                    horizontalArrangement = Arrangement.spacedBy(spacing.space12),
-                    verticalArrangement = Arrangement.spacedBy(spacing.space12)
-                ) {
+                SectionError(error = imageError, startPadding = 0.dp)
+                BubbleSectionTitle(stringResource(R.string.color), Modifier.padding(top = 8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     categoryColorList.forEachIndexed { index, color ->
                         CategoryColorItem(
                             colorHex = color,
@@ -237,12 +171,15 @@ fun CreateFinanceCategoryContent(
                     }
                 }
 
-                SectionError(error = colorError, startPadding = spacing.space16)
+                SectionError(error = colorError, startPadding = 0.dp)
 
                 Spacer(modifier = Modifier.height(spacing.space24))
             }
         }
     }
+    if (choosingGroup) SettingsPickerBottomSheet(stringResource(R.string.finance_icon_set),
+        emojiGroups.map { stringResource(it.labelResId) }, group, onItemSelected = { group = it; choosingGroup = false },
+        onDismiss = { choosingGroup = false })
 }
 
 @Composable
@@ -271,94 +208,14 @@ private fun CategoryPreview(
     selectedImage: Int?,
     selectedColor: String?
 ) {
-    val fallbackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-    val bgColor = remember(selectedColor, fallbackColor) {
-        if (selectedColor != null) Color(selectedColor.toColorInt()) else fallbackColor
-    }
-
-    val spacing = MaterialTheme.spacing
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = spacing.space16)
-            .padding(top = spacing.space16),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(spacing.space24),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(bgColor),
-                contentAlignment = Alignment.Center
-            ) {
-                if (selectedImage != null) {
-                    val emojiString = remember(selectedImage) {
-                        String(Character.toChars(selectedImage))
-                    }
-                    Text(
-                        text = emojiString,
-                        fontSize = 32.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(spacing.space12))
-
-            Text(
-                text = name.ifBlank { stringResource(R.string.name) },
-                style = if (name.isNotBlank())
-                    MaterialTheme.typography.titleMedium
-                else
-                    MaterialTheme.typography.bodyMedium,
-                color = if (name.isNotBlank())
-                    MaterialTheme.colorScheme.onSurface
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    val colors = bubbleColors()
+    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(38.dp).background(selectedColor?.let { Color(it.toColorInt()) } ?: colors.fill, CircleShape),
+            contentAlignment = Alignment.Center) {
+            Text(selectedImage?.let { String(Character.toChars(it)) } ?: "◇", color = colors.ink)
         }
-    }
-}
-
-@Composable
-private fun EmojiGrid(
-    emojis: List<Int>,
-    selectedImage: Int?,
-    onImageSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val spacing = MaterialTheme.spacing
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(spacing.space8)
-    ) {
-        emojis.chunked(EMOJI_GRID_COLUMNS).forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing.space8)
-            ) {
-                row.forEach { codePoint ->
-                    CategoryImageItem(
-                        image = codePoint,
-                        isSelected = selectedImage == codePoint,
-                        onClick = { onImageSelected(codePoint) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                repeat(EMOJI_GRID_COLUMNS - row.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
+        Text(name.ifBlank { stringResource(R.string.category) }, style = MaterialTheme.typography.titleMedium, color = colors.ink)
     }
 }
 
@@ -389,13 +246,13 @@ private fun CategoryImageItem(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .aspectRatio(1f)
+            .size(48.dp)
             .scale(scale),
-        shape = RoundedCornerShape(12.dp),
+        shape = CircleShape,
         color = if (isSelected)
-            MaterialTheme.colorScheme.primaryContainer
+            bubbleColors().mint
         else
-            MaterialTheme.colorScheme.surface,
+            bubbleColors().paper,
         border = BorderStroke(
             width = if (isSelected) 2.dp else 1.dp,
             color = borderColor
@@ -404,7 +261,7 @@ private fun CategoryImageItem(
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = emojiString,
-                fontSize = 28.sp,
+                fontSize = 22.sp,
                 textAlign = TextAlign.Center
             )
         }
