@@ -9,13 +9,11 @@ import com.breckneck.deptbook.domain.repository.HumanRepository
 
 class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanRepository {
 
-    override fun getAllHumans(): List<HumanDomain> {
-        val humanList: List<Human> = humanStorage.getAllHumans()
-        val humanDomainList: List<HumanDomain> = humanList.map {
-            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
-        }
-        return humanDomainList
-    }
+    private fun Human.toDomain() = HumanDomain(id, name, sumDebt, currency, openingAdjustment)
+
+    override fun getHuman(id: Int) = humanStorage.getHuman(id)?.toDomain()
+
+    override fun getAllHumans() = humanStorage.getAllHumans().map { it.toDomain() }
 
     override fun replaceAllHumans(humanList: List<HumanDomain>) {
         val humanDataList: List<Human> = humanList.map {

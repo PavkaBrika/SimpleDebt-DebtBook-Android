@@ -38,7 +38,7 @@ class DebtDetailsViewModelTest {
     @get:Rule val instantTaskRule = InstantTaskExecutorRule()
     private val debts: GetAllDebtsByIdUseCase = mock()
     private val latestId: GetLastHumanIdUseCase = mock()
-    private val sum: GetHumanSumDebtUseCase = mock()
+    private val people: com.breckneck.deptbook.domain.repository.HumanRepository = mock()
     private val deleteHuman: DeleteHumanUseCase = mock()
     private val deleteHumanDebts: DeleteDebtsByHumanIdUseCase = mock()
     private val deleteDebt: DeleteDebtUseCase = mock()
@@ -52,12 +52,12 @@ class DebtDetailsViewModelTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         whenever(getOrder.execute()).thenReturn(DebtOrderAttribute.CreationDate to false)
         whenever(debts.execute(any())).thenReturn(listOf(record))
-        whenever(sum.execute(any())).thenReturn(record.sum)
+        whenever(people.getHuman(7)).thenReturn(com.breckneck.deptbook.domain.model.HumanDomain(7, "Person", record.sum, "EUR"))
     }
     @After fun teardown() = Dispatchers.resetMain()
 
     private fun vm(state: SavedStateHandle = SavedStateHandle(mapOf("idHuman" to 7))) =
-        DebtDetailsViewModel(debts, latestId, sum, deleteHuman, deleteHumanDebts, deleteDebt,
+        DebtDetailsViewModel(debts, latestId, people, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
             }, state, recordRepayment)
@@ -154,7 +154,7 @@ class DebtDetailsViewModelTest {
     @Test fun `missing arguments show error instead of loading or empty history`() {
         val model = vm(SavedStateHandle())
         model.screenState.await { it == DebtDetailsState.ERROR }
-        verifyNoInteractions(debts, sum)
+        verifyNoInteractions(debts, people)
     }
 
     @Test fun `read failure is visible and retry loads records`() {

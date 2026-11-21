@@ -13,18 +13,18 @@
         <action
             android:id="@+id/action_mainFragment_to_newDebtFragment"
             app:destination="@id/newDebtFragment"
-            app:enterAnim="@anim/slide_up"
-            app:exitAnim="@anim/fade_out"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_down">
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit">
         </action>
         <action
             android:id="@+id/action_mainFragment_to_debtDetailsFragment"
             app:destination="@id/debtDetailsFragment"
-            app:enterAnim="@anim/slide_in"
-            app:exitAnim="@anim/fade_out"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_out">
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit">
             <argument android:name="humanId" />
             <argument android:name="newHuman" />
         </action>
@@ -49,11 +49,11 @@
         <action
             android:id="@+id/action_newDebtFragment_to_debtDetailsFragment"
             app:destination="@id/debtDetailsFragment"
-            app:enterAnim="@anim/fade_in"
-            app:exitAnim="@anim/slide_down"
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
             app:launchSingleTop="true"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit"
             app:popUpTo="@id/mainFragment"
             app:popUpToInclusive="false">
             <argument android:name="humanId" />
@@ -89,11 +89,11 @@
         <action
             android:id="@+id/action_debtDetailsFragment_to_newDebtFragment"
             app:destination="@id/newDebtFragment"
-            app:enterAnim="@anim/slide_up"
-            app:exitAnim="@anim/fade_out"
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
             app:launchSingleTop="false"
-            app:popEnterAnim="@anim/fade_in"
-            app:popExitAnim="@anim/slide_down"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit"
             app:popUpToInclusive="false" />
         <argument
             android:name="idHuman"

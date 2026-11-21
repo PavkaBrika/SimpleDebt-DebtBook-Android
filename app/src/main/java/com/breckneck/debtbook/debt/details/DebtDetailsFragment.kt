@@ -95,201 +95,34 @@ class DebtDetailsFragment : Fragment() {
 
     private val vm by viewModels<DebtDetailsViewModel>()
 
-    private lateinit var debtClickListener: DebtDetailsAdapter.OnDebtClickListener
-    private lateinit var overallSumTextView: TextView
-    private lateinit var debtDetailsAdapter: DebtDetailsAdapter
-    private lateinit var sortButton: ImageView
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-
-        return inflater.inflate(R.layout.fragment_debt_details, container, false)
-    }
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
+        ComposeView(requireContext()).apply {
+            id = R.id.debtDetailsSheets
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                DebtBookTheme {
+                    DebtDetailsScreen(vm, requireActivity() as OnButtonClickListener, ::showSortDialog,
+                        ::showDeleteHumanDialog, { showShareDialog(vm.humanName.value, vm.humanCurrency) })
+                    DebtSheets()
+                }
+            }
+        }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-//        postponeEnterTransition()
-
-        sortButton = view.findViewById(R.id.sortButton)
-        val recyclerView: RecyclerView = view.findViewById(R.id.debtsRecyclerView)
-//        recyclerView.doOnPreDraw {
-//            startPostponedEnterTransition()
-//        }
-
-        val collaps: CollapsingToolbarLayout = view.findViewById(R.id.collaps)
-        vm.humanName.observe(viewLifecycleOwner) { name ->
-            collaps.title = name
-        }
-        collaps.apply {
-            setCollapsedTitleTypeface(Typeface.DEFAULT_BOLD)
-            setExpandedTitleTypeface(Typeface.DEFAULT_BOLD)
-        }
-
-        debtClickListener = object : DebtDetailsAdapter.OnDebtClickListener {
-            override fun onDebtClick(debtDomain: DebtDomain, position: Int) {
-                if (vm.isDeleting.value == true || vm.screenState.value != DebtDetailsState.SUCCESS) return
-                vm.selectDebtAction(debtDomain.id)
-                Log.e(TAG, "Click on debt with id = ${debtDomain.id}")
-            }
-        }
-        debtDetailsAdapter = DebtDetailsAdapter(listOf(), debtClickListener, vm.humanCurrency.orEmpty(), vm::remaining, vm::originalDebt)
-        recyclerView.adapter = debtDetailsAdapter
-        attachDebtSheets(view as ViewGroup)
-
-        val sections = view.findViewById<ChipGroup>(R.id.debtSections)
-        val emptyMessage = view.findViewById<TextView>(R.id.noDebtTextView)
-        vm.showSettledDebts.observe(viewLifecycleOwner) { settled ->
-            sections.check(if (settled) R.id.settledDebtsTab else R.id.openDebtsTab)
-            view.findViewById<View>(R.id.addDebtButton).visibility = if (settled) View.GONE else View.VISIBLE
-            emptyMessage.setText(if (settled) R.string.no_settled_debts else R.string.no_open_debts)
-        }
-        sections.setOnCheckedStateChangeListener { _, selected ->
-            vm.selectDebtSection(R.id.settledDebtsTab in selected)
-        }
-
-        vm.apply {
-            if ((isSortDialogShown.value != null) && (isSortDialogShown.value == true))
-                showSortDialog()
-
-            if ((isHumanDeleteDialogShown.value != null) && (isHumanDeleteDialogShown.value == true))
-                showDeleteHumanDialog()
-
-            if ((isShareDialogShown.value != null) && (isShareDialogShown.value == true))
-                showShareDialog(humanName.value, humanCurrency)
-
-            val debtsLayout: ConstraintLayout = view.findViewById(R.id.debtsLayout)
-            val emptyDebtsLayout: ConstraintLayout = view.findViewById(R.id.emptyDebtsLayout)
-            val loadingDebtsLayout: ConstraintLayout = view.findViewById(R.id.loadingDebtsLayout)
-            val errorDebtsLayout: View = view.findViewById(R.id.errorDebtsLayout)
-            view.findViewById<Button>(R.id.retryHistoryButton).setOnClickListener { retry() }
-            val shimmerLayout: ShimmerFrameLayout = view.findViewById(R.id.shimmerLayout)
-
-            screenState.observe(viewLifecycleOwner) { state ->
-                errorDebtsLayout.visibility = if (state == DebtDetailsState.ERROR) View.VISIBLE else View.GONE
-                view.findViewById<View>(R.id.shareHumanButton).isEnabled =
-                    (state == DebtDetailsState.SUCCESS || state == DebtDetailsState.EMPTY) && !resultedDebtList.value.isNullOrEmpty()
-                sortButton.isEnabled = state != DebtDetailsState.LOADING && debtOrder.value != null
-                when (state) {
-                    DebtDetailsState.LOADING -> {
-                        debtsLayout.visibility = View.GONE
-                        emptyDebtsLayout.visibility = View.GONE
-                        loadingDebtsLayout.visibility = View.VISIBLE
-                        shimmerLayout.startShimmerAnimation()
-                    }
-                    DebtDetailsState.SUCCESS -> {
-                        val transition = Fade()
-                        transition.duration = 200
-                        transition.addTarget(debtsLayout)
-                        TransitionManager.beginDelayedTransition(view as ViewGroup?, transition)
-                        debtsLayout.visibility = View.VISIBLE
-                        emptyDebtsLayout.visibility = View.GONE
-                        loadingDebtsLayout.visibility = View.GONE
-                        shimmerLayout.stopShimmerAnimation()
-                    }
-                    DebtDetailsState.ERROR -> {
-                        debtsLayout.visibility = View.GONE
-                        emptyDebtsLayout.visibility = View.GONE
-                        loadingDebtsLayout.visibility = View.GONE
-                        shimmerLayout.stopShimmerAnimation()
-                    }
-                    DebtDetailsState.EMPTY -> {
-                        val transition = Fade()
-                        transition.duration = 200
-                        transition.addTarget(emptyDebtsLayout)
-                        TransitionManager.beginDelayedTransition(view as ViewGroup?, transition)
-                        debtsLayout.visibility = View.GONE
-                        emptyDebtsLayout.visibility = View.VISIBLE
-                        loadingDebtsLayout.visibility = View.GONE
-                        shimmerLayout.stopShimmerAnimation()
-                    }
-                }
-            }
-
-            overallSum.observe(viewLifecycleOwner) {
-                setOverallSumText(sum = it, currency = humanCurrency.orEmpty(), view = view)
-            }
-
-            debtFilter.observe(viewLifecycleOwner) { filter ->
-                changeFilterButtonColor(filter = filter)
-            }
-
-            humanDeleted.observe(viewLifecycleOwner) { deleted ->
-                if (deleted) {
-                    setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
-                    buttonClickListener?.deleteHuman()
-                }
-            }
-            operationFailed.observe(viewLifecycleOwner) { failed ->
-                if (failed) {
-                    Toast.makeText(requireContext(), R.string.history_change_failed, Toast.LENGTH_LONG).show()
-                    dismissOperationError()
-                }
-            }
-            isDeleting.observe(viewLifecycleOwner) { deleting ->
-                view.findViewById<View>(R.id.deleteHumanButton).isEnabled = !deleting
-                view.findViewById<View>(R.id.addDebtButton).isEnabled = !deleting
-            }
-            debtDeleted.observe(viewLifecycleOwner) {
-                setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true))
-            }
-        }
-
-        val deleteHumanButton: ImageView = view.findViewById(R.id.deleteHumanButton)
-        deleteHumanButton.setOnClickListener {
-            showDeleteHumanDialog()
-        }
-
-        sortButton = view.findViewById(R.id.sortButton)
-        sortButton.setOnClickListener {
-            showSortDialog()
-        }
-
-        val shareHumanButton: ImageView = view.findViewById(R.id.shareHumanButton)
-        shareHumanButton.setOnClickListener {
-            showShareDialog(vm.humanName.value, vm.humanCurrency)
-        }
-
-        val addDebtButton: FloatingActionButton = view.findViewById(R.id.addDebtButton)
-        addDebtButton.setOnClickListener {
-            if (vm.humanId != null)
-                buttonClickListener?.addNewDebtFragment(
-                    idHuman = vm.humanId!!,
-                    currency = vm.humanCurrency.orEmpty(),
-                    name = vm.humanName.value.orEmpty()
-                )
-        }
-
-        val backButton: ImageView = view.findViewById(R.id.backButton)
-        backButton.setOnClickListener {
-            buttonClickListener?.onBackButtonClick()
-        }
-
+        if (vm.isSortDialogShown.value == true) showSortDialog()
+        if (vm.isHumanDeleteDialogShown.value == true) showDeleteHumanDialog()
+        if (vm.isShareDialogShown.value == true) showShareDialog(vm.humanName.value, vm.humanCurrency)
+        vm.humanDeleted.observe(viewLifecycleOwner) { if (it) buttonClickListener?.deleteHuman() }
+        vm.operationFailed.observe(viewLifecycleOwner) { if (it) {
+            Toast.makeText(requireContext(), R.string.history_change_failed, Toast.LENGTH_LONG).show()
+            vm.dismissOperationError()
+        } }
         vm.visibleDebtRows.observe(viewLifecycleOwner) {
-            debtDetailsAdapter.updateDebtList(it)
             val requested = arguments?.getInt("openDebtId", -1) ?: -1
             if (requested > 0 && vm.originalDebt(requested) != null) {
                 arguments?.remove("openDebtId")
                 vm.selectDebtAction(requested)
             }
-            Log.e(TAG, "data in adapter link success")
-        }
-    }
-
-    fun setOverallSumText(sum: BigDecimal, currency: String, view: View) {
-        overallSumTextView = view.findViewById(R.id.overallSumTextView)
-        val formatted = MoneyDisplay.formatExact(sum, currency)
-        if (sum > 0) {
-            overallSumTextView.setTextColor(ContextCompat.getColor(view.context, R.color.green))
-            overallSumTextView.text = "+$formatted $currency"
-        } else if (sum < 0) {
-            overallSumTextView.setTextColor(ContextCompat.getColor(view.context, R.color.red))
-            overallSumTextView.text = "$formatted $currency"
-        } else {
-            overallSumTextView.setTextColor(ContextCompat.getColor(view.context, R.color.darkgray))
-            overallSumTextView.text = "$formatted $currency"
         }
     }
 
@@ -329,58 +162,51 @@ class DebtDetailsFragment : Fragment() {
         dialog.show()
     }
 
-    private fun attachDebtSheets(root: ViewGroup) {
-        root.addView(ComposeView(requireContext()).apply {
-            id = R.id.debtDetailsSheets
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                DebtBookTheme {
-                    val repaymentId by vm.repaymentDebtId.observeAsState()
-                    val debtId by vm.debtActionId.observeAsState()
-                    val history by vm.history.observeAsState()
-                    val selected = repaymentId ?: debtId
-                    val debt = history?.firstOrNull { it.id == selected }
-                    if (debt != null && repaymentId != null) {
-                        RepaymentSheet(vm, debt)
-                    } else if (debt != null) key(debt.id) {
-                        var sheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
-                        val rest = vm.remaining(debt)
-                        val currency = vm.humanCurrency.orEmpty()
-                        val hasRepayments = vm.hasRepayments(debt.id)
-                        val close = { vm.selectDebtAction(null) }
-                        when (sheet) {
-                            DebtSheet.ACTIONS -> DebtActionsSheet(
-                                debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments,
-                                onDismiss = close,
-                                onRepay = { close(); vm.openRepayment(debt) },
-                                onEdit = {
-                                    close()
-                                    buttonClickListener?.editDebt(
-                                        debt, currency, vm.humanName.value.orEmpty(), hasRepayments,
-                                        canRemind = !hasRepayments || rest.signum() > 0
-                                    )
-                                },
-                                onRemove = { sheet = DebtSheet.REMOVE }
-                            )
-                            DebtSheet.REMOVE -> {
-                                val repayment = debt.repaymentOfId != null
-                                val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
-                                ConfirmationBottomSheet(
-                                    title = action,
-                                    message = if (repayment) stringResource(R.string.repayment_cancel_confirm,
-                                        MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
-                                    else stringResource(R.string.debt_delete_question),
-                                    confirmText = action,
-                                    dismissText = stringResource(R.string.cancel),
-                                    onConfirm = { close(); vm.deleteDebt(debt) },
-                                    onDismiss = { sheet = DebtSheet.ACTIONS }
-                                )
-                            }
-                        }
-                    }
+    @androidx.compose.runtime.Composable
+    private fun DebtSheets() {
+        val repaymentId by vm.repaymentDebtId.observeAsState()
+        val debtId by vm.debtActionId.observeAsState()
+        val history by vm.history.observeAsState()
+        val selected = repaymentId ?: debtId
+        val debt = history?.firstOrNull { it.id == selected }
+        if (debt != null && repaymentId != null) {
+            RepaymentSheet(vm, debt)
+        } else if (debt != null) key(debt.id) {
+            var sheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
+            val rest = vm.remaining(debt)
+            val currency = vm.humanCurrency.orEmpty()
+            val hasRepayments = vm.hasRepayments(debt.id)
+            val close = { vm.selectDebtAction(null) }
+            when (sheet) {
+                DebtSheet.ACTIONS -> DebtActionsSheet(
+                    debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments,
+                    onDismiss = close,
+                    onRepay = { close(); vm.openRepayment(debt) },
+                    onEdit = {
+                        close()
+                        buttonClickListener?.editDebt(
+                            debt, currency, vm.humanName.value.orEmpty(), hasRepayments,
+                            canRemind = !hasRepayments || rest.signum() > 0
+                        )
+                    },
+                    onRemove = { sheet = DebtSheet.REMOVE }
+                )
+                DebtSheet.REMOVE -> {
+                    val repayment = debt.repaymentOfId != null
+                    val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
+                    ConfirmationBottomSheet(
+                        title = action,
+                        message = if (repayment) stringResource(R.string.repayment_cancel_confirm,
+                            MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
+                        else stringResource(R.string.debt_delete_question),
+                        confirmText = action,
+                        dismissText = stringResource(R.string.cancel),
+                        onConfirm = { close(); vm.deleteDebt(debt) },
+                        onDismiss = { sheet = DebtSheet.ACTIONS }
+                    )
                 }
             }
-        }, ViewGroup.LayoutParams(0, 0))
+        }
     }
 
     private fun showShareDialog(humanName: String?, currency: String?) {
@@ -550,56 +376,6 @@ class DebtDetailsFragment : Fragment() {
         }
 
         orderDialog.show()
-    }
-
-    private fun changeFilterButtonColor(filter: Filter) {
-        if (view != null) {
-            when (filter) {
-                Filter.ALL -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        if (resources.configuration.isNightModeActive)
-                            sortButton.setColorFilter(
-                                ContextCompat.getColor(
-                                    requireContext(),
-                                    R.color.white
-                                )
-                            )
-                        else
-                            sortButton.setColorFilter(
-                                ContextCompat.getColor(
-                                    requireContext(),
-                                    R.color.black
-                                )
-                            )
-                    } else {
-                        sortButton.setColorFilter(
-                            ContextCompat.getColor(
-                                requireContext(),
-                                R.color.black
-                            )
-                        )
-                    }
-                }
-
-                Filter.NEGATIVE -> {
-                    sortButton.setColorFilter(
-                        ContextCompat.getColor(
-                            requireActivity(),
-                            R.color.red
-                        )
-                    )
-                }
-
-                Filter.POSITIVE -> {
-                    sortButton.setColorFilter(
-                        ContextCompat.getColor(
-                            requireActivity(),
-                            R.color.green
-                        )
-                    )
-                }
-            }
-        }
     }
 
     private val dayChanged = object : android.content.BroadcastReceiver() {

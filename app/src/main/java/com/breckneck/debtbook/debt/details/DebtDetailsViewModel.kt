@@ -42,7 +42,7 @@ enum class RepaymentError { INVALID_AMOUNT, EXCEEDS_REMAINING, SAVE_FAILED }
 class DebtDetailsViewModel @Inject constructor(
     private val getAllDebtsByIdUseCase: GetAllDebtsByIdUseCase,
     private val getLastHumanIdUseCase: GetLastHumanIdUseCase,
-    private val getHumanSumDebtUseCase: GetHumanSumDebtUseCase,
+    private val people: com.breckneck.deptbook.domain.repository.HumanRepository,
     private val deleteHumanUseCase: DeleteHumanUseCase,
     private val deleteDebtsByHumanIdUseCase: DeleteDebtsByHumanIdUseCase,
     private val deleteDebtUseCase: DeleteDebtUseCase,
@@ -79,7 +79,7 @@ class DebtDetailsViewModel @Inject constructor(
     private val _humanName = savedStateHandle.getLiveData<String>("name")
     val humanName: LiveData<String>
         get() = _humanName
-    private val _humanCurrency = savedStateHandle.get<String>("currency")
+    private var _humanCurrency = savedStateHandle.get<String>("currency")
     val humanCurrency: String?
         get() = _humanCurrency
 
@@ -227,15 +227,17 @@ class DebtDetailsViewModel @Inject constructor(
                 _humanId = id
                 savedStateHandle["idHuman"] = id
                 savedStateHandle["newHuman"] = false
-                val (debts, sum, personLoans) = withContext(Dispatchers.IO) {
+                val (debts, person, personLoans) = withContext(Dispatchers.IO) {
                     val (rows, balance) = transaction.run {
-                        getAllDebtsByIdUseCase.execute(id) to getHumanSumDebtUseCase.execute(id)
+                        getAllDebtsByIdUseCase.execute(id) to requireNotNull(people.getHuman(id))
                     }
                     Triple(rows, balance, PersonDebtHistory.from(rows))
                 }
                 _loans.value = personLoans
                 _initialDebtList.value = debts
-                _overallSum.value = sum
+                _overallSum.value = person.sumDebt
+                _humanName.value = person.name
+                _humanCurrency = person.currency
                 val request = savedStateHandle.get<String>("repaymentRequestId")
                 if (request != null && debts.any { it.operationId == request }) closeRepayment()
                 repaymentDebtId.value?.let { selected ->
@@ -289,6 +291,26 @@ class DebtDetailsViewModel @Inject constructor(
 
     fun saveDebtOrder(order: Pair<DebtOrderAttribute, Boolean>) {
         setDebtOrder.execute(order)
+    }
+
+    fun rename(name: String) {
+        val id = humanId ?: return
+        if (name.isBlank() || _isDeleting.value == true) return
+        _isDeleting.value = true
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { transaction.run {
+                    people.updateHuman(requireNotNull(people.getHuman(id)).copy(name = name.trim()))
+                } }
+                _humanName.value = name.trim()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _operationFailed.value = true
+            } finally {
+                _isDeleting.value = false
+            }
+        }
     }
 
     fun deleteHuman() {
