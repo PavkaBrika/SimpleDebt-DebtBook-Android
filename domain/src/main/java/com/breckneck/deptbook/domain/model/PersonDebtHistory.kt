@@ -44,10 +44,10 @@ class PersonDebtHistory private constructor(
         }
     }
 
-    fun matches(filter: Filter): Boolean = when (filter) {
+    fun matches(filter: Filter, balance: BigDecimal): Boolean = when (filter) {
         Filter.ALL -> true
-        Filter.POSITIVE -> openLoans.any { it.original.sum.signum() > 0 }
-        Filter.NEGATIVE -> openLoans.any { it.original.sum.signum() < 0 }
+        Filter.POSITIVE -> balance.signum() > 0 || openLoans.any { it.original.sum.signum() > 0 }
+        Filter.NEGATIVE -> balance.signum() < 0 || openLoans.any { it.original.sum.signum() < 0 }
     }
 
     companion object {

@@ -109,9 +109,12 @@ class DebtViewModel @Inject constructor(
                             getAllDebtsSumUseCase.execute(getFirstMainCurrency.execute(), getSecondMainCurrency.execute())
                         )
                     }
-                    val histories = rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
+                    val rowsByPerson = rows.groupBy { it.idHuman }
+                    val histories = people.associate { person ->
+                        person.id to PersonDebtHistory.from(rowsByPerson[person.id].orEmpty())
+                    }
                     val lists = Filter.entries.associateWith { filter ->
-                        if (filter == Filter.ALL) people else people.filter { histories[it.id]?.matches(filter) == true }
+                        people.filter { person -> histories.getValue(person.id).matches(filter, person.sumDebt) }
                     }
                     lists to totals
                 }

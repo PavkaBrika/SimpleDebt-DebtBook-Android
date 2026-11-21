@@ -89,27 +89,29 @@ class DebtViewModelTest {
     }
 
     @Test
-    fun `people filters use each persons open loans even with equal names and different balances`() {
+    fun `people filters use the balance and open loans of each person with the same name`() {
         val legacy = HumanDomain(1, "Anna", 1000.toBigDecimal(), "RUB", openingAdjustment = 0.toBigDecimal())
         val opposite = legacy.copy(id = 2, sumDebt = 0.toBigDecimal())
         val adjustmentOnly = legacy.copy(id = 3, openingAdjustment = legacy.sumDebt)
+        val mixed = legacy.copy(id = 4, sumDebt = (-190).toBigDecimal(), openingAdjustment = 10.toBigDecimal())
         val entry = DebtDomain(1, legacy.sumDebt, legacy.id, null, "2025-11-01")
         val lent = entry.copy(id = 2, idHuman = opposite.id, recordedAsLoan = true)
         val borrowed = lent.copy(id = 3, sum = -lent.sum)
-        whenever(getAllHumansUseCase.execute()).thenReturn(listOf(legacy, opposite, adjustmentOnly))
-        whenever(getAllDebts.execute()).thenReturn(listOf(entry, lent, borrowed))
+        whenever(getAllHumansUseCase.execute()).thenReturn(listOf(legacy, opposite, adjustmentOnly, mixed))
+        whenever(getAllDebts.execute()).thenReturn(listOf(entry, lent, borrowed,
+            entry.copy(id = 4, idHuman = mixed.id, sum = (-200).toBigDecimal())))
         val loaded = CountDownLatch(1)
-        val observer = Observer<List<HumanDomain>> { if (it.size == 3) loaded.countDown() }
+        val observer = Observer<List<HumanDomain>> { if (it.size == 4) loaded.countDown() }
         viewModel.resultedHumanList.observeForever(observer)
         try {
             viewModel.setListStateLoading()
             assertTrue(loaded.await(5, TimeUnit.SECONDS))
-            for (filter in listOf(Filter.POSITIVE, Filter.NEGATIVE)) {
-                viewModel.onSetHumanSort(filter, HumanOrderAttribute.Sum to true)
-                assertEquals(listOf(opposite), viewModel.resultedHumanList.value)
-            }
+            viewModel.onSetHumanSort(Filter.POSITIVE, HumanOrderAttribute.Sum to true)
+            assertEquals(setOf(legacy, adjustmentOnly, opposite), viewModel.resultedHumanList.value!!.toSet())
+            viewModel.onSetHumanSort(Filter.NEGATIVE, HumanOrderAttribute.Sum to true)
+            assertEquals(setOf(mixed, opposite), viewModel.resultedHumanList.value!!.toSet())
             viewModel.onSetHumanSort(Filter.ALL, HumanOrderAttribute.Sum to true)
-            assertEquals(setOf(legacy, opposite, adjustmentOnly), viewModel.resultedHumanList.value!!.toSet())
+            assertEquals(setOf(legacy, opposite, adjustmentOnly, mixed), viewModel.resultedHumanList.value!!.toSet())
         } finally {
             viewModel.resultedHumanList.removeObserver(observer)
         }
