@@ -148,6 +148,7 @@ class DebtDetailsFragment : Fragment() {
         val emptyMessage = view.findViewById<TextView>(R.id.noDebtTextView)
         vm.showSettledDebts.observe(viewLifecycleOwner) { settled ->
             sections.check(if (settled) R.id.settledDebtsTab else R.id.openDebtsTab)
+            view.findViewById<View>(R.id.addDebtButton).visibility = if (settled) View.GONE else View.VISIBLE
             emptyMessage.setText(if (settled) R.string.no_settled_debts else R.string.no_open_debts)
         }
         sections.setOnCheckedStateChangeListener { _, selected ->
