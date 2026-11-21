@@ -46,6 +46,7 @@ internal fun BubbleBalanceCard(
     balance: String,
     onCurrencyClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showCoins: Boolean = false,
     footer: (@Composable (compact: Boolean) -> Unit)? = null,
 ) {
     val colors = bubbleColors()
@@ -53,12 +54,13 @@ internal fun BubbleBalanceCard(
     Surface(modifier, shape = MaterialTheme.shapes.extraLarge, color = colors.hero, contentColor = colors.onHero) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(spacing.space20)) {
             val largeText = LocalDensity.current.fontScale >= 1.3f || maxWidth < 260.dp
-            if (!largeText) {
+            val drawCoins = showCoins && !largeText
+            if (drawCoins) {
                 CoinStack(colors.hero, Modifier.align(Alignment.TopEnd).size(78.dp, 69.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(spacing.space8)) {
                 Row(
-                    modifier = Modifier.padding(end = if (largeText) 0.dp else 82.dp),
+                    modifier = Modifier.padding(end = if (drawCoins) 82.dp else 0.dp),
                     horizontalArrangement = Arrangement.spacedBy(spacing.space8),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -79,7 +81,7 @@ internal fun BubbleBalanceCard(
                 }
                 Text(
                     balance,
-                    modifier = Modifier.padding(end = if (largeText) 0.dp else 70.dp),
+                    modifier = Modifier.padding(end = if (drawCoins) 70.dp else 0.dp),
                     style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum", letterSpacing = (-1.2).sp),
                     fontWeight = FontWeight.SemiBold,
                 )

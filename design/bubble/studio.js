@@ -50,9 +50,6 @@ function coinArt() {
   const lines = coins.map(([x,y,r])=>'<g transform="translate('+x+' '+y+')"><path d="M0 0v6a'+r+' 10 0 0 0 '+(2*r)+' 0V0" fill="var(--hero)" stroke="currentColor"/><ellipse cx="'+r+'" cy="0" rx="'+r+'" ry="10" fill="var(--hero)" stroke="currentColor"/>'+[7,12,17,22,27,32,37,42,47,52].map(i=>'<path d="M'+i+' '+(7+2*Math.sin(i/60*Math.PI))+'v4" stroke="currentColor"/>').join('')+'</g>').join('');
   return '<div class="art">'+svg('<g transform="rotate(-20 57 42)" color="var(--canvas-pattern)" stroke-width="1.3">'+lines+'<ellipse cx="70" cy="18" rx="22" ry="6" fill="none" stroke="currentColor"/></g>','0 0 114 83')+'</div>';
 }
-function fanArt() {
-  return '<div class="art">'+svg(Array.from({length:12},(_,n)=>'<ellipse cx="50" cy="52" rx="36" ry="12" transform="rotate('+n*15+' 50 52)"/>').join(''),'0 0 100 100','fill="none" stroke="currentColor" stroke-width="1.3"')+'</div>';
-}
 const status = '<div class="status" aria-hidden="true"><span>9:41</span><div class="status-icons">'+svg('<path fill="currentColor" d="M1 11h2v3H1zm4-3h2v6H5zm4-3h2v9H9zm4-3h2v12h-2z"/>','0 0 17 16')+svg('<path fill="currentColor" d="M0 5Q8-1 16 5l-8 9z"/>','0 0 16 16')+svg('<rect x="1" y="3" width="19" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="3" y="5" width="14" height="6" rx="1" fill="currentColor"/><path d="M22 6v4" stroke="currentColor" stroke-width="2"/>','0 0 24 16')+'</div></div>';
 const gesture = '<div class="gesture" aria-hidden="true"></div>';
 function iconButton(action,label,name) {
@@ -133,7 +130,7 @@ function home(f) {
     balanceCard('Общий баланс',
       '<select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([prefs.first,prefs.second,...people.map(p=>p.cur),f.cur])],f.cur)+'</select>',
       amount(plus-minus,f.cur,true),
-      '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+amount(plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+amount(minus,f.cur)+'</strong></div></div>')+
+      '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+amount(plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+amount(minus,f.cur)+'</strong></div></div>',coinArt())+
     '<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
     (f.search?'<input class="search-field" data-bind="query" aria-label="Имя человека" placeholder="Найти по имени" value="'+escapeHtml(f.query)+'">':'')+
     '<div class="people">'+peopleList(f)+'</div>';
@@ -167,7 +164,7 @@ function history(p,f) {
 function person(f) {
   const p=people.find(p=>p.id===f.personId), sum=balance(p), active=p.loans.filter(l=>remaining(l)>0), settled=p.loans.filter(l=>remaining(l)===0);
   return layout(backbar(p.name,iconButton('new','Добавить долг этому человеку','plus'),motif(p.art))+
-    '<section class="balance">'+fanArt()+'<div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+amount(Math.abs(sum),p.cur)+'</div></section>'+
+    '<section class="balance"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+amount(Math.abs(sum),p.cur)+'</div></section>'+
     '<div class="history-actions">'+button('person-menu','Управление','','chip','more')+button('person-share','Поделиться','','chip','give')+'</div>'+
     (active.length?titleRow('Открытые долги',String(active.length))+active.map(l=>loanCard(l,p)).join(''):'')+
     (settled.length?titleRow('Погашенные долги',String(settled.length))+settled.map(l=>loanCard(l,p)).join(''):'')+

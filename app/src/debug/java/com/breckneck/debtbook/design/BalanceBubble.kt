@@ -33,6 +33,7 @@ private fun BalanceBubblePreview() {
             title = "Общий баланс",
             currency = if (dollars) "USD" else "RUB",
             balance = if (dollars) "+80 $" else "+18 300 ₽",
+            showCoins = true,
             onCurrencyClick = { dollars = !dollars },
             modifier = Modifier.padding(16.dp),
         ) { compact ->

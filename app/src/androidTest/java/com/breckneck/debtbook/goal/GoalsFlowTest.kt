@@ -182,10 +182,15 @@ class GoalsFlowTest {
         compose.onAllNodesWithText(context.getString(R.string.goal_edit)).assertCountEquals(0)
         compose.waitUntil(10000) { onMain { it.hasWindowFocus() } == true && !keyboardVisible() }
         ordinaryBack(R.id.goalsFragment)
-        node(R.string.goal_reached).assertIsDisplayed()
+        val total = "20000".toBigDecimal().formatGoalMoney("RUB")
+        compose.onNodeWithText(context.getString(R.string.goal_balance, total)).assertIsDisplayed()
+        compose.onAllNodesWithText(context.getString(R.string.goal_target_caption, total)).assertCountEquals(0)
         capture("complete")
 
+        chooseGoalAction(R.string.goal_delete)
+        click(R.string.cancel)
         openGoal(finalName)
+        awaitHistory()
         openGoalActions()
         compose.onAllNodesWithText(context.getString(R.string.goal_edit)).assertCountEquals(0)
         click(R.string.goal_delete)

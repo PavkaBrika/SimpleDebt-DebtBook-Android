@@ -2,7 +2,6 @@ package com.breckneck.debtbook.goal.details
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,12 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallMade
 import androidx.compose.material.icons.automirrored.outlined.CallReceived
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,9 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -50,11 +41,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
-import com.breckneck.debtbook.core.ui.components.BubbleIconButton
 import com.breckneck.debtbook.core.ui.components.BubbleListRow
 import com.breckneck.debtbook.core.ui.components.BubbleSectionTitle
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
@@ -66,6 +55,7 @@ import com.breckneck.debtbook.goal.main.model.GoalUi
 import com.breckneck.debtbook.goal.main.screen.GoalAdjustmentSheet
 import com.breckneck.debtbook.goal.main.screen.GoalBalanceCard
 import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
+import com.breckneck.debtbook.goal.ui.GoalActionsMenu
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
@@ -132,7 +122,7 @@ private fun GoalDetailsContent(
                 onBack = onBack,
                 hostInsets = hostInsets,
             ) {
-                GoalActionsMenu(goal.isReached, it, onEdit, onDelete)
+                GoalActionsMenu(onDelete = onDelete, onEdit = if (goal.isReached) null else onEdit, diameter = it)
             }
         },
         bottomBar = {
@@ -203,40 +193,6 @@ private fun GoalDetailsContent(
             itemsIndexed(state.history, key = { _, row -> row.id }) { index, row ->
                 GoalHistoryRow(row, first = index == 0, last = index == state.history.lastIndex)
             }
-        }
-    }
-}
-
-@Composable
-private fun GoalActionsMenu(isReached: Boolean, diameter: Dp, onEdit: () -> Unit, onDelete: () -> Unit) {
-    val colors = bubbleColors()
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        BubbleIconButton(onClick = { expanded = true }, diameter = diameter) {
-            Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.goal_actions))
-        }
-        DropdownMenu(
-            expanded = expanded, onDismissRequest = { expanded = false },
-            shape = RoundedCornerShape(18.dp), containerColor = colors.paper,
-        ) {
-            if (!isReached) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.goal_edit), color = colors.ink) },
-                    leadingIcon = { Icon(Icons.Outlined.Edit, null, tint = colors.ink) },
-                    onClick = {
-                        expanded = false
-                        onEdit()
-                    },
-                )
-            }
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.goal_delete), color = colors.danger) },
-                leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = colors.danger) },
-                onClick = {
-                    expanded = false
-                    onDelete()
-                },
-            )
         }
     }
 }

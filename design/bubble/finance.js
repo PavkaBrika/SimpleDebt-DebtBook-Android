@@ -65,7 +65,7 @@ flowViews.categoryHistory=f=>{
       <span class="money">${amount(e.cents,e.cur)}</span></button>
       <button class="row-edit" data-act="record-edit" data-value="${e.id}" aria-label="Редактировать операцию: ${label}" title="Редактировать операцию">${icon('edit',17)}</button></div>`;
   }).join('');
-  return layout(backbar(c.name)+'<div class="balance">'+fanArt()+'<span class="eyebrow">За всё время · '+c.dir.toLowerCase()+'</span><div class="big-money">'+amount(list.reduce((s,e)=>s+e.cents,0),f.financeCur)+'</div></div>'+titleRow('Операции',String(list.length))+(rows?'<div class="people">'+rows+'</div>':empty('Операций пока нет.')),primary('record-new','Добавить операцию','plus'));
+  return layout(backbar(c.name)+'<div class="balance"><span class="eyebrow">За всё время · '+c.dir.toLowerCase()+'</span><div class="big-money">'+amount(list.reduce((s,e)=>s+e.cents,0),f.financeCur)+'</div></div>'+titleRow('Операции',String(list.length))+(rows?'<div class="people">'+rows+'</div>':empty('Операций пока нет.')),primary('record-new','Добавить операцию','plus'));
 };
 flowActions['record-new']=i=>{
   const f=frames[i],c=f.route==='categoryHistory'?categoryById(f.categoryId):null;

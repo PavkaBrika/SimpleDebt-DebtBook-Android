@@ -34,8 +34,8 @@ function segment(action, options, current) {
 function amountFieldLayout(inputHtml, currencyHtml) {
   return '<div class="amount-field"><span class="eyebrow">Сумма</span><div class="amount-line">'+inputHtml+currencyHtml+'</div></div>';
 }
-function balanceCard(title, currencyPicker, total, footer) {
-  return '<section class="hero">'+coinArt()+'<div class="upper"><span class="eyebrow">'+escapeHtml(title)+'</span><span class="unit-picker">'+currencyPicker+icon('down',13)+'</span></div><div class="hero-money">'+escapeHtml(total)+'</div>'+footer+'</section>';
+function balanceCard(title, currencyPicker, total, footer, ornament='') {
+  return '<section class="hero">'+ornament+'<div class="upper"><span class="eyebrow">'+escapeHtml(title)+'</span><span class="unit-picker">'+currencyPicker+icon('down',13)+'</span></div><div class="hero-money">'+escapeHtml(total)+'</div>'+footer+'</section>';
 }
 function editAmount(scope,value,cur) {
   return amountFieldLayout(entry(scope,value,'text','inputmode="decimal" aria-label="Сумма" placeholder="0"'), '<strong>'+escapeHtml(cur)+'</strong>');

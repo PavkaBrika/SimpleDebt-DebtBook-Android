@@ -63,7 +63,8 @@ svg { display:block; flex-shrink:0 }
 .unit-picker svg { position:absolute; right:5px; pointer-events:none }
 .hero .upper { display:flex; align-items:center; gap:9px; height:26px }
 .hero-money,.big-money { font-size:clamp(36px,11.4cqw,48px); line-height:1.12; font-weight:580; letter-spacing:-2px; overflow-wrap:anywhere }
-.hero-money { position:relative; margin:13px 0 22px; max-width:80%; z-index:1 }
+.hero-money { position:relative; margin:13px 0 22px; z-index:1 }
+.hero:has(.art) .hero-money { max-width:80% }
 .hero .art { position:absolute; right:-13px; top:9px; width:35%; height:100px; z-index:-1 }
 .summary-grid { display:grid; grid-template-columns:1fr 1fr; padding-top:13px; border-top:1px solid var(--hero-line) }
 .summary-grid>div+div { border-left:1px solid var(--hero-line); padding-left:15px }
@@ -108,7 +109,6 @@ svg { display:block; flex-shrink:0 }
 .gesture { height:14px; flex-shrink:0; display:grid; place-items:center; background:var(--bg) }.gesture:before { content:''; width:72px; height:4px; border-radius:2px; background:var(--ink); opacity:.65 }
 .balance { padding:15px 18px; border-radius:25px; background:var(--mint); color:var(--mint-ink); position:relative; isolation:isolate; overflow:hidden }
 .balance .eyebrow { color:inherit }.balance .big-money { margin-top:4px; font-size:clamp(32px,10cqw,43px) }
-.balance .art { position:absolute; color:inherit; width:83px; height:80px; right:-4px; bottom:-6px; z-index:-1; opacity:.34 }
 .loan { padding:15px }.loan-top { display:flex; align-items:flex-start; justify-content:space-between; gap:6px }.loan h4 { font-size:17px; line-height:1.2; letter-spacing:-.4px; margin:0 }
 .tag { gap:4px; flex-shrink:0; max-width:53%; background:var(--fill); color:var(--soft); padding:5px 7px; border-radius:100px; font-size:11px; font-weight:600; line-height:1.1 }
 .tag.late { background:var(--coral-tint) }.tag.ok { background:var(--mint); color:var(--mint-ink) }
@@ -147,7 +147,7 @@ svg { display:block; flex-shrink:0 }
 }
 @media(max-width:390px) { .identity strong { font-size:18px }.identity { gap:5px }.tools { gap:4px }.tool-button { width:32px; height:32px }.view-switch button { padding:7px 8px }.board { padding:0 5px 7px } }
 @media(prefers-reduced-motion:no-preference) { button { transition:background-color .15s,filter .15s }button:hover { filter:brightness(.95) } }
-.before-mobile { display:none }.goal-hero .art { position:absolute;right:2px;top:13px;opacity:.35 }
+.before-mobile { display:none }
 @media(max-width:960px) { .before-mobile { display:block;text-align:center;margin:8px 0 } }
 /* Keep compact visual badges while allowing a larger touch target. */
 .tag,.chip,.unit-picker,.segment button { position:relative }
@@ -188,9 +188,16 @@ svg { display:block; flex-shrink:0 }
 .goal-form-dock,.goals-nav {display:flex;flex-direction:column;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 90%,transparent))}
 .goals-dock .sticky-action,.goals-dock .gesture {background:transparent}
 .goals-dock button,.goals-dock .nav {pointer-events:auto}
-.goal-card { padding:18px;border-radius:26px;position:relative;overflow:hidden;isolation:isolate }.goal-card .art { z-index:-1 }
+.goal-card { padding:18px;border-radius:26px;overflow:hidden }
 .goal-card .goal-link { width:100%;text-align:left;justify-content:space-between;padding:0 0 5px;font-weight:650;font-size:20px;color:inherit }
 .goal-link strong { overflow-wrap:anywhere;min-width:0 }.goal-card .big-money {margin-top:14px}.goal-item+.goal-item {margin-top:14px}
+.completed-goal {display:flex;align-items:center;gap:4px;padding-right:6px;border:1px solid var(--edge);border-radius:20px;background:var(--paper)}
+.completed-open {display:flex;align-items:center;gap:10px;flex:1;min-width:0;min-height:60px;padding:9px 4px 9px 14px;text-align:left;color:var(--ink);border-radius:20px}
+.completed-open > svg:first-child {color:var(--forest)}
+.completed-open > svg:last-child {color:var(--soft)}
+.completed-open small {font-size:.8125rem}
+.completed-goal .goal-actions summary {width:48px;height:48px;border:0;background:none;color:var(--soft)}
+.completed-goal .goal-menu {top:auto;bottom:100%}
 .goal-item .button-pair {margin:8px 2px}.goal-photo {display:block;width:100%;max-height:150px;object-fit:cover;border-radius:15px;margin-bottom:12px}
 .goal-card .goal-photo {height:150px}
 .photo-picker label {display:block;position:relative;cursor:pointer;padding:12px;text-align:center}
