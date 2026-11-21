@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import com.breckneck.debtbook.core.ui.components.validatedInput
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +41,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -71,13 +73,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.components.DebtBookTopBar
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.debtbook.finance.create_category.model.emojiGroups
 import com.breckneck.deptbook.domain.util.categoryColorList
 import org.orbitmvi.orbit.compose.collectAsState
-import org.orbitmvi.orbit.compose.collectSideEffect
 
 private val errorEnterAnimation: EnterTransition = expandVertically() + fadeIn(tween(200))
 private val errorExitAnimation: ExitTransition = shrinkVertically() + fadeOut(tween(150))
@@ -87,16 +87,10 @@ private const val EMOJI_GRID_COLUMNS = 5
 @Composable
 fun CreateFinanceCategoryScreen(
     vm: CreateFinanceCategoryViewModel,
-    onBackClick: () -> Unit,
-    onCategorySaved: (Int) -> Unit
+    onBackClick: () -> Unit
 ) {
     val state by vm.collectAsState()
-
-    vm.collectSideEffect { effect ->
-        when (effect) {
-            is CreateFinanceCategorySideEffect.CategorySaved -> onCategorySaved(effect.id)
-        }
-    }
+    androidx.activity.compose.BackHandler(enabled = state.saving) {}
 
     CreateFinanceCategoryContent(
         state = state,
@@ -129,7 +123,7 @@ fun CreateFinanceCategoryContent(
     Scaffold(
         containerColor = bubbleColors().background,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
-        topBar = { BubbleTopBar(stringResource(R.string.create_new_category), onBackClick, PaddingValues(0.dp)) },
+        topBar = { BubbleTopBar(stringResource(R.string.create_new_category), onBackClick, PaddingValues(0.dp), backEnabled = !state.saving) },
         bottomBar = {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                 if (state.saveFailed) Text(stringResource(R.string.save_failed_retry), color = bubbleColors().danger)
@@ -154,11 +148,11 @@ fun CreateFinanceCategoryContent(
             Spacer(modifier = Modifier.height(spacing.space24))
 
             OutlinedTextField(
-                value = state.categoryName,
-                onValueChange = onNameChange,
+                state = rememberTextFieldState(state.categoryName),
+                inputTransformation = validatedInput({ it.length <= 60 }, onNameChange),
                 label = { Text(stringResource(R.string.name)) },
                 isError = state.isNameErrorVisible,
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = spacing.space16)

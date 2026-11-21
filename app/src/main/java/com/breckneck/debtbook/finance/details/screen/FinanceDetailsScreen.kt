@@ -35,7 +35,6 @@ internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, onBack: () -> Uni
     var actionId by rememberSaveable { mutableStateOf<Int?>(null) }
     var confirm by rememberSaveable { mutableStateOf(false) }
     val selected = history.entries.find { it.id == actionId }
-    LaunchedEffect(history.categoryDeleted) { if (history.categoryDeleted) onBack() }
 
     Column(Modifier.fillMaxSize().background(colors.background)) {
         BubbleTopBar(title, onBack, PaddingValues(0.dp))
@@ -56,7 +55,8 @@ internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, onBack: () -> Uni
                         else R.string.there_are_no_incomes_yet), color = colors.muted)
                 }
                 else -> items(history.entries, key = { it.id }) { entry ->
-                    FinanceHistoryRow(entry, title, onClick = { actionId = entry.id; confirm = false }, onEdit = { edit(entry) })
+                    FinanceHistoryRow(entry, title, onClick = { actionId = entry.id; confirm = false }, onEdit = { edit(entry) },
+                        modifier = Modifier.animateItem(fadeInSpec = androidx.compose.animation.core.tween(260)))
                 }
             }
         }
@@ -69,19 +69,19 @@ internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, onBack: () -> Uni
             stringResource(R.string.finance_delete_entry_message), { vm.delete(selected) }, { actionId = null },
             confirmText = stringResource(R.string.delete), dismissText = stringResource(R.string.cancel),
             enabled = !history.deleting, errorMessage = if (history.deleteFailed) stringResource(R.string.history_change_failed) else null)
-        else ExtraFunctionsBottomSheet(MoneyDisplay.formatExact(selected.sum, vm.currency) + " " + vm.currency,
+        else ExtraFunctionsBottomSheet(selected.sum.financeMoney(vm.currency),
             onEdit = { actionId = null; edit(selected) }, onDelete = { confirm = true }, onDismiss = { actionId = null })
     }
 }
 
 
 @Composable
-internal fun FinanceHistoryRow(entry: Finance, categoryName: String, onClick: () -> Unit, onEdit: () -> Unit) {
+internal fun FinanceHistoryRow(entry: Finance, categoryName: String, onClick: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Modifier) {
     val colors = bubbleColors()
     val label = entry.info?.takeIf { it.isNotBlank() } ?: categoryName
     val date = LedgerDate.display(entry.calendarDay ?: LedgerDate.fromDate(entry.date))
     val money = entry.sum.financeMoney(entry.currency)
-    BubbleGroup {
+    BubbleGroup(modifier) {
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             BubbleListRow(Modifier.weight(1f).clickable { onClick() }.padding(12.dp),
                 trailing = { Text(money) }) {

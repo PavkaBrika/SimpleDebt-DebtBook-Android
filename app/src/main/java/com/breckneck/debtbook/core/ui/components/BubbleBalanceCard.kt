@@ -47,6 +47,7 @@ internal fun BubbleBalanceCard(
     onCurrencyClick: () -> Unit,
     modifier: Modifier = Modifier,
     showCoins: Boolean = false,
+    balanceValue: java.math.BigDecimal? = null,
     footer: (@Composable (compact: Boolean) -> Unit)? = null,
 ) {
     val colors = bubbleColors()
@@ -79,12 +80,12 @@ internal fun BubbleBalanceCard(
                         }
                     }
                 }
-                Text(
-                    balance,
-                    modifier = Modifier.padding(end = if (drawCoins) 70.dp else 0.dp),
-                    style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum", letterSpacing = (-1.2).sp),
-                    fontWeight = FontWeight.SemiBold,
+                val balanceStyle = MaterialTheme.typography.displaySmall.copy(
+                    fontFeatureSettings = "tnum", letterSpacing = (-1.2).sp, fontWeight = FontWeight.SemiBold,
                 )
+                val balanceModifier = Modifier.padding(end = if (drawCoins) 70.dp else 0.dp)
+                if (balanceValue == null) Text(balance, balanceModifier, style = balanceStyle)
+                else AnimatedAmount(balanceValue, balance, balanceModifier, balanceStyle)
                 if (footer != null) {
                     Spacer(Modifier.height(spacing.space4))
                     footer(largeText)

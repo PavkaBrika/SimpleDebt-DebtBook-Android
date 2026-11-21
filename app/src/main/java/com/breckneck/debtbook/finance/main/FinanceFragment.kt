@@ -19,7 +19,6 @@ class FinanceFragment : Fragment() {
         fun onAddFinanceButtonClick(financeCategoryState: FinanceCategoryState, day: String, currency: String)
         fun onFinanceCategoryClick(categoryName: String, categoryId: Int, financeCategoryState: FinanceCategoryState, currency: String, day: String)
         fun onTabSelected(id: Int)
-        fun onTickVibration()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =

@@ -6,9 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
@@ -22,7 +20,6 @@ class CreateFinanceFragment : Fragment() {
     interface OnClickListener {
         fun onBackButtonClick()
         fun onAddCategoryButtonClick(financeCategoryState: FinanceCategoryState)
-        fun onTickVibration()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =

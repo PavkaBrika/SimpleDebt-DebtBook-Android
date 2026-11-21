@@ -14,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -30,6 +29,7 @@ import com.breckneck.deptbook.domain.util.LedgerDate
 @Composable
 internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinanceFragment.OnClickListener) {
     val colors = bubbleColors()
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val direction by vm.direction.observeAsState(FinanceCategoryState.EXPENSE)
     val day by vm.day.observeAsState(requireNotNull(vm.day.value))
     val id by vm.categoryId.observeAsState(0)
@@ -38,6 +38,7 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
     val saveState by vm.saveState.observeAsState()
     val deleting by vm.deleting.observeAsState(false)
     val enabled = saveState != CreateFinanceViewModel.SaveState.SAVING && saveState != CreateFinanceViewModel.SaveState.SAVED && !deleting
+    androidx.activity.compose.BackHandler(enabled = !enabled) {}
     val failed by vm.loadFailed.observeAsState(false)
     val deleteFailed by vm.deleteFailed.observeAsState(false)
     var attempted by rememberSaveable { mutableStateOf(false) }
@@ -53,10 +54,12 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
         BubbleTopBar(stringResource(title), host::onBackButtonClick, PaddingValues(0.dp), backEnabled = enabled)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (!vm.editing) FinanceDirection(direction) { if (enabled) { vm.changeDirection(it); host.onTickVibration() } }
-            BubbleAmountField(amount, vm.currency, vm::changeAmount, acceptEdits = enabled,
-                errorMessage = if (attempted && (amount.text.isEmpty() || vm.parsedAmount() == null))
-                    stringResource(R.string.repayment_invalid) else null)
+            if (!vm.editing) FinanceDirection(direction) { if (enabled) vm.changeDirection(it) }
+            val amountError = if (attempted && (amount.text.isEmpty() || vm.parsedAmount() == null))
+                stringResource(R.string.repayment_invalid) else null
+            BubbleAmountField(amount, vm.currency, vm::changeAmount, acceptEdits = enabled, errorMessage = amountError)
+            if (amountError != null) Text(amountError, color = colors.danger)
+
             BubbleGroup {
                 BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.date),
                     Modifier.clickable(enabled = enabled, role = Role.Button) { focus.clearFocus(); calendar = true }) {
@@ -72,7 +75,10 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
                 BubbleSectionTitle(stringResource(R.string.category))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     categories.forEach { category ->
-                        FilterChip(id == category.id, { vm.categoryId.value = category.id; host.onTickVibration() },
+                        FilterChip(id == category.id, { if (id != category.id) {
+                                vm.categoryId.value = category.id
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
+                            } },
                             { Text(category.localizedName()) }, enabled = enabled, leadingIcon = { CategoryBadge(category) })
                     }
                     AssistChip({ focus.clearFocus(); host.onAddCategoryButtonClick(direction) },
@@ -101,18 +107,4 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
             enabled = !deleting, errorMessage = if (deleteFailed) stringResource(R.string.history_change_failed) else null)
     }
     LaunchedEffect(id) { if (id == 0) confirmDelete = false }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FinanceDatePicker(day: String, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
-    val compact = LocalConfiguration.current.let { it.screenWidthDp < 380 || it.screenHeightDp < 560 || it.fontScale > 1.2f }
-    val picker = rememberDatePickerState(initialSelectedDateMillis = LedgerDate.pickerMillis(day),
-        initialDisplayMode = if (compact) DisplayMode.Input else DisplayMode.Picker)
-    DatePickerDialog(onDismissRequest = onDismiss, confirmButton = {
-        TextButton({ picker.selectedDateMillis?.let { onSelect(LedgerDate.dayFromPickerMillis(it)) } },
-            enabled = picker.selectedDateMillis != null) { Text(stringResource(android.R.string.ok)) }
-    }, dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } }) {
-        DatePicker(picker, showModeToggle = !compact)
-    }
 }

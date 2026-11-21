@@ -1,5 +1,11 @@
 package com.breckneck.debtbook.finance.main
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,13 +30,14 @@ import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.finance.*
 import com.breckneck.deptbook.domain.util.*
+import com.breckneck.deptbook.domain.model.FinanceCategory
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
 internal fun FinanceScreen(vm: FinanceViewModel, host: FinanceFragment.OnButtonClickListener) {
     val state by vm.summary.collectAsState()
-    FinanceContent(state, vm::setPeriod, vm::setCurrency, { vm.setDirection(it); host.onTickVibration() },
+    FinanceContent(state, vm::setPeriod, vm::setCurrency, vm::setDirection,
         onCategory = { host.onFinanceCategoryClick(it.name, it.id, it.state, state.currency, state.period.day) },
         onAdd = { host.onAddFinanceButtonClick(state.direction, state.period.day, state.currency) },
         retry = vm::refresh, onTab = host::onTabSelected)
@@ -38,13 +45,14 @@ internal fun FinanceScreen(vm: FinanceViewModel, host: FinanceFragment.OnButtonC
 
 @Composable
 private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> Unit, setCurrency: (String) -> Unit,
-    selectDirection: (FinanceCategoryState) -> Unit, onCategory: (com.breckneck.deptbook.domain.model.FinanceCategory) -> Unit,
+    selectDirection: (FinanceCategoryState) -> Unit, onCategory: (FinanceCategory) -> Unit,
     onAdd: () -> Unit, retry: () -> Unit, onTab: (Int) -> Unit) {
     val colors = bubbleColors()
     val expenses = state.direction == FinanceCategoryState.EXPENSE
     val direction = stringResource(if (expenses) R.string.expenses else R.string.revenues)
     val intervals = listOf(R.string.day, R.string.week, R.string.month, R.string.year_full).map { stringResource(it) }
     var picker by rememberSaveable { mutableIntStateOf(0) }
+    val slideDistance = with(androidx.compose.ui.platform.LocalDensity.current) { 12.dp.roundToPx() }
     val period = state.period
     Column(Modifier.fillMaxSize().background(colors.background)) {
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp),
@@ -56,13 +64,16 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
             item {
                 BubbleBalanceCard(direction, state.currency,
                     if (state.loading || state.failed) "…" else state.total.financeMoney(state.currency),
-                    onCurrencyClick = { picker = R.string.select_currency }) {
+                    onCurrencyClick = { picker = R.string.select_currency }, balanceValue = state.total.takeUnless { state.loading || state.failed }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton({ setPeriod(period.copy(day = period.step(-1))) }) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
                         }
                         TextButton({ picker = R.string.select_interval }, Modifier.weight(1f)) {
-                            Text(period.label(), color = colors.onHero)
+                            AnimatedContent(period, transitionSpec = {
+                                val sign = if (targetState.day < initialState.day) -1 else 1
+                                (slideInHorizontally(tween(180)) { sign * slideDistance } + fadeIn(tween(180))) togetherWith fadeOut(tween(100))
+                            }, label = "Period") { Text(it.label(), color = colors.onHero) }
                         }
                         IconButton({ setPeriod(period.copy(day = period.step(1))) }) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
@@ -78,10 +89,10 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
                 state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                 state.categories.isEmpty() -> item { Text(stringResource(R.string.finance_empty_period), color = colors.muted) }
                 else -> items(state.categories, key = { it.category.id }) { row ->
-                    BubbleGroup {
+                    BubbleGroup(Modifier.animateItem(fadeInSpec = tween(260))) {
                         BubbleListRow(Modifier.clickable { onCategory(row.category) }.padding(12.dp),
                             leading = { CategoryBadge(row.category) },
-                            trailing = { Text(row.amount.financeMoney(state.currency)) }) {
+                            trailing = { AnimatedAmount(row.amount, row.amount.financeMoney(state.currency)) }) {
                             Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
                             Text("${row.percent}%", color = colors.muted)
                         }
@@ -97,15 +108,21 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
         }
         BubbleBottomBar(R.id.financeFragment, onTab)
     }
-    if (picker != 0) {
+    if (picker == R.string.goal_choose_date) {
+        FinanceDatePicker(period.day, onSelect = { setPeriod(period.copy(day = it)); picker = 0 }, onDismiss = { picker = 0 })
+    } else if (picker != 0) {
         val currencyPicker = picker == R.string.select_currency
-        val options = if (currencyPicker) stringArrayResource(R.array.currencies).toList() else intervals
+        val options = if (currencyPicker) stringArrayResource(R.array.currencies).toList() else intervals + stringResource(R.string.goal_choose_date)
         SettingsPickerBottomSheet(stringResource(picker), options,
             if (currencyPicker) options.indexOfFirst { it.substringAfterLast(' ') == state.currency } else period.interval.ordinal,
             onItemSelected = {
-                if (currencyPicker) setCurrency(options[it].substringAfterLast(' '))
-                else setPeriod(period.copy(interval = FinanceInterval.entries[it]))
-                picker = 0
+                if (!currencyPicker && it == intervals.size) {
+                    picker = R.string.goal_choose_date
+                } else {
+                    if (currencyPicker) setCurrency(options[it].substringAfterLast(' '))
+                    else setPeriod(period.copy(interval = FinanceInterval.entries[it]))
+                    picker = 0
+                }
             }, onDismiss = { picker = 0 })
     }
 }

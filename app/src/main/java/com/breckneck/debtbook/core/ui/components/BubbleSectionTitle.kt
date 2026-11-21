@@ -22,7 +22,8 @@ internal fun BubbleSectionTitle(
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             title,
-            Modifier.weight(1f).semantics { heading() },
+            color = com.breckneck.debtbook.core.ui.theme.bubbleColors().ink,
+            modifier = Modifier.weight(1f).semantics { heading() },
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )

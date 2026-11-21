@@ -1,12 +1,18 @@
 package com.breckneck.debtbook.finance
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
+import androidx.compose.ui.platform.LocalConfiguration
+import com.breckneck.deptbook.domain.util.LedgerDate
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +23,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import java.math.BigDecimal
+import java.util.Currency
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.finance.util.GetFinanceCategoryNameInLocalLanguage
@@ -26,14 +35,28 @@ import com.breckneck.deptbook.domain.util.FinanceCategoryState
 @Composable
 internal fun FinanceDirection(selected: FinanceCategoryState, select: (FinanceCategoryState) -> Unit) {
     val colors = bubbleColors()
-    Row(Modifier.fillMaxWidth().clip(CircleShape).background(colors.paper).padding(3.dp).selectableGroup()) {
-        for (direction in listOf(FinanceCategoryState.EXPENSE, FinanceCategoryState.INCOME)) {
-            val active = direction == selected
-            Box(Modifier.weight(1f).clip(CircleShape).background(if (active) colors.action else colors.paper)
-                .selectable(active, role = Role.Tab) { if (!active) select(direction) }
-                .heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
-                Text(stringResource(if (direction == FinanceCategoryState.EXPENSE) R.string.expenses else R.string.revenues),
-                    color = if (active) colors.onAction else colors.ink, style = MaterialTheme.typography.titleSmall)
+    val haptic = LocalHapticFeedback.current
+    val directions = listOf(FinanceCategoryState.EXPENSE, FinanceCategoryState.INCOME)
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(CircleShape).background(colors.paper).padding(3.dp)) {
+        val width = maxWidth / directions.size
+        val offset by animateDpAsState(width * directions.indexOf(selected), tween(200), label = "Direction")
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.offset(x = offset).width(width).fillMaxHeight().background(colors.action, CircleShape))
+        }
+        Row(Modifier.fillMaxWidth().selectableGroup()) {
+            for (direction in directions) {
+                val active = direction == selected
+                Box(Modifier.weight(1f).clip(CircleShape)
+                    .selectable(active, role = Role.Tab) {
+                        if (!active) {
+                            haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            select(direction)
+                        }
+                    }
+                    .heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
+                    Text(stringResource(if (direction == FinanceCategoryState.EXPENSE) R.string.expenses else R.string.revenues),
+                        color = if (active) colors.onAction else colors.ink, style = MaterialTheme.typography.titleSmall)
+                }
             }
         }
     }
@@ -49,9 +72,23 @@ internal fun CategoryBadge(category: FinanceCategory) {
     }
 }
 
-internal fun java.math.BigDecimal.financeMoney(currency: String): String {
+internal fun BigDecimal.financeMoney(currency: String): String {
     val symbol = if (currency == "RUB") "₽" else runCatching {
-        java.util.Currency.getInstance(currency).symbol
+        Currency.getInstance(currency).symbol
     }.getOrDefault(currency)
-    return com.breckneck.deptbook.domain.util.MoneyDisplay.formatExact(this, currency) + "\u00a0" + symbol
+    return MoneyDisplay.formatExact(this, currency) + "\u00a0" + symbol
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun FinanceDatePicker(day: String, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
+    val compact = LocalConfiguration.current.let { it.screenWidthDp < 380 || it.screenHeightDp < 560 || it.fontScale > 1.2f }
+    val picker = rememberDatePickerState(initialSelectedDateMillis = LedgerDate.pickerMillis(day),
+        initialDisplayMode = if (compact) DisplayMode.Input else DisplayMode.Picker)
+    DatePickerDialog(onDismissRequest = onDismiss, confirmButton = {
+        TextButton({ picker.selectedDateMillis?.let { onSelect(LedgerDate.dayFromPickerMillis(it)) } },
+            enabled = picker.selectedDateMillis != null) { Text(stringResource(android.R.string.ok)) }
+    }, dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } }) {
+        DatePicker(picker, showModeToggle = !compact)
+    }
 }
