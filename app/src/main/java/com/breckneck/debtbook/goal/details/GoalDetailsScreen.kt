@@ -84,11 +84,10 @@ internal fun GoalDetailsScreen(vm: GoalDetailsViewModel, hostInsets: PaddingValu
             onDismiss = { vm.dismissAdjustment() },
         )
     }
-    state.deletion?.let {
+    state.deletion?.let { deletion ->
         DeleteGoalSheet(
             name = goal.name,
-            isDeleting = it.isDeleting,
-            failed = it.failed,
+            deletion = deletion,
             onConfirm = { vm.confirmDelete() },
             onDismiss = { vm.dismissDelete() },
         )
@@ -196,20 +195,25 @@ private fun GoalDetailsContent(
                 }
             }
             itemsIndexed(state.history, key = { _, row -> row.id }) { index, row ->
-                GoalHistoryRow(row, first = index == 0, last = index == state.history.lastIndex)
+                GoalHistoryRow(
+                    row,
+                    first = index == 0,
+                    last = index == state.history.lastIndex,
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun GoalHistoryRow(row: GoalMovement, first: Boolean, last: Boolean) {
+private fun GoalHistoryRow(row: GoalMovement, first: Boolean, last: Boolean, modifier: Modifier = Modifier) {
     val colors = bubbleColors()
     val top = if (first) 24.dp else 0.dp
     val bottom = if (last) 24.dp else 0.dp
     val largeText = LocalDensity.current.fontScale >= 1.3f
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         color = colors.paper,
         contentColor = colors.ink,
         shape = RoundedCornerShape(top, top, bottom, bottom),

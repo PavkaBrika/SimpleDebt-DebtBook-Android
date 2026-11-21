@@ -16,6 +16,7 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.goal.main.mapper.formatGoalMoney
 import database.AppDataBase
 import entity.GoalData
 import entity.GoalDepositData
@@ -178,6 +179,78 @@ class CompletedGoalJourneyTest {
         backTo(R.id.goalsFragment)
         trash(name).assertIsDisplayed()
         assertEquals(1, dao.getGoalDepositsByGoalId(id).size)
+    }
+
+    @Test fun deletingFromTheListSlidesTheSheetDownAndMovesTheNextRowUp() {
+        val first = "First completed goal"
+        val second = "Second completed goal"
+        val firstId = seed(first, "100", "100", "EUR")
+        seed(second, "100", "100", "EUR")
+        openGoals(first)
+        val nextRow = compose.onNodeWithText(second)
+        val initialRowTop = nextRow.fetchSemanticsNode().positionInWindow.y
+        trash(first).performClick()
+        val title = compose.onAllNodesWithText(str(R.string.goal_delete_title))
+        val initialSheetTop = title.fetchSemanticsNodes().single().positionInWindow.y
+
+        val rowPositions = mutableListOf<Float>()
+        checkSheetExit(title, initialSheetTop, text(R.string.delete), { dao.getGoal(firstId) == null }) {
+            rowPositions.add(nextRow.fetchSemanticsNode().positionInWindow.y)
+        }
+        val finalRowTop = nextRow.fetchSemanticsNode().positionInWindow.y
+        assertTrue("The remaining row should pass through intermediate positions",
+            rowPositions.any { it < initialRowTop - 1 && it > finalRowTop + 1 })
+    }
+
+    @Test fun savingADepositSlidesTheSheetDownAndMovesTheEarlierMovement() {
+        val name = "Trip fund"
+        val id = seed(name, "500", "10", "USD")
+        val oldAmount = 20.toBigDecimal()
+        dao.addGoalDeposit(GoalDepositData(0, oldAmount, Date(), id))
+        openGoals(name)
+        compose.onNodeWithText(name).performClick()
+        awaitDestination(R.id.goalDetailsFragment)
+        val oldLabel = oldAmount.formatGoalMoney("USD", showPlus = true)
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(oldLabel))
+        val movement = compose.onAllNodesWithText(oldLabel)
+        val initialTop = movement.fetchSemanticsNodes().single().positionInWindow.y
+        text(R.string.goal_top_up).performClick()
+        compose.onNode(hasSetTextAction()).performTextReplacement("30")
+        val title = compose.onAllNodesWithText(str(R.string.goal_add_money))
+        val initialSheetTop = title.fetchSemanticsNodes().single().positionInWindow.y
+
+        val movementPositions = mutableListOf<Float>()
+        checkSheetExit(title, initialSheetTop, compose.onNodeWithTag("goal_adjustment_confirm"),
+            { dao.getGoalDepositsByGoalId(id).size == 2 }) {
+            movement.fetchSemanticsNodes().singleOrNull()?.let { movementPositions.add(it.positionInWindow.y) }
+        }
+        val furthestTop = movementPositions.max()
+        assertTrue("The earlier movement should move down gradually",
+            movementPositions.any { it > initialTop + 1 && it < furthestTop - 1 })
+    }
+
+    private fun checkSheetExit(
+        title: SemanticsNodeInteractionCollection,
+        initialTop: Float,
+        confirm: SemanticsNodeInteraction,
+        committed: () -> Boolean,
+        sampleRows: () -> Unit,
+    ) {
+        val sheetPositions = mutableListOf<Float>()
+        compose.mainClock.autoAdvance = false
+        try {
+            confirm.performClick()
+            compose.waitUntil(8000, committed)
+            repeat(48) {
+                compose.mainClock.advanceTimeBy(32)
+                title.fetchSemanticsNodes().singleOrNull()?.let { sheetPositions.add(it.positionInWindow.y) }
+                sampleRows()
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        title.assertCountEquals(0)
+        assertTrue("The sheet should travel down before it disappears", sheetPositions.any { it > initialTop + 1 })
     }
 
     private fun capture(label: String) {

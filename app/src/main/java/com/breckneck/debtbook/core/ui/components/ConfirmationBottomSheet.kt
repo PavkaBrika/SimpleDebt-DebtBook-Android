@@ -30,14 +30,16 @@ fun ConfirmationBottomSheet(
     dismissText: String = stringResource(R.string.No),
     enabled: Boolean = true,
     errorMessage: String? = null,
+    hideRequested: Boolean = false,
 ) {
     BubbleBottomSheet(
         onDismiss = onDismiss,
         modifier = modifier,
         dismissEnabled = enabled,
+        hideRequested = hideRequested,
         contentPadding = PaddingValues(20.dp),
-    ) {
-        ConfirmationContent(title, message, confirmText, dismissText, onConfirm, onDismiss, enabled, errorMessage)
+    ) { interactive, close ->
+        ConfirmationContent(title, message, confirmText, dismissText, onConfirm, close, interactive, errorMessage)
     }
 }
 

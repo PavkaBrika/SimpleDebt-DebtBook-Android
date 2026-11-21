@@ -20,7 +20,11 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
@@ -40,16 +44,20 @@ internal fun BubbleBottomSheet(
     dismissEnabled: Boolean = true,
     shape: Shape = BottomSheetDefaults.ExpandedShape,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-    content: @Composable () -> Unit,
+    hideRequested: Boolean = false,
+    content: @Composable (enabled: Boolean, close: () -> Unit) -> Unit,
 ) {
     val colors = bubbleColors()
-    val canDismiss = rememberUpdatedState(dismissEnabled)
+    var closeRequested by rememberSaveable { mutableStateOf(false) }
+    val closing = closeRequested || hideRequested
+    val canDismiss by rememberUpdatedState(dismissEnabled || hideRequested)
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
-        confirmValueChange = { it != SheetValue.Hidden || canDismiss.value },
+        confirmValueChange = { it != SheetValue.Hidden || canDismiss },
     )
     DebtBookBottomSheet(
-        onDismiss = { if (dismissEnabled) onDismiss() },
+        onDismiss = { if (canDismiss) onDismiss() },
+        hideRequested = closing,
         modifier = modifier,
         sheetState = sheetState,
         shape = shape,
@@ -59,7 +67,7 @@ internal fun BubbleBottomSheet(
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) { content() }
+        ) { content(dismissEnabled && !closing) { closeRequested = true } }
     }
 }
 

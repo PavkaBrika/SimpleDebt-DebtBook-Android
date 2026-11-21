@@ -46,20 +46,18 @@ class GoalsViewModel @Inject constructor(
             reduce { state.copy(adjustment = GoalAdjustment(action.goalId)) }
         }
         GoalsAction.DismissAddDepositPopup -> intent {
-            if (state.adjustment?.isSaving != true) reduce { state.copy(adjustment = null) }
+            if (state.adjustment?.phase != GoalSheetPhase.SAVING) reduce { state.copy(adjustment = null) }
         }
         is GoalsAction.UpdateDepositSum -> intent {
             val adjustment = state.adjustment ?: return@intent
             val goal = findGoal(adjustment.goalId) ?: return@intent
-            if (!adjustment.isSaving && DecimalInput.isEditable(action.text, goal.currency)) {
+            if (adjustment.phase == GoalSheetPhase.READY && DecimalInput.isEditable(action.text, goal.currency)) {
                 reduce { state.copy(adjustment = adjustment.copy(sumText = action.text, error = null)) }
             }
         }
         GoalsAction.AddGoalDeposit -> addGoalDeposit()
         is GoalsAction.ConfirmDelete -> intent { reduce { state.copy(deletion = GoalDeletion(action.goalId)) } }
-        GoalsAction.DismissDelete -> intent {
-            if (state.deletion?.isDeleting != true) reduce { state.copy(deletion = null) }
-        }
+        GoalsAction.DismissDelete -> finishDeleteSheet()
         GoalsAction.DeleteGoal -> deleteGoal()
         GoalsAction.Retry -> loadGoals()
         is GoalsAction.RefreshAfterNavigation -> intent {
@@ -101,14 +99,14 @@ class GoalsViewModel @Inject constructor(
     }
 
     private fun addGoalDeposit() = intent {
-        val adjustment = state.adjustment?.takeUnless { it.isSaving } ?: return@intent
+        val adjustment = state.adjustment?.takeIf { it.phase == GoalSheetPhase.READY } ?: return@intent
         val goal = findGoal(adjustment.goalId) ?: return@intent
         val amount = DecimalInput.parse(adjustment.sumText, goal.currency)
         if (amount == null || amount.signum() <= 0) {
             reduce { state.copy(adjustment = adjustment.copy(error = GoalAdjustment.Error.INVALID_AMOUNT)) }
             return@intent
         }
-        reduce { state.copy(adjustment = adjustment.copy(isSaving = true, error = null)) }
+        reduce { state.copy(adjustment = adjustment.copy(phase = GoalSheetPhase.SAVING, error = null)) }
         try {
             withContext(Dispatchers.IO) {
                 setGoalDeposit.execute(GoalDeposit(sum = amount, date = Date(), goalId = goal.id))
@@ -121,13 +119,18 @@ class GoalsViewModel @Inject constructor(
         }
         val updated = goal.copy(savedSum = goal.savedSum + amount)
         domainGoals = domainGoals.map { if (it.id == updated.id) updated else it }
-        reduce { state.copy(goalList = domainGoals.map { it.toUi() }, adjustment = null) }
+        reduce {
+            state.copy(
+                goalList = domainGoals.map { it.toUi() },
+                adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null),
+            )
+        }
     }
 
     private fun deleteGoal() = intent {
-        val deletion = state.deletion?.takeUnless { it.isDeleting } ?: return@intent
+        val deletion = state.deletion?.takeIf { it.phase == GoalSheetPhase.READY } ?: return@intent
         val goal = findGoal(deletion.goalId) ?: return@intent
-        reduce { state.copy(deletion = deletion.copy(isDeleting = true, failed = false)) }
+        reduce { state.copy(deletion = deletion.copy(phase = GoalSheetPhase.SAVING, failed = false)) }
         try {
             withContext(Dispatchers.IO) { deleteGoal.execute(goal) }
         } catch (cancelled: CancellationException) {
@@ -136,7 +139,19 @@ class GoalsViewModel @Inject constructor(
             reduce { state.copy(deletion = deletion.copy(failed = true)) }
             return@intent
         }
-        domainGoals = domainGoals.filterNot { it.id == goal.id }
+        reduce { state.copy(deletion = deletion.copy(phase = GoalSheetPhase.SAVED, failed = false)) }
+    }
+
+    private fun finishDeleteSheet() = intent {
+        val deletion = state.deletion ?: return@intent
+        when (deletion.phase) {
+            GoalSheetPhase.SAVING -> return@intent
+            GoalSheetPhase.READY -> {
+                reduce { state.copy(deletion = null) }
+                return@intent
+            }
+            GoalSheetPhase.SAVED -> domainGoals = domainGoals.filterNot { it.id == deletion.goalId }
+        }
         reduce {
             state.copy(
                 goalList = domainGoals.map { it.toUi() },

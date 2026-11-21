@@ -11,11 +11,13 @@ data class GoalsState(
     val deletion: GoalDeletion? = null,
 )
 
+enum class GoalSheetPhase { READY, SAVING, SAVED }
+
 data class GoalAdjustment(
     val goalId: Int,
     val sumText: String = "",
     val error: Error? = null,
-    val isSaving: Boolean = false,
+    val phase: GoalSheetPhase = GoalSheetPhase.READY,
 ) {
     enum class Error { INVALID_AMOUNT, EXCEEDS_BALANCE, SAVE_FAILED }
 }
@@ -23,5 +25,5 @@ data class GoalAdjustment(
 data class GoalDeletion(
     val goalId: Int,
     val failed: Boolean = false,
-    val isDeleting: Boolean = false,
+    val phase: GoalSheetPhase = GoalSheetPhase.READY,
 )

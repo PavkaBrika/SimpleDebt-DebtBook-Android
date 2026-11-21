@@ -111,12 +111,17 @@ private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction:
                 }
                 when (state.listState) {
                     ListState.LOADING -> if (!state.loadFailed) item { ShimmerListPlaceholder(rowCount = 2, rowHeight = 156.dp) }
-                    ListState.EMPTY -> if (!state.loadFailed) item {
-                        EmptyListPlaceholder(stringResource(R.string.goal_empty_list), Icons.Outlined.Savings)
+                    ListState.EMPTY -> if (!state.loadFailed) item(key = "empty-goals") {
+                        EmptyListPlaceholder(
+                            stringResource(R.string.goal_empty_list),
+                            Icons.Outlined.Savings,
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                     ListState.RECEIVED -> items(state.goalList, key = { it.goalId }) { goal ->
                         GoalItem(
                             goal,
+                            modifier = Modifier.animateItem(),
                             onOpen = { onAction(GoalsAction.GoalClick(goal.goalId)) },
                             onAdd = { onAction(GoalsAction.ShowAddDepositPopup(goal.goalId)) },
                             onEdit = { onAction(GoalsAction.EditGoalClick(goal.goalId)) },
@@ -152,8 +157,7 @@ private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction:
         state.goalList.firstOrNull { it.goalId == deletion.goalId }?.let { goal ->
             DeleteGoalSheet(
                 name = goal.name,
-                isDeleting = deletion.isDeleting,
-                failed = deletion.failed,
+                deletion = deletion,
                 onConfirm = { onAction(GoalsAction.DeleteGoal) },
                 onDismiss = { onAction(GoalsAction.DismissDelete) },
             )

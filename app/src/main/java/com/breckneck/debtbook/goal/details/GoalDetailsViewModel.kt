@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import com.breckneck.debtbook.common.toDMYFormat
 import com.breckneck.debtbook.goal.main.GoalAdjustment
 import com.breckneck.debtbook.goal.main.GoalDeletion
+import com.breckneck.debtbook.goal.main.GoalSheetPhase
 import com.breckneck.debtbook.goal.main.mapper.formatGoalMoney
 import com.breckneck.debtbook.goal.main.mapper.toUi
 import com.breckneck.debtbook.goal.main.model.GoalUi
@@ -80,18 +81,21 @@ class GoalDetailsViewModel @Inject constructor(
     }
 
     fun dismissAdjustment() = intent {
-        if (state.adjustment?.isSaving != true) reduce { state.copy(adjustment = null) }
+        val phase = state.adjustment?.phase ?: return@intent
+        if (phase == GoalSheetPhase.SAVING) return@intent
+        reduce { state.copy(adjustment = null) }
+        if (phase == GoalSheetPhase.SAVED) loadHistory()
     }
 
     fun changeAmount(text: String) = intent {
-        val adjustment = state.adjustment?.takeUnless { it.isSaving } ?: return@intent
+        val adjustment = state.adjustment?.takeIf { it.phase == GoalSheetPhase.READY } ?: return@intent
         if (DecimalInput.isEditable(text, currentGoal.currency)) {
             reduce { state.copy(adjustment = adjustment.copy(sumText = text, error = null)) }
         }
     }
 
     fun confirmAdjustment() = intent {
-        val adjustment = state.adjustment?.takeUnless { it.isSaving } ?: return@intent
+        val adjustment = state.adjustment?.takeIf { it.phase == GoalSheetPhase.READY } ?: return@intent
         val goal = currentGoal
         val amount = DecimalInput.parse(adjustment.sumText, goal.currency)
         val error = when {
@@ -105,7 +109,7 @@ class GoalDetailsViewModel @Inject constructor(
         }
 
         val amountChange = checkNotNull(amount).let { if (state.withdraw) -it else it }
-        reduce { state.copy(adjustment = adjustment.copy(isSaving = true, error = null)) }
+        reduce { state.copy(adjustment = adjustment.copy(phase = GoalSheetPhase.SAVING, error = null)) }
         try {
             withContext(Dispatchers.IO) {
                 setGoalDeposit.execute(GoalDeposit(sum = amountChange, date = Date(), goalId = goal.id))
@@ -119,20 +123,22 @@ class GoalDetailsViewModel @Inject constructor(
         val updated = goal.copy(savedSum = goal.savedSum + amountChange)
         currentGoal = updated
         savedState["goal"] = updated
-        reduce { state.copy(goal = updated.toUi(), adjustment = null) }
+        reduce { state.copy(goal = updated.toUi(), adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null)) }
         postSideEffect(GoalDetailsEffect.BalanceChanged(updated))
-        loadHistory()
     }
 
     fun openDelete() = intent { reduce { state.copy(deletion = GoalDeletion(currentGoal.id)) } }
 
     fun dismissDelete() = intent {
-        if (state.deletion?.isDeleting != true) reduce { state.copy(deletion = null) }
+        val phase = state.deletion?.phase ?: return@intent
+        if (phase == GoalSheetPhase.SAVING) return@intent
+        reduce { state.copy(deletion = null) }
+        if (phase == GoalSheetPhase.SAVED) postSideEffect(GoalDetailsEffect.Deleted)
     }
 
     fun confirmDelete() = intent {
-        val deletion = state.deletion?.takeUnless { it.isDeleting } ?: return@intent
-        reduce { state.copy(deletion = deletion.copy(isDeleting = true, failed = false)) }
+        val deletion = state.deletion?.takeIf { it.phase == GoalSheetPhase.READY } ?: return@intent
+        reduce { state.copy(deletion = deletion.copy(phase = GoalSheetPhase.SAVING, failed = false)) }
         try {
             withContext(Dispatchers.IO) { deleteGoal.execute(currentGoal) }
         } catch (cancelled: CancellationException) {
@@ -141,7 +147,7 @@ class GoalDetailsViewModel @Inject constructor(
             reduce { state.copy(deletion = deletion.copy(failed = true)) }
             return@intent
         }
-        postSideEffect(GoalDetailsEffect.Deleted)
+        reduce { state.copy(deletion = deletion.copy(phase = GoalSheetPhase.SAVED, failed = false)) }
     }
 
     private suspend fun Syntax<GoalDetailsState, GoalDetailsEffect>.loadHistory() {

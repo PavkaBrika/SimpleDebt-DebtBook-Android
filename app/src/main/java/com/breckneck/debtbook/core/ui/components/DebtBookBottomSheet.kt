@@ -8,6 +8,9 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -32,11 +35,13 @@ fun DebtBookBottomSheet(
     shape: Shape = BottomSheetDefaults.ExpandedShape,
     containerColor: Color = BottomSheetDefaults.ContainerColor,
     contentColor: Color = contentColorFor(containerColor),
+    hideRequested: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        sheetGesturesEnabled = !hideRequested,
         modifier = modifier,
         shape = shape,
         containerColor = containerColor,
@@ -44,4 +49,11 @@ fun DebtBookBottomSheet(
         dragHandle = null,
         content = content,
     )
+    if (hideRequested) {
+        val onHidden by rememberUpdatedState(onDismiss)
+        LaunchedEffect(sheetState) {
+            sheetState.hide()
+            if (!sheetState.isVisible) onHidden()
+        }
+    }
 }

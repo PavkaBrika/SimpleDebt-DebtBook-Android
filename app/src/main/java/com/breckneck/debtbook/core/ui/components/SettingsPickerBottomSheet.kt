@@ -18,6 +18,10 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,12 +42,16 @@ fun SettingsPickerBottomSheet(
     onItemSelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    DebtBookBottomSheet(onDismiss = onDismiss) {
+    var pendingSelection by rememberSaveable { mutableStateOf<Int?>(null) }
+    DebtBookBottomSheet(
+        onDismiss = { pendingSelection?.let(onItemSelected) ?: onDismiss() },
+        hideRequested = pendingSelection != null,
+    ) {
         SettingsPickerContent(
             title = title,
             options = options,
-            selectedIndex = selectedIndex,
-            onItemSelected = onItemSelected
+            selectedIndex = pendingSelection ?: selectedIndex,
+            onItemSelected = { if (pendingSelection == null) pendingSelection = it }
         )
     }
 }

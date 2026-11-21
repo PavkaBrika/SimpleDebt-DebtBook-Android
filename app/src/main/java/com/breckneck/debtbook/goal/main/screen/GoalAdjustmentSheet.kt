@@ -28,6 +28,7 @@ import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.GoalAdjustment
+import com.breckneck.debtbook.goal.main.GoalSheetPhase
 import com.breckneck.debtbook.goal.main.model.GoalUi
 
 @Composable
@@ -40,7 +41,6 @@ internal fun GoalAdjustmentSheet(
     withdraw: Boolean = false,
 ) {
     val colors = bubbleColors()
-    val enabled = !adjustment.isSaving
     val input = rememberTextFieldState(initialText = adjustment.sumText)
     val errorMessage = when (adjustment.error) {
         GoalAdjustment.Error.INVALID_AMOUNT -> stringResource(R.string.goal_amount_invalid)
@@ -50,14 +50,15 @@ internal fun GoalAdjustmentSheet(
     }
     BubbleBottomSheet(
         onDismiss = onDismiss,
-        dismissEnabled = enabled,
+        dismissEnabled = adjustment.phase == GoalSheetPhase.READY,
+        hideRequested = adjustment.phase == GoalSheetPhase.SAVED,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-    ) {
+    ) { enabled, close ->
         val focus = LocalFocusManager.current
         val keyboard = LocalSoftwareKeyboardController.current
         BubbleSheetHeader(
             title = stringResource(if (withdraw) R.string.goal_withdraw_money else R.string.goal_add_money),
-            onClose = onDismiss,
+            onClose = close,
             enabled = enabled,
         )
         Text(
