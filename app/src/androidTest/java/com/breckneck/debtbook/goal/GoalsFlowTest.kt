@@ -133,6 +133,7 @@ class GoalsFlowTest {
         compose.waitUntil(10000) { !keyboardVisible() }
         capture("active")
         openGoal(initialName)
+        scrollToGoalContent(R.string.already_saved_sum).assertIsDisplayed()
         scrollToGoalContent("1000".toBigDecimal().formatGoalMoney("RUB", showPlus = true)).assertIsDisplayed()
         ordinaryBack(R.id.goalsFragment)
 
@@ -159,6 +160,7 @@ class GoalsFlowTest {
         capture("withdraw-sheet")
         textField(R.string.sum).performTextReplacement("3501")
         compose.onNodeWithTag("goal_adjustment_confirm").performClick()
+        awaitText(R.string.goal_overdrawn)
         node(R.string.goal_overdrawn).performScrollTo().assertIsDisplayed()
         assertBalance(initialName, "3500", 2)
         textField(R.string.sum).performTextReplacement("300")
@@ -233,6 +235,11 @@ class GoalsFlowTest {
             openGoal(name)
             scrollToGoalContent(R.string.goal_empty_history).assertIsDisplayed()
             assertBalance(name, "0", 0)
+            scrollToGoalContent(R.string.goal_top_up).performClick()
+            textField(R.string.sum).performTextReplacement("1000")
+            compose.onNodeWithTag("goal_adjustment_confirm").performClick()
+            scrollToGoalContent(R.string.goal_deposit).assertIsDisplayed()
+            assertBalance(name, "1000", 1)
             ordinaryBack(R.id.goalsFragment)
         }
     }

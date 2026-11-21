@@ -94,6 +94,31 @@ class ExactDataRoomTest {
         }
     }
 
+    @Test fun migrate19LabelsOpeningSavingsAndKeepsSameDayTopUps() {
+        val name = "goal-opening-migration-19"
+        context.deleteDatabase(name)
+        val schema = InstrumentationRegistry.getInstrumentation().context.assets.open("database.AppDataBase/19.json")
+            .bufferedReader().use { JsonParser.parseReader(it) }.asJsonObject.getAsJsonObject("database")
+        try {
+            SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name), null).use { db ->
+                schema.getAsJsonArray("entities").forEach {
+                    val table = it.asJsonObject.get("tableName").asString
+                    fun create(sql: String) = db.execSQL(sql.replace("\u0024{TABLE_NAME}", table))
+                    create(it.asJsonObject.get("createSql").asString)
+                    it.asJsonObject.getAsJsonArray("indices")?.forEach { index -> create(index.asJsonObject.get("createSql").asString) }
+                }
+                db.execSQL("INSERT INTO GoalData VALUES (1, 'With savings', '100', '20', 'RUB', NULL, 1000, NULL, '0', NULL)")
+                db.execSQL("INSERT INTO GoalData VALUES (2, 'Without savings', '100', '10', 'RUB', NULL, 1000, NULL, '0', NULL)")
+                db.execSQL("INSERT INTO GoalDepositData VALUES (1, '10', 1000, 1), (2, '10', 1001, 1), (3, '10', 1001, 2)")
+                db.version = 19
+            }
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(*DatabaseMigrations.ALL).build().use { db ->
+                val rows = db.appDao().getAllGoalDeposits().sortedBy { it.id }
+                assertEquals(listOf(true, false, false), rows.map { it.isInitial })
+            }
+        } finally { context.deleteDatabase(name) }
+    }
+
     @Test fun exactCreateEditRepeatedDeleteAndInterruptedTransaction() {
         Room.inMemoryDatabaseBuilder(context, AppDataBase::class.java).build().use { db ->
             val dao = db.appDao()
@@ -146,7 +171,7 @@ class ExactDataRoomTest {
             }
         }
         try {
-            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.migration15To16("USD"), DatabaseMigrations.MIGRATION_16_17, DatabaseMigrations.MIGRATION_17_18, DatabaseMigrations.MIGRATION_18_19).build().use { db ->
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.migration15To16("USD"), DatabaseMigrations.MIGRATION_16_17, DatabaseMigrations.MIGRATION_17_18, DatabaseMigrations.MIGRATION_18_19, DatabaseMigrations.MIGRATION_19_20).build().use { db ->
                 try { db.appDao().getAllHuman(); fail("migration should fail") } catch (_: IllegalStateException) { }
             }
             assertTrue("Failing conversion was not exercised", converted)

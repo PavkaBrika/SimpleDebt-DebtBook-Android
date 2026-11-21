@@ -102,7 +102,7 @@ class PartialRepaymentRoomTest {
                     error("Failure after adding repayment schema")
                 }
             }
-            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.MIGRATION_17_18, DatabaseMigrations.MIGRATION_18_19).build().use { db ->
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.MIGRATION_17_18, DatabaseMigrations.MIGRATION_18_19, DatabaseMigrations.MIGRATION_19_20).build().use { db ->
                 try { db.appDao().getAllDebts(); fail("Migration should fail") } catch (_: IllegalStateException) { }
             }
             SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READONLY).use { db ->

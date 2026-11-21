@@ -8,5 +8,6 @@ data class GoalDeposit(
     var id: Int = 0,
     var sum: BigDecimal,
     var date: Date,
-    var goalId: Int
+    var goalId: Int,
+    val isInitial: Boolean = false
 )

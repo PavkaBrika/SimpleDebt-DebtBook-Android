@@ -158,6 +158,22 @@ object DatabaseMigrations {
         }
     }
 
-    fun forCurrency(currency: String) = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, migration15To16(currency), MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+    val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE GoalDepositData ADD COLUMN isInitial INTEGER NOT NULL DEFAULT 0")
+            // Only v19 wrote an opening deposit with the exact timestamp of its parent goal.
+            if (db.version == 19) {
+                db.execSQL("""
+                    UPDATE GoalDepositData SET isInitial = 1
+                    WHERE id IN (SELECT MIN(id) FROM GoalDepositData GROUP BY goalId)
+                      AND CAST(sum AS NUMERIC) > 0
+                      AND EXISTS (SELECT 1 FROM GoalData g WHERE g.id = goalId
+                                  AND g.creationDate = GoalDepositData.date AND g.openingAdjustment = '0')
+                """.trimIndent())
+            }
+        }
+    }
+
+    fun forCurrency(currency: String) = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, migration15To16(currency), MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
     val ALL = forCurrency("USD")
 }

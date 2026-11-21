@@ -28,7 +28,7 @@ class BackupRoomTest {
         listOf(Finance(id, "0.01".toBigDecimal(), Date(1794700800123L), "Finance", id, "EUR", "2026-11-15")),
         listOf(FinanceCategory(id, "Category", FinanceCategoryState.INCOME, "#123456", 123)),
         listOf(Goal(id, "Portable photo", "100.01".toBigDecimal(), "20.21".toBigDecimal(), "JPY", photo, Date(1794700800123L), Date(1794787200123L), "20.01".toBigDecimal(), "2026-11-16")),
-        listOf(GoalDeposit(id, "0.2".toBigDecimal(), Date(1794700800123L), id)),
+        listOf(GoalDeposit(id, "0.2".toBigDecimal(), Date(1794700800123L), id, isInitial = true)),
     )
     @Test fun restoreThenUploadUsesRestoredRoomDataAndRejectsMalformedBackup() = runBlocking {
         val repo = repository; val original = repo.getAllAppData()

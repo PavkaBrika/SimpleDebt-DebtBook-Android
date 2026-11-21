@@ -18,7 +18,7 @@ class BackupCodecTest {
         listOf(Finance(3, "0.01".toBigDecimal(), Date(1794700800123L), "Info", 4, "EUR", "2026-11-15")),
         listOf(FinanceCategory(4, "Food", FinanceCategoryState.EXPENSE, "#123456", 123)),
         listOf(Goal(5, "Goal", "1000".toBigDecimal().stripTrailingZeros(), "20.3".toBigDecimal(), "JPY", null, Date(1794700800123L), Date(1794787200000L), "20.1".toBigDecimal(), "2026-11-16")),
-        listOf(GoalDeposit(6, "0.2".toBigDecimal(), Date(1794700800123L), 5)),
+        listOf(GoalDeposit(6, "0.2".toBigDecimal(), Date(1794700800123L), 5, isInitial = true)),
     )
     private fun encoded() = codec.encode(fixture(), mapOf(5 to "aW1hZ2U="), 1794700800123L)
 
@@ -36,7 +36,21 @@ class BackupCodecTest {
         val root = JsonParser.parseString(encoded()).asJsonObject
         root.addProperty("formatVersion", 4)
         root.getAsJsonObject("data").getAsJsonArray("debtList")[0].asJsonObject.remove("recordedAsLoan")
+        root.getAsJsonObject("data").getAsJsonArray("goalDepositList")[0].asJsonObject.remove("isInitial")
         assertFalse(codec.decode(root.toString()).data.debtList.single().recordedAsLoan)
+    }
+    @Test fun `v5 opening uses the creation instant and v6 respects an ordinary deposit at that instant`() {
+        val goal = fixture().goalList.single().copy(savedSum = "0.2".toBigDecimal(), openingAdjustment = java.math.BigDecimal.ZERO)
+        val deposit = fixture().goalDepositList.single().copy(isInitial = false)
+        val data = fixture().copy(goalList = listOf(goal), goalDepositList = listOf(deposit))
+        val root = JsonParser.parseString(codec.encode(data)).asJsonObject
+        assertFalse(codec.decode(root.toString()).data.goalDepositList.single().isInitial)
+        root.addProperty("formatVersion", 5)
+        val row = root.getAsJsonObject("data").getAsJsonArray("goalDepositList")[0].asJsonObject
+        row.remove("isInitial")
+        assertTrue(codec.decode(root.toString()).data.goalDepositList.single().isInitial)
+        row.addProperty("date", goal.creationDate.time + 1)
+        assertFalse(codec.decode(root.toString()).data.goalDepositList.single().isInitial)
     }
     @Test fun `versioned timestamp and day survive locale and timezone changes`() {
         val text = encoded()
@@ -65,6 +79,7 @@ class BackupCodecTest {
             }
             old.getAsJsonArray("financeList").forEach { it.asJsonObject.remove("currency"); it.asJsonObject.remove("calendarDay") }
             old.getAsJsonArray("goalList").forEach { it.asJsonObject.remove("goalDay") }
+            old.getAsJsonArray("goalDepositList").forEach { it.asJsonObject.remove("isInitial") }
             old.getAsJsonArray("debtList").forEach { listOf("cancelled", "dueDay", "reminderMinute", "reminderToken", "reminderDelivered", "recordedAsLoan").forEach(it.asJsonObject::remove) }
             old.getAsJsonArray("debtList")[0].asJsonObject.addProperty("date", "01/02/2024")
             old.getAsJsonArray("goalList")[0].asJsonObject.addProperty("photoPath", "/another/device/photo.jpg")

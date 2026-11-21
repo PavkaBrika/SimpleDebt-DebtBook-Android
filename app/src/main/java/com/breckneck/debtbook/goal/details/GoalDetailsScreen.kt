@@ -236,7 +236,11 @@ private fun GoalHistoryRow(row: GoalMovement, first: Boolean, last: Boolean, mod
                 },
             ) {
                 Text(
-                    stringResource(if (row.isDeposit) R.string.goal_deposit else R.string.goal_withdrawal),
+                    stringResource(when (row.type) {
+                        GoalMovementType.INITIAL_SAVINGS -> R.string.already_saved_sum
+                        GoalMovementType.DEPOSIT -> R.string.goal_deposit
+                        GoalMovementType.WITHDRAWAL -> R.string.goal_withdrawal
+                    }),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                 )
@@ -279,7 +283,7 @@ private fun GoalDetailsPreview() {
     DebtBookTheme {
         GoalDetailsContent(
             goal = goal,
-            state = GoalDetailsState(history = listOf(GoalMovement(1, "+8,500 ₽", "17 Nov 2026", true))),
+            state = GoalDetailsState(history = listOf(GoalMovement(1, "+8,500 ₽", "17 Nov 2026", GoalMovementType.DEPOSIT))),
             onBack = {}, onAdd = {}, onSubtract = {}, onEdit = {}, onDelete = {}, onRetry = {},
         )
     }

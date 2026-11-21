@@ -52,9 +52,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
             goalList = dao.getAllGoals().map {
                 Goal(id = it.id, name = it.name, sum = it.sum, savedSum = it.savedSum, currency = it.currency, photoPath = it.photoPath, creationDate = it.creationDate, goalDate = it.goalDate, openingAdjustment = it.openingAdjustment, goalDay = it.goalDay)
             },
-            goalDepositList = dao.getAllGoalDeposits().map {
-                GoalDeposit(id = it.id, sum = it.sum, date = it.date, goalId = it.goalId)
-            }
+            goalDepositList = dao.getAllGoalDeposits().map(GoalDepositData::toDomain)
         )
     }
 
@@ -89,9 +87,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
             goals = appDataLists.goalList.map {
                 GoalData(id = it.id, name = it.name, sum = it.sum, savedSum = it.savedSum, currency = it.currency, photoPath = it.photoPath, creationDate = it.creationDate, goalDate = it.goalDate, openingAdjustment = it.openingAdjustment, goalDay = it.goalDay)
             },
-            goalDeposits = appDataLists.goalDepositList.map {
-                GoalDepositData(id = it.id, sum = it.sum, date = it.date, goalId = it.goalId)
-            }
+            goalDeposits = appDataLists.goalDepositList.map(GoalDeposit::toEntity)
         )
         database.ReminderRestoreHook.afterRestore?.invoke()
     }

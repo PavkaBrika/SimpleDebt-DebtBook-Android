@@ -35,7 +35,11 @@ data class GoalDetailsState(
     val deletion: GoalDeletion? = null,
 )
 
-data class GoalMovement(val id: Int, val amount: String, val date: String, val isDeposit: Boolean)
+enum class GoalMovementType { INITIAL_SAVINGS, DEPOSIT, WITHDRAWAL }
+
+data class GoalMovement(val id: Int, val amount: String, val date: String, val type: GoalMovementType) {
+    val isDeposit get() = type != GoalMovementType.WITHDRAWAL
+}
 
 sealed interface GoalDetailsEffect {
     data class Edit(val goal: Goal) : GoalDetailsEffect
@@ -167,6 +171,11 @@ class GoalDetailsViewModel @Inject constructor(
     }
 
     private fun formatHistory(currency: String): List<GoalMovement> = deposits.map {
-        GoalMovement(it.id, it.sum.formatGoalMoney(currency, showPlus = true), it.date.toDMYFormat(), it.sum.signum() > 0)
+        val type = when {
+            it.isInitial -> GoalMovementType.INITIAL_SAVINGS
+            it.sum.signum() > 0 -> GoalMovementType.DEPOSIT
+            else -> GoalMovementType.WITHDRAWAL
+        }
+        GoalMovement(it.id, it.sum.formatGoalMoney(currency, showPlus = true), it.date.toDMYFormat(), type)
     }
 }

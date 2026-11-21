@@ -257,7 +257,7 @@ interface AppDao {
         val goalId = insertGoal(goal.copy(openingAdjustment = BigDecimal.ZERO))
         if (goal.savedSum.signum() > 0) {
             insertGoalDeposit(
-                GoalDepositData(id = 0, sum = goal.savedSum, date = goal.creationDate, goalId = goalId.toInt())
+                GoalDepositData(id = 0, sum = goal.savedSum, date = goal.creationDate, goalId = goalId.toInt(), isInitial = true)
             )
         }
     }

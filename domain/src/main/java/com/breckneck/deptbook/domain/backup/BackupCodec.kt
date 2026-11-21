@@ -88,7 +88,9 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
                 if (legacy) BigDecimal.ZERO else row.money("openingAdjustment", false), row.optionalDay("goalDay"))
         }
         val deposits = payload.rows("goalDepositList").map { row ->
-            GoalDeposit(row.id(), row.money("sum", legacy), row.date("date", legacy)!!, row.integer("goalId"))
+            if (version < 6) require(!row.has("isInitial")) { "Opening savings need backup v6" }
+            GoalDeposit(row.id(), row.money("sum", legacy), row.date("date", legacy)!!, row.integer("goalId"),
+                isInitial = version >= 6 && row.boolean("isInitial"))
         }
         fun unique(ids: List<Int>): Set<Int> {
             require(ids.all { it > 0 } && ids.distinct().size == ids.size) { "Duplicate or invalid IDs" }
@@ -101,18 +103,27 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         RepaymentPolicy.validate(debts)
         debts.forEach(DebtReminderPolicy::validate)
         val debtTotals = debts.groupBy { it.idHuman }.mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.effectiveSum } }
-        val depositTotals = deposits.groupBy { it.goalId }.mapValues { (_, rows) -> rows.fold(BigDecimal.ZERO) { total, row -> total + row.sum } }
+        val depositsByGoal = deposits.groupBy { it.goalId }
+        val oldOpeningIds = mutableSetOf<Int>()
         humans.forEach {
             val total = debtTotals[it.id] ?: BigDecimal.ZERO
             if (legacy) it.openingAdjustment = (it.sumDebt - total).stripTrailingZeros()
             else require(it.sumDebt.compareTo(it.openingAdjustment + total) == 0) { "Inconsistent debt total" }
         }
-        goals.forEach {
-            val total = depositTotals[it.id] ?: BigDecimal.ZERO
-            if (legacy) it.openingAdjustment = (it.savedSum - total).stripTrailingZeros()
-            else require(it.savedSum.compareTo(it.openingAdjustment + total) == 0) { "Inconsistent savings total" }
+        goals.forEach { goal ->
+            val rows = depositsByGoal[goal.id].orEmpty()
+            val total = rows.fold(BigDecimal.ZERO) { sum, row -> sum + row.sum }
+            if (legacy) goal.openingAdjustment = (goal.savedSum - total).stripTrailingZeros()
+            else require(goal.savedSum.compareTo(goal.openingAdjustment + total) == 0) { "Inconsistent savings total" }
+            if (version == 5 && goal.openingAdjustment.signum() == 0) {
+                val first = rows.minByOrNull { it.id }
+                if (first != null && first.date == goal.creationDate && first.sum.signum() > 0) oldOpeningIds.add(first.id)
+            }
+            val opening = rows.filter { it.isInitial }
+            require(opening.size <= 1 && opening.all { it.sum.signum() > 0 && it.date == goal.creationDate }) { "Invalid opening savings" }
         }
-        val data = AppDataLists(humans, debts, finances, categories, goals, deposits)
+        val history = if (oldOpeningIds.isEmpty()) deposits else deposits.map { it.copy(isInitial = it.id in oldOpeningIds) }
+        val data = AppDataLists(humans, debts, finances, categories, goals, history)
         val photos = mutableMapOf<Int, String>()
         if (!legacy) {
             require(root.integer("recordCount") == count(data)) { "Invalid record count" }
@@ -222,7 +233,7 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         return Date(candidates.single())
     }
     companion object {
-        const val VERSION = 5
+        const val VERSION = 6
         const val FORMAT = "SimpleDebtBackup"
         const val MAX_CHARACTERS = 32 * 1024 * 1024
         const val MAX_PHOTO_CHARACTERS = 8 * 1024 * 1024

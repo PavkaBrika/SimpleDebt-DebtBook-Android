@@ -99,7 +99,7 @@ class DueDateRoomTest {
             val failing = object : Migration(17, 18) {
                 override fun migrate(db: SupportSQLiteDatabase) { exercised = true; DatabaseMigrations.MIGRATION_17_18.migrate(db); error("fail after ALTER") }
             }
-            try { Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.MIGRATION_18_19).build().use { it.appDao().getAllDebts() }; fail("failure accepted") }
+            try { Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.MIGRATION_18_19, DatabaseMigrations.MIGRATION_19_20).build().use { it.appDao().getAllDebts() }; fail("failure accepted") }
             catch (_: IllegalStateException) { }
             assertTrue(exercised)
             SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READONLY).use { assertEquals(17, it.version) }
