@@ -102,6 +102,7 @@ flowActions['goal-save']=i=>{
   const g=d.id?goalById(d.id):{id:newId(),created:TODAY,deposits:[]};
   if(d.id&&saved(g)!==d.initialSaved)return fail(i,'Накопления изменились в другой панели. Откройте цель заново, чтобы увидеть новый остаток.');
   if(d.due&&d.due<=TODAY&&d.due!==g.due)return fail(i,'Выберите будущую дату.');
+  if(!d.id&&current>0) g.deposits.push({id:newId(),date:g.created,cents:current});
   Object.assign(g,{name:d.name.trim(),target:n,cur:d.cur,due:d.due,photo:d.photo,opening:current-g.deposits.reduce((sum,x)=>sum+x.cents,0)});
   if(!d.id)savings.unshift(g);
   f.goalId=g.id;pop(i,'Цель сохранена');
