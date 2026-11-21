@@ -34,6 +34,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -45,6 +47,7 @@ import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.goal.main.mapper.formatGoalMoney
+import entity.GoalDepositData
 import entity.GoalData
 import java.util.Date
 import database.AppDataBase
@@ -68,8 +71,9 @@ class GoalsFlowTest {
     private val initialName = "Bubble QA · Trip"
     private val editedName = "Bubble QA · Renamed"
     private val finalName = "Bubble QA · Details"
+    private val historyName = "Путешествие по городам Японии · Bubble QA"
     private val scrollGoals = (1..7).map { "Bubble QA · Plan $it" }
-    private val goalNames = listOf(initialName, editedName, finalName) + scrollGoals
+    private val goalNames = listOf(initialName, editedName, finalName, historyName) + scrollGoals
     private lateinit var oldPrefs: Map<String, *>
 
     @Before fun launch() {
@@ -79,6 +83,10 @@ class GoalsFlowTest {
             .putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true)
             .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         cleanGoals()
+        launchGoalsFromLauncher()
+    }
+
+    private fun launchGoalsFromLauncher() {
         val launchIntent = checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
         context.startActivity(launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK))
         awaitDestination(R.id.mainFragment, timeoutMillis = 45_000)
@@ -204,6 +212,7 @@ class GoalsFlowTest {
         val screenHeight = checkNotNull(onMain { it.window.decorView.height })
         assertEquals(0f, viewport.top, 1f)
         assertEquals(screenHeight.toFloat(), viewport.bottom, 1f)
+        compose.waitUntil(10000) { !keyboardVisible() }
         val createButton = node(R.string.goal_new).fetchSemanticsNode().boundsInRoot
         list.performScrollToIndex(3)
         val statusHeight = checkNotNull(onMain { activity ->
@@ -220,6 +229,62 @@ class GoalsFlowTest {
         val lastEdit = compose.onAllNodesWithText(context.getString(R.string.goal_edit_action)).fetchSemanticsNodes().last()
         assertTrue("Last edit action must clear the fixed button", lastEdit.boundsInRoot.bottom <= createButton.top)
         capture("list-end")
+    }
+
+    @Test fun goalHistoryScrollsBehindTheFloatingHeaderAndSystemBars() {
+        val now = System.currentTimeMillis()
+        dao.insertAllGoals(listOf(GoalData(0, historyName, 20000.toBigDecimal(), 1000.toBigDecimal(),
+            "RUB", null, Date(now - 24 * 86_400_000L), null)))
+        val goal = dao.getAllGoals().single { it.name == historyName }
+        for (day in 1..24) {
+            val movement = if (day % 4 == 0) -day else day
+            dao.addGoalDeposit(GoalDepositData(0, movement.toBigDecimal(), Date(now - (24 - day) * 86_400_000L), goal.id))
+        }
+        launchGoalsFromLauncher()
+        openGoal(historyName)
+        val list = compose.onNode(hasScrollToIndexAction())
+        val title = compose.onNodeWithText(historyName)
+        val titleBounds = title.fetchSemanticsNode().boundsInRoot
+        val (width, height, bars) = checkNotNull(onMain { activity ->
+            val decor = activity.window.decorView
+            Triple(decor.width, decor.height, ViewCompat.getRootWindowInsets(decor)!!.getInsets(WindowInsetsCompat.Type.systemBars()))
+        })
+        val viewport = list.fetchSemanticsNode().boundsInRoot
+        assertEquals(0f, viewport.top, 1f)
+        assertEquals(height.toFloat(), viewport.bottom, 1f)
+        assertEquals(0f, viewport.left, 1f)
+        assertEquals(width.toFloat(), viewport.right, 1f)
+        assertTrue(titleBounds.top >= bars.top)
+        val menu = compose.onNodeWithContentDescription(context.getString(R.string.goal_actions)).fetchSemanticsNode().boundsInRoot
+        assertTrue(menu.left >= bars.left && menu.right <= width - bars.right)
+        capture("detail-header")
+
+        list.performTouchInput { swipeUp() }
+        val amount = 18.toBigDecimal().formatGoalMoney("RUB", showPlus = true)
+        list.performScrollToNode(hasText(amount))
+        val amountNode = compose.onNodeWithText(amount)
+        fun moveAmountTo(y: Float) {
+            val distance = amountNode.fetchSemanticsNode().boundsInRoot.center.y - y
+            list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+            compose.waitForIdle()
+            val visible = amountNode.fetchSemanticsNode().boundsInRoot
+            assertTrue("The movement must be visible at y=$y within $visible", y in visible.top..visible.bottom)
+        }
+        moveAmountTo(titleBounds.center.y)
+        assertEquals(titleBounds, title.fetchSemanticsNode().boundsInRoot)
+        capture("history-under-header")
+        moveAmountTo(bars.top / 2f)
+        openGoalActions()
+        node(R.string.goal_edit).assertIsDisplayed()
+        node(R.string.goal_delete).assertIsDisplayed()
+        ordinaryBack(R.id.goalDetailsFragment)
+        val oldest = 1.toBigDecimal().formatGoalMoney("RUB", showPlus = true)
+        list.performScrollToNode(hasText(oldest))
+        list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, height.toFloat()) }
+        val lastRow = compose.onNodeWithText(oldest).fetchSemanticsNode().boundsInRoot
+        assertTrue(lastRow.top > titleBounds.bottom && lastRow.bottom <= height - bars.bottom)
+        capture("history-end")
+        ordinaryBack(R.id.goalsFragment)
     }
 
     @Test fun tabSelectionAndSystemInsetsFollowNavHost() {
