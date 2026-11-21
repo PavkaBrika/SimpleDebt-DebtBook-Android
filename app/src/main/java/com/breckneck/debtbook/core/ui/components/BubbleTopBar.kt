@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,8 +49,11 @@ internal fun BubbleTopBar(
 ) {
     val colors = bubbleColors()
     val direction = LocalLayoutDirection.current
-    val lineHeight = 22.sp
-    val bubbleHeight = with(LocalDensity.current) { maxOf(48.dp, lineHeight.toDp() * 2 + 2.dp) }
+    val titleStyle = MaterialTheme.typography.titleMedium.copy(
+        fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+    )
+    val twoLines = rememberTextMeasurer().measure("$title\n$title", style = titleStyle, maxLines = 2)
+    val bubbleHeight = with(LocalDensity.current) { maxOf(48.dp, twoLines.size.height.toDp() + 2.dp) }
     Row(
         modifier = modifier.fillMaxWidth().background(
             Brush.verticalGradient(
@@ -81,11 +85,7 @@ internal fun BubbleTopBar(
                 Text(
                     title,
                     color = colors.ink,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontSize = 18.sp,
-                    lineHeight = lineHeight,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
+                    style = titleStyle,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

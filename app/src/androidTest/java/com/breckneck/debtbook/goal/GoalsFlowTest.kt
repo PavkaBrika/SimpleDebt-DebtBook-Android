@@ -18,6 +18,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -37,6 +39,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.fragment.NavHostFragment
@@ -256,6 +259,14 @@ class GoalsFlowTest {
         assertEquals(width.toFloat(), viewport.right, 1f)
         assertTrue(titleBounds.top >= bars.top)
         val menu = compose.onNodeWithContentDescription(context.getString(R.string.goal_actions)).fetchSemanticsNode().boundsInRoot
+        val back = compose.onNodeWithContentDescription(context.getString(R.string.back)).fetchSemanticsNode().boundsInRoot
+        assertEquals(back.height, titleBounds.height, 1f)
+        assertEquals(menu.height, titleBounds.height, 1f)
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(historyName, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val layout = layouts.single()
+        val fitsOneLine = layout.multiParagraph.intrinsics.maxIntrinsicWidth <= layout.size.width
+        assertEquals(if (fitsOneLine) 1 else 2, layout.lineCount)
         assertTrue(menu.left >= bars.left && menu.right <= width - bars.right)
         capture("detail-header")
 
@@ -305,6 +316,53 @@ class GoalsFlowTest {
         assertTrue(onMain { it.findViewById<android.view.View>(R.id.bottomNavigationView).isShown } == true)
     }
 
+    @Test fun goalFormsScrollUnderFixedControlsAndKeepInputAboveTheKeyboard() {
+        click(R.string.goal_new)
+        awaitDestination(R.id.createGoalsFragment)
+        fun verifyForm(title: Int) {
+            awaitText(R.string.goal_photo_choose)
+            val form = compose.onNode(hasScrollAction() and hasAnyDescendant(hasText(context.getString(R.string.goal_photo_choose))))
+            val window = checkNotNull(onMain { it.window.decorView.height })
+            val viewport = form.fetchSemanticsNode().boundsInRoot
+            assertEquals(0f, viewport.top, 1f)
+            assertEquals(window.toFloat(), viewport.bottom, 1f)
+            val header = node(title).fetchSemanticsNode().boundsInRoot
+            val back = compose.onNodeWithContentDescription(context.getString(R.string.back)).fetchSemanticsNode().boundsInRoot
+            assertEquals(back.height, header.height, 1f)
+            val save = node(R.string.goal_save).fetchSemanticsNode().boundsInRoot
+            form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, window.toFloat()) }
+            compose.waitForIdle()
+            assertTrue(node(R.string.goal_photo_choose).fetchSemanticsNode().boundsInRoot.bottom <= save.top)
+            assertEquals(header, node(title).fetchSemanticsNode().boundsInRoot)
+            assertEquals(save, node(R.string.goal_save).fetchSemanticsNode().boundsInRoot)
+            capture(if (title == R.string.goal_new) "form-new" else "form-edit")
+        }
+        verifyForm(R.string.goal_new)
+        textField(R.string.name).performTextReplacement(initialName)
+        textField(R.string.goal_target_amount).performTextReplacement("20000")
+        val amount = textField(R.string.already_saved_sum)
+        amount.performClick().performTextReplacement("1000")
+        compose.waitUntil(10000) { keyboardVisible() }
+        compose.waitUntil(5000) {
+            val imeTop = checkNotNull(onMain { activity ->
+                val decor = activity.window.decorView
+                decor.height - ViewCompat.getRootWindowInsets(decor)!!.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            })
+            val save = node(R.string.goal_save).fetchSemanticsNode().boundsInRoot
+            val field = amount.fetchSemanticsNode().boundsInRoot
+            field.height > 0 && field.top >= node(R.string.goal_new).fetchSemanticsNode().boundsInRoot.bottom &&
+                field.bottom <= save.top && save.bottom <= imeTop + 1
+        }
+        capture("form-keyboard")
+        click(R.string.goal_save)
+        awaitDestination(R.id.goalsFragment)
+        awaitGoal(initialName)
+        click(R.string.goal_edit_action)
+        awaitDestination(R.id.createGoalsFragment)
+        verifyForm(R.string.goal_edit)
+        ordinaryBack(R.id.goalsFragment)
+    }
+
     @Test fun keyboardKeepsEveryCharacterWhenMovingBetweenGoalFields() {
         click(R.string.goal_new)
         awaitDestination(R.id.createGoalsFragment)
@@ -340,6 +398,16 @@ class GoalsFlowTest {
             compose.onNodeWithText("20000").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("1000").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("JPY").performScrollTo().assertIsDisplayed()
+            val form = compose.onNode(hasScrollAction() and hasAnyDescendant(hasText(context.getString(R.string.goal_photo_choose))))
+            val header = node(R.string.goal_new).fetchSemanticsNode().boundsInRoot
+            val draftName = compose.onNodeWithText(initialName)
+            draftName.performScrollTo()
+            val distance = draftName.fetchSemanticsNode().boundsInRoot.center.y - header.center.y
+            form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+            compose.waitForIdle()
+            val behindHeader = draftName.fetchSemanticsNode().boundsInRoot
+            assertTrue("The draft must scroll beneath the header", header.center.y in behindHeader.top..behindHeader.bottom)
+            assertEquals(header, node(R.string.goal_new).fetchSemanticsNode().boundsInRoot)
             capture("rotated-draft")
             assertTrue(dao.getAllGoals().none { it.name == initialName })
         } finally {
