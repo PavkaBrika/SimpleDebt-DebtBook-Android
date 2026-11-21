@@ -260,7 +260,22 @@ private fun GoalMovementAmount(row: GoalMovement) {
 @PreviewLightDark
 @Composable
 private fun GoalDetailsPreview() {
-    val goal = GoalUi(1, "Trip", null, "36,000 ₽", "90,000 ₽", "RUB", false, "54,000 ₽", "1 Mar 2027", "1 Oct 2026", false, 40, true)
+    val goal = GoalUi(
+        goalId = 1,
+        name = "Trip",
+        photoPath = null,
+        savedAmount = "36,000 ₽",
+        totalAmount = "90,000 ₽",
+        currency = "RUB",
+        isReached = false,
+        remainingAmount = "54,000 ₽",
+        deadline = "1 Mar 2027",
+        creationDate = "1 Oct 2026",
+        isOverdue = false,
+        percent = 40,
+        savedValue = 36000.toBigDecimal(),
+        progress = .4f,
+    )
     DebtBookTheme {
         GoalDetailsContent(
             goal = goal,

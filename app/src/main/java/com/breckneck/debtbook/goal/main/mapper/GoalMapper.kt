@@ -9,13 +9,14 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.Currency
 import java.util.Locale
+import kotlin.math.nextDown
 
 fun Goal.toUi(): GoalUi {
     val reached = savedSum >= sum
-    val percent = when {
-        reached -> 100
-        savedSum.signum() <= 0 -> 0
-        else -> savedSum.movePointRight(2).divide(sum, 0, RoundingMode.DOWN).toInt()
+    val fraction = when {
+        reached -> BigDecimal.ONE
+        savedSum.signum() <= 0 -> BigDecimal.ZERO
+        else -> savedSum.divide(sum, 16, RoundingMode.DOWN)
     }
     return GoalUi(
         goalId = id,
@@ -29,8 +30,9 @@ fun Goal.toUi(): GoalUi {
         deadline = presentationGoalDate?.toDMYFormat(),
         creationDate = creationDate.toDMYFormat(),
         isOverdue = isPastGoalDay,
-        percent = percent,
-        hasSavings = savedSum.signum() > 0,
+        percent = fraction.movePointRight(2).toInt(),
+        savedValue = savedSum,
+        progress = if (reached) 1f else fraction.toFloat().coerceAtMost(1f.nextDown()),
     )
 }
 

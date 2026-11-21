@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal.main.model
 
+import java.math.BigDecimal
+
 data class GoalUi(
     val goalId: Int,
     val name: String,
@@ -13,5 +15,8 @@ data class GoalUi(
     val creationDate: String,
     val isOverdue: Boolean,
     val percent: Int,
-    val hasSavings: Boolean,
-)
+    val savedValue: BigDecimal,
+    val progress: Float,
+) {
+    val hasSavings: Boolean get() = savedValue.signum() > 0
+}
