@@ -155,6 +155,7 @@ class GoalsFlowTest {
         capture("details")
 
         ordinaryBack(R.id.goalsFragment)
+        compose.onNode(hasScrollToIndexAction()).performTouchInput { swipeUp() }
         click(R.string.goal_edit_action)
         awaitDestination(R.id.createGoalsFragment)
         textField(R.string.name).performTextReplacement(editedName)
@@ -362,6 +363,7 @@ class GoalsFlowTest {
         click(R.string.goal_save)
         awaitDestination(R.id.goalsFragment)
         awaitGoal(initialName)
+        compose.onNode(hasScrollToIndexAction()).performTouchInput { swipeUp() }
         click(R.string.goal_edit_action)
         awaitDestination(R.id.createGoalsFragment)
         verifyForm(R.string.goal_edit)
@@ -455,6 +457,7 @@ class GoalsFlowTest {
         awaitDestination(R.id.goalsFragment)
         awaitGoal(initialName)
 
+        compose.onNode(hasScrollToIndexAction()).performTouchInput { swipeUp() }
         click(R.string.goal_edit_action)
         awaitDestination(R.id.createGoalsFragment)
         swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalsComposeView, label = "edit-from-list")
