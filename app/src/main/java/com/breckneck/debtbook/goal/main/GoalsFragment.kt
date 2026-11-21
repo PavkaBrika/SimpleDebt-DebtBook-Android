@@ -27,6 +27,7 @@ class GoalsFragment : Fragment() {
 
     interface OnClickListener {
         val goalsContentInsets: PaddingValues
+        fun onTabSelected(id: Int)
         fun onAddGoalButtonClick()
         fun onGoalClick(goal: Goal)
         fun onEditGoalButtonClick(goal: Goal)
@@ -58,7 +59,7 @@ class GoalsFragment : Fragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
-                    GoalsScreen(vm = vm, hostInsets = host.goalsContentInsets)
+                    GoalsScreen(vm = vm, hostInsets = host.goalsContentInsets, onTabSelected = host::onTabSelected)
                 }
             }
         }

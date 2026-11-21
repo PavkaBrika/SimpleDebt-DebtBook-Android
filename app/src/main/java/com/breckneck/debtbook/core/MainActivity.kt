@@ -25,6 +25,7 @@ import android.os.*
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.view.Menu
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
@@ -110,6 +111,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     )
     override var goalsContentInsets by mutableStateOf(PaddingValues(0.dp))
         private set
+    private lateinit var tabMenu: Menu
     lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -234,26 +236,30 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val bottomNavBar = findViewById<ComposeView>(R.id.bottomNavigationView)
         val selectedTab = mutableIntStateOf(0)
         // Reuse NavigationUI's tab options, including the saved back stack for each tab.
-        val tabMenu = PopupMenu(this, bottomNavBar).apply { inflate(R.menu.menu_bottom_nav) }.menu
+        tabMenu = PopupMenu(this, bottomNavBar).apply { inflate(R.menu.menu_bottom_nav) }.menu
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            selectedTab.intValue = destination.id
-            bottomNavBar.visibility = if (destination.id in TOP_LEVEL_DESTINATIONS) View.VISIBLE else View.GONE
+            // The goals list draws its own tabs so its entire surface participates in fragment transitions.
+            val showHostTabs = destination.id in TOP_LEVEL_DESTINATIONS && destination.id != R.id.goalsFragment
+            selectedTab.intValue = if (showHostTabs) destination.id else 0
+            bottomNavBar.visibility = if (showHostTabs) View.VISIBLE else View.GONE
         }
         bottomNavBar.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         bottomNavBar.setContent {
             DebtBookTheme {
                 BubbleBottomBar(
                     destination = selectedTab.intValue,
-                    onDestinationSelected = { id ->
-                        val from = navController.currentDestination?.id
-                        if (from in TOP_LEVEL_DESTINATIONS && from != id &&
-                            tabMenu.findItem(id)?.onNavDestinationSelected(navController) == true
-                        ) {
-                            maybeShowInterstitial()
-                        }
-                    },
+                    onDestinationSelected = ::onTabSelected,
                 )
             }
+        }
+    }
+
+    override fun onTabSelected(id: Int) {
+        val from = navController.currentDestination?.id
+        if (from in TOP_LEVEL_DESTINATIONS && from != id &&
+            tabMenu.findItem(id)?.onNavDestinationSelected(navController) == true
+        ) {
+            maybeShowInterstitial()
         }
     }
 

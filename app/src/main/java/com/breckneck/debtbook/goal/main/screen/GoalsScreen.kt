@@ -13,13 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -28,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
@@ -36,7 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
 import com.breckneck.debtbook.core.ui.components.EmptyListPlaceholder
 import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -48,13 +50,18 @@ import com.breckneck.deptbook.domain.util.ListState
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
-fun GoalsScreen(vm: GoalsViewModel, hostInsets: PaddingValues) {
+fun GoalsScreen(vm: GoalsViewModel, hostInsets: PaddingValues, onTabSelected: (Int) -> Unit) {
     val state by vm.collectAsState()
-    GoalsContent(state, hostInsets, vm::onAction)
+    GoalsContent(state, hostInsets, vm::onAction, onTabSelected)
 }
 
 @Composable
-private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction: (GoalsAction) -> Unit) {
+private fun GoalsContent(
+    state: GoalsState,
+    hostInsets: PaddingValues,
+    onAction: (GoalsAction) -> Unit,
+    onTabSelected: (Int) -> Unit,
+) {
     val colors = bubbleColors()
     val direction = LocalLayoutDirection.current
     val start = hostInsets.calculateStartPadding(direction) + 16.dp
@@ -66,19 +73,32 @@ private fun GoalsContent(state: GoalsState, hostInsets: PaddingValues, onAction:
         contentColor = colors.ink,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            Column {
-                BubbleButton(
+            Column(Modifier.fillMaxWidth()) {
+                ExtendedFloatingActionButton(
                     onClick = { onAction(GoalsAction.AddGoalClick) },
-                    modifier = Modifier.fillMaxWidth().padding(start = start, end = end, top = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.align(Alignment.End).padding(start = start, end = end, top = 8.dp, bottom = 6.dp),
+                    shape = CircleShape,
+                    containerColor = colors.action,
+                    contentColor = colors.onAction,
                 ) {
-                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                    Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))
+                    Icon(Icons.Outlined.Add, null)
+                    Text(stringResource(R.string.goal_new), Modifier.padding(start = 12.dp))
                 }
-                Spacer(
-                    Modifier.fillMaxWidth().height(hostInsets.calculateBottomPadding()).background(
+                Column(
+                    Modifier.fillMaxWidth().background(
                         Brush.verticalGradient(listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = .9f))),
                     ),
-                )
+                ) {
+                    BubbleBottomBar(
+                        destination = R.id.goalsFragment,
+                        onDestinationSelected = onTabSelected,
+                        modifier = Modifier.padding(
+                            start = hostInsets.calculateStartPadding(direction),
+                            end = hostInsets.calculateEndPadding(direction),
+                        ),
+                    )
+                    Spacer(Modifier.height(hostInsets.calculateBottomPadding()))
+                }
             }
         },
     ) { insets ->

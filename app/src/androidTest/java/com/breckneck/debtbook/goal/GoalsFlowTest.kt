@@ -14,9 +14,13 @@ import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import androidx.compose.ui.node.RootForTest
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getAllSemanticsNodes
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasScrollAction
@@ -227,6 +231,9 @@ class GoalsFlowTest {
         assertEquals(screenHeight.toFloat(), viewport.bottom, 1f)
         compose.waitUntil(10000) { !keyboardVisible() }
         val createButton = node(R.string.goal_new).fetchSemanticsNode().boundsInRoot
+        assertTrue("The extended FAB should sit at the trailing edge", createButton.center.x > viewport.center.x)
+        val goalsTab = compose.onNode(hasText(context.getString(R.string.goals)) and isSelectable())
+        assertTrue("The FAB should clear the tabs", createButton.bottom < goalsTab.fetchSemanticsNode().boundsInRoot.top)
         list.performScrollToIndex(3)
         val statusHeight = checkNotNull(onMain { activity ->
             ViewCompat.getRootWindowInsets(activity.window.decorView)!!.getInsets(WindowInsetsCompat.Type.statusBars()).top
@@ -318,12 +325,13 @@ class GoalsFlowTest {
             tab(title, id)
             assertTrue(oldEntry === onMain { it.navController.currentBackStackEntry })
         }
+        val goalsTab = compose.onNode(hasText(context.getString(R.string.goals)) and isSelectable())
         click(R.string.goal_new)
         awaitDestination(R.id.createGoalsFragment)
-        assertTrue(onMain { !it.findViewById<android.view.View>(R.id.bottomNavigationView).isShown } == true)
+        goalsTab.assertDoesNotExist()
         compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
         awaitDestination(R.id.goalsFragment)
-        assertTrue(onMain { it.findViewById<android.view.View>(R.id.bottomNavigationView).isShown } == true)
+        goalsTab.assertIsSelected().assertIsDisplayed()
     }
 
     @Test fun goalFormsScrollUnderFixedControlsAndKeepInputAboveTheKeyboard() {
@@ -471,6 +479,8 @@ class GoalsFlowTest {
         awaitDestination(R.id.createGoalsFragment)
         swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalDetailsComposeView, label = "edit-from-details")
         awaitDestination(R.id.goalDetailsFragment)
+        swipeBack(current = R.id.goalDetailsComposeView, previous = R.id.goalsComposeView, cancel = true, label = "details")
+        awaitDestination(R.id.goalDetailsFragment)
         swipeBack(current = R.id.goalDetailsComposeView, previous = R.id.goalsComposeView, label = "details")
         awaitDestination(R.id.goalsFragment)
     }
@@ -524,6 +534,15 @@ class GoalsFlowTest {
             }
             capture("preview-$label${if (cancel) "-before-cancel" else ""}")
             assertTrue("Previous fragment did not appear during $label edge swipe", preview)
+            if (previous == R.id.goalsComposeView) {
+                // During predictive back the preview is drawn below the resumed Compose test root.
+                val goalsTab = hasText(context.getString(R.string.goals)) and isSelected()
+                assertTrue("Goals tab is missing from the preview", onMain { activity ->
+                    val list = activity.findViewById<ComposeView>(previous)
+                    val root = list.getChildAt(0) as RootForTest
+                    root.semanticsOwner.getAllSemanticsNodes(mergingEnabled = true).any(goalsTab::matches)
+                } == true)
+            }
             if (cancel) {
                 for (step in 19 downTo 0) {
                     SystemClock.sleep(18)
