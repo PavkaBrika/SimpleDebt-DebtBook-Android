@@ -134,6 +134,12 @@ class GoalsFlowTest {
         compose.waitUntil(10000) { !keyboardVisible() }
         capture("active")
         openGoal(initialName)
+        for (label in listOf(R.string.goal_top_up, R.string.goal_withdraw)) {
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(context.getString(label), useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertEquals(context.getString(label), 1, layouts.single().lineCount)
+        }
         scrollToGoalContent(R.string.already_saved_sum).assertIsDisplayed()
         scrollToGoalContent("1000".toBigDecimal().formatGoalMoney("RUB", showPlus = true)).assertIsDisplayed()
         ordinaryBack(R.id.goalsFragment)

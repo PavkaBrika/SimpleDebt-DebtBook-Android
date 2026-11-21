@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -154,13 +155,16 @@ private fun GoalDetailsContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        BubbleButton(onClick = onAdd, modifier = Modifier.weight(1f), colors = secondaryColors) {
+                        val configuration = LocalConfiguration.current
+                        val actionWidth = if (configuration.screenWidthDp < 340 * configuration.fontScale)
+                            Modifier.fillMaxWidth() else Modifier.weight(1f)
+                        BubbleButton(onClick = onAdd, modifier = actionWidth, colors = secondaryColors) {
                             Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                             Text(stringResource(R.string.goal_top_up), Modifier.padding(start = 6.dp))
                         }
                         BubbleButton(
                             onClick = onSubtract,
-                            modifier = Modifier.weight(1f),
+                            modifier = actionWidth,
                             colors = ButtonDefaults.buttonColors(containerColor = colors.dangerContainer, contentColor = colors.danger),
                             enabled = goal.hasSavings,
                         ) {
