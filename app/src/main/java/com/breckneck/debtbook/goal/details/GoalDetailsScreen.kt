@@ -130,13 +130,7 @@ private fun GoalDetailsContent(
             BubbleTopBar(
                 title = goal.name,
                 onBack = onBack,
-                modifier = Modifier
-                    .background(Brush.verticalGradient(
-                        0f to colors.background.copy(alpha = .92f),
-                        .45f to colors.background.copy(alpha = .64f),
-                        1f to colors.background.copy(alpha = 0f),
-                    ))
-                    .padding(start = start, end = end, top = hostInsets.calculateTopPadding() + 6.dp, bottom = 6.dp),
+                hostInsets = hostInsets,
             ) {
                 GoalActionsMenu(goal.isReached, it, onEdit, onDelete)
             }

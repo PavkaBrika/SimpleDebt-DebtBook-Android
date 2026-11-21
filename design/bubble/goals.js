@@ -19,9 +19,10 @@ flowViews.goals=f=>{
   return layout(heading('Цели')+(cards||empty('Пока нет целей. Создайте первую цель накопления.')),primary('goal-new','Новая цель','plus'),nav('goals'),true);
 };
 flowActions['goal-open']=(i,v)=>{frames[i].goalId=Number(v);go(i,'goalDetail');};
-function goalDetailLayout(title,body,menu='') {
-  return '<div class="scroll goal-detail-scroll"><div class="goal-detail-head">'+status+backbar(title,menu)+'</div>'+
-    '<div class="goal-detail-body">'+body+'</div></div>'+gesture;
+function goalScreenLayout(title,body,{menu='',action=''}={}) {
+  const footer=action?'<div class="goals-dock goal-form-dock"><div class="sticky-action">'+action+'</div>'+gesture+'</div>':gesture;
+  return '<div class="scroll goal-screen-scroll"><div class="goal-screen-head">'+status+backbar(title,menu)+'</div>'+
+    '<div class="goal-screen-body">'+body+'</div></div>'+footer;
 }
 flowViews.goalDetail=f=>{
   const g=goalById(f.goalId),sum=saved(g),done=sum>=g.target;
@@ -30,7 +31,7 @@ flowViews.goalDetail=f=>{
   const menu='<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью">'+icon('more')+'</summary><div class="goal-menu">'
     +(done?'':button('goal-edit','Редактировать цель',g.id,'menu-action','edit'))
     +button('goal-delete','Удалить цель',g.id,'menu-action danger','trash')+'</div></details>';
-  return goalDetailLayout(g.name,goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+amount(Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.')),menu);
+  return goalScreenLayout(g.name,goalBalance(g)+controls+'<div class="group spaced"><div class="setting"><span>Осталось накопить</span><strong>'+amount(Math.max(0,g.target-sum),g.cur)+'</strong></div><div class="setting"><span>Создана</span><span>'+dateText(g.created)+' '+g.created.slice(0,4)+'</span></div></div>'+titleRow('История')+(history?'<div class="activity">'+history+'</div>':empty('Пополнения и снятия появятся здесь.')),{menu});
 };
 function goalAdjustment(i,v,b,sign) {
   const g=goalById(Number(v));if(!g||saved(g)>=g.target)return;
@@ -52,7 +53,7 @@ flowViews.goalForm=f=>{
   const preview=d.photo?'<img class="goal-photo" alt="" src="'+escapeHtml(d.photo)+'">':'';
   const photo='<label>'+preview+'<span>'+(d.photo?'Заменить фото':'Выбрать фото')+'</span><input type="file" accept="image/*" data-file="goal-photo"></label>'
     +(d.photo?button('goal-photo-clear','Убрать фото','','text-action danger'):'');
-  return layout(backbar(d.id?'Редактировать цель':'Новая цель')+'<div class="group">'+field('flag','Название',entry('goalDraft.name',d.name,'text','maxlength="100" placeholder="На что копим?"'))+field('stack','Целевая сумма',entry('goalDraft.target',d.target,'text','inputmode="decimal" placeholder="0"'))+field('take','Уже накоплено',entry('goalDraft.saved',d.saved,'text','inputmode="decimal" placeholder="0"'))+field('pie','Валюта',picker('goalDraft.cur',currencyCodes,d.cur,'Валюта цели'))+field('date','Срок · необязательно',entry('goalDraft.due',d.due,'date','min="'+addDays(TODAY,1)+'"'))+'</div><div class="group spaced photo-picker">'+photo+'</div>'+errorText(f),primary('goal-save','Сохранить цель','check'));
+  return goalScreenLayout(d.id?'Редактировать цель':'Новая цель','<div class="group">'+field('flag','Название',entry('goalDraft.name',d.name,'text','maxlength="100" placeholder="На что копим?"'))+field('stack','Целевая сумма',entry('goalDraft.target',d.target,'text','inputmode="decimal" placeholder="0"'))+field('take','Уже накоплено',entry('goalDraft.saved',d.saved,'text','inputmode="decimal" placeholder="0"'))+field('pie','Валюта',picker('goalDraft.cur',currencyCodes,d.cur,'Валюта цели'))+field('date','Срок · необязательно',entry('goalDraft.due',d.due,'date','min="'+addDays(TODAY,1)+'"'))+'</div><div class="group spaced photo-picker">'+photo+'</div>'+errorText(f),{action:primary('goal-save','Сохранить цель','check')});
 };
 flowActions['goal-photo-clear']=i=>{frames[i].goalDraft.photo='';render(i,true);};
 async function selectPhoto(i,file) {

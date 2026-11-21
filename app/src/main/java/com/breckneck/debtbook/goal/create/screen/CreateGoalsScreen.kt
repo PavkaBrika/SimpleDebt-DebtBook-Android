@@ -6,8 +6,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,9 +51,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -81,18 +86,25 @@ import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.debtbook.goal.create.model.SavedSumError
 import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
-import java.util.Date
 import org.orbitmvi.orbit.compose.collectAsState
+import java.util.Date
 
 @Composable
-fun CreateGoalsScreen(vm: CreateGoalsViewModel) {
+internal fun CreateGoalsScreen(vm: CreateGoalsViewModel, hostInsets: PaddingValues) {
     val state by vm.collectAsState()
-    CreateGoalsContent(state, vm::onAction)
+    CreateGoalsContent(state, vm::onAction, hostInsets)
 }
 
 @Composable
-internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsAction) -> Unit) {
+internal fun CreateGoalsContent(
+    state: CreateGoalsState,
+    onAction: (CreateGoalsAction) -> Unit,
+    hostInsets: PaddingValues = PaddingValues(0.dp),
+) {
     val colors = bubbleColors()
+    val direction = LocalLayoutDirection.current
+    val start = hostInsets.calculateStartPadding(direction) + 16.dp
+    val end = hostInsets.calculateEndPadding(direction) + 16.dp
     val goal = state.goal
     val enabled = state.isInitialized && !state.isSaving
     val title = stringResource(if (state.isEditMode) R.string.goal_edit else R.string.goal_new)
@@ -118,12 +130,16 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
             BubbleTopBar(
                 title = title,
                 onBack = { onAction(CreateGoalsAction.BackClick) },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                hostInsets = hostInsets,
                 backEnabled = !state.isSaving,
             )
         },
         bottomBar = {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+            Column(
+                Modifier.fillMaxWidth().background(
+                    Brush.verticalGradient(listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = .9f))),
+                ).padding(start = start, end = end, top = 4.dp, bottom = hostInsets.calculateBottomPadding() + 4.dp),
+            ) {
                 if (state.saveFailed || state.photoFailed) {
                     Text(
                         stringResource(if (state.photoFailed) R.string.goal_photo_error else R.string.save_failed_retry),
@@ -152,8 +168,11 @@ internal fun CreateGoalsContent(state: CreateGoalsState, onAction: (CreateGoalsA
     ) { padding ->
         if (!state.isInitialized) return@Scaffold
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(scroll)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(
+                start = start, end = end,
+                top = padding.calculateTopPadding() + 8.dp,
+                bottom = padding.calculateBottomPadding() + 8.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             BubbleGroup {

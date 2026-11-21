@@ -163,15 +163,15 @@ svg { display:block; flex-shrink:0 }
 .category-grid,.choices { flex-wrap:wrap }.category-choice { min-height:42px }.category-choice .category-icon { width:23px;height:23px;font-size:14px }
 .swatch { width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:var(--paper);color:#203d26;border:1px solid var(--edge) }
 .swatch.picked {outline:2px solid var(--forest);outline-offset:1px}.category-sample {margin:8px 0 18px}
-.goal-detail-scroll {position:absolute;inset:0;padding:0}
-.goal-detail-head {position:sticky;top:0;z-index:2;pointer-events:none;background:linear-gradient(to bottom,color-mix(in srgb,var(--bg) 92%,transparent),color-mix(in srgb,var(--bg) 64%,transparent) 45%,transparent)}
-.goal-detail-head .detailhead {--bubble-height:max(48px,calc(2.75rem + 2px));grid-template-columns:var(--bubble-height) minmax(0,1fr) var(--bubble-height);padding:6px 16px}
-.goal-detail-head .icon-button {width:var(--bubble-height);height:var(--bubble-height)}
-.goal-detail-head .icon-button,.goal-detail-head .goal-actions {pointer-events:auto}
-.goal-detail-head h2 {line-height:1.375rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.goal-detail-head .detail-title {justify-self:center;max-width:100%;height:var(--bubble-height);padding:0 14px;border-radius:99px;border:1px solid var(--edge);background:color-mix(in srgb,var(--paper) 88%,transparent)}
-.goal-detail-body {padding:8px 16px 22px}
-.goal-detail-scroll+.gesture {position:absolute;inset:auto 0 0;pointer-events:none;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 90%,transparent))}
+.goal-screen-scroll {--bubble-height:max(48px,calc(2.75rem + 2px));position:absolute;inset:0;padding:0;scroll-padding-block:calc(43px + var(--bubble-height)) var(--goals-dock-height,14px)}
+.goal-screen-head {position:sticky;top:0;z-index:2;pointer-events:none;background:linear-gradient(to bottom,color-mix(in srgb,var(--bg) 92%,transparent),color-mix(in srgb,var(--bg) 64%,transparent) 45%,transparent)}
+.goal-screen-head .detailhead {min-height:0;grid-template-columns:var(--bubble-height) minmax(0,1fr) var(--bubble-height);padding:6px 16px}
+.goal-screen-head .icon-button {width:var(--bubble-height);height:var(--bubble-height)}
+.goal-screen-head .icon-button,.goal-screen-head .goal-actions {pointer-events:auto}
+.goal-screen-head h2 {line-height:1.375rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.goal-screen-head .detail-title {justify-self:center;max-width:100%;height:var(--bubble-height);padding:0 14px;border-radius:99px;border:1px solid var(--edge);background:color-mix(in srgb,var(--paper) 88%,transparent)}
+.goal-screen-body {padding:8px 16px calc(var(--goals-dock-height,14px) + 8px)}
+.goal-screen-scroll+.gesture {position:absolute;inset:auto 0 0;pointer-events:none;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 90%,transparent))}
 .goal-actions {position:relative}
 .goal-actions summary {cursor:pointer;list-style:none}
 .goal-actions summary::-webkit-details-marker {display:none}
@@ -185,7 +185,7 @@ svg { display:block; flex-shrink:0 }
 .phone:has(.goals-scroll) .status {position:relative;z-index:1;isolation:isolate;pointer-events:none}
 .phone:has(.goals-scroll) .status::before {content:"";position:absolute;inset:0 0 -12px;z-index:-1;background:linear-gradient(to bottom,color-mix(in srgb,var(--bg) 94%,transparent),color-mix(in srgb,var(--bg) 84%,transparent) 45%,transparent)}
 .goals-dock {position:relative;z-index:1;margin-top:auto;pointer-events:none}
-.goals-nav {display:flex;flex-direction:column;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 90%,transparent))}
+.goal-form-dock,.goals-nav {display:flex;flex-direction:column;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 90%,transparent))}
 .goals-dock .sticky-action,.goals-dock .gesture {background:transparent}
 .goals-dock button,.goals-dock .nav {pointer-events:auto}
 .goal-card { padding:18px;border-radius:26px;position:relative;overflow:hidden;isolation:isolate }.goal-card .art { z-index:-1 }
