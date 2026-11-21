@@ -34,7 +34,7 @@ internal fun GoalActionsMenu(
     val colors = bubbleColors()
     var expanded by remember { mutableStateOf(false) }
     Box {
-        BubbleIconButton(onClick = { expanded = true }, diameter = diameter) {
+        BubbleIconButton(onClick = { expanded = true }, diameter = diameter, containerColor = colors.headerBubble) {
             Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.goal_actions))
         }
         DropdownMenu(
@@ -73,6 +73,11 @@ internal fun GoalDeleteButton(goalName: String, onDelete: () -> Unit, diameter: 
     if (diameter == null) {
         IconButton(onClick = onDelete, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp), content = icon)
     } else {
-        BubbleIconButton(onClick = onDelete, diameter = diameter, content = icon)
+        BubbleIconButton(
+            onClick = onDelete,
+            diameter = diameter,
+            containerColor = bubbleColors().headerBubble,
+            content = icon,
+        )
     }
 }

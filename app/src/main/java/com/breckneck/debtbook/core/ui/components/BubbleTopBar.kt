@@ -70,13 +70,18 @@ internal fun BubbleTopBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BubbleIconButton(onClick = onBack, enabled = backEnabled, diameter = bubbleHeight) {
+        BubbleIconButton(
+            onClick = onBack,
+            enabled = backEnabled,
+            diameter = bubbleHeight,
+            containerColor = colors.headerBubble,
+        ) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier.height(bubbleHeight)
-                    .background(colors.paper.copy(alpha = .88f), CircleShape)
+                    .background(colors.headerBubble, CircleShape)
                     .border(1.dp, colors.border, CircleShape)
                     .semantics(mergeDescendants = true) { heading() }
                     .padding(horizontal = 14.dp),

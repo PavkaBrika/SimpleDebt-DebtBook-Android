@@ -20,7 +20,9 @@ internal data class BubbleColors(
     val onHero: Color,
     val heroMuted: Color,
     val heroBorder: Color,
-)
+) {
+    val headerBubble: Color get() = paper.copy(alpha = .88f)
+}
 
 private val lightBubble = BubbleColors(
     background = Color(0xFFF6F7EF),

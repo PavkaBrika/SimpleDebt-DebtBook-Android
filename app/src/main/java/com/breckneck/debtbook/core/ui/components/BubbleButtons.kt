@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -65,13 +66,14 @@ internal fun BubbleIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     diameter: Dp = 48.dp,
+    containerColor: Color = bubbleColors().paper,
     content: @Composable () -> Unit,
 ) {
     val colors = bubbleColors()
     IconButton(onClick = onClick, enabled = enabled, modifier = modifier.size(diameter.coerceAtLeast(48.dp))) {
         Surface(
             shape = CircleShape,
-            color = colors.paper,
+            color = containerColor,
             contentColor = colors.ink,
             border = BorderStroke(1.dp, colors.border),
         ) {
