@@ -165,6 +165,14 @@ class FinanceFlowTest {
         assertTrue(dao.getAllFinances().none { it.financeCategoryId == categoryId })
         direction(R.string.revenues)
         total("17.5", "EUR")
+        act(R.string.salary)
+        pencil()
+        awaitText(str(R.string.salary))
+        input(R.string.sum, "18,75")
+        act(R.string.finance_save_entry)
+        total("18.75", "EUR")
+        back()
+        total("18.75", "EUR")
     }
 
     @Test fun talkBackCanFocusSaveAndEdit() {
