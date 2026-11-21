@@ -55,7 +55,7 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
             item { FinanceDirection(state.direction, selectDirection) }
             item {
                 BubbleBalanceCard(direction, state.currency,
-                    if (state.loading || state.failed) "…" else MoneyDisplay.formatExact(state.total, state.currency),
+                    if (state.loading || state.failed) "…" else state.total.financeMoney(state.currency),
                     onCurrencyClick = { picker = R.string.select_currency }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton({ setPeriod(period.copy(day = period.step(-1))) }) {
@@ -81,7 +81,7 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
                     BubbleGroup {
                         BubbleListRow(Modifier.clickable { onCategory(row.category) }.padding(12.dp),
                             leading = { CategoryBadge(row.category) },
-                            trailing = { Text(MoneyDisplay.formatExact(row.amount, state.currency) + " " + state.currency) }) {
+                            trailing = { Text(row.amount.financeMoney(state.currency)) }) {
                             Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
                             Text("${row.percent}%", color = colors.muted)
                         }

@@ -1,117 +1,79 @@
 package com.breckneck.debtbook.finance.details
 
-
-import com.breckneck.deptbook.domain.util.MoneyDisplay
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.breckneck.debtbook.common.toDMYFormat
+import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.usecase.Finance.DeleteFinance
 import com.breckneck.deptbook.domain.usecase.Finance.GetFinanceByCategoryId
+import com.breckneck.deptbook.domain.usecase.FinanceCategory.GetFinanceCategoriesByState
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
-import com.breckneck.deptbook.domain.util.ListState
+import com.breckneck.deptbook.domain.util.LedgerDate
 import dagger.hilt.android.lifecycle.HiltViewModel
-import org.orbitmvi.orbit.ContainerHost
-import org.orbitmvi.orbit.viewmodel.container
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+internal data class FinanceHistory(
+    val entries: List<Finance> = emptyList(),
+    val loading: Boolean = true,
+    val loadFailed: Boolean = false,
+    val deleteFailed: Boolean = false,
+    val deleting: Boolean = false,
+    val categoryDeleted: Boolean = false,
+)
 
 @HiltViewModel
 class FinanceDetailsViewModel @Inject constructor(
-    private val savedStateHandle: SavedStateHandle,
-    private val getFinanceByCategoryIdUseCase: GetFinanceByCategoryId,
-    private val deleteFinanceUseCase: DeleteFinance,
-) : ViewModel(), ContainerHost<FinanceDetailsState, FinanceDetailsSideEffect> {
+    saved: SavedStateHandle,
+    private val getFinances: GetFinanceByCategoryId,
+    private val getCategories: GetFinanceCategoriesByState,
+    private val deleteFinance: DeleteFinance,
+) : ViewModel() {
+    val categoryId = requireNotNull(saved.get<Int>("categoryId"))
+    val name = requireNotNull(saved.get<String>("categoryName"))
+    val currency = requireNotNull(saved.get<String>("currency"))
+    val direction = FinanceCategoryState.valueOf(requireNotNull(saved.get<String>("categoryState")))
+    val day = saved.get<String>("day") ?: LedgerDate.today()
+    private val current = MutableStateFlow(FinanceHistory())
+    internal val history = current.asStateFlow()
+    private var load: Job? = null
 
-    private val TAG = "FinanceDetailsViewModel"
-
-    override val container = container<FinanceDetailsState, FinanceDetailsSideEffect>(
-        initialState = FinanceDetailsState.initial(),
-        onCreate = {
-            val categoryId = savedStateHandle.get<Int>("categoryId") ?: 0
-            val categoryState = savedStateHandle.get<String>("categoryState").orEmpty()
-            val isExpenses = categoryState == FinanceCategoryState.EXPENSE.name
-            val categoryName = savedStateHandle.get<String>("categoryName").orEmpty()
-            val currency = savedStateHandle.get<String>("currency").orEmpty()
-            reduce {
-                state.copy(
-                    categoryId = categoryId,
-                    categoryName = categoryName,
-                    currency = currency,
-                    isExpenses = isExpenses,
-                    financeListState = ListState.LOADING,
-                )
+    fun refresh() {
+        load?.cancel()
+        load = viewModelScope.launch {
+            try {
+                val (entries, missing) = withContext(Dispatchers.IO) {
+                    val list = getFinances.execute(categoryId).filter { it.currency == currency }
+                    list to (list.isEmpty() && getCategories.execute(direction).none { it.id == categoryId })
+                }
+                current.value = FinanceHistory(entries = entries, loading = false, categoryDeleted = missing)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                current.value = current.value.copy(loading = false, loadFailed = true, deleting = false)
             }
-
-            loadFinances()
-        },
-    )
-
-    init {
-        Log.e(TAG, "Created")
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        Log.e(TAG, "Cleared")
-    }
-
-    fun onAction(action: FinanceDetailsActions) = when (action) {
-        is FinanceDetailsActions.OpenFinanceSheet -> openFinanceSheet(finance = action.finance)
-        FinanceDetailsActions.CloseFinanceSheet -> closeFinanceSheet()
-        is FinanceDetailsActions.DeleteFinance -> deleteFinance()
-        FinanceDetailsActions.EditFinanceClick -> editFinance()
-        is FinanceDetailsActions.RefreshListAfterEdit ->
-            refreshListAfterEdit(wasModified = action.wasModified)
-    }
-
-    private fun openFinanceSheet(finance: Finance) = intent {
-        val title = "${finance.presentationDate.toDMYFormat()} : ${MoneyDisplay.format(finance.sum, state.currency)} ${state.currency}"
-        reduce {
-            state.copy(
-                bottomSheet = state.bottomSheet.copy(
-                    isOpened = true,
-                    finance = finance,
-                    title = title,
-                )
-            )
         }
     }
 
-    private fun closeFinanceSheet() = intent {
-        reduce { state.copy(bottomSheet = FinanceDetailsBottomSheetState.initial()) }
-    }
-
-    private fun editFinance() = intent {
-        val finance = state.bottomSheet.finance ?: return@intent
-        postSideEffect(FinanceDetailsSideEffect.NavigateToEditFinance(finance = finance))
-        reduce { state.copy(bottomSheet = FinanceDetailsBottomSheetState.initial()) }
-    }
-
-    private fun deleteFinance() = intent {
-        val finance = state.bottomSheet.finance ?: return@intent
-        deleteFinanceUseCase.execute(finance)
-        Log.e(TAG, "Finance delete success")
-        loadFinances()
-    }
-
-    private fun refreshListAfterEdit(wasModified: Boolean) = intent {
-        if (!wasModified) return@intent
-        loadFinances()
-    }
-
-    private fun loadFinances() = intent {
-        val categoryId = state.categoryId ?: return@intent
-
-        reduce { state.copy(financeListState = ListState.LOADING) }
-
-        val finances = getFinanceByCategoryIdUseCase.execute(categoryId = categoryId).filter { it.currency == state.currency }
-        reduce {
-            state.copy(
-                financeList = finances,
-                financeListState = if (finances.isEmpty()) ListState.EMPTY else ListState.RECEIVED,
-            )
+    fun delete(entry: Finance) {
+        if (current.value.deleting) return
+        load?.cancel()
+        current.value = current.value.copy(deleting = true, deleteFailed = false)
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { deleteFinance.execute(entry) }
+                current.value = current.value.copy(entries = current.value.entries.filterNot { it.id == entry.id }, deleting = false)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                current.value = current.value.copy(deleting = false, deleteFailed = true)
+            }
         }
-        Log.e(TAG, "Finances load success")
     }
 }

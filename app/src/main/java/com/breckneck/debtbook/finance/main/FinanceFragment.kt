@@ -24,6 +24,7 @@ class FinanceFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         ComposeView(requireContext()).apply {
+            id = com.breckneck.debtbook.R.id.financeSummaryView
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             val host = requireActivity() as OnButtonClickListener
             setContent { DebtBookTheme { FinanceScreen(vm, host) } }

@@ -1,0 +1,6 @@
+<resources>
+    <item type="id" name="financeSummaryView" />
+    <item type="id" name="financeFormView" />
+    <item type="id" name="financeCategoryView" />
+    <item type="id" name="financeHistoryView" />
+</resources>

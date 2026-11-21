@@ -15,7 +15,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.finance.details.screen.FinanceDetailsList
+import com.breckneck.debtbook.finance.details.screen.FinanceHistoryRow
+import com.breckneck.debtbook.finance.financeMoney
+import androidx.compose.foundation.layout.Column
 import com.breckneck.deptbook.domain.model.Finance
 import java.util.Date
 import org.junit.Assert.assertEquals
@@ -74,11 +76,15 @@ class BubbleComponentsTest {
         var selected: Finance? = null
         compose.setContent {
             DebtBookTheme {
-                FinanceDetailsList("Expenses", true, "USD", listOf(first, second)) { selected = it }
+                Column {
+                    for (entry in listOf(first, second)) {
+                        FinanceHistoryRow(entry, "Food", { selected = entry }, {})
+                    }
+                }
             }
         }
 
-        compose.onNodeWithText("36").assertIsDisplayed()
+        compose.onNodeWithText(second.sum.financeMoney("USD")).assertIsDisplayed()
         compose.onNodeWithText("Coffee").assertHasClickAction().performClick()
         compose.runOnIdle { assertEquals(second, selected) }
     }

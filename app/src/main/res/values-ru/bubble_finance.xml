@@ -13,4 +13,10 @@
     <string name="finance_edit_entry">Редактировать операцию</string>
     <string name="finance_delete_category_all">Будут удалены все операции категории «%1$s» во всех валютах.</string>
     <string name="finance_color">Цвет %1$d</string>
+    <string name="finance_all_time">За всё время · %1$s</string>
+    <string name="finance_entries">Операции</string>
+    <string name="finance_add_entry">Добавить операцию</string>
+    <string name="finance_delete_entry">Удалить операцию</string>
+    <string name="finance_delete_entry_message">Сумма категории будет пересчитана.</string>
+    <string name="finance_edit_named">Редактировать операцию · %1$s</string>
 </resources>

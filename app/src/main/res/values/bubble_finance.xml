@@ -13,4 +13,10 @@
     <string name="finance_edit_entry">Edit transaction</string>
     <string name="finance_delete_category_all">All transactions in “%1$s” will be deleted in every currency.</string>
     <string name="finance_color">Color %1$d</string>
+    <string name="finance_all_time">All time · %1$s</string>
+    <string name="finance_entries">Transactions</string>
+    <string name="finance_add_entry">Add transaction</string>
+    <string name="finance_delete_entry">Delete transaction</string>
+    <string name="finance_delete_entry_message">The category total will be recalculated.</string>
+    <string name="finance_edit_named">Edit transaction · %1$s</string>
 </resources>

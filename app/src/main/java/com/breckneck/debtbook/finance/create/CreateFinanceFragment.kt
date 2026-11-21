@@ -27,6 +27,7 @@ class CreateFinanceFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         ComposeView(requireContext()).apply {
+            id = com.breckneck.debtbook.R.id.financeFormView
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             val host = requireActivity() as OnClickListener
             setContent { DebtBookTheme { CreateFinanceScreen(vm, host) } }
@@ -40,7 +41,6 @@ class CreateFinanceFragment : Fragment() {
         }
         vm.saveState.observe(viewLifecycleOwner) {
             if (it == CreateFinanceViewModel.SaveState.SAVED) {
-                setFragmentResult("financeDetailsKey", bundleOf("isListModified" to true))
                 (requireActivity() as OnClickListener).onBackButtonClick()
             }
         }

@@ -48,3 +48,10 @@ internal fun CategoryBadge(category: FinanceCategory) {
         Text(String(Character.toChars(category.image)), color = Color.Black)
     }
 }
+
+internal fun java.math.BigDecimal.financeMoney(currency: String): String {
+    val symbol = if (currency == "RUB") "₽" else runCatching {
+        java.util.Currency.getInstance(currency).symbol
+    }.getOrDefault(currency)
+    return com.breckneck.deptbook.domain.util.MoneyDisplay.formatExact(this, currency) + "\u00a0" + symbol
+}

@@ -13,4 +13,10 @@
     <string name="finance_edit_entry">Buchung bearbeiten</string>
     <string name="finance_delete_category_all">Alle Buchungen der Kategorie „%1$s“ werden in allen Währungen gelöscht.</string>
     <string name="finance_color">Farbe %1$d</string>
+    <string name="finance_all_time">Gesamter Zeitraum · %1$s</string>
+    <string name="finance_entries">Buchungen</string>
+    <string name="finance_add_entry">Buchung hinzufügen</string>
+    <string name="finance_delete_entry">Buchung löschen</string>
+    <string name="finance_delete_entry_message">Die Kategoriesumme wird neu berechnet.</string>
+    <string name="finance_edit_named">Buchung bearbeiten · %1$s</string>
 </resources>

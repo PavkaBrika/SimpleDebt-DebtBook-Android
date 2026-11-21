@@ -13,4 +13,10 @@
     <string name="finance_edit_entry">Modifier l’opération</string>
     <string name="finance_delete_category_all">Toutes les opérations de la catégorie « %1$s » seront supprimées dans toutes les devises.</string>
     <string name="finance_color">Couleur %1$d</string>
+    <string name="finance_all_time">Depuis le début · %1$s</string>
+    <string name="finance_entries">Opérations</string>
+    <string name="finance_add_entry">Ajouter une opération</string>
+    <string name="finance_delete_entry">Supprimer l’opération</string>
+    <string name="finance_delete_entry_message">Le total de la catégorie sera recalculé.</string>
+    <string name="finance_edit_named">Modifier l’opération · %1$s</string>
 </resources>

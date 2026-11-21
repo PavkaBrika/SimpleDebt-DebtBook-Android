@@ -615,8 +615,20 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
     //finance details interface
 
-    override fun onEditFinanceClick(finance: Finance) {
+    override fun onAddCategoryFinance(categoryId: Int, currency: String, day: String, direction: FinanceCategoryState) {
+        val args = Bundle().apply {
+            putInt("categoryId", categoryId)
+            putString("currency", currency)
+            putString("day", day)
+            putString("categoryState", direction.name)
+        }
+        navController.navigate(R.id.action_financeDetailsFragment_to_createFinanceFragment, args)
+        vm.onActionClick()
+    }
+
+    override fun onEditFinanceClick(finance: Finance, direction: FinanceCategoryState) {
         val args = Bundle()
+        args.putString("categoryState", direction.name)
         args.putSerializable("financeEdit", finance)
         args.putBoolean("isEditFinance", true)
         navController.navigate(R.id.action_financeDetailsFragment_to_createFinanceFragment, args)

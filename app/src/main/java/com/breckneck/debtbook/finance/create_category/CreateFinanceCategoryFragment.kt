@@ -36,6 +36,7 @@ class CreateFinanceCategoryFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         return ComposeView(requireContext()).apply {
+            id = com.breckneck.debtbook.R.id.financeCategoryView
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 DebtBookTheme {
