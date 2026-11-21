@@ -1,0 +1,77 @@
+SimpleDebt · сверка с прототипом Bubble
+22 ноября 2026 · codex/bubble-debts
+Коммиты приложения dde2573a и 9ce574bb · проверка TalkBack e6e82bad
+
+SimpleDebtBook-v4.6.4(43).apk
+SHA-256 603b351d9f131d5a5322e5c547d00c68e91520e2383ece711b16694e827f9b60
+
+Gradle · JDK 17
+./gradlew --offline :app:assembleDebug :app:assembleDebugAndroidTest :domain:test :data:test :app:testDebugUnitTest :app:lintDebug
+BUILD SUCCESSFUL in 47s
+domain 176 tests, 0 failures, 0 errors, 0 skipped
+data   1 tests, 0 failures, 0 errors, 0 skipped
+app    81 tests, 0 failures, 0 errors, 0 skipped
+Lint   0 errors, 205 warnings
+
+Android 6.0 · API 23 · 320 × 720 dp · 130% · тёмная
+  PASS  goal.GoalsFlowTest#goalsFromLauncherThroughCompletionAndDeletion
+  PASS  goal.GoalsFlowTest#goalListScrollsUnderTheBarsAndClearsTheLastAction
+  PASS  goal.CompletedGoalJourneyTest#completedRowOpensHistoryAndKeepsTheTrailingDeleteButtonSeparate
+  PASS  debt.BubbleDebtJourneyTest#formKeyboardAndFourTabs
+  PASS  debt.BubbleDebtJourneyTest#earliestDeadlineUsesIndividualOpenLoansAcrossFilters
+  PASS  debt.BubbleDebtJourneyTest#annaRepaymentAndUndoUpdateWholeCurrency
+  PASS  finance.FinanceFlowTest#monthBoundaryUsesTheSelectedDayInTheForm
+  PASS  finance.FinanceFlowTest#expenseRoundTripAndExactPeriodBalances
+  PASS  settings.BackupScreenTest#offlinePreviewCancelRecreateConfirmAndUndo
+  PASS  debt.SettledDebtJourneyTest#oppositeLoansPartialSettlementAndUndo
+  PASS  debt.reminders.CreateDebtDueScreenTest#setReminderOnFirstDebtAndDueDateOnNextDebt
+  PASS  debt.PartialRepaymentScreenTest#receiveAndRepayMultiplePaymentsCloseAndCancelFromHistory
+  PASS  debt.PartialRepaymentScreenTest#repaymentAmountAndSaveStayAboveKeyboard
+  PASS  debt.PartialRepaymentScreenTest#failedSaveKeepsInputAndRetryWritesOnce
+  PASS  debt.DebtReliabilityTest#rootInsetsKeepNavigationAndSaveAboveSystemBarsAndKeyboard
+  PASS  core.ui.components.BubbleComponentsTest#amountFieldUsesTheSelectedCurrencyForFractionalInput
+  PASS  core.ui.components.BubbleComponentsTest#financeHistoryRowRetainsItsAmountNoteAndClickTarget
+  PASS  core.ui.components.BubbleComponentsTest#compactBalanceCardKeepsItsFooterAndCurrencyAction
+  OK (18 tests)
+  PASS  debt.BubbleDebtJourneyTest#exactLegacyBalanceSurvivesFullRepaymentAndRename
+  PASS  settings.DriveBackupScreenTest#savingRequiresConfirmationAndKeepsExactlyOneEarlierCopy
+  OK (2 tests)
+
+Android 17 · API 37 · 360 × 760 dp · 100% · светлая
+  PASS  goal.GoalsFlowTest#goalsFromLauncherThroughCompletionAndDeletion
+  PASS  goal.GoalsFlowTest#goalListScrollsUnderTheBarsAndClearsTheLastAction
+  PASS  goal.CompletedGoalJourneyTest#completedRowOpensHistoryAndKeepsTheTrailingDeleteButtonSeparate
+  PASS  debt.BubbleDebtJourneyTest#formKeyboardAndFourTabs
+  PASS  debt.BubbleDebtJourneyTest#earliestDeadlineUsesIndividualOpenLoansAcrossFilters
+  PASS  debt.BubbleDebtJourneyTest#annaRepaymentAndUndoUpdateWholeCurrency
+  PASS  finance.FinanceFlowTest#monthBoundaryUsesTheSelectedDayInTheForm
+  PASS  finance.FinanceFlowTest#expenseRoundTripAndExactPeriodBalances
+  PASS  settings.BackupScreenTest#offlinePreviewCancelRecreateConfirmAndUndo
+  PASS  debt.SettledDebtJourneyTest#oppositeLoansPartialSettlementAndUndo
+  PASS  debt.reminders.CreateDebtDueScreenTest#setReminderOnFirstDebtAndDueDateOnNextDebt
+  PASS  debt.PartialRepaymentScreenTest#receiveAndRepayMultiplePaymentsCloseAndCancelFromHistory
+  PASS  debt.PartialRepaymentScreenTest#repaymentAmountAndSaveStayAboveKeyboard
+  PASS  debt.PartialRepaymentScreenTest#failedSaveKeepsInputAndRetryWritesOnce
+  PASS  debt.DebtReliabilityTest#rootInsetsKeepNavigationAndSaveAboveSystemBarsAndKeyboard
+  PASS  core.ui.components.BubbleComponentsTest#amountFieldUsesTheSelectedCurrencyForFractionalInput
+  PASS  core.ui.components.BubbleComponentsTest#financeHistoryRowRetainsItsAmountNoteAndClickTarget
+  PASS  core.ui.components.BubbleComponentsTest#compactBalanceCardKeepsItsFooterAndCurrencyAction
+  OK (18 tests)
+  PASS  debt.BubbleDebtJourneyTest#predictiveFormBackToPersonListAndLauncher
+  PASS  debt.BubbleDebtJourneyTest#exactLegacyBalanceSurvivesFullRepaymentAndRename
+  PASS  settings.DriveBackupScreenTest#savingRequiresConfirmationAndKeepsExactlyOneEarlierCopy
+  PASS  goal.GoalsFlowTest#edgeSwipePreviewsThePreviousFragmentAndCanBeCancelled
+  PASS  finance.FinanceFlowTest#predictiveBackRestoresDraftAndReturnsToHistoryAndSummary
+  PASS  settings.BackupScreenTest#edgeSwipeRevealsSettingsAndPopsOnlyOnCommit
+  OK (6 tests)
+
+Android 17 · API 37 · TalkBack
+  PASS  debt.BubbleDebtJourneyTest#talkBackCanFocusDebtActions
+  PASS  finance.FinanceFlowTest#talkBackCanFocusSaveAndEdit
+  OK (2 tests)
+
+Chrome · design/bubble/index.html
+PASS 8 viewport widths, toolbar, persisted toggle, screenshot comparison mode
+PASS debt, cancellation, finance, goal, dark theme, readout, motion=true
+PASS debt, cancellation, finance, goal, dark theme, readout, motion=false
+PASS settings switch, export, restore preview, confirm and undo from the Backup screen
