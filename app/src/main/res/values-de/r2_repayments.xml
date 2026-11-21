@@ -3,21 +3,16 @@
     <string name="repayment_paid">Ich habe zurückgezahlt</string>
     <string name="repayment_cancel">Rückzahlung stornieren</string>
     <string name="repayment_cancelled">Rückzahlung storniert · ohne Saldoänderung</string>
-    <string name="debt_record">Eintrag Nr. %1$d · %2$s</string>
     <string name="debt_lent">Mir geschuldet</string>
     <string name="debt_borrowed">Ich schulde</string>
-    <string name="debt_remaining">Rest dieses Eintrags: %1$s %2$s</string>
+    <string name="debt_remaining">Offen: %1$s %2$s</string>
     <string name="debt_repaid">Zurückgezahlt: %1$s %2$s</string>
-    <string name="repayment_parent">Rückzahlung zu Eintrag Nr. %1$d\n%2$s</string>
-    <string name="repayment_context">Eintrag Nr. %1$d · %2$s %3$s\n%4$s</string>
-    <string name="repayment_balance_help">Gesamtsaldo der Person: %1$s %2$s. Diese Rückzahlung gilt nur für den gewählten Eintrag.</string>
+    <string name="repayment_context">Ursprüngliche Schuld: %1$s %2$s (%3$s)</string>
     <string name="repayment_full">Restbetrag zurückzahlen</string>
     <string name="repayment_invalid">Gib einen Betrag größer als null mit den Dezimalstellen der Währung ein.</string>
     <string name="repayment_over">Die Rückzahlung übersteigt den Restbetrag von %1$s %2$s. Gib einen kleineren Betrag ein.</string>
     <string name="repayment_save_failed">Die Rückzahlung konnte nicht gespeichert werden. Bitte erneut versuchen.</string>
-    <string name="repayment_locked">Dieser Eintrag hat Rückzahlungen. Ursprünglicher Betrag und Verlauf bleiben erhalten.</string>
     <string name="repayment_closed">Vollständig zurückgezahlt</string>
     <string name="repayment_cancel_confirm">Rückzahlung von %1$s %2$s stornieren? Der Betrag wird wieder zum Restbetrag addiert; die Rückzahlung bleibt im Verlauf.</string>
     <string name="repayment_amount">Rückzahlungsbetrag</string>
-    <string name="repayment_status">Ursprünglicher Betrag: %1$s %2$s\nRestbetrag: %3$s %2$s</string>
 </resources>

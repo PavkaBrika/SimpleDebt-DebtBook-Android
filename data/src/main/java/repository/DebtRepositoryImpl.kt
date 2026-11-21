@@ -2,6 +2,7 @@ package repository
 
 
 import com.breckneck.deptbook.data.storage.DebtStorage
+import com.breckneck.deptbook.domain.model.DebtDueChange
 import entity.Debt
 import entity.toEntity
 import com.breckneck.deptbook.domain.model.DebtDomain
@@ -42,9 +43,9 @@ class DebtRepositoryImpl(val debtStorage: DebtStorage): DebtRepository {
         debtStorage.deleteDebt(debt)
     }
 
-    override fun editDebt(debtDomain: DebtDomain) {
+    override fun editDebt(debtDomain: DebtDomain, due: DebtDueChange?) {
         val debt = debtDomain.toEntity()
-        debtStorage.editDebt(debt)
+        debtStorage.editDebt(debt, due)
     }
 
     override fun deleteDebtsByHumanId(id: Int) {

@@ -8,6 +8,14 @@ import java.util.TimeZone
 
 /** Calendar dates float with the device zone; persisted delivery state never floats back. */
 object DebtReminderPolicy {
+    const val DEFAULT_MINUTE = 9 * 60
+
+    fun canSchedule(day: String, now: Long = System.currentTimeMillis(), zone: TimeZone = TimeZone.getDefault()): Boolean =
+        day >= today(now, zone)
+
+    fun canSetDueDay(debtDate: String, dueDay: String): Boolean =
+        LedgerDate.canonical(debtDate)?.let { dueDay >= it } ?: true
+
     fun validate(debt: DebtDomain) {
         debt.dueDay?.let { require(LedgerDate.canonical(it) == it) { "Invalid due day" } }
         require(debt.dueDay == null || (debt.repaymentOfId == null && debt.sum.signum() != 0))

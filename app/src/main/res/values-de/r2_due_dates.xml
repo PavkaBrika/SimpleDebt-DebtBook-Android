@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="due_settings">Fälligkeit und Erinnerung</string>
-    <string name="due_choose_date">Fälligkeitsdatum wählen</string>
     <string name="due_date">Fällig: %1$s</string>
     <string name="due_overdue">Überfällig · Termin: %1$s</string>
     <string name="due_today">Heute fällig · %1$s</string>
-    <string name="due_clear">Fälligkeit entfernen</string>
-    <string name="due_enable">Mich einmal erinnern</string>
-    <string name="due_time">Ortszeit: %1$s</string>
-    <string name="due_help">Eine persönliche Erinnerung am Fälligkeitstag, zur Ortszeit des Geräts. Android kann sie später zustellen. Es werden keine Nachrichten an andere Personen gesendet. Eine vollständige Rückzahlung schaltet sie aus; das Stornieren der Rückzahlung schaltet sie nicht wieder ein.</string>
-    <string name="due_permission_denied">Benachrichtigungen sind blockiert. Schulden und Fälligkeiten funktionieren weiterhin. Erlaube Benachrichtigungen für Erinnerungen.</string>
+    <string name="due_enable">Mich erinnern</string>
+    <string name="due_permission_denied">Erlauben Sie Benachrichtigungen, um Erinnerungen zu erhalten.</string>
     <string name="due_notification_settings">Benachrichtigungseinstellungen</string>
-    <string name="due_future_required">Wähle Datum und Uhrzeit in der Zukunft oder schalte die Erinnerung aus. Ein Restbetrag muss offen sein.</string>
-    <string name="due_reminder_at">Erinnerung: %1$s · Ortszeit</string>
-    <string name="due_sent">Erinnerung bereits gesendet</string>
+    <string name="due_future_required">Wähle heute oder ein späteres Datum für die Erinnerung.</string>
     <string name="due_off">Erinnerung aus</string>
     <string name="due_channel">Persönliche Schuldenerinnerungen</string>
     <string name="due_notification_title">Schuld prüfen</string>
     <string name="due_notification_text">Eine Schuld ist fällig. Zum Öffnen tippen.</string>
     <string name="due_missing">Diese Schuld wurde gelöscht</string>
+    <string name="due_apply">Übernehmen</string>
+    <string name="due_save_failed">Die Fälligkeit konnte nicht gespeichert werden. Versuchen Sie es erneut.</string>
+    <string name="debt_delete_question">Diese Schuld löschen?</string>
+    <string name="due_optional">Optional</string>
+    <string name="debt_entry_date">Datum der Schuld</string>
+    <string name="due_reminder_on">Erinnerung an</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.main.adapter
 
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.deptbook.domain.util.compareTo
 
 import android.annotation.SuppressLint
@@ -11,16 +12,12 @@ import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import com.breckneck.debtbook.R
 import com.breckneck.deptbook.domain.model.HumanDomain
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 
 class HumanAdapter(
     humanDomainListImmutable: List<HumanDomain>,
     private val humanClickListener: OnHumanClickListener
 ) : RecyclerView.Adapter<HumanAdapter.HumanViewHolder>() {
 
-    private val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
-    private val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
     private val humanDomainList: MutableList<HumanDomain> = humanDomainListImmutable.toMutableList()
 
     interface OnHumanClickListener{
@@ -58,23 +55,21 @@ class HumanAdapter(
 
     @SuppressLint("ResourceAsColor")
     override fun onBindViewHolder(holder: HumanViewHolder, position: Int) {
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
         val humanDomain = humanDomainList[position]
         holder.name.text = humanDomain.name
         holder.currency.text = humanDomain.currency
         if (humanDomain.sumDebt > 0) {
             holder.debt.setTextColor(holder.greenColor)
             holder.currency.setTextColor(holder.greenColor)
-            holder.debt.text = "+${decimalFormat.format(humanDomain.sumDebt)}"
+            holder.debt.text = "+${MoneyDisplay.format(humanDomain.sumDebt, humanDomain.currency)}"
         } else if (humanDomain.sumDebt < 0) {
             holder.debt.setTextColor(holder.redColor)
             holder.currency.setTextColor(holder.redColor)
-            holder.debt.text = decimalFormat.format(humanDomain.sumDebt)
+            holder.debt.text = MoneyDisplay.format(humanDomain.sumDebt, humanDomain.currency)
         } else {
             holder.debt.setTextColor(holder.grayColor)
             holder.currency.setTextColor(holder.grayColor)
-            holder.debt.text = decimalFormat.format(humanDomain.sumDebt)
+            holder.debt.text = MoneyDisplay.format(humanDomain.sumDebt, humanDomain.currency)
         }
 
 

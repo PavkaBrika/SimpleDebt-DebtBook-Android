@@ -1,5 +1,6 @@
 package com.breckneck.deptbook.data.storage
 
+import com.breckneck.deptbook.domain.model.DebtDueChange
 import entity.Debt
 
 interface DebtStorage {
@@ -14,7 +15,7 @@ interface DebtStorage {
 
     fun deleteDebt(debt: Debt)
 
-    fun editDebt(debt: Debt)
+    fun editDebt(debt: Debt, due: DebtDueChange?)
 
     fun deleteDebtsByHumanId(id: Int)
 

@@ -4,18 +4,12 @@ import java.math.BigDecimal
 import com.breckneck.deptbook.domain.util.compareTo
 
 import com.breckneck.deptbook.domain.repository.HumanRepository
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import com.breckneck.deptbook.domain.util.abs
 
 class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
 
-    val decimalFormat = DecimalFormat("###,###,###.##").apply { maximumFractionDigits = 100 }
-    val customSymbol: DecimalFormatSymbols = DecimalFormatSymbols()
-
     fun execute(firstCurrency: String, secondCurrency: String): Pair<String, String> {
-        customSymbol.groupingSeparator = ' '
-        decimalFormat.decimalFormatSymbols = customSymbol
         val debtsInFirstCurrency = humanRepository.getAllDebtsSum(currency = firstCurrency)
         val debtsInSecondCurrency = humanRepository.getAllDebtsSum(currency = secondCurrency)
         var positiveNumbers = BigDecimal.ZERO
@@ -33,14 +27,14 @@ class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
             }
             if (positiveNumbers.signum() != 0)
                 if (positiveText.isEmpty())
-                    positiveText = "+${decimalFormat.format(positiveNumbers)} $firstCurrency"
+                    positiveText = "+${MoneyDisplay.format(positiveNumbers, firstCurrency)} $firstCurrency"
                 else
-                    positiveText = "$positiveText\n+${decimalFormat.format(positiveNumbers)} $firstCurrency"
+                    positiveText = "$positiveText\n+${MoneyDisplay.format(positiveNumbers, firstCurrency)} $firstCurrency"
             if (negativeNumbers.signum() != 0)
                 if (negativeText.isEmpty())
-                    negativeText = "-${decimalFormat.format(negativeNumbers)} $firstCurrency"
+                    negativeText = "-${MoneyDisplay.format(negativeNumbers, firstCurrency)} $firstCurrency"
                 else
-                    negativeText = "$negativeText\n-${decimalFormat.format(negativeNumbers)} $firstCurrency"
+                    negativeText = "$negativeText\n-${MoneyDisplay.format(negativeNumbers, firstCurrency)} $firstCurrency"
         }
         positiveNumbers = BigDecimal.ZERO
         negativeNumbers = BigDecimal.ZERO
@@ -55,14 +49,14 @@ class GetAllDebtsSumUseCase(val humanRepository: HumanRepository) {
             }
             if (positiveNumbers.signum() != 0)
                 if (positiveText.isEmpty())
-                    positiveText = "+${decimalFormat.format(positiveNumbers)} $secondCurrency"
+                    positiveText = "+${MoneyDisplay.format(positiveNumbers, secondCurrency)} $secondCurrency"
                 else
-                    positiveText = "$positiveText\n+${decimalFormat.format(positiveNumbers)} $secondCurrency"
+                    positiveText = "$positiveText\n+${MoneyDisplay.format(positiveNumbers, secondCurrency)} $secondCurrency"
             if (negativeNumbers.signum() != 0)
                 if (negativeText.isEmpty())
-                    negativeText = "-${decimalFormat.format(negativeNumbers)} $secondCurrency"
+                    negativeText = "-${MoneyDisplay.format(negativeNumbers, secondCurrency)} $secondCurrency"
                 else
-                    negativeText = "$negativeText\n-${decimalFormat.format(negativeNumbers)} $secondCurrency"
+                    negativeText = "$negativeText\n-${MoneyDisplay.format(negativeNumbers, secondCurrency)} $secondCurrency"
         }
         return Pair(positiveText, negativeText)
     }

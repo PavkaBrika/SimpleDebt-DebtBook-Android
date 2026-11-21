@@ -11,8 +11,8 @@ import java.util.Calendar
 fun Goal.toCreateGoalUi(currencyDisplayName: String): CreateGoalUi =
     CreateGoalUi(
         name = name,
-        sum = DecimalInput.format(sum),
-        savedSum = if (savedSum.signum() != 0) DecimalInput.format(savedSum) else String.empty,
+        sum = DecimalInput.format(sum, currency = currency),
+        savedSum = if (savedSum.signum() != 0) DecimalInput.format(savedSum, currency = currency) else String.empty,
         currency = currency,
         currencyDisplayName = currencyDisplayName,
         goalDate = presentationGoalDate,

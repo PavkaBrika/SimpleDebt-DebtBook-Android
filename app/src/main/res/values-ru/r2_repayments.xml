@@ -3,21 +3,16 @@
     <string name="repayment_paid">Я вернул</string>
     <string name="repayment_cancel">Отменить возврат</string>
     <string name="repayment_cancelled">Возврат отменён · не влияет на баланс</string>
-    <string name="debt_record">Запись №%1$d · %2$s</string>
     <string name="debt_lent">Мне должны</string>
     <string name="debt_borrowed">Я должен</string>
-    <string name="debt_remaining">Остаток по записи: %1$s %2$s</string>
+    <string name="debt_remaining">Осталось: %1$s %2$s</string>
     <string name="debt_repaid">Возвращено: %1$s %2$s</string>
-    <string name="repayment_parent">Возврат к записи №%1$d\n%2$s</string>
-    <string name="repayment_context">Запись №%1$d · %2$s %3$s\n%4$s</string>
-    <string name="repayment_balance_help">Общий баланс человека: %1$s %2$s. Этот возврат относится только к выбранной записи.</string>
+    <string name="repayment_context">Долг от %3$s на %1$s %2$s</string>
     <string name="repayment_full">Вернуть весь остаток</string>
     <string name="repayment_invalid">Введите сумму больше нуля с допустимым числом знаков для валюты.</string>
     <string name="repayment_over">Возврат превышает остаток %1$s %2$s. Укажите меньшую сумму.</string>
     <string name="repayment_save_failed">Не удалось сохранить возврат. Повторите попытку.</string>
-    <string name="repayment_locked">У этой записи есть история возвратов. Исходная сумма и история сохраняются.</string>
     <string name="repayment_closed">Погашено</string>
     <string name="repayment_cancel_confirm">Отменить возврат %1$s %2$s? Сумма снова войдёт в остаток долга, а возврат останется в истории.</string>
     <string name="repayment_amount">Сумма возврата</string>
-    <string name="repayment_status">Исходная сумма: %1$s %2$s\nОстаток: %3$s %2$s</string>
 </resources>

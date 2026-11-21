@@ -3,6 +3,7 @@ package com.breckneck.debtbook.debt.create
 import java.math.BigDecimal
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import com.breckneck.deptbook.domain.model.DebtDomain
@@ -39,13 +40,13 @@ class CreateDebtViewModelTest {
         whenever(latest.exectute()).thenReturn(7)
     }
     @After fun teardown() = Dispatchers.resetMain()
-    private fun vm() = CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum, transaction, mock())
+    private fun vm() = CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum, transaction, SavedStateHandle())
 
     @Test fun `duplicate save is ignored and navigation waits for persistence`() {
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
         doAnswer { started.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)); null }
-            .whenever(setDebt).execute(any(), any(), anyOrNull(), any())
+            .whenever(setDebt).execute(any(), any(), anyOrNull(), any(), anyOrNull(), anyOrNull())
         val model = vm()
         model.saveDebt(7, -1, "Person", "12.34".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         assertTrue(started.await(5, TimeUnit.SECONDS))
@@ -53,13 +54,13 @@ class CreateDebtViewModelTest {
         assertNull(model.savedHumanId.value)
         release.countDown()
         model.savedHumanId.await { it == 7 }
-        verify(setDebt, times(1)).execute("12.34".toBigDecimal().stripTrailingZeros(), 7, null, "14 Nov 2026")
+        verify(setDebt, times(1)).execute("12.34".toBigDecimal().stripTrailingZeros(), 7, null, "14 Nov 2026", null, null)
         verify(addSum, times(1)).execute(7, "12.34".toBigDecimal().stripTrailingZeros())
     }
 
     @Test fun `failed write permits retry without reporting success`() {
         doThrow(IllegalStateException("write failed")).doNothing()
-            .whenever(setDebt).execute(any(), any(), anyOrNull(), any())
+            .whenever(setDebt).execute(any(), any(), anyOrNull(), any(), anyOrNull(), anyOrNull())
         val model = vm()
         model.saveDebt(7, -1, "Person", "12.34".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         model.isSaving.await { it == false }

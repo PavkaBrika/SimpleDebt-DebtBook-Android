@@ -7,6 +7,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import com.breckneck.deptbook.domain.model.DebtDueChange
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.RepaymentPolicy
 import com.google.gson.JsonParser
@@ -35,6 +36,12 @@ class DueDateRoomTest {
             dao.reviseDebt(dao.getAllDebts().first().copy(info = "Edited"))
             assertEquals("token-2", dao.getAllDebts().first().reminderToken)
             db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_due_balance BEFORE UPDATE ON Human BEGIN SELECT RAISE(ABORT, 'test'); END")
+            val original = dao.getAllDebts().first()
+            try {
+                dao.reviseDebt(original.copy(info = "Draft edit"), DebtDueChange("2099-12-29", true))
+                fail("Combined debt edit was not rolled back")
+            } catch (_: android.database.sqlite.SQLiteException) { }
+            assertEquals(original, dao.getAllDebts().first())
             val full = Debt(0, (-80 * sign).toBigDecimal(), 1, null, "2026-11-16", repaymentOfId = 1, operationId = "payment-0000000002")
             try { dao.saveDebt(full); fail("write accepted") } catch (_: android.database.sqlite.SQLiteException) { }
             assertEquals("token-2", dao.getAllDebts().first().reminderToken)
@@ -48,10 +55,23 @@ class DueDateRoomTest {
             assertEquals(0, BigDecimal("80").compareTo(RepaymentPolicy.remaining(rows.first(), rows)))
             assertNull(rows.first().reminderToken)
             dao.setDebtDueDate(1, "2099-12-30", 610, "token-3", System.currentTimeMillis())
-            dao.setDebtDueDate(1, "2020-01-01", null, null, System.currentTimeMillis())
-            assertTrue(DebtReminderPolicy.overdue(dao.getAllDebts().first().toDomain(), BigDecimal("80")))
-            try { dao.setDebtDueDate(1, "2020-01-01", 540, "token-4", System.currentTimeMillis()); fail("past accepted") }
-            catch (_: IllegalArgumentException) { }
+            val operationDay = "2026-11-16"
+            val afternoon = DebtReminderPolicy.trigger(operationDay, 18 * 60)
+            try {
+                dao.setDebtDueDate(1, "2026-11-15", null, null, afternoon)
+                fail("Due date before the debt was accepted")
+            } catch (_: IllegalArgumentException) { }
+            assertEquals("2099-12-30", dao.getAllDebts().first().dueDay)
+
+            dao.setDebtDueDate(1, operationDay, DebtReminderPolicy.DEFAULT_MINUTE, "same-day", afternoon)
+            assertEquals("same-day", dao.getAllDebts().first().reminderToken)
+            val nextDay = DebtReminderPolicy.trigger("2026-11-17", 0)
+            dao.setDebtDueDate(1, operationDay, null, null, nextDay)
+            assertTrue(DebtReminderPolicy.overdue(dao.getAllDebts().first().toDomain(), BigDecimal("80"), "2026-11-17"))
+            try {
+                dao.setDebtDueDate(1, operationDay, 540, "token-4", nextDay)
+                fail("Past reminder day was accepted")
+            } catch (_: IllegalArgumentException) { }
             assertNull(dao.getAllDebts().first().reminderToken)
         }
     }

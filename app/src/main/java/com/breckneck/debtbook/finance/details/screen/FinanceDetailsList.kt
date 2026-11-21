@@ -39,8 +39,7 @@ import com.breckneck.debtbook.core.ui.components.BubbleListRow
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.model.Finance
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
+import com.breckneck.deptbook.domain.util.MoneyDisplay
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -56,10 +55,6 @@ internal fun FinanceDetailsList(
     val spacing = MaterialTheme.spacing
     val monthFormatter = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val rowDateFormatter = remember { SimpleDateFormat("d MMM", Locale.getDefault()) }
-    val decimalFormat = remember {
-        val symbols = DecimalFormatSymbols().apply { groupingSeparator = ' ' }
-        DecimalFormat("###,###,###.##", symbols).apply { maximumFractionDigits = 100 }
-    }
     val zoneId = java.util.TimeZone.getDefault().id
     monthFormatter.timeZone = java.util.TimeZone.getDefault()
     rowDateFormatter.timeZone = java.util.TimeZone.getDefault()
@@ -89,7 +84,6 @@ internal fun FinanceDetailsList(
                     finance = finance,
                     currency = currency,
                     dateFormatter = rowDateFormatter,
-                    decimalFormat = decimalFormat,
                     onClick = { onFinanceClick(finance) }
                 )
                 HorizontalDivider(
@@ -170,11 +164,10 @@ private fun FinanceRow(
     finance: Finance,
     currency: String,
     dateFormatter: SimpleDateFormat,
-    decimalFormat: DecimalFormat,
     onClick: () -> Unit
 ) {
     val spacing = MaterialTheme.spacing
-    val formattedSum = remember(finance.sum) { decimalFormat.format(finance.sum) }
+    val formattedSum = remember(finance.sum, currency) { MoneyDisplay.format(finance.sum, currency) }
     val formattedDate = remember(finance.presentationDate) { dateFormatter.format(finance.presentationDate) }
     val accessibilityDesc = "$formattedSum $currency, $formattedDate"
 

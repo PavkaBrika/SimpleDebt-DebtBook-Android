@@ -139,7 +139,7 @@ class CreateFinanceFragment : Fragment() {
                     }
                     vm.setFinanceEdit(finance = financeEdit!!)
                     vm.setDayInMillis(dayInMillis = financeEdit.presentationDate.time)
-                    financeSumEditText.setText(DecimalInput.format(financeEdit.sum))
+                    financeSumEditText.setText(DecimalInput.format(financeEdit.sum, currency = financeEdit.currency))
                     financeInfoEditText.setText(financeEdit.info)
                     categoryLinearLayout.visibility = View.GONE
                     customSwitch.visibility = View.GONE

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -36,17 +37,20 @@ fun DebtBookBottomSheet(
     containerColor: Color = BottomSheetDefaults.ContainerColor,
     contentColor: Color = contentColorFor(containerColor),
     hideRequested: Boolean = false,
+    gesturesEnabled: Boolean = true,
+    properties: ModalBottomSheetProperties = ModalBottomSheetProperties(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        sheetGesturesEnabled = !hideRequested,
+        sheetGesturesEnabled = gesturesEnabled && !hideRequested,
         modifier = modifier,
         shape = shape,
         containerColor = containerColor,
         contentColor = contentColor,
         dragHandle = null,
+        properties = properties,
         content = content,
     )
     if (hideRequested) {

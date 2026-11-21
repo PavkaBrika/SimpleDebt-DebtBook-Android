@@ -1,10 +1,5 @@
 package com.breckneck.debtbook.common
 
-import java.math.BigDecimal
-
-import com.breckneck.deptbook.domain.model.Finance
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -15,10 +10,4 @@ val String.Companion.empty
 fun Date.toDMYFormat(pattern: String = "d MMM yyyy"): String {
     val sdf = SimpleDateFormat(pattern, Locale.getDefault())
     return sdf.format(this)
-}
-
-fun BigDecimal.format(pattern: String = "###,###,###.######################################"): String {
-    val symbols = DecimalFormatSymbols().apply { groupingSeparator = ' ' }
-    val df = DecimalFormat(pattern , symbols)
-    return df.format(this)
 }
