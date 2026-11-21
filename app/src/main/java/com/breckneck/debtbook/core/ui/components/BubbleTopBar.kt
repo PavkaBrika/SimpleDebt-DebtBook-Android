@@ -1,11 +1,15 @@
 package com.breckneck.debtbook.core.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -15,14 +19,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 
@@ -32,31 +38,41 @@ internal fun BubbleTopBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
-    titleModifier: Modifier = Modifier,
-    titleStyle: TextStyle = MaterialTheme.typography.titleLarge,
-    action: @Composable () -> Unit = { Spacer(Modifier.size(48.dp)) },
+    action: @Composable (Dp) -> Unit = { Spacer(Modifier.size(it)) },
 ) {
     val colors = bubbleColors()
+    val lineHeight = 22.sp
+    val bubbleHeight = with(LocalDensity.current) { maxOf(48.dp, lineHeight.toDp() * 2 + 2.dp) }
     Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BubbleIconButton(onClick = onBack, enabled = backEnabled) {
+        BubbleIconButton(onClick = onBack, enabled = backEnabled, diameter = bubbleHeight) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Text(
-                title,
-                modifier = titleModifier.semantics { heading() },
-                color = colors.ink,
-                style = titleStyle,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Box(
+                modifier = Modifier.height(bubbleHeight)
+                    .background(colors.paper.copy(alpha = .88f), CircleShape)
+                    .border(1.dp, colors.border, CircleShape)
+                    .semantics(mergeDescendants = true) { heading() }
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    title,
+                    color = colors.ink,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp,
+                    lineHeight = lineHeight,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        action()
+        action(bubbleHeight)
     }
 }

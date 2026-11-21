@@ -1,8 +1,6 @@
 package com.breckneck.debtbook.goal.details
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,7 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
@@ -139,13 +137,8 @@ private fun GoalDetailsContent(
                         1f to colors.background.copy(alpha = 0f),
                     ))
                     .padding(start = start, end = end, top = hostInsets.calculateTopPadding() + 6.dp, bottom = 6.dp),
-                titleStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                titleModifier = Modifier
-                    .background(colors.paper.copy(alpha = .88f), CircleShape)
-                    .border(BorderStroke(1.dp, colors.border), CircleShape)
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
             ) {
-                GoalActionsMenu(goal.isReached, onEdit, onDelete)
+                GoalActionsMenu(goal.isReached, it, onEdit, onDelete)
             }
         },
         bottomBar = {
@@ -221,11 +214,11 @@ private fun GoalDetailsContent(
 }
 
 @Composable
-private fun GoalActionsMenu(isReached: Boolean, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun GoalActionsMenu(isReached: Boolean, diameter: Dp, onEdit: () -> Unit, onDelete: () -> Unit) {
     val colors = bubbleColors()
     var expanded by remember { mutableStateOf(false) }
     Box {
-        BubbleIconButton(onClick = { expanded = true }) {
+        BubbleIconButton(onClick = { expanded = true }, diameter = diameter) {
             Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.goal_actions))
         }
         DropdownMenu(

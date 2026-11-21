@@ -68,7 +68,7 @@ internal fun BubbleIconButton(
     content: @Composable () -> Unit,
 ) {
     val colors = bubbleColors()
-    IconButton(onClick = onClick, enabled = enabled, modifier = modifier.size(48.dp)) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = modifier.size(diameter.coerceAtLeast(48.dp))) {
         Surface(
             shape = CircleShape,
             color = colors.paper,
