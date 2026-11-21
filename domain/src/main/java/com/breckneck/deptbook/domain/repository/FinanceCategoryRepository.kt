@@ -10,7 +10,7 @@ interface FinanceCategoryRepository {
 
     fun getAllFinanceCategories(): List<FinanceCategory>
 
-    fun setFinanceCategory(category: FinanceCategory)
+    fun setFinanceCategory(category: FinanceCategory): Long
 
     fun deleteFinanceCategory(category: FinanceCategory)
 

@@ -55,8 +55,8 @@ class FinanceCategoryRepositoryImpl(private val financeCategoryStorage: FinanceC
         }
     }
 
-    override fun setFinanceCategory(category: FinanceCategory) {
-        financeCategoryStorage.setFinanceCategory(
+    override fun setFinanceCategory(category: FinanceCategory): Long {
+        return financeCategoryStorage.setFinanceCategory(
             FinanceCategoryData(
                 id = category.id,
                 name = category.name,

@@ -10,7 +10,7 @@ interface FinanceCategoryStorage {
 
     fun getAllFinanceCategories(): List<FinanceCategoryData>
 
-    fun setFinanceCategory(category: FinanceCategoryData)
+    fun setFinanceCategory(category: FinanceCategoryData): Long
 
     fun deleteFinanceCategory(category: FinanceCategoryData)
 

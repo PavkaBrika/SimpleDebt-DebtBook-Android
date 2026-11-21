@@ -11,6 +11,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.PaddingValues
+import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleTopBar
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -82,13 +88,13 @@ private const val EMOJI_GRID_COLUMNS = 5
 fun CreateFinanceCategoryScreen(
     vm: CreateFinanceCategoryViewModel,
     onBackClick: () -> Unit,
-    onCategorySaved: () -> Unit
+    onCategorySaved: (Int) -> Unit
 ) {
     val state by vm.collectAsState()
 
     vm.collectSideEffect { effect ->
         when (effect) {
-            CreateFinanceCategorySideEffect.CategorySaved -> onCategorySaved()
+            is CreateFinanceCategorySideEffect.CategorySaved -> onCategorySaved(effect.id)
         }
     }
 
@@ -121,18 +127,15 @@ fun CreateFinanceCategoryContent(
     LaunchedEffect(Unit) { pickersReady = true }
 
     Scaffold(
-        topBar = {
-            DebtBookTopBar(
-                title = stringResource(R.string.create_new_category),
-                onBackClick = onBackClick
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onSaveClick) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = stringResource(R.string.create_new_category)
-                )
+        containerColor = bubbleColors().background,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
+        topBar = { BubbleTopBar(stringResource(R.string.create_new_category), onBackClick, PaddingValues(0.dp)) },
+        bottomBar = {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                if (state.saveFailed) Text(stringResource(R.string.save_failed_retry), color = bubbleColors().danger)
+                BubbleButton(onSaveClick, Modifier.fillMaxWidth(), enabled = !state.saving) {
+                    Text(stringResource(R.string.finance_save_category))
+                }
             }
         }
     ) { padding ->
@@ -230,9 +233,10 @@ fun CreateFinanceCategoryContent(
                     horizontalArrangement = Arrangement.spacedBy(spacing.space12),
                     verticalArrangement = Arrangement.spacedBy(spacing.space12)
                 ) {
-                    categoryColorList.forEach { color ->
+                    categoryColorList.forEachIndexed { index, color ->
                         CategoryColorItem(
                             colorHex = color,
+                            label = stringResource(R.string.finance_color, index + 1),
                             isSelected = state.selectedColor == color,
                             onClick = { onColorSelected(color) }
                         )
@@ -416,6 +420,7 @@ private fun CategoryImageItem(
 @Composable
 private fun CategoryColorItem(
     colorHex: String,
+    label: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -433,7 +438,7 @@ private fun CategoryColorItem(
     Surface(
         onClick = onClick,
         modifier = Modifier
-            .size(40.dp)
+            .size(48.dp).semantics { contentDescription = label }
             .scale(scale),
         shape = CircleShape,
         color = parsedColor,

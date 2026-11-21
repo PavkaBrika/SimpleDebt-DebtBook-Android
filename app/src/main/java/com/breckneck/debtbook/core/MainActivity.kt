@@ -584,7 +584,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         args.putString("categoryState", financeCategoryState.toString())
         args.putString("day", day)
         args.putString("currency", currency)
-        args.putLong("dayInMillis", requireNotNull(com.breckneck.deptbook.domain.util.LedgerDate.localDate(day)).time)
         args.putBoolean("isEditFinance", false)
         navController.navigate(R.id.action_financeFragment_to_createFinanceFragment, args)
         vm.onActionClick()

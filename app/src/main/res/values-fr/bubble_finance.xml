@@ -6,4 +6,11 @@
     <string name="finance_next">Période suivante</string>
     <string name="finance_today">Revenir à aujourd’hui</string>
     <string name="finance_empty_period">Aucune opération pour cette période.</string>
+    <string name="finance_new_expense">Nouvelle dépense</string>
+    <string name="finance_new_income">Nouveau revenu</string>
+    <string name="finance_save_entry">Enregistrer l’opération</string>
+    <string name="finance_save_category">Enregistrer la catégorie</string>
+    <string name="finance_edit_entry">Modifier l’opération</string>
+    <string name="finance_delete_category_all">Toutes les opérations de la catégorie « %1$s » seront supprimées dans toutes les devises.</string>
+    <string name="finance_color">Couleur %1$d</string>
 </resources>

@@ -35,14 +35,6 @@ class CreateFinanceCategoryFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        vm.setFinanceCategoryState(
-            financeCategoryState = when (arguments?.getString("categoryState").toString()) {
-                FinanceCategoryState.EXPENSE.toString() -> FinanceCategoryState.EXPENSE
-                FinanceCategoryState.INCOME.toString() -> FinanceCategoryState.INCOME
-                else -> FinanceCategoryState.EXPENSE
-            }
-        )
-
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -50,11 +42,11 @@ class CreateFinanceCategoryFragment : Fragment() {
                     CreateFinanceCategoryScreen(
                         vm = vm,
                         onBackClick = { onClickListener?.onBackButtonClick() },
-                        onCategorySaved = {
+                        onCategorySaved = { categoryId ->
                             setFragmentResult(
                                 "createFinanceFragmentKey",
                                 bundleOf(
-                                    "isListModified" to true,
+                                    "categoryId" to categoryId,
                                     "categoryState" to vm.container.stateFlow.value.financeCategoryState.toString()
                                 )
                             )

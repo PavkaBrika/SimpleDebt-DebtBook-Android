@@ -1,6 +1,8 @@
 package com.breckneck.debtbook.finance.create_category
 
-import android.util.Log
+import androidx.lifecycle.SavedStateHandle
+import kotlinx.coroutines.CancellationException
+import java.util.concurrent.atomic.AtomicBoolean
 import androidx.lifecycle.ViewModel
 import com.breckneck.deptbook.domain.model.FinanceCategory
 import com.breckneck.deptbook.domain.usecase.FinanceCategory.SetFinanceCategory
@@ -20,6 +22,8 @@ data class CreateFinanceCategoryState(
     val isNameErrorVisible: Boolean,
     val isImageErrorVisible: Boolean,
     val isColorErrorVisible: Boolean,
+    val saving: Boolean = false,
+    val saveFailed: Boolean = false,
 ) {
     companion object {
         fun initial() = CreateFinanceCategoryState(
@@ -35,26 +39,28 @@ data class CreateFinanceCategoryState(
 }
 
 sealed class CreateFinanceCategorySideEffect {
-    data object CategorySaved : CreateFinanceCategorySideEffect()
+    data class CategorySaved(val id: Int) : CreateFinanceCategorySideEffect()
 }
 
 @HiltViewModel
 class CreateFinanceCategoryViewModel @Inject constructor(
+    private val saved: SavedStateHandle,
     private val setFinanceCategory: SetFinanceCategory
 ) : ViewModel(), ContainerHost<CreateFinanceCategoryState, CreateFinanceCategorySideEffect> {
 
-    private val TAG = "CreateFinanceCatFragVM"
+    private val submitting = AtomicBoolean(false)
 
     override val container = container<CreateFinanceCategoryState, CreateFinanceCategorySideEffect>(
-        CreateFinanceCategoryState.initial()
+        CreateFinanceCategoryState.initial().copy(
+            categoryName = saved["name"] ?: "", selectedImage = saved["image"], selectedColor = saved["color"],
+            financeCategoryState = FinanceCategoryState.valueOf(saved["categoryState"] ?: "EXPENSE"),
+        )
     )
 
-    init {
-        Log.e(TAG, "Initialized")
-    }
 
     fun onNameChange(value: String) = intent {
-        if (value.length <= 20) {
+        if (value.length <= 60) {
+            saved["name"] = value
             reduce {
                 state.copy(
                     categoryName = value,
@@ -65,6 +71,7 @@ class CreateFinanceCategoryViewModel @Inject constructor(
     }
 
     fun onImageSelected(image: Int) = intent {
+        saved["image"] = image
         reduce {
             state.copy(
                 selectedImage = image,
@@ -74,16 +81,13 @@ class CreateFinanceCategoryViewModel @Inject constructor(
     }
 
     fun onColorSelected(color: String) = intent {
+        saved["color"] = color
         reduce {
             state.copy(
                 selectedColor = color,
                 isColorErrorVisible = false
             )
         }
-    }
-
-    fun setFinanceCategoryState(financeCategoryState: FinanceCategoryState) = intent {
-        reduce { state.copy(financeCategoryState = financeCategoryState) }
     }
 
     fun onSaveClick() = intent {
@@ -102,21 +106,26 @@ class CreateFinanceCategoryViewModel @Inject constructor(
             return@intent
         }
 
+        if (!submitting.compareAndSet(false, true)) return@intent
+        val draft = state
+        reduce { state.copy(saving = true, saveFailed = false) }
         try {
-            withContext(Dispatchers.IO) {
+            val id = withContext(Dispatchers.IO) {
                 setFinanceCategory.execute(
                     financeCategory = FinanceCategory(
-                        name = state.categoryName.trim(),
-                        color = state.selectedColor!!,
-                        state = state.financeCategoryState,
-                        image = state.selectedImage!!
+                        name = draft.categoryName.trim(),
+                        color = draft.selectedColor!!,
+                        state = draft.financeCategoryState,
+                        image = draft.selectedImage!!
                     )
                 )
             }
-            Log.e(TAG, "New category added")
-            postSideEffect(CreateFinanceCategorySideEffect.CategorySaved)
-        } catch (e: Exception) {
-            Log.e(TAG, e.message.toString())
+            postSideEffect(CreateFinanceCategorySideEffect.CategorySaved(id.toInt()))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            submitting.set(false)
+            reduce { state.copy(saving = false, saveFailed = true) }
         }
     }
 }

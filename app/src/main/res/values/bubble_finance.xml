@@ -6,4 +6,11 @@
     <string name="finance_next">Next period</string>
     <string name="finance_today">Back to today</string>
     <string name="finance_empty_period">No entries in this period.</string>
+    <string name="finance_new_expense">New expense</string>
+    <string name="finance_new_income">New income</string>
+    <string name="finance_save_entry">Save transaction</string>
+    <string name="finance_save_category">Save category</string>
+    <string name="finance_edit_entry">Edit transaction</string>
+    <string name="finance_delete_category_all">All transactions in “%1$s” will be deleted in every currency.</string>
+    <string name="finance_color">Color %1$d</string>
 </resources>

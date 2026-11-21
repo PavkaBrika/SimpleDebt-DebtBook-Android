@@ -20,8 +20,8 @@ class DataBaseFinanceCategoryStorageImpl(context: Context) : FinanceCategoryStor
         return db.appDao().getAllFinanceCategoriesWithFinances()
     }
 
-    override fun setFinanceCategory(category: FinanceCategoryData) {
-        db.appDao().insertFinanceCategory(financeCategoryData = category)
+    override fun setFinanceCategory(category: FinanceCategoryData): Long {
+        return db.appDao().insertFinanceCategory(financeCategoryData = category)
     }
 
     override fun deleteFinanceCategory(category: FinanceCategoryData) {

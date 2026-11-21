@@ -6,4 +6,11 @@
     <string name="finance_next">Следующий период</string>
     <string name="finance_today">К текущей дате</string>
     <string name="finance_empty_period">За этот период записей нет.</string>
+    <string name="finance_new_expense">Новый расход</string>
+    <string name="finance_new_income">Новый доход</string>
+    <string name="finance_save_entry">Сохранить операцию</string>
+    <string name="finance_save_category">Сохранить категорию</string>
+    <string name="finance_edit_entry">Редактировать операцию</string>
+    <string name="finance_delete_category_all">Будут удалены все операции категории «%1$s» во всех валютах.</string>
+    <string name="finance_color">Цвет %1$d</string>
 </resources>

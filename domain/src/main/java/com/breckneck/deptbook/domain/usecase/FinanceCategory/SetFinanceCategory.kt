@@ -5,7 +5,7 @@ import com.breckneck.deptbook.domain.repository.FinanceCategoryRepository
 
 class SetFinanceCategory(private val financeCategoryRepository: FinanceCategoryRepository) {
 
-    fun execute(financeCategory: FinanceCategory) {
-        financeCategoryRepository.setFinanceCategory(category = financeCategory)
+    fun execute(financeCategory: FinanceCategory): Long {
+        return financeCategoryRepository.setFinanceCategory(category = financeCategory)
     }
 }

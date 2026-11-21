@@ -241,7 +241,7 @@ interface AppDao {
     fun insertAllFinanceCategories(financeCategoryDataList: List<FinanceCategoryData>)
 
     @Insert
-    fun insertFinanceCategory(financeCategoryData: FinanceCategoryData)
+    fun insertFinanceCategory(financeCategoryData: FinanceCategoryData): Long
 
     @Delete
     fun deleteFinanceCategory(financeCategoryData: FinanceCategoryData)

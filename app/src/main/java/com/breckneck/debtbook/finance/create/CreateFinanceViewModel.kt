@@ -1,206 +1,129 @@
 package com.breckneck.debtbook.finance.create
 
-import java.math.BigDecimal
-
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.model.FinanceCategory
-import com.breckneck.deptbook.domain.usecase.Finance.DeleteAllFinancesByCategoryId
 import com.breckneck.deptbook.domain.usecase.Finance.SetFinance
 import com.breckneck.deptbook.domain.usecase.Finance.UpdateFinance
 import com.breckneck.deptbook.domain.usecase.FinanceCategory.DeleteFinanceCategory
-import com.breckneck.deptbook.domain.usecase.FinanceCategory.GetAllFinanceCategories
 import com.breckneck.deptbook.domain.usecase.FinanceCategory.GetFinanceCategoriesByState
 import com.breckneck.deptbook.domain.usecase.Settings.GetFinanceCurrency
-import com.breckneck.deptbook.domain.util.CreateFragmentState
+import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
+import com.breckneck.deptbook.domain.util.LedgerDate
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
 import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
 class CreateFinanceViewModel @Inject constructor(
+    private val saved: SavedStateHandle,
     private val setFinance: SetFinance,
-    private val getAllFinanceCategories: GetAllFinanceCategories,
-    private val getFinanceCurrency: GetFinanceCurrency,
+    getCurrency: GetFinanceCurrency,
     private val updateFinance: UpdateFinance,
-    private val deleteFinanceCategoryUseCase: DeleteFinanceCategory,
-    private val getFinanceCategoriesByState: GetFinanceCategoriesByState,
-    private val deleteAllFinancesByCategoryId: DeleteAllFinancesByCategoryId
+    private val deleteCategory: DeleteFinanceCategory,
+    private val getCategories: GetFinanceCategoriesByState,
 ) : ViewModel() {
-
-    private val TAG = "CreateFinanceFragmentVM"
-
-    val sdf = SimpleDateFormat("d MMM yyyy")
-
-    private val _financeCategoryList = MutableLiveData<List<FinanceCategory>>()
-    val financeCategoryList: LiveData<List<FinanceCategory>>
-        get() = _financeCategoryList
-    private val _date = MutableLiveData<Date>()
-    val date: LiveData<Date>
-        get() = _date
-    private val _dateString = MutableLiveData<String>()
-    val dateString: LiveData<String>
-        get() = _dateString
-    private val _checkedFinanceCategory = MutableLiveData<FinanceCategory>()
-    val checkedFinanceCategory: LiveData<FinanceCategory>
-        get() = _checkedFinanceCategory
-    private val _currency = MutableLiveData<String>()
-    val currency: LiveData<String>
-        get() = _currency
-    private val _financeCategoryState = MutableLiveData<FinanceCategoryState>()
-    val financeCategoryState: LiveData<FinanceCategoryState>
-        get() = _financeCategoryState
-    private val _dayInMillis = MutableLiveData<Long>()
-    val dayInMillis: LiveData<Long>
-        get() = _dayInMillis
-    private val _financeEdit = MutableLiveData<Finance>()
-    val financeEdit: LiveData<Finance>
-        get() = _financeEdit
-    private val _createFragmentState = MutableLiveData<CreateFragmentState>()
-    val createFragmentState: LiveData<CreateFragmentState>
-        get() = _createFragmentState
-    private val _isDeleteCategoryDialogOpened = MutableLiveData<Boolean>(false)
-    val isDeleteCategoryDialogOpened: LiveData<Boolean>
-        get() = _isDeleteCategoryDialogOpened
-    private val _deleteFinanceCategory = MutableLiveData<FinanceCategory>()
-    val deleteFinanceCategory: LiveData<FinanceCategory>
-        get() = _deleteFinanceCategory
+    private val original = saved.get<Finance>("financeEdit")
+    val editing = original != null
+    val currency = original?.currency ?: saved.get<String>("currency") ?: getCurrency.execute()
+    val amount get() = saved.get<String>("amount") ?: original?.let { DecimalInput.format(it.sum, currency = currency) }.orEmpty()
+    val comment get() = saved.get<String>("comment") ?: original?.info.orEmpty()
+    val day = saved.getLiveData("draftDay", original?.let { it.calendarDay ?: LedgerDate.fromDate(it.date) }
+        ?: saved.get<String>("day") ?: saved.get<Long>("dayInMillis")?.let { LedgerDate.fromDate(Date(it)) } ?: LedgerDate.today())
+    val direction = saved.getLiveData("draftDirection", FinanceCategoryState.valueOf(saved["categoryState"] ?: "EXPENSE"))
+    val categoryId = saved.getLiveData("selectedCategory", original?.financeCategoryId ?: saved.get<Int>("categoryId") ?: 0)
+    val categories = MutableLiveData<List<FinanceCategory>>(emptyList())
+    val loadFailed = MutableLiveData(false)
+    val deleting = MutableLiveData(false)
+    val deleteFailed = MutableLiveData(false)
+    private var load: Job? = null
 
     enum class SaveState { IDLE, SAVING, SAVED, ERROR }
+    private val status = MutableLiveData(SaveState.IDLE)
+    val saveState: LiveData<SaveState> = status
 
-    private val _saveState = MutableLiveData(SaveState.IDLE)
-    val saveState: LiveData<SaveState> = _saveState
+    fun changeAmount(value: String) { saved["amount"] = value }
+    fun changeComment(value: String) { saved["comment"] = value }
 
-    init {
-        Log.e(TAG, "Initialized")
-        getFinanceCurrency()
+    fun changeDirection(value: FinanceCategoryState) {
+        if (editing || direction.value == value) return
+        direction.value = value
+        categoryId.value = 0
+        categories.value = emptyList()
+        reload()
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        Log.e(TAG, "Cleared")
-    }
-
-    fun getAllFinanceCategories() {
-        viewModelScope.launch {
+    fun reload() {
+        load?.cancel()
+        val selected = requireNotNull(direction.value)
+        loadFailed.value = false
+        load = viewModelScope.launch {
             try {
-                val categories = withContext(Dispatchers.IO) { getAllFinanceCategories.execute() }
-                _financeCategoryList.value = categories
-                Log.e(TAG, "Finance categories loaded")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
-            }
-        }
-    }
-
-    fun getFinanceCategoriesByState() {
-        viewModelScope.launch {
-            try {
-                val categories = withContext(Dispatchers.IO) {
-                    getFinanceCategoriesByState.execute(financeCategoryState = financeCategoryState.value!!)
-                }
-                _financeCategoryList.value = categories
-                Log.e(TAG, "Finance categories loaded")
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
-            }
-        }
-    }
-
-    fun setFinance(finance: Finance) = saveFinance(finance, isEdit = false)
-
-    fun editFinance(finance: Finance) = saveFinance(finance, isEdit = true)
-
-    private fun saveFinance(finance: Finance, isEdit: Boolean) {
-        if (_saveState.value == SaveState.SAVING || _saveState.value == SaveState.SAVED) return
-        if (finance.sum <= BigDecimal.ZERO) {
-            _saveState.value = SaveState.ERROR
-            return
-        }
-        _saveState.value = SaveState.SAVING
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    if (isEdit) updateFinance.execute(finance) else setFinance.execute(finance)
-                }
-                _saveState.value = SaveState.SAVED
+                categories.value = withContext(Dispatchers.IO) { getCategories.execute(selected) }
             } catch (cancelled: CancellationException) {
-                _saveState.value = SaveState.IDLE
                 throw cancelled
             } catch (_: Exception) {
-                // Keep the form and allow an explicit retry; never log financial contents.
-                _saveState.value = SaveState.ERROR
+                loadFailed.value = true
             }
         }
     }
 
-    fun deleteFinanceCategory() {
+    fun deleteSelected() {
+        val category = categories.value?.find { it.id == categoryId.value } ?: return
+        if (deleting.value == true || editing) return
+        deleting.value = true
+        deleteFailed.value = false
+        viewModelScope.launch {
+            try {
+                // Room cascades to this category's transactions in the same statement.
+                withContext(Dispatchers.IO) { deleteCategory.execute(category) }
+                categoryId.value = 0
+                reload()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                deleteFailed.value = true
+            } finally {
+                deleting.value = false
+            }
+        }
+    }
+
+    fun parsedAmount() = DecimalInput.parse(amount, currency, original?.sum)?.takeIf { it.signum() > 0 }
+
+    fun save() {
+        if (status.value == SaveState.SAVING || status.value == SaveState.SAVED || deleting.value == true) return
+        val sum = parsedAmount() ?: return
+        val category = original?.financeCategoryId ?: categories.value?.find { it.id == categoryId.value }?.id ?: return
+        val day = requireNotNull(day.value)
+        val sameDay = original != null && day == (original.calendarDay ?: LedgerDate.fromDate(original.date))
+        val finance = Finance(
+            id = original?.id ?: 0, sum = sum, info = comment, financeCategoryId = category, currency = currency,
+            date = if (sameDay) requireNotNull(original).date else requireNotNull(LedgerDate.localDate(day)),
+            calendarDay = if (sameDay) original?.calendarDay else day,
+        )
+        status.value = SaveState.SAVING
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    deleteFinanceCategoryUseCase.execute(financeCategory = deleteFinanceCategory.value!!)
-                    deleteAllFinancesByCategoryId.execute(financeCategoryId = deleteFinanceCategory.value!!.id)
+                    if (editing) updateFinance.execute(finance) else setFinance.execute(finance)
                 }
-                Log.e(TAG, "Category deleted")
-                getFinanceCategoriesByState()
-            } catch (e: Exception) {
-                Log.e(TAG, e.message.toString())
+                status.value = SaveState.SAVED
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                status.value = SaveState.ERROR
             }
-        }
-    }
-
-    private fun getFinanceCurrency() {
-        _currency.value = getFinanceCurrency.execute()
-    }
-
-    fun setFinanceEdit(finance: Finance) {
-        _financeEdit.value = finance
-        _currency.value = finance.currency
-    }
-
-    fun setFinanceCategoryState(financeCategoryState: FinanceCategoryState) {
-        _financeCategoryState.value = financeCategoryState
-    }
-
-    fun setDayInMillis(dayInMillis: Long) {
-        _dayInMillis.value = dayInMillis
-    }
-
-    fun setCurrentDate(date: Date) {
-        _date.value = date
-        _dateString.value = sdf.format(date)
-    }
-
-    fun setCheckedFinanceCategory(financeCategory: FinanceCategory) {
-        _checkedFinanceCategory.value = financeCategory
-    }
-
-    fun setCreateFinanceState(createFragmentState: CreateFragmentState) {
-        _createFragmentState.value = createFragmentState
-    }
-
-    fun setDeleteCategoryDialogOpened(isOpened: Boolean) {
-        _isDeleteCategoryDialogOpened.value = isOpened
-    }
-
-    fun setDeleteCategory(financeCategory: FinanceCategory) {
-        _deleteFinanceCategory.value = financeCategory
-    }
-
-    fun onChangeFinanceCategoryState() {
-        _financeCategoryState.value = when (_financeCategoryState.value!!) {
-            FinanceCategoryState.EXPENSE -> FinanceCategoryState.INCOME
-            FinanceCategoryState.INCOME -> FinanceCategoryState.EXPENSE
         }
     }
 }

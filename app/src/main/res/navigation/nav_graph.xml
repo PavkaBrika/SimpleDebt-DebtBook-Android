@@ -146,8 +146,7 @@
     <fragment
         android:id="@+id/createFinanceFragment"
         android:name="com.breckneck.debtbook.finance.create.CreateFinanceFragment"
-        android:label="CreateFinanceFragment"
-        tools:layout="@layout/fragment_create_finance">
+        android:label="CreateFinanceFragment">
         <action
             android:id="@+id/action_createFinanceFragment_to_createFinanceCategoryFragment"
             app:destination="@id/createFinanceCategoryFragment"

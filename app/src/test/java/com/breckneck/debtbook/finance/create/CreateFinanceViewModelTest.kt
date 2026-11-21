@@ -37,13 +37,19 @@ class CreateFinanceViewModelTest {
     private val setFinance = mock<SetFinance>()
     private val updateFinance = mock<UpdateFinance>()
     private val finance = Finance(sum = "12.34".toBigDecimal().stripTrailingZeros(), info = "", financeCategoryId = 1, date = Date())
+    private lateinit var saved: androidx.lifecycle.SavedStateHandle
     private lateinit var vm: CreateFinanceViewModel
 
     @Before fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val currency = mock<GetFinanceCurrency>()
         whenever(currency.execute()).thenReturn("€")
-        vm = CreateFinanceViewModel(setFinance, mock(), currency, updateFinance, mock(), mock(), mock())
+        saved = androidx.lifecycle.SavedStateHandle(mapOf("currency" to "EUR", "categoryId" to 1))
+        val categories = mock<com.breckneck.deptbook.domain.usecase.FinanceCategory.GetFinanceCategoriesByState>()
+        vm = CreateFinanceViewModel(saved, setFinance, currency, updateFinance, mock(), categories)
+        vm.categories.value = listOf(com.breckneck.deptbook.domain.model.FinanceCategory(1, "Books",
+            com.breckneck.deptbook.domain.util.FinanceCategoryState.EXPENSE, "#ffffff", 65))
+        vm.changeAmount("12,34")
     }
 
     @After fun tearDown() { Dispatchers.resetMain() }
@@ -69,23 +75,25 @@ class CreateFinanceViewModelTest {
             null
         }.whenever(setFinance).execute(any())
         try {
-            vm.setFinance(finance)
+            vm.save()
             assertTrue(started.await(5, TimeUnit.SECONDS))
             assertEquals(CreateFinanceViewModel.SaveState.SAVING, vm.saveState.value)
-            vm.setFinance(finance)
+            vm.save()
             awaitState(CreateFinanceViewModel.SaveState.SAVED) { release.countDown() }
-            vm.setFinance(finance)
-            verify(setFinance, times(1)).execute(finance)
+            vm.save()
+            verify(setFinance, times(1)).execute(org.mockito.kotlin.check { assertEquals("12.34".toBigDecimal(), it.sum) })
         } finally {
             release.countDown()
         }
     }
 
     @Test fun `failed edit remains retryable and reports success only after retry succeeds`() {
+        vm = CreateFinanceViewModel(androidx.lifecycle.SavedStateHandle(mapOf("financeEdit" to finance)),
+            setFinance, mock(), updateFinance, mock(), mock())
         doThrow(IllegalStateException("database unavailable")).whenever(updateFinance).execute(any())
-        awaitState(CreateFinanceViewModel.SaveState.ERROR) { vm.editFinance(finance) }
+        awaitState(CreateFinanceViewModel.SaveState.ERROR) { vm.save() }
         doNothing().whenever(updateFinance).execute(any())
-        awaitState(CreateFinanceViewModel.SaveState.SAVED) { vm.editFinance(finance) }
+        awaitState(CreateFinanceViewModel.SaveState.SAVED) { vm.save() }
         verify(updateFinance, times(2)).execute(finance)
     }
 }

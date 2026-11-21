@@ -6,4 +6,11 @@
     <string name="finance_next">Nächster Zeitraum</string>
     <string name="finance_today">Zum heutigen Tag</string>
     <string name="finance_empty_period">Keine Buchungen in diesem Zeitraum.</string>
+    <string name="finance_new_expense">Neue Ausgabe</string>
+    <string name="finance_new_income">Neue Einnahme</string>
+    <string name="finance_save_entry">Buchung speichern</string>
+    <string name="finance_save_category">Kategorie speichern</string>
+    <string name="finance_edit_entry">Buchung bearbeiten</string>
+    <string name="finance_delete_category_all">Alle Buchungen der Kategorie „%1$s“ werden in allen Währungen gelöscht.</string>
+    <string name="finance_color">Farbe %1$d</string>
 </resources>
