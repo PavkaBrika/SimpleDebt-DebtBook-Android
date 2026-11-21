@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -90,3 +92,11 @@ internal fun BubbleSheetHeader(
         }
     }
 }
+
+// Sheet actions stop accepting taps during submission and dismissal, but keep their color as they slide out.
+internal fun sheetActionColors(containerColor: Color, contentColor: Color) = ButtonColors(
+    containerColor = containerColor,
+    contentColor = contentColor,
+    disabledContainerColor = containerColor,
+    disabledContentColor = contentColor,
+)

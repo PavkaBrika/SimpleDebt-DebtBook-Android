@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +25,7 @@ import com.breckneck.debtbook.core.ui.components.BubbleAmountField
 import com.breckneck.debtbook.core.ui.components.BubbleBottomSheet
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
+import com.breckneck.debtbook.core.ui.components.sheetActionColors
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.GoalAdjustment
 import com.breckneck.debtbook.goal.main.GoalSheetPhase
@@ -85,7 +85,7 @@ internal fun GoalAdjustmentSheet(
             },
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().testTag("goal_adjustment_confirm"),
-            colors = ButtonDefaults.buttonColors(
+            colors = sheetActionColors(
                 containerColor = if (withdraw) colors.danger else colors.action,
                 contentColor = if (withdraw) colors.paper else colors.onAction,
             ),

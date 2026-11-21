@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,11 +59,11 @@ internal fun ConfirmationContent(
     if (errorMessage != null) Text(errorMessage, color = colors.danger)
     BubbleButton(
         onClick = onConfirm, enabled = enabled, modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = colors.danger, contentColor = colors.paper),
+        colors = sheetActionColors(colors.danger, colors.paper),
     ) { Text(confirmText) }
     BubbleButton(
         onClick = onDismiss, enabled = enabled, modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = colors.mint, contentColor = colors.onMint),
+        colors = sheetActionColors(colors.mint, colors.onMint),
     ) { Text(dismissText) }
 }
 
