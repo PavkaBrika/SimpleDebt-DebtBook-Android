@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,6 +33,7 @@ internal fun BubbleTopBar(
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
     titleModifier: Modifier = Modifier,
+    titleStyle: TextStyle = MaterialTheme.typography.titleLarge,
     action: @Composable () -> Unit = { Spacer(Modifier.size(48.dp)) },
 ) {
     val colors = bubbleColors()
@@ -48,7 +50,7 @@ internal fun BubbleTopBar(
                 title,
                 modifier = titleModifier.semantics { heading() },
                 color = colors.ink,
-                style = MaterialTheme.typography.titleLarge,
+                style = titleStyle,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
                 maxLines = 2,

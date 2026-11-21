@@ -52,6 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
@@ -138,6 +139,7 @@ private fun GoalDetailsContent(
                         1f to colors.background.copy(alpha = 0f),
                     ))
                     .padding(start = start, end = end, top = hostInsets.calculateTopPadding() + 6.dp, bottom = 6.dp),
+                titleStyle = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                 titleModifier = Modifier
                     .background(colors.paper.copy(alpha = .88f), CircleShape)
                     .border(BorderStroke(1.dp, colors.border), CircleShape)
