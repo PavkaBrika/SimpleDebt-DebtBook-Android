@@ -1,7 +1,8 @@
 package com.breckneck.debtbook.core.ui.components
 
 import android.content.res.Configuration
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -87,13 +88,13 @@ internal fun SettingsPickerContent(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onItemSelected(index) }
+                        .selectable(index == selectedIndex, role = Role.RadioButton) { onItemSelected(index) }
                         .padding(horizontal = spacing.space16)
                         .heightIn(min = 48.dp)
                 ) {
                     RadioButton(
                         selected = index == selectedIndex,
-                        onClick = { onItemSelected(index) }
+                        onClick = null
                     )
                     Text(
                         text = option,

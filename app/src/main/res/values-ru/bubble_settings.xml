@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_data_security">Данные и защита</string>
+    <string name="pin_on">PIN включён</string>
+    <string name="pin_off">PIN выключен</string>
+    <string name="enable_pin">Установить PIN</string>
+    <string name="disable_pin">Отключить PIN</string>
+    <string name="backup_local_title">Копия в файл</string>
+</resources>

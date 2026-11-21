@@ -1,0 +1,8 @@
+<resources>
+    <string name="settings_data_security">Daten und Sicherheit</string>
+    <string name="pin_on">PIN aktiviert</string>
+    <string name="pin_off">PIN deaktiviert</string>
+    <string name="enable_pin">PIN festlegen</string>
+    <string name="disable_pin">PIN deaktivieren</string>
+    <string name="backup_local_title">Sicherungsdatei</string>
+</resources>

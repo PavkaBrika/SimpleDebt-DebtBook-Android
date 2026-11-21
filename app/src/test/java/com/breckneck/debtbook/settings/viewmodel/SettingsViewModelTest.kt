@@ -1,17 +1,13 @@
 package com.breckneck.debtbook.settings.viewmodel
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.breckneck.debtbook.core.adapter.SettingsAdapter
 import com.breckneck.debtbook.settings.main.SettingsViewModel
-import com.breckneck.deptbook.domain.model.User
 import com.breckneck.deptbook.domain.usecase.Settings.GetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.GetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.GetIsAuthorized
 import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
-import com.breckneck.deptbook.domain.usecase.Settings.GetUserData
 import com.breckneck.deptbook.domain.usecase.Settings.SetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.SetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.SetDefaultCurrency
@@ -45,8 +41,6 @@ class SettingsViewModelTest {
     private val getAddSumInShareText = Mockito.mock(GetAddSumInShareText::class.java)
     private val getAppTheme = Mockito.mock(GetAppTheme::class.java)
     private val setAppTheme = Mockito.mock(SetAppTheme::class.java)
-    private val getIsAuthorized = Mockito.mock(GetIsAuthorized::class.java)
-    private val getUserData = Mockito.mock(GetUserData::class.java)
     private val setIsFingerprintAuthEnabled = Mockito.mock(SetIsFingerprintAuthEnabled::class.java)
     private val getIsFingerprintAuthEnabled = Mockito.mock(GetIsFingerprintAuthEnabled::class.java)
 
@@ -63,7 +57,6 @@ class SettingsViewModelTest {
         Mockito.`when`(getDefaultCurrency.execute()).thenReturn("USD")
         Mockito.`when`(getAppTheme.execute()).thenReturn("light")
         Mockito.`when`(getAddSumInShareText.execute()).thenReturn(false)
-        Mockito.`when`(getIsAuthorized.execute()).thenReturn(false)
 
         viewModel = SettingsViewModel(
             setFirstMainCurrency = setFirstMainCurrency,
@@ -76,8 +69,6 @@ class SettingsViewModelTest {
             getAddSumInShareText = getAddSumInShareText,
             getAppTheme = getAppTheme,
             setAppTheme = setAppTheme,
-            getIsAuthorized = getIsAuthorized,
-            getUserData = getUserData,
             setIsFingerprintAuthEnabled = setIsFingerprintAuthEnabled,
             getIsFingerprintAuthEnabled = getIsFingerprintAuthEnabled,
             getPinLockDelay = getPinLockDelay,
@@ -93,7 +84,6 @@ class SettingsViewModelTest {
             setDefaultCurrency, getDefaultCurrency,
             setAddSumInShareText, getAddSumInShareText,
             getAppTheme, setAppTheme,
-            getIsAuthorized, getUserData,
             setIsFingerprintAuthEnabled, getIsFingerprintAuthEnabled
         )
     }
@@ -163,44 +153,6 @@ class SettingsViewModelTest {
         viewModel.setSumInShareText(false)
         assertFalse(viewModel.addSumInShareText.value!!)
         Mockito.verify(setAddSumInShareText).execute(false)
-    }
-
-    @Test
-    fun `onSettingsDialogOpen should set isSettingsDialogOpened to true`() {
-        viewModel.onSettingsDialogOpen(
-            settingsTitle = "Currency",
-            settingsList = listOf("USD", "EUR"),
-            selectedSetting = 0,
-            onSettingsClickListener = Mockito.mock(SettingsAdapter.OnClickListener::class.java),
-        )
-        assertEquals(true, viewModel.isSettingsDialogOpened.value)
-    }
-
-    @Test
-    fun `onDialogClose should set isSettingsDialogOpened to false`() {
-        viewModel.onSettingsDialogOpen(
-            settingsTitle = "Theme",
-            settingsList = listOf("light", "dark"),
-            selectedSetting = 1,
-            onSettingsClickListener = Mockito.mock(SettingsAdapter.OnClickListener::class.java),
-        )
-        viewModel.onDialogClose()
-        assertEquals(false, viewModel.isSettingsDialogOpened.value)
-    }
-
-    @Test
-    fun `setIsSynchronizationAvailable should update LiveData`() {
-        viewModel.setIsSynchronizationAvailable(true)
-        assertEquals(true, viewModel.isSynchronizationAvailable.value)
-    }
-
-    @Test
-    fun `getUserData should update userName and emailAddress LiveData`() {
-        val user = User(name = "Alice", email = "alice@example.com")
-        Mockito.`when`(getUserData.execute()).thenReturn(user)
-        viewModel.getUserData()
-        assertEquals("Alice", viewModel.userName.value)
-        assertEquals("alice@example.com", viewModel.emailAddress.value)
     }
 
     @Test

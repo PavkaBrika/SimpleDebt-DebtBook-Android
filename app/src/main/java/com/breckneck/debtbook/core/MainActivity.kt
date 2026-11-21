@@ -239,8 +239,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         // Reuse NavigationUI's tab options, including the saved back stack for each tab.
         tabMenu = PopupMenu(this, bottomNavBar).apply { inflate(R.menu.menu_bottom_nav) }.menu
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            // The goals list draws its own tabs so its entire surface participates in fragment transitions.
-            val showHostTabs = destination.id in TOP_LEVEL_DESTINATIONS && destination.id != R.id.goalsFragment
+            // The Compose lists draw their own tabs so its entire surface participates in fragment transitions.
+            val showHostTabs = destination.id in TOP_LEVEL_DESTINATIONS && destination.id != R.id.goalsFragment && destination.id != R.id.settingsFragment
             selectedTab.intValue = if (showHostTabs) destination.id else 0
             bottomNavBar.visibility = if (showHostTabs) View.VISIBLE else View.GONE
         }
@@ -628,6 +628,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onAuthorizationButtonClick() {
+        if (navController.currentDestination?.id != R.id.settingsFragment) return
         navController.navigate(R.id.action_settingsFragment_to_synchronizationFragment)
     }
 
