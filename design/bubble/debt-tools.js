@@ -46,7 +46,7 @@ flowActions['loan-edit']=(i,v)=>{
 function updateEditedDebt(i,n) {
   const f=frames[i],d=f.d,l=findLoan(f,d.editId);
   if(!l||l.returns.length)return fail(i,'Исходная запись изменилась. Вернитесь в историю.');
-  Object.assign(l,{principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:''});pop(i);changed(i,'Запись изменена');
+  Object.assign(l,{principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:''});pop(i,'Запись изменена');
 }
 flowActions['loan-delete']=(i,v,b)=>{
   const p=personAt(i),l=p.loans.find(l=>l.id===Number(v));if(!l||l.returns.length)return;

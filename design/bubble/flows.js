@@ -8,10 +8,11 @@ function featureFrame() {
   return {financeDir:'Расходы',financeCur:'RUB',period:'День',day:TODAY,goalId:null,categoryId:null,trail:[],peopleOrder:'Исходный порядок',historyOrder:'Дата операции ↓',historyFilter:'Все'};
 }
 function go(i, route) {
-  const f=frames[i]; f.trail.push(f.route); setRoute(f,route); render(i);
+  const f=frames[i]; f.trail.push(f.route); setRoute(f,route,'forward'); render(i);
 }
-function pop(i) {
-  const f=frames[i]; setRoute(f,f.trail.pop() || flowRoots[f.route] || 'home'); repairRoute(f); render(i);
+function pop(i, savedMessage) {
+  const f=frames[i]; setRoute(f,f.trail.pop() || flowRoots[f.route] || 'home','back'); repairRoute(f);
+  if (savedMessage) changed(i,savedMessage); else render(i);
 }
 function button(action,label,value='',className='chip',symbol='') {
   return `<button class="${className}" data-act="${action}" data-value="${escapeHtml(value)}">${symbol?icon(symbol,16):''}${escapeHtml(label)}</button>`;
@@ -29,13 +30,15 @@ function rowAction(action,label,value='',detail='',symbol='chevron') {
   return `<button class="setting menu-row" data-act="${action}" data-value="${escapeHtml(value)}"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(detail)} ${icon(symbol,15)}</span></button>`;
 }
 function segment(action, options, current) {
-  return '<div class="segment">'+options.map(option=>button(action,option,option,current===option?'active':'')).join('')+'</div>';
+  return '<div class="segment">'+options.map(option=>
+    `<button data-act="${action}" data-value="${escapeHtml(option)}" class="${current===option?'active':''}" aria-pressed="${current===option}">${escapeHtml(option)}</button>`
+  ).join('')+'</div>';
 }
 function amountFieldLayout(inputHtml, currencyHtml) {
   return '<div class="amount-field"><span class="eyebrow">Сумма</span><div class="amount-line">'+inputHtml+currencyHtml+'</div></div>';
 }
-function balanceCard(title, currencyPicker, total, footer, ornament='') {
-  return '<section class="hero">'+ornament+'<div class="upper"><span class="eyebrow">'+escapeHtml(title)+'</span><span class="unit-picker">'+currencyPicker+icon('down',13)+'</span></div><div class="hero-money">'+escapeHtml(total)+'</div>'+footer+'</section>';
+function balanceCard(title, currencyPicker, amountHtml, footer, ornament='') {
+  return '<section class="hero">'+ornament+'<div class="upper"><span class="eyebrow">'+escapeHtml(title)+'</span><span class="unit-picker">'+currencyPicker+icon('down',13)+'</span></div><div class="hero-money">'+amountHtml+'</div>'+footer+'</section>';
 }
 function editAmount(scope,value,cur) {
   return amountFieldLayout(entry(scope,value,'text','inputmode="decimal" aria-label="Сумма" placeholder="0"'), '<strong>'+escapeHtml(cur)+'</strong>');
@@ -92,7 +95,7 @@ function syncFrames(i) {
 }
 function changed(i,message) {
   frames[i].error='';syncFrames(i);
-  const stored=persistDemo();renderAll(true);toast(i,stored?message:message+' · Только в этой вкладке');
+  const stored=persistDemo();renderAll(true,true);toast(i,stored?message:message+' · Только в этой вкладке');
 }
 function newId(){return serial++;}
 function moneyInput(cents){return String(cents/100).replace('.',',');}

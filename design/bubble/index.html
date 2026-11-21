@@ -6,6 +6,8 @@
   <meta name="color-scheme" content="light dark">
   <title>SimpleDebt · Дизайн экранов</title>
   <link rel="stylesheet" href="studio.css">
+  <script defer src="motion.js"></script>
+  <script defer src="haptics.js"></script>
   <script defer src="flows.js"></script>
   <script defer src="finance.js"></script>
   <script defer src="goals.js"></script>
@@ -16,6 +18,10 @@
 <body>
   <header class="studio-head">
     <div class="identity"><span class="book-mark" aria-hidden="true"><i></i><i></i></span><strong>SimpleDebt</strong><span class="studio-name">Дизайн экранов</span></div>
+    <div class="haptic-review">
+      <button type="button" id="haptics" aria-pressed="true" title="Включить или выключить тактильный отклик в прототипе"><span class="haptic-switch" aria-hidden="true"></span>Хаптика</button>
+      <span id="haptic-readout" title="Последний тактильный отклик">Включена</span>
+    </div>
     <div class="tools">
       <div class="view-switch" aria-label="Версия интерфейса">
         <button id="after" aria-pressed="true">Прототип</button><button id="before" aria-pressed="false">Сейчас</button>
@@ -27,7 +33,15 @@
   <main>
     <nav class="mobile-switch" aria-label="Выбрать экран"></nav>
     <div class="board" id="board"></div>
-    <footer class="studio-foot"><span>Демонстрационные записи · 20 ноября 2026</span><span>Данные прототипа сохраняются в этом браузере</span></footer>
+    <footer class="studio-foot">
+      <span>Демонстрационные записи · 20 ноября 2026</span>
+      <nav class="demo-links" aria-label="Видеодемонстрации">Видео
+        <a href="demo/repayment.mp4" target="_blank" rel="noopener">Возврат долга</a>
+        <a href="demo/finance.mp4" target="_blank" rel="noopener">Финансы</a>
+        <a href="demo/goal.mp4" target="_blank" rel="noopener">Цель</a>
+      </nav>
+      <span>Данные прототипа сохраняются в этом браузере</span>
+    </footer>
   </main>
 </body>
 </html>

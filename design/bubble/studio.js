@@ -61,9 +61,10 @@ function primary(action,label,name,secondary=false) {
 function options(values,selected) {
   return values.map(v=>'<option value="'+v+'" '+(v===selected?'selected':'')+'>'+v+'</option>').join('');
 }
+const moneyDigits = new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2});
 function amount(cents,cur,withSign=false) {
   const sign=cents<0?'−':(withSign && cents>0?'+':'');
-  return sign+(Math.abs(cents)/100).toLocaleString('ru-RU',{maximumFractionDigits:2})+' '+currencySigns[cur];
+  return sign+moneyDigits.format(Math.abs(cents)/100)+' '+currencySigns[cur];
 }
 function parseAmount(raw) {
   const s=raw.replace(/[\s\u00a0]/g,'').replace(',','.');
@@ -90,7 +91,7 @@ function dueLabel(l) {
 function draft(cur='RUB') { return {name:'',note:'',sum:'',cur,dir:1,date:TODAY,due:'',remind:false,time:'09:00',fixed:0}; }
 function frame(route) {
   const d=draft();
-  return {route,beforeScreen:route,personId:1,cur:prefs.first,filter:'all',query:'',search:false,d,back:'home',sheet:null,error:'',...featureFrame()};
+  return {route,beforeScreen:route,personId:1,cur:prefs.first,filter:'all',query:'',search:false,d,back:'home',sheet:null,error:'',returnPoints:new Map(),...featureFrame()};
 }
 ledger=freshLedger(); savings=freshGoals();
 loadDemo();
@@ -119,7 +120,7 @@ function peopleList(f) {
   return pool.length?pool.map(p=>{
     const next=p.loans.filter(l=>remaining(l)>0&&l.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
     const sub=next?dueLabel(next):p.loans.every(l=>remaining(l)===0)?'Расчёт завершён':'Без срока';
-    return '<button class="person-row" data-act="person" data-value="'+p.id+'">'+motif(p.art)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small class="'+(next?.due<TODAY?'late':'')+'">'+sub+'</small></span><span class="money '+(balance(p)<0?'neg':'pos')+'">'+amount(balance(p),p.cur,true)+'</span></button>';
+    return '<button class="person-row" data-act="person" data-value="'+p.id+'">'+motif(p.art)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small class="'+(next?.due<TODAY?'late':'')+'">'+sub+'</small></span><span class="money '+(balance(p)<0?'neg':'pos')+'">'+motionAmount('person-'+p.id,balance(p),p.cur,true)+'</span></button>';
   }).join(''):'<p class="empty">'+(f.query?'Никого не нашли. Попробуйте другое имя.':'Здесь пока нет записей для этого фильтра.')+'</p>';
 }
 function home(f) {
@@ -129,8 +130,8 @@ function home(f) {
   const html=heading('Долги',iconButton('search',f.search?'Закрыть поиск':'Найти человека',f.search?'close':'search'))+
     balanceCard('Общий баланс',
       '<select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([prefs.first,prefs.second,...people.map(p=>p.cur),f.cur])],f.cur)+'</select>',
-      amount(plus-minus,f.cur,true),
-      '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+amount(plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+amount(minus,f.cur)+'</strong></div></div>',coinArt())+
+      motionAmount('net',plus-minus,f.cur,true),
+      '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+motionAmount('credit',plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+motionAmount('debit',minus,f.cur)+'</strong></div></div>',coinArt())+
     '<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
     (f.search?'<input class="search-field" data-bind="query" aria-label="Имя человека" placeholder="Найти по имени" value="'+escapeHtml(f.query)+'">':'')+
     '<div class="people">'+peopleList(f)+'</div>';
@@ -147,7 +148,7 @@ function layout(body,action='',navigation='',goalsList=false) {
 function loanCard(l,p) {
   const left=remaining(l), paid=Math.abs(l.principal)-left;
   const tagClass=left===0?'ok':(l.due && l.due<TODAY?'late':'');
-  return '<article class="loan"><div class="loan-top"><div><h4>'+escapeHtml(l.note||'Долг')+'</h4><span class="subtle">'+dateText(l.date)+' · '+(l.principal>0?'Я дал':'Я взял')+'</span></div><button class="tag '+tagClass+'" data-act="due" data-value="'+l.id+'" aria-label="Срок и напоминание: '+dueLabel(l)+'">'+icon('date',13)+dueLabel(l)+'</button></div><div class="track"><i style="width:'+(100*paid/Math.abs(l.principal))+'%"></i></div><div class="loan-numbers"><span>Возвращено '+amount(paid,p.cur)+'</span><span>из '+amount(Math.abs(l.principal),p.cur)+'</span></div><p class="subtle">Остаток по записи · <strong>'+amount(left,p.cur)+'</strong>'+(l.reminder?' · Напомнить в '+l.reminder:'')+'</p>'+button('loan-actions','Действия с записью',l.id,'text-action','more')+(left?'<button class="btn secondary" data-act="repay" data-value="'+l.id+'">'+icon('take',17)+'Учесть возврат</button>':'')+'</article>';
+  return '<article class="loan"><div class="loan-top"><div><h4>'+escapeHtml(l.note||'Долг')+'</h4><span class="subtle">'+dateText(l.date)+' · '+(l.principal>0?'Я дал':'Я взял')+'</span></div><button class="tag '+tagClass+'" '+(left?'':'data-motion-row="settled-'+l.id+'"')+' data-act="due" data-value="'+l.id+'" aria-label="Срок и напоминание: '+dueLabel(l)+'">'+icon(left?'date':'check',13)+dueLabel(l)+'</button></div>'+progressTrack('paid-'+l.id,100*paid/Math.abs(l.principal))+'<div class="loan-numbers"><span>Возвращено '+motionAmount('paid-'+l.id,paid,p.cur)+'</span><span>из '+amount(Math.abs(l.principal),p.cur)+'</span></div><p class="subtle">Остаток по записи · <strong>'+motionAmount('left-'+l.id,left,p.cur)+'</strong>'+(l.reminder?' · Напомнить в '+l.reminder:'')+'</p>'+button('loan-actions','Действия с записью',l.id,'text-action','more')+(left?'<button class="btn secondary" data-act="repay" data-value="'+l.id+'">'+icon('take',17)+'Учесть возврат</button>':'')+'</article>';
 }
 function history(p,f) {
   const entries=[];
@@ -158,13 +159,13 @@ function history(p,f) {
   return orderedHistory(entries,p,f).map(e=>{
     const click=e.loan&&!e.cancelled;
     const tag=click?'button':'div';
-    return '<'+tag+' class="timeline-row" '+(click?'data-act="undo" data-value="'+e.id+'"':'')+'><span class="event-icon '+(e.loan?'return':'')+'">'+icon(e.loan?'take':'give',16)+'</span><span class="event-text"><strong>'+e.label+'</strong><small>'+dateText(e.date)+'</small></span><span class="money"'+(e.cancelled?' style="text-decoration:line-through"':'')+'>'+amount(e.cents,p.cur,true)+'</span></'+tag+'>';
+    return '<'+tag+' class="timeline-row" data-motion-row="'+(e.loan?'return-'+e.loan:'loan')+'-'+e.id+(e.cancelled?'-cancelled':'')+'" '+(click?'data-act="undo" data-value="'+e.id+'"':'')+'><span class="event-icon '+(e.loan?'return':'')+'">'+icon(e.loan?'take':'give',16)+'</span><span class="event-text"><strong>'+e.label+'</strong><small>'+dateText(e.date)+'</small></span><span class="money"'+(e.cancelled?' style="text-decoration:line-through"':'')+'>'+amount(e.cents,p.cur,true)+'</span></'+tag+'>';
   }).join('');
 }
 function person(f) {
   const p=people.find(p=>p.id===f.personId), sum=balance(p), active=p.loans.filter(l=>remaining(l)>0), settled=p.loans.filter(l=>remaining(l)===0);
   return layout(backbar(p.name,iconButton('new','Добавить долг этому человеку','plus'),motif(p.art))+
-    '<section class="balance"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+amount(Math.abs(sum),p.cur)+'</div></section>'+
+    '<section class="balance"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+motionAmount('balance',Math.abs(sum),p.cur)+'</div></section>'+
     '<div class="history-actions">'+button('person-menu','Управление','','chip','more')+button('person-share','Поделиться','','chip','give')+'</div>'+
     (active.length?titleRow('Открытые долги',String(active.length))+active.map(l=>loanCard(l,p)).join(''):'')+
     (settled.length?titleRow('Погашенные долги',String(settled.length))+settled.map(l=>loanCard(l,p)).join(''):'')+
@@ -225,6 +226,7 @@ function updateTools() {
   document.documentElement.dataset.dark=String(dark);
   document.querySelector('#after').setAttribute('aria-pressed',String(!before));
   document.querySelector('#before').setAttribute('aria-pressed',String(before));
+  document.querySelector('.haptic-review').hidden=before;
   const theme=document.querySelector('#theme');
   theme.innerHTML=icon(dark?'sun':'moon',17);theme.setAttribute('aria-label',dark?'Светлая тема':'Тёмная тема');theme.disabled=before;
   document.querySelector('#reset').innerHTML=icon('reset',17);
@@ -233,11 +235,20 @@ function updateTools() {
 function updateRemaining(i) {
   const f=frames[i], area=sections[i].querySelector('[data-live=remaining]');
   if(!area||f.sheet?.kind!=='repay')return;
+  area.hidden=Boolean(f.error);
+  if(area.hidden)return;
   const p=people.find(p=>p.id===f.personId), max=remaining(findLoan(f,f.sheet.loan)),n=parseAmount(f.sheet.sum);
   area.textContent=n>max?'Сумма больше остатка.':'После возврата останется '+amount(Math.max(0,max-n),p.cur)+'.';
 }
-function render(i,keepScroll=false) {
-  const f=frames[i],target=sections[i], y=keepScroll?(target.querySelector('.scroll')?.scrollTop||0):0;
+function render(i,keepScroll=false,committed=false) {
+  const f=frames[i],target=sections[i], sameRoute=target.dataset.route===f.route;
+  const navigation=f.navigation;
+  f.navigation=null;f.trigger=null;
+  const outgoing=target.querySelector('.overlay:not(.leaving)');
+  const lastSegment=target.querySelector('.segment .active')?.dataset.value;
+  const lastRange=target.querySelector('.period-line')?.dataset.range;
+  target.dataset.route=before?'':f.route;
+  const y=keepScroll&&sameRoute?(target.querySelector('.scroll')?.scrollTop||0):0;
   const previousDock=target.querySelector('.goals-dock');
   if(previousDock)goalDockObserver.unobserve(previousDock);
   if(before) {
@@ -253,13 +264,37 @@ function render(i,keepScroll=false) {
     dock.parentElement.style.setProperty('--goals-dock-height',dock.offsetHeight+'px');
     goalDockObserver.observe(dock);
   }
-  target.querySelector('.scroll').scrollTop=y;
+  target.querySelector('.scroll').scrollTop=navigation?.origin?.y ?? y;
+  if(navigation && !sameRoute) {
+    const {origin,direction}=navigation;
+    const heading=target.querySelector('.phone h2');
+    if(heading)heading.tabIndex=-1;
+    restoreActionFocus(target,origin?.act,origin?.value,heading);
+    enterRoute(target,direction==='back');
+  }
   if(f.sheet) {
     for(const element of target.querySelector('.phone').children) if(!element.classList.contains('overlay'))element.inert=true;
     updateRemaining(i);
+  } else if(outgoing && sameRoute) {
+    leaveSheet(target.querySelector('.phone'),outgoing);
+  }
+  updateLedgerMotion(f,target,committed);
+  if(sameRoute) {
+    const selected=target.querySelector('.segment .active');
+    if(selected && lastSegment && selected.dataset.value!==lastSegment) {
+      selected.focus({preventScroll:true});
+      selected.parentElement.classList.add('segment-moving');
+    }
+    const range=target.querySelector('.period-line')?.dataset.range;
+    if(!reducedMotion.matches && lastRange && range && lastRange!==range) {
+      const x=range>lastRange?12:-12;
+      for(const el of target.querySelectorAll('.period-current,.hero-money,.people,.scroll .empty')) {
+        el.animate([{opacity:.45,transform:`translateX(${x}px)`},{opacity:1,transform:'none'}],{duration:200,easing:settleEase});
+      }
+    }
   }
 }
-function renderAll(keep=false) { updateTools();frames.forEach((_,i)=>render(i,keep)); }
+function renderAll(keep=false,committed=false) { updateTools();frames.forEach((_,i)=>render(i,keep,committed)); }
 function toast(i,message) {
   const phone=sections[i].querySelector('.phone'), t=document.createElement('div');
   t.className='toast';t.setAttribute('role','status');t.textContent=message;phone.appendChild(t);
@@ -276,7 +311,20 @@ document.querySelector('#reset').onclick=()=>{
     resetDemo();frames=startScreens.map(frame);currentPanel=0;before=false;persistDemo();renderAll();toast(0,'Демоданные восстановлены');
   },'Сбросить');
 };
-function setRoute(f,to) {f.route=to;f.sheet=null;f.error='';f.listState='Данные';}
+function setRoute(f,to,direction) {
+  if(direction==='forward') {
+    const panel=sections[frames.indexOf(f)];
+    const trigger=f.sheet?{act:f.sheet.opener,value:f.sheet.openerValue}:f.trigger;
+    f.returnPoints.set(f.route,{
+      y:panel.querySelector('.scroll').scrollTop, ...trigger
+    });
+  }
+  const origin=direction==='back'?f.returnPoints.get(to):null;
+  if(direction==='back')f.returnPoints.delete(to);
+  if(!direction)f.returnPoints.clear();
+  f.navigation=direction?{direction,origin}:null;
+  f.route=to;f.sheet=null;f.error='';f.listState='Данные';
+}
 function refreshData(i,message) {
   changed(i,message);
 }
@@ -287,25 +335,45 @@ function validSchedule(s) {
   if(s.due+'T'+s.time<=TODAY+'T09:41') return 'Выберите будущее время или выключите напоминание.';
   return '';
 }
-function fail(i,message) {
-  const f=frames[i];f.error=message;render(i,true);sections[i].querySelector('.error')?.scrollIntoView({block:'nearest'});
+function fail(i,message,amountRule) {
+  frames[i].error=message;
+  render(i,true);
+  const panel=sections[i], error=panel.querySelector('.sheet .error') || panel.querySelector('.error');
+  if(amountRule) {
+    const amountInput=panel.querySelector('.sheet .amount-field input');
+    error.id='amount-error-'+i;
+    amountInput.dataset.currency=amountRule.currency;
+    amountInput.dataset.maximum=amountRule.maximum;
+    amountInput.setAttribute('aria-invalid','true');
+    amountInput.setAttribute('aria-describedby',error.id);
+    amountInput.focus({preventScroll:true});
+  }
+  error?.scrollIntoView({block:'nearest'});
 }
 function openSheet(i,s,button) {
   const f=frames[i];f.sheet={...s,opener:button.dataset.act,openerValue:button.dataset.value};f.error='';
-  render(i,true);sections[i].querySelector(s.cancelBelow?'.sheet [data-act=close]':'.sheet button')?.focus({preventScroll:true});
+  render(i,true);enterSheet(sections[i]);sections[i].querySelector(s.cancelBelow?'.sheet [data-act=close]':'.sheet button')?.focus({preventScroll:true});
+}
+function restoreActionFocus(panel,act,value,fallback) {
+  const trigger=act && [...panel.querySelectorAll('[data-act]')].find(el=>el.dataset.act===act && el.dataset.value===value);
+  const visible=trigger?.closest('.goal-actions')?.querySelector('summary') || trigger || fallback;
+  visible?.focus({preventScroll:true});
 }
 function closeSheet(i) {
   const f=frames[i],s=f.sheet;f.sheet=null;f.error='';render(i,true);
-  const target=[...sections[i].querySelectorAll('[data-act]')].find(b=>b.dataset.act===s.opener&&b.dataset.value===s.openerValue);
-  const opener=target?.closest('.goal-actions')?.querySelector('summary') || target;
-  opener?.focus({preventScroll:true});
+  restoreActionFocus(sections[i],s.opener,s.openerValue);
 }
 function confirmSheet(i) {
   const f=frames[i],s=f.sheet,l=findLoan(f,s.loan);
   let message='';
   if(s.kind==='repay') {
-    const n=readMoney(s.sum,people.find(p=>p.id===f.personId).cur);
-    if(!n||n>remaining(l)) return fail(i,'Введите сумму больше нуля в пределах остатка.');
+    const currency=people.find(p=>p.id===f.personId).cur, maximum=remaining(l);
+    const n=readMoney(s.sum,currency);
+    if(!n) return fail(i,'Введите сумму больше нуля в пределах остатка.',{currency,maximum});
+    if(n>maximum) {
+      playHaptic('reject');
+      return fail(i,'Сумма превышает остаток по записи.',{currency,maximum});
+    }
     l.returns.push({id:serial++,amount:n,date:TODAY,cancelled:false});
     if(!remaining(l))l.reminder='';
     message='Возврат записан';
@@ -316,6 +384,7 @@ function confirmSheet(i) {
     l.returns.find(r=>r.id===s.returnId).cancelled=true;message='Возврат отменён';
   }
   f.sheet=null;f.error='';refreshData(i,message);
+  if(s.kind==='repay' && remaining(l)===0) playHaptic('confirm');
 }
 function saveDebt(i) {
   const f=frames[i],d=f.d,n=readMoney(d.sum,d.cur),name=d.name.trim();
@@ -325,7 +394,7 @@ function saveDebt(i) {
   let p=d.fixed?people.find(p=>p.id===d.fixed):people.find(p=>p.cur===d.cur&&p.name.toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru'));
   if(!p){p={id:serial++,name,art:people.length,cur:d.cur,loans:[]};people.unshift(p);}
   p.loans.unshift({id:serial++,principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:'',returns:[]});
-  f.cur=p.cur;f.personId=p.id;setRoute(f,'person');refreshData(i,'Долг сохранён');
+  f.cur=p.cur;f.personId=p.id;setRoute(f,'person',d.fixed?'back':'replace');refreshData(i,'Долг сохранён');
 }
 board.addEventListener('click',event=>{
   const target=event.target.closest('.panel');if(!target)return;
@@ -333,6 +402,11 @@ board.addEventListener('click',event=>{
   if(event.target.classList.contains('overlay'))return closeSheet(i);
   if(!b)return;
   const action=b.dataset.act,value=b.dataset.value;
+  f.trigger={act:action,value};
+  if(b.closest('.segment')) {
+    if(b.getAttribute('aria-pressed')==='true')return;
+    playHaptic('selection');
+  }
   if(Object.hasOwn(flowActions,action))return flowActions[action](i,value,b);
   switch(action) {
     case 'theme':return toggleTheme();
@@ -354,12 +428,12 @@ board.addEventListener('click',event=>{
     }
     case 'search':f.search=!f.search;f.query='';render(i,true);if(f.search)target.querySelector('[data-bind=query]').focus();return;
     case 'filter':f.filter=value;render(i,true);return;
-    case 'person':f.personId=Number(value);setRoute(f,'person');break;
-    case 'back':if(f.trail.length)return pop(i);setRoute(f,f.route==='new'?f.back:'home');break;
+    case 'person':f.personId=Number(value);setRoute(f,'person','forward');break;
+    case 'back':if(f.trail.length)return pop(i);setRoute(f,f.route==='new'?f.back:'home','back');break;
     case 'new':{
       f.back=f.route;f.d=draft(prefs.defaultCur);
       if(f.route==='person'){const p=people.find(p=>p.id===f.personId);Object.assign(f.d,{fixed:p.id,name:p.name,cur:p.cur});}
-      setRoute(f,'new');break;
+      setRoute(f,'new','forward');break;
     }
     case 'direction':f.d.dir=Number(value);render(i,true);return;
     case 'save':return saveDebt(i);
@@ -373,7 +447,9 @@ board.addEventListener('click',event=>{
       return openSheet(i,{kind:'undo',loan:l.id,returnId:Number(value)},b);
     }
     case 'full':{
-      const s=f.sheet;s.sum=String(remaining(findLoan(f,s.loan))/100).replace('.',',');render(i,true);return;
+      const s=f.sheet;s.sum=String(remaining(findLoan(f,s.loan))/100).replace('.',',');
+      f.error='';
+      render(i,true);target.querySelector('.sheet [data-act=full]').focus({preventScroll:true});return;
     }
     case 'confirm':return confirmSheet(i);
     case 'close':return closeSheet(i);
@@ -384,6 +460,14 @@ board.addEventListener('click',event=>{
 });
 function bind(event) {
   const el=event.target;
+  if(event.type==='input' && el.matches('.sheet .amount-field input[aria-invalid="true"]')) {
+    const value=readMoney(el.value,el.dataset.currency);
+    if(value!==null && value<=Number(el.dataset.maximum)) {
+      document.getElementById(el.getAttribute('aria-describedby'))?.remove();
+      el.removeAttribute('aria-invalid');el.removeAttribute('aria-describedby');
+      frames[Number(el.closest('.panel').dataset.index)].error='';
+    }
+  }
   if(el.hasAttribute('data-list-state')){if(event.type==='change'){const i=Number(el.closest('.panel').dataset.index);frames[i].listState=el.value;render(i);}return;}
   if(el.dataset.field)return setField(event,el,Number(el.closest('.panel').dataset.index));
   if(el.dataset.file&&event.type==='change'&&el.files?.length){const i=Number(el.closest('.panel').dataset.index);return el.dataset.file==='goal-photo'?selectPhoto(i,el.files[0]):readBackupFile(i,el.files[0]);}
@@ -392,6 +476,7 @@ function bind(event) {
   if(key==='beforeScreen'||key==='cur') {if(event.type==='change'){f[key]=el.value;render(i,true);}return;}
   if(key==='query'){f.query=el.value;sections[i].querySelector('.people').innerHTML=peopleList(f);return;}
   const [scope,prop]=key.split('.'),obj=scope==='s'?f.sheet:f.d;
+  if(!obj)return;
   obj[prop]=el.type==='checkbox'?el.checked:el.value;
   if(!obj.due)obj.remind=false;
   if(prop==='remind'||prop==='due')obj.askNotify=!!obj.remind&&notificationAccess!=='granted';

@@ -36,9 +36,9 @@ flowViews.finance=f=>{
   const cats=ledger.categories.filter(c=>c.dir===f.financeDir&&totals.has(c.id)).sort((a,b)=>totals.get(b.id)-totals.get(a.id));
   const total=cats.reduce((s,c)=>s+totals.get(c.id),0);
   const body=heading('Финансы')+segment('finance-dir',directions,f.financeDir)+
-    balanceCard(f.financeDir, picker('frame.financeCur',currencyCodes,f.financeCur,'Валюта финансов'), amount(total,f.financeCur),
-      '<div class="period-line">'+button('period-step','‹','-1','period-step')+button('period-pick',periodText(f,start,end),'','period-current','date')+button('period-step','›','1','period-step')+'</div>')+
-    titleRow('Категории',f.period)+(cats.length?'<div class="people">'+cats.map(c=>`<button class="person-row" data-act="category-view" data-value="${c.id}">${badge(c)}<span class="person-text"><strong>${escapeHtml(c.name)}</strong><small>${Math.round(totals.get(c.id)/total*100)}% от суммы</small></span><span class="money">${amount(totals.get(c.id),f.financeCur)}</span>${icon('chevron',14)}</button>`).join('')+'</div>':empty('За этот период записей нет.'))+
+    balanceCard(f.financeDir, picker('frame.financeCur',currencyCodes,f.financeCur,'Валюта финансов'), motionAmount('total',total,f.financeCur),
+      '<div class="period-line" data-range="'+start+'/'+end+'">'+button('period-step','‹','-1','period-step')+button('period-pick',periodText(f,start,end),'','period-current','date')+button('period-step','›','1','period-step')+'</div>')+
+    titleRow('Категории',f.period)+(cats.length?'<div class="people">'+cats.map(c=>`<button class="person-row" data-motion-row="category-${c.id}" data-act="category-view" data-value="${c.id}">${badge(c)}<span class="person-text"><strong>${escapeHtml(c.name)}</strong><small>${Math.round(totals.get(c.id)/total*100)}% от суммы</small></span><span class="money">${motionAmount('category-'+c.id,totals.get(c.id),f.financeCur)}</span>${icon('chevron',14)}</button>`).join('')+'</div>':empty('За этот период записей нет.'))+
     (f.day===TODAY?'':button('period-today','К текущей дате','','chip spaced','date'));
   return layout(body,primary('record-new',f.financeDir==='Расходы'?'Добавить расход':'Добавить доход','plus'),nav('finance'));
 };
@@ -60,12 +60,12 @@ flowViews.categoryHistory=f=>{
   const list=ledger.entries.filter(e=>e.category===c.id&&e.cur===f.financeCur).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
   const rows=list.map(e=>{
     const label=escapeHtml(e.note||c.name);
-    return `<div class="finance-line"><button class="person-row" data-act="record-actions" data-value="${e.id}">
+    return `<div class="finance-line" data-motion-row="record-${e.id}"><button class="person-row" data-act="record-actions" data-value="${e.id}">
       <span class="event-icon">${icon('note',16)}</span><span class="person-text"><strong>${label}</strong><small>${dateText(e.date)} ${e.date.slice(0,4)}</small></span>
       <span class="money">${amount(e.cents,e.cur)}</span></button>
       <button class="row-edit" data-act="record-edit" data-value="${e.id}" aria-label="Редактировать операцию: ${label}" title="Редактировать операцию">${icon('edit',17)}</button></div>`;
   }).join('');
-  return layout(backbar(c.name)+'<div class="balance"><span class="eyebrow">За всё время · '+c.dir.toLowerCase()+'</span><div class="big-money">'+amount(list.reduce((s,e)=>s+e.cents,0),f.financeCur)+'</div></div>'+titleRow('Операции',String(list.length))+(rows?'<div class="people">'+rows+'</div>':empty('Операций пока нет.')),primary('record-new','Добавить операцию','plus'));
+  return layout(backbar(c.name)+'<div class="balance"><span class="eyebrow">За всё время · '+c.dir.toLowerCase()+'</span><div class="big-money">'+motionAmount('total',list.reduce((s,e)=>s+e.cents,0),f.financeCur)+'</div></div>'+titleRow('Операции',String(list.length))+(rows?'<div class="people">'+rows+'</div>':empty('Операций пока нет.')),primary('record-new','Добавить операцию','plus'));
 };
 flowActions['record-new']=i=>{
   const f=frames[i],c=f.route==='categoryHistory'?categoryById(f.categoryId):null;
@@ -94,7 +94,7 @@ flowActions['record-save']=i=>{
   if(!n||!r.date||!c||c.dir!==r.dir)return fail(i,'Введите положительную сумму, выберите дату и категорию.');
   const e={id:r.id||newId(),category:c.id,cents:n,note:r.note.trim(),date:r.date,cur:r.cur};
   if(r.id)ledger.entries[ledger.entries.findIndex(old=>old.id===r.id)]=e;else ledger.entries.push(e);
-  f.financeDir=c.dir;f.day=r.date;pop(i);changed(i,'Операция сохранена');
+  f.financeDir=c.dir;f.day=r.date;pop(i,'Операция сохранена');
 };
 flowActions['category-new']=i=>{frames[i].categoryDraft={name:'',emoji:'',color:'',emojiGroup:'Еда'};go(i,'categoryForm');};
 flowViews.categoryForm=f=>{
@@ -105,7 +105,7 @@ flowActions['category-emoji']=(i,v)=>{frames[i].categoryDraft.emoji=v;render(i,t
 flowActions['category-color']=(i,v)=>{frames[i].categoryDraft.color=v;render(i,true);};
 flowActions['category-save']=i=>{
   const f=frames[i],d=f.categoryDraft;if(!d.name.trim()||!d.emoji||!d.color)return fail(i,'Введите название, выберите значок и цвет.');
-  const c={name:d.name.trim(),emoji:d.emoji,color:d.color,dir:f.record.dir,id:newId()};ledger.categories.push(c);f.record.category=c.id;pop(i);changed(i,'Категория добавлена');
+  const c={name:d.name.trim(),emoji:d.emoji,color:d.color,dir:f.record.dir,id:newId()};ledger.categories.push(c);f.record.category=c.id;pop(i,'Категория добавлена');
 };
 flowActions['category-delete']=(i,v,b)=>{
   const id=Number(v),c=categoryById(id),count=ledger.entries.filter(e=>e.category===id).length;

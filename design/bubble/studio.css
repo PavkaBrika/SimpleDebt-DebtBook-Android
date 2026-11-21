@@ -32,6 +32,14 @@ svg { display:block; flex-shrink:0 }
 .book-mark i { width:13px; height:21px; background:var(--desk-ink); border-radius:2px 7px 2px 6px; transform:skewY(13deg) }
 .book-mark i+i { border-radius:7px 2px 6px 2px; transform:skewY(-15deg); background:#769854 }
 .studio-name { font-size:13px; padding-left:14px; margin-left:4px; border-left:1px solid var(--desk-edge) }
+.haptic-review { display:flex; align-items:center; gap:9px; margin-left:auto; font-size:12px }
+.haptic-review[hidden] { display:none }
+#haptics { display:inline-flex; align-items:center; gap:7px; min-height:36px; padding:0 6px; border-radius:12px; font-size:13px; font-weight:600 }
+.haptic-switch { display:flex; align-items:center; padding:3px; width:26px; height:16px; background:var(--desk-edge); border-radius:99px }
+.haptic-switch::after { content:''; width:10px; height:10px; border-radius:50%; background:var(--desk-ink) }
+#haptics[aria-pressed=true] .haptic-switch { background:var(--forest); justify-content:flex-end }
+#haptics[aria-pressed=true] .haptic-switch::after { background:var(--bg) }
+#haptic-readout { min-width:18ch; color:var(--soft) }
 .tools { gap:7px }.tool-button { justify-content:center; width:40px; height:40px; border-radius:50%; border:1px solid var(--desk-edge) }
 .view-switch { border:1px solid var(--desk-edge); padding:3px; border-radius:99px; margin-right:4px }
 .view-switch button,.mobile-switch button { border-radius:99px; padding:8px 14px; font-size:13px; font-weight:600 }
@@ -116,8 +124,10 @@ svg { display:block; flex-shrink:0 }
 .loan-numbers { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:12px; color:var(--soft) }
 .loan .btn { margin-top:12px; min-height:43px }
 .event-icon,.field-icon { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--fill); color:var(--soft); flex-shrink:0 }.event-icon.return { background:var(--mint); color:var(--mint-ink) }.timeline-row { min-height:54px }
-.segment { display:grid; grid-template-columns:1fr 1fr; padding:4px; border-radius:99px; background:var(--fill); margin:0 0 13px }
-.segment button { border-radius:99px; min-height:40px; padding:6px; display:flex; align-items:center; justify-content:center; gap:5px; color:var(--soft); font-size:14px; font-weight:600 }.segment button.active { color:var(--on-cta); background:var(--cta) }
+.segment { display:grid; position:relative; grid-template-columns:1fr 1fr; padding:4px; border-radius:99px; background:var(--fill); margin:0 0 13px }
+.segment::before { content:''; position:absolute; inset:4px auto 4px 4px; width:calc(50% - 4px); border-radius:inherit; background:var(--cta); --previous-x:100% }
+.segment:has(> :nth-child(2).active)::before { left:50%; --previous-x:-100% }
+.segment button { border-radius:99px; min-height:40px; padding:6px; display:flex; align-items:center; justify-content:center; gap:5px; color:var(--soft); font-size:14px; font-weight:600 }.segment button.active { color:var(--on-cta) }
 .amount-field { display:block; padding:17px 18px; border-radius:25px; background:var(--mint); color:var(--mint-ink); margin-bottom:13px }
 .amount-field .eyebrow { color:inherit }.amount-line { display:flex; align-items:center; gap:8px; margin-top:3px }.amount-line input { width:0; flex:1; color:inherit; font-size:clamp(34px,10.5cqw,44px); line-height:1.2; font-weight:600; letter-spacing:-1.8px; background:none; border:0; padding:0; min-height:50px }.amount-line input::placeholder { color:var(--mint-ink); opacity:.65 }
 .currency { appearance:auto; color:inherit; background:var(--bg); border-radius:99px; border:1px solid var(--edge); height:39px; font-size:13px; font-weight:700; padding:0 7px }
@@ -126,6 +136,7 @@ svg { display:block; flex-shrink:0 }
 .field input[type=checkbox] { width:20px; height:20px; accent-color:var(--forest) }
 .note,.error { font-size:13px; line-height:1.45; color:var(--soft); margin:10px 3px }.error { color:var(--coral) }
 .overlay { position:absolute; inset:0; z-index:3; background:#11241960; display:flex; flex-direction:column; justify-content:flex-end }
+.overlay.leaving { pointer-events:none }
 .sheet { background:var(--bg); color:var(--ink); padding:22px 16px 20px; border-radius:28px 28px 0 0; box-shadow:0 -8px 26px #10231717; max-height:91%; overflow:auto }
 .sheet .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px }.sheet .eyebrow { margin:9px 0 }.sheet .btn { margin-top:12px }.sheet .amount-field { margin:12px 0 7px }.sheet .icon-button { width:42px;height:42px }
 .search-field { width:100%; height:46px; border:1px solid var(--edge); border-radius:18px; padding:0 14px; background:var(--paper); color:var(--ink); margin:3px 0 }
@@ -136,6 +147,8 @@ svg { display:block; flex-shrink:0 }
 .goal-hero { background:var(--mint); color:var(--mint-ink) }.goal-hero .eyebrow { color:inherit }.goal-hero .track { background:#6c876b3b }.goal-hero .track i { background:var(--mint-ink) }
 .thumb { display:block; width:100%; height:100%; object-fit:contain; background:#fff }.phone.before { border-radius:30px }.compare-select { border:0; background:transparent; color:var(--desk-ink); font-weight:600; font-size:13px }
 .studio-foot { display:flex;justify-content:space-between;gap:8px; padding:2px clamp(22px,4vw,64px) 16px; font-size:11px; color:var(--desk-ink) }
+.demo-links { display:flex; align-items:baseline; gap:9px }
+.demo-links a { color:inherit; text-underline-offset:3px }
 .mobile-switch { display:none }
 .toast { position:absolute; z-index:4; left:12px; right:12px; bottom:19px; padding:12px 16px; border-radius:18px; background:var(--ink); color:var(--bg); font-size:14px; box-shadow:0 3px 13px #142b1b33; pointer-events:none }
 @media (min-width:1550px) { .studio-head { margin-top:12px }.board { padding-top:32px } }
@@ -146,7 +159,32 @@ svg { display:block; flex-shrink:0 }
   .phone { height: min(812px, max(560px, calc(100dvh - 126px)));border-radius:26px }.studio-foot { justify-content:center;flex-wrap:wrap;text-align:center }
 }
 @media(max-width:390px) { .identity strong { font-size:18px }.identity { gap:5px }.tools { gap:4px }.tool-button { width:32px; height:32px }.view-switch button { padding:7px 8px }.board { padding:0 5px 7px } }
+@media(max-width:680px) {
+  .studio-head { flex-wrap:wrap; gap:0 6px; padding-block:6px }
+  .tools { margin-left:auto }
+  .haptic-review { order:1; flex-basis:100%; justify-content:center; margin:0 }
+  .phone { height:min(812px,max(560px,calc(100dvh - 154px))) }
+}
 @media(prefers-reduced-motion:no-preference) { button { transition:background-color .15s,filter .15s }button:hover { filter:brightness(.95) } }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0 }
+.goal-achieved { display:flex; align-items:center; gap:4px }
+.phone .btn:enabled:active { filter:brightness(.91) }
+@media (prefers-reduced-motion:no-preference) {
+  .phone .btn { transition:transform 90ms ease-out, background-color .15s, filter .15s }
+  .phone .btn:enabled:active { transform:scale(.985) }
+  .segment-moving::before { animation:segment-slide 200ms cubic-bezier(.2,.8,.2,1) }
+  .segment-moving button.active { animation:select-ink 65ms step-end }
+  .segment-moving button:not(.active) { animation:deselect-ink 65ms step-end }
+  .row-arrival { animation:row-arrival 260ms cubic-bezier(.2,.8,.2,1) }
+  .row-arrival.completed-goal .completed-open > svg:first-child path,
+  .row-arrival.goal-achieved svg path,
+  .row-arrival.tag.ok svg path { stroke-dasharray:26; animation:draw-check 320ms ease-out }
+}
+@keyframes segment-slide { from { transform:translateX(var(--previous-x)) } }
+@keyframes select-ink { from { color:var(--soft) } }
+@keyframes deselect-ink { from { color:var(--on-cta) } }
+@keyframes row-arrival { from { opacity:.25; transform:translateY(7px) } }
+@keyframes draw-check { from { stroke-dashoffset:26 } to { stroke-dashoffset:0 } }
 .before-mobile { display:none }
 @media(max-width:960px) { .before-mobile { display:block;text-align:center;margin:8px 0 } }
 /* Keep compact visual badges while allowing a larger touch target. */
