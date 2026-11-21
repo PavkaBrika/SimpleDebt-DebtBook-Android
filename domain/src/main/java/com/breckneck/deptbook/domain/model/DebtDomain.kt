@@ -15,6 +15,7 @@ data class DebtDomain
      val dueDay: String? = null,
      val reminderMinute: Int? = null,
      val reminderToken: String? = null,
-     val reminderDelivered: Boolean = false) {
+     val reminderDelivered: Boolean = false,
+     val recordedAsLoan: Boolean = false) {
     val effectiveSum: BigDecimal get() = if (cancelled) BigDecimal.ZERO else sum
 }

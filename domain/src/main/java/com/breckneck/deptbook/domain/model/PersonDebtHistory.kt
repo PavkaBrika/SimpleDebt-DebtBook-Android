@@ -8,7 +8,10 @@ data class LoanHistory(
     val original: DebtDomain,
     val repayments: List<DebtDomain>,
     val remaining: BigDecimal
-)
+) {
+    val hasKnownPurpose: Boolean
+        get() = original.recordedAsLoan || repayments.isNotEmpty() || original.dueDay != null
+}
 
 /** Derived from a single person's ledger. Currency and opening adjustment belong to the person. */
 data class PersonDebtHistory(

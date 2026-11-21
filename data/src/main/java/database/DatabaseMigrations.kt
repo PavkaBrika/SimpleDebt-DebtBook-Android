@@ -152,6 +152,12 @@ object DatabaseMigrations {
         }
     }
 
-    fun forCurrency(currency: String) = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, migration15To16(currency), MIGRATION_16_17, MIGRATION_17_18)
+    val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE Debt ADD COLUMN recordedAsLoan INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    fun forCurrency(currency: String) = arrayOf(MIGRATION_5_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, migration15To16(currency), MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
     val ALL = forCurrency("USD")
 }

@@ -67,7 +67,7 @@ class DebtReminderPolicyTest {
         root.addProperty("formatVersion", 3)
         assertThrows(IllegalArgumentException::class.java) { codec.decode(root.toString()) }
         root.getAsJsonObject("data").getAsJsonArray("debtList").forEach { item ->
-            listOf("dueDay", "reminderMinute", "reminderToken", "reminderDelivered").forEach(item.asJsonObject::remove)
+            listOf("dueDay", "reminderMinute", "reminderToken", "reminderDelivered", "recordedAsLoan").forEach(item.asJsonObject::remove)
         }
         assertNull(codec.decode(root.toString()).data.debtList.single().dueDay)
         assertNull(codec.decode(root.toString()).data.debtList.single().reminderMinute)

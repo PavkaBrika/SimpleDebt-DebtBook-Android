@@ -17,7 +17,7 @@ import util.DATA_BASE_NAME
 
 @Database(
     entities = [Human::class, Debt::class, FinanceData::class, FinanceCategoryData::class, GoalData::class, GoalDepositData::class],
-    version = 18
+    version = 19
 )
 @TypeConverters(Converters::class)
 abstract class AppDataBase : RoomDatabase() {

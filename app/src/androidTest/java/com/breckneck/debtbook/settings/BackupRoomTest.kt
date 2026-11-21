@@ -41,7 +41,7 @@ class BackupRoomTest {
             transfer.restore { codec.encode(b) }
             assertEquals(a, codec.decode(previous).data)
             transfer.upload { assertEquals(b, codec.decode(it).data) }
-            for (content in listOf("{}", codec.encode(a).replace("\"formatVersion\":4", "\"formatVersion\":99"))) {
+            for (content in listOf("{}", codec.encode(a).replace("\"formatVersion\":${BackupCodec.VERSION}", "\"formatVersion\":99"))) {
                 try { transfer.restore { content }; fail("malformed backup accepted") } catch (_: IllegalArgumentException) { }
                 assertEquals(b, repo.getAllAppData())
             }

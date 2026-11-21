@@ -55,6 +55,7 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         val debts = payload.rows("debtList").map { row ->
             if (version < 3) require(listOf("repaymentOfId", "operationId", "cancelled").none { row.has(it) }) { "Repayment fields need backup v3" }
             if (version < 4) require(listOf("dueDay", "reminderMinute", "reminderToken", "reminderDelivered").none { row.has(it) }) { "Reminder fields need backup v4" }
+            if (version < 5) require(!row.has("recordedAsLoan")) { "Loan origin needs backup v5" }
             val rawDate = row.string("date")
             DebtDomain(row.id(), row.money("sum", legacy), row.integer("idHuman"), row.optionalString("info"),
                 if (legacy) LedgerDate.canonical(rawDate) ?: rawDate else rawDate,
@@ -65,7 +66,8 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
                 if (version >= 4) row.optionalDay("dueDay") else null,
                 if (version >= 4 && row.has("reminderMinute")) row.integer("reminderMinute") else null,
                 if (version >= 4) row.optionalString("reminderToken") else null,
-                if (version >= 4) row.boolean("reminderDelivered") else false)
+                if (version >= 4) row.boolean("reminderDelivered") else false,
+                version >= 5 && row.boolean("recordedAsLoan"))
         }
         val categories = payload.rows("financeCategoryList").map { row ->
             val color = row.string("color")
@@ -220,7 +222,7 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         return Date(candidates.single())
     }
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
         const val FORMAT = "SimpleDebtBackup"
         const val MAX_CHARACTERS = 32 * 1024 * 1024
         const val MAX_PHOTO_CHARACTERS = 8 * 1024 * 1024

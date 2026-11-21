@@ -23,8 +23,9 @@ data class Debt(
     val dueDay: String? = null,
     val reminderMinute: Int? = null,
     val reminderToken: String? = null,
-    @ColumnInfo(defaultValue = "0") val reminderDelivered: Boolean = false) {
-    fun toDomain() = DebtDomain(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled, dueDay, reminderMinute, reminderToken, reminderDelivered)
+    @ColumnInfo(defaultValue = "0") val reminderDelivered: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val recordedAsLoan: Boolean = false) {
+    fun toDomain() = DebtDomain(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled, dueDay, reminderMinute, reminderToken, reminderDelivered, recordedAsLoan)
 }
 
-fun DebtDomain.toEntity() = Debt(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled, dueDay, reminderMinute, reminderToken, reminderDelivered)
+fun DebtDomain.toEntity() = Debt(id, sum, idHuman, info, date, legacyDate, repaymentOfId, operationId, cancelled, dueDay, reminderMinute, reminderToken, reminderDelivered, recordedAsLoan)
