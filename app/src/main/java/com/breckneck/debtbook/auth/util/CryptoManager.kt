@@ -34,7 +34,7 @@ class CryptoManager {
     }
 
     private fun createKey(): SecretKey {
-        return KeyGenerator.getInstance(ALGORITHM).apply {
+        return KeyGenerator.getInstance(ALGORITHM, keyStore.provider).apply {
             init(
                 KeyGenParameterSpec.Builder(
                     ENCRYPTION_ALIAS,
