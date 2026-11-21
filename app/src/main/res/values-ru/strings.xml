@@ -193,7 +193,7 @@
     <string name="goal_new">Новая цель</string>
     <string name="goal_edit">Редактировать цель</string>
     <string name="goal_delete">Удалить цель</string>
-    <string name="goal_delete_named">Удалить цель «%1$s»</string>
+    <string name="goal_delete_named">Удалить цель „%1$s“</string>
     <string name="goal_delete_title">Удалить цель?</string>
     <string name="goal_actions">Действия с целью</string>
     <string name="goal_delete_message">Цель «%1$s» и история её пополнений и снятий будут удалены.</string>

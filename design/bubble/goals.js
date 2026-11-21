@@ -15,7 +15,7 @@ function goalBalance(g, overview=false) {
   return '<div class="goal-hero goal-card">'+photo+heading+(due?'<div class="eyebrow">'+due+'</div>':'')+'<div class="big-money">'+amount(total,g.cur)+'</div><div class="track"><i style="width:'+percent+'%"></i></div><div class="loan-numbers"><span>из '+amount(g.target,g.cur)+'</span><strong>'+percent+'%</strong></div></div>';
 }
 function goalDeleteButton(g) {
-  return `<button type="button" class="icon-button goal-delete danger" data-act="goal-delete" data-value="${g.id}" aria-label="Удалить цель «${escapeHtml(g.name)}»">${icon('trash',22)}</button>`;
+  return `<button type="button" class="icon-button goal-delete danger" data-act="goal-delete" data-value="${g.id}" aria-label="Удалить цель „${escapeHtml(g.name)}“">${icon('trash',22)}</button>`;
 }
 function goalMenu(g) {
   return '<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью '+escapeHtml(g.name)+'">'+icon('more')+'</summary><div class="goal-menu">'

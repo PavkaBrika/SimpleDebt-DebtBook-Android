@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.goal.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -16,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -69,7 +71,7 @@ internal fun GoalDeleteButton(goalName: String, onDelete: () -> Unit, diameter: 
         )
     }
     if (diameter == null) {
-        IconButton(onClick = onDelete, content = icon)
+        IconButton(onClick = onDelete, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp), content = icon)
     } else {
         BubbleIconButton(onClick = onDelete, diameter = diameter, content = icon)
     }
