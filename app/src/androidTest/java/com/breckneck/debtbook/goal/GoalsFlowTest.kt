@@ -125,9 +125,16 @@ class GoalsFlowTest {
         textField(R.string.already_saved_sum).performTextReplacement("1000")
         click(R.string.goal_save)
         awaitDestination(R.id.goalsFragment)
-        assertBalance(initialName, "1000", 0)
+        assertBalance(initialName, "1000", 1)
+        val goal = dao.getAllGoals().single { it.name == initialName }
+        val openingDeposit = dao.getGoalDepositsByGoalId(goal.id).single()
+        assertEquals(goal.creationDate, openingDeposit.date)
+        assertEquals(0, goal.savedSum.compareTo(openingDeposit.sum))
         compose.waitUntil(10000) { !keyboardVisible() }
         capture("active")
+        openGoal(initialName)
+        scrollToGoalContent("1000".toBigDecimal().formatGoalMoney("RUB", showPlus = true)).assertIsDisplayed()
+        ordinaryBack(R.id.goalsFragment)
 
         click(R.string.goal_top_up)
         node(R.string.goal_add_money).assertIsDisplayed()
@@ -138,7 +145,7 @@ class GoalsFlowTest {
         compose.waitUntil(8000) {
             compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() && onMain { it.hasWindowFocus() } == true
         }
-        assertBalance(initialName, "1000", 0)
+        assertBalance(initialName, "1000", 1)
         click(R.string.goal_top_up)
         textField(R.string.sum).performClick().performTextReplacement("2500")
         compose.onNodeWithTag("goal_adjustment_confirm").performScrollTo().assertIsDisplayed()
@@ -153,11 +160,11 @@ class GoalsFlowTest {
         textField(R.string.sum).performTextReplacement("3501")
         compose.onNodeWithTag("goal_adjustment_confirm").performClick()
         node(R.string.goal_overdrawn).performScrollTo().assertIsDisplayed()
-        assertBalance(initialName, "3500", 1)
+        assertBalance(initialName, "3500", 2)
         textField(R.string.sum).performTextReplacement("300")
         compose.onNodeWithTag("goal_adjustment_confirm").performClick()
         awaitHistory()
-        assertBalance(initialName, "3200", 2)
+        assertBalance(initialName, "3200", 3)
         assertDisplayedAmount("3200")
         assertDisplayedAmount("16800")
         capture("details")
@@ -171,7 +178,7 @@ class GoalsFlowTest {
         awaitDestination(R.id.goalsFragment)
         openGoal(editedName)
         awaitHistory()
-        assertBalance(editedName, "3200", 2)
+        assertBalance(editedName, "3200", 3)
         chooseGoalAction(R.string.goal_edit)
         awaitDestination(R.id.createGoalsFragment)
         textField(R.string.name).performTextReplacement(finalName)
@@ -185,7 +192,7 @@ class GoalsFlowTest {
         textField(R.string.sum).performTextReplacement("16800")
         compose.onNodeWithTag("goal_adjustment_confirm").performClick()
         awaitText(R.string.goal_reached)
-        assertBalance(finalName, "20000", 3)
+        assertBalance(finalName, "20000", 4)
         compose.onAllNodesWithText(context.getString(R.string.goal_top_up)).assertCountEquals(0)
         compose.onAllNodesWithText(context.getString(R.string.goal_withdraw)).assertCountEquals(0)
         compose.onAllNodesWithText(context.getString(R.string.goal_edit)).assertCountEquals(0)
@@ -206,12 +213,28 @@ class GoalsFlowTest {
         node(R.string.goal_delete_title).assertIsDisplayed()
         capture("delete-sheet")
         click(R.string.cancel)
-        assertBalance(finalName, "20000", 3)
+        assertBalance(finalName, "20000", 4)
         deleteButton.performClick()
         click(R.string.delete)
         awaitDestination(R.id.goalsFragment)
         awaitText(R.string.goal_empty_list)
         assertTrue(dao.getAllGoals().none { it.name == finalName })
+    }
+
+    @Test fun goalsCreatedWithZeroOrBlankSavingsHaveEmptyHistory() {
+        for ((name, savings) in listOf(initialName to "0", editedName to "")) {
+            click(R.string.goal_new)
+            awaitDestination(R.id.createGoalsFragment)
+            textField(R.string.name).performTextReplacement(name)
+            textField(R.string.goal_target_amount).performTextReplacement("20000")
+            if (savings.isNotEmpty()) textField(R.string.already_saved_sum).performTextReplacement(savings)
+            click(R.string.goal_save)
+            awaitDestination(R.id.goalsFragment)
+            openGoal(name)
+            scrollToGoalContent(R.string.goal_empty_history).assertIsDisplayed()
+            assertBalance(name, "0", 0)
+            ordinaryBack(R.id.goalsFragment)
+        }
     }
 
     @Test fun goalListScrollsUnderTheBarsAndClearsTheLastAction() {
@@ -588,8 +611,9 @@ class GoalsFlowTest {
                 false
             }
         }
-        val initialDeposit = "2500".toBigDecimal().formatGoalMoney("RUB", showPlus = true)
-        scrollToGoalContent(initialDeposit).assertIsDisplayed()
+        for (amount in listOf("2500", "1000")) {
+            scrollToGoalContent(amount.toBigDecimal().formatGoalMoney("RUB", showPlus = true)).assertIsDisplayed()
+        }
     }
     private fun scrollToGoalContent(id: Int): SemanticsNodeInteraction =
         scrollToGoalContent(context.getString(id))

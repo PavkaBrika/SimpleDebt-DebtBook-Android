@@ -252,6 +252,17 @@ interface AppDao {
     //GOAL
 
     @Transaction
+    fun createGoal(goal: GoalData) {
+        require(goal.savedSum.signum() >= 0) { "Initial savings cannot be negative" }
+        val goalId = insertGoal(goal.copy(openingAdjustment = BigDecimal.ZERO))
+        if (goal.savedSum.signum() > 0) {
+            insertGoalDeposit(
+                GoalDepositData(id = 0, sum = goal.savedSum, date = goal.creationDate, goalId = goalId.toInt())
+            )
+        }
+    }
+
+    @Transaction
     fun updateGoalDetails(goal: GoalData) {
         val totalDeposits = getGoalDepositsByGoalId(goal.id).fold(BigDecimal.ZERO) { total, row -> total + row.sum }
         goal.openingAdjustment = goal.savedSum - totalDeposits
@@ -282,7 +293,7 @@ interface AppDao {
     fun insertAllGoals(goalList: List<GoalData>)
 
     @Insert
-    fun insertGoal(goalData: GoalData)
+    fun insertGoal(goalData: GoalData): Long
 
     @Delete
     fun deleteGoal(goalData: GoalData)
