@@ -2,8 +2,6 @@
 <resources>
     <string name="rating_review_title">Que pouvons-nous améliorer ?</string>
     <string name="rating_review_hint">Votre avis</string>
-    <string name="rating_open_email">Ouvrir la messagerie</string>
-    <string name="rating_open_store">Ouvrir Google Play</string>
     <string name="rating_email_subject">Avis sur SimpleDebt %1$s</string>
     <string name="rating_score">Note : %1$d/5</string>
 </resources>

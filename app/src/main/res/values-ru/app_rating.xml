@@ -2,8 +2,6 @@
 <resources>
     <string name="rating_review_title">Что можно улучшить?</string>
     <string name="rating_review_hint">Ваш отзыв</string>
-    <string name="rating_open_email">Открыть почту</string>
-    <string name="rating_open_store">Открыть Google Play</string>
     <string name="rating_email_subject">Отзыв о SimpleDebt %1$s</string>
     <string name="rating_score">Оценка: %1$d/5</string>
 </resources>

@@ -3,24 +3,33 @@ package com.breckneck.debtbook.settings
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
 import androidx.core.net.MailTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
@@ -70,7 +79,7 @@ class AppRatingTest {
 
                 compose.onNodeWithText(context.getString(R.string.rating_score, 2)).assertExists()
                 compose.onNode(hasSetTextAction()).assertTextContains(review)
-                action(R.string.rating_open_email).performScrollTo().performClick().assertDoesNotExist()
+                action(R.string.continue_b).performScrollTo().performClick().assertDoesNotExist()
                 assertEquals(1, mail.hits)
                 assertEquals(Int.MAX_VALUE, prefs.getInt(promptKey, -1))
             }
@@ -88,7 +97,7 @@ class AppRatingTest {
                 for (rating in 4..5) {
                     openRatingFromSettings()
                     star(rating).performClick().assertIsSelected()
-                    action(R.string.rating_open_store).performClick().assertDoesNotExist()
+                    action(R.string.continue_b).performClick().assertDoesNotExist()
                 }
                 assertEquals(2, market.hits)
             }
@@ -97,13 +106,32 @@ class AppRatingTest {
         }
     }
 
+    @Test fun bothStepsUseContinueAndOnlyBackDismissesTheSheet() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            openRatingFromSettings()
+            for (rating in 1..5) {
+                star(rating).performClick()
+                action(R.string.continue_b).assertIsEnabled()
+            }
+            assertBackDismissesRating(R.string.rate_app)
+
+            openRatingFromSettings()
+            star(2).performClick()
+            action(R.string.continue_b).performClick()
+            awaitNode(hasSetTextAction())
+            action(R.string.continue_b).assertIsEnabled()
+            assertBackDismissesRating(R.string.rating_review_title)
+        }
+    }
+
     @Test fun automaticPromptAdvancesOnceAfterTheReviewStep() {
         prefs.edit().putInt(promptKey, 0).commit()
         ActivityScenario.launch(MainActivity::class.java).use {
             star(1).performClick()
             action(R.string.continue_b).performClick()
-            compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
-            action(R.string.rating_open_email).assertDoesNotExist()
+            awaitNode(hasSetTextAction())
+            pressBack()
+            compose.onNode(isDialog()).assertDoesNotExist()
             assertEquals(10, prefs.getInt(promptKey, -1))
         }
     }
@@ -121,6 +149,20 @@ class AppRatingTest {
             assertEquals(mail.subject, intent.getStringExtra(Intent.EXTRA_SUBJECT))
             assertEquals("$score\n\n$review", intent.getStringExtra(Intent.EXTRA_TEXT))
         }
+    }
+
+    private fun assertBackDismissesRating(title: Int) {
+        val dialog = compose.onNode(isDialog())
+        compose.onNodeWithContentDescription(context.getString(R.string.cancel)).assertDoesNotExist()
+        dialog.performTouchInput { click(Offset(centerX, 32.dp.toPx())) }
+        dialog.assertExists()
+        compose.onNode(hasText(context.getString(title)) and hasAnyAncestor(isDialog())).performTouchInput {
+            swipe(center, center + Offset(0f, 120.dp.toPx()))
+        }
+        dialog.assertExists()
+        pressBack()
+        dialog.assertDoesNotExist()
+        action(R.string.settings).assertExists()
     }
 
     private fun openRatingFromSettings() {
