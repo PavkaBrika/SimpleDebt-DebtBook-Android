@@ -1,11 +1,19 @@
 package com.breckneck.debtbook.core.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.unit.sp
 
-// M3 default type scale — no overrides needed.
-// displayLarge 57/64, displayMedium 45/52, displaySmall 36/44,
-// headlineLarge 32/40, headlineMedium 28/36, headlineSmall 24/32,
-// titleLarge 22/28, titleMedium 16/24 Medium, titleSmall 14/20 Medium,
-// bodyLarge 16/24, bodyMedium 14/20, bodySmall 12/16,
-// labelLarge 14/20 Medium, labelMedium 12/16 Medium, labelSmall 11/16 Medium
-val Typography = Typography()
+internal val DebtBookTypography = Typography().run {
+    copy(
+        headlineSmall = headlineSmall.copy(lineHeight = 29.sp, letterSpacing = 0.sp),
+        titleLarge = titleLarge.copy(lineHeight = 26.sp, letterSpacing = 0.sp),
+        titleMedium = titleMedium.copy(lineHeight = 22.sp, letterSpacing = 0.sp),
+        titleSmall = titleSmall.copy(lineHeight = 19.sp, letterSpacing = 0.sp),
+        bodyLarge = bodyLarge.copy(lineHeight = 22.sp, letterSpacing = 0.sp),
+        bodyMedium = bodyMedium.copy(lineHeight = 19.sp, letterSpacing = 0.sp),
+        bodySmall = bodySmall.copy(letterSpacing = 0.sp),
+        labelLarge = labelLarge.copy(lineHeight = 19.sp, letterSpacing = 0.sp),
+        labelMedium = labelMedium.copy(letterSpacing = 0.sp),
+        labelSmall = labelSmall.copy(letterSpacing = 0.sp),
+    )
+}

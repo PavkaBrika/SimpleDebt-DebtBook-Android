@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import org.junit.Rule
 import android.content.Context
@@ -39,6 +40,14 @@ class DriveBackupScreenTest {
         val matcher = hasText(context.getString(id)) and hasClickAction()
         compose.waitUntil(10_000) { compose.onAllNodes(matcher).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         return compose.onNode(matcher)
+    }
+    private fun assertTextSpacing(label: SemanticsMatcher, lineHeight: TextUnit) {
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNode(label, useUnmergedTree = true).assertIsDisplayed()
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val style = layouts.single().layoutInput.style
+        assertEquals(lineHeight, style.lineHeight)
+        assertEquals(0.sp, style.letterSpacing)
     }
     private fun scrollableSheet() = compose.onNode(
         SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and hasAnyAncestor(isDialog())
@@ -210,7 +219,9 @@ class DriveBackupScreenTest {
         val local = repo.getAllAppData()
         drive.files[SynchronizationViewModel.BACKUP_FILE_NAME] = BackupCodec().encode(local)
         val copies = drive.files.toMap()
-        action(R.string.log_out).performScrollTo().performClick()
+        val signOut = action(R.string.log_out).performScrollTo()
+        assertTextSpacing(hasText(context.getString(R.string.log_out)), 19.sp)
+        signOut.performClick()
         val sheetText = listOf(
             R.string.backup_drive_sign_out_title to 26.sp,
             R.string.backup_drive_sign_out_message to 22.sp,
@@ -218,12 +229,7 @@ class DriveBackupScreenTest {
         )
         for ((id, lineHeight) in sheetText) {
             val label = hasText(context.getString(id)) and hasAnyAncestor(isDialog())
-            val layouts = mutableListOf<TextLayoutResult>()
-            compose.onNode(label, useUnmergedTree = true).assertIsDisplayed()
-                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-            val style = layouts.single().layoutInput.style
-            assertEquals(lineHeight, style.lineHeight)
-            assertEquals(0.sp, style.letterSpacing)
+            assertTextSpacing(label, lineHeight)
         }
         capture("settings-backup-sign-out.png")
         closeSheet()

@@ -111,7 +111,7 @@ fun DebtBookTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = DebtBookTypography,
             shapes = Shapes,
             content = content
         )
