@@ -246,8 +246,9 @@ class BackupScreenTest {
                 action(R.string.backup_confirm_restore).performScrollTo().performClick()
                 await(details = { "preview=${vm.restorePreview.value}, busy=${vm.isRestoring.value}, error=${vm.operationError.value}, IDs=${repo.getAllAppData().humanList.map { it.id }}" }) {
                     vm.operationError.value?.let { throw AssertionError("Restore failed", it) }
-                    repo.getAllAppData().humanList.firstOrNull()?.id == 900026
+                    vm.isRestoring.value == false && repo.getAllAppData().humanList.firstOrNull()?.id == 900026
                 }
+                compose.onNodeWithText(context.getString(R.string.backup_records_restored)).assertIsDisplayed()
                 action(R.string.backup_restore_previous_local).performScrollTo().performClick()
                 await { vm.restorePreview.value != null && vm.isRestoring.value == false }
                 action(R.string.backup_confirm_restore).performScrollTo().performClick()

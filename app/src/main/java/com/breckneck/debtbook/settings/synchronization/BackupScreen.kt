@@ -7,6 +7,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -36,6 +38,7 @@ internal fun BackupScreen(
     vm: SynchronizationViewModel,
     hostInsets: PaddingValues,
     driveAvailable: Boolean,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
@@ -67,6 +70,7 @@ internal fun BackupScreen(
 
     BubbleScaffold(
         hostInsets = hostInsets,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             BubbleTopBar(stringResource(R.string.synchronization), onBack, hostInsets, backEnabled = !busy)
         },

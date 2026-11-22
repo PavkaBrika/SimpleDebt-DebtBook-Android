@@ -10,15 +10,17 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.settings.synchronization.util.DriveServiceHelper
@@ -37,6 +39,8 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class SynchronizationFragment : Fragment() {
@@ -45,6 +49,8 @@ class SynchronizationFragment : Fragment() {
     }
 
     private val vm by viewModels<SynchronizationViewModel>()
+    private val snackbarHostState = SnackbarHostState()
+    private var feedbackJob: Job? = null
     private val export = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         uri?.let(vm::exportFile)
     }
@@ -86,12 +92,15 @@ class SynchronizationFragment : Fragment() {
         }
         return bubbleScreen(R.id.backupComposeView) { insets ->
             Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
-                BackupScreen(vm, insets, available,
+                BackupScreen(vm, insets, available, snackbarHostState,
                     onBack = { if (!vm.blocksExit) (requireActivity() as SynchronizationInterface).onBackButtonClick() },
                     onExport = { export.launch("SimpleDebt-backup.json") },
                     onImport = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
                     onSignIn = ::requestSignIn, onReconnect = ::reconnect, onSignOut = ::requestSignOut,
-                    onPrivacy = { requireContext().openSettingsIntent(Intent(Intent.ACTION_VIEW, getString(R.string.privacy_policy_url).toUri())) },
+                    onPrivacy = {
+                        val policy = Intent(Intent.ACTION_VIEW, getString(R.string.privacy_policy_url).toUri())
+                        requireContext().openSettingsIntent(policy) { showBackupFeedback(R.string.settings_no_handler) }
+                    },
                 )
             }
         }
@@ -100,7 +109,7 @@ class SynchronizationFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val transferBack = object : OnBackPressedCallback(vm.blocksExit) {
             override fun handleOnBackPressed() {
-                Toast.makeText(requireContext(), R.string.backup_wait, Toast.LENGTH_SHORT).show()
+                showBackupFeedback(R.string.backup_wait)
             }
         }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, transferBack)
@@ -120,14 +129,27 @@ class SynchronizationFragment : Fragment() {
                     R.string.backup_records_restored
                 }
             }
-            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+            showBackupFeedback(message)
             vm.operationSucceeded.value = null
         }
         vm.operationError.observe(viewLifecycleOwner) { error ->
+            if (error != null) {
+                snackbarHostState.currentSnackbarData
+                    ?.takeIf { it.visuals.message == getString(R.string.backup_wait) }?.dismiss()
+            }
             if (error is UserRecoverableAuthIOException) {
                 vm.dismissOperationError()
                 authorize.launch(error.intent)
             }
+        }
+    }
+
+    private fun showBackupFeedback(@StringRes message: Int) {
+        val text = getString(message)
+        if (snackbarHostState.currentSnackbarData?.visuals?.message == text) return
+        feedbackJob?.cancel()
+        feedbackJob = viewLifecycleOwner.lifecycleScope.launch {
+            snackbarHostState.showSnackbar(text, withDismissAction = true)
         }
     }
 

@@ -20,6 +20,7 @@ internal fun BubbleScaffold(
     topBar: (@Composable () -> Unit)? = null,
     bottomAction: @Composable () -> Unit = {},
     tabs: (@Composable () -> Unit)? = null,
+    snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val colors = bubbleColors()
@@ -33,6 +34,7 @@ internal fun BubbleScaffold(
         contentColor = colors.ink,
         contentWindowInsets = WindowInsets(0),
         topBar = { topBar?.invoke() },
+        snackbarHost = snackbarHost,
         bottomBar = {
             Column(Modifier.fillMaxWidth()) {
                 if (tabs != null) {

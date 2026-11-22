@@ -267,12 +267,18 @@ class DriveBackupScreenTest {
         scenario.onActivity {
             vm.uploadBackup()
             it.onBackPressedDispatcher.onBackPressed()
+            it.onBackPressedDispatcher.onBackPressed()
             assertEquals(R.id.synchronizationFragment, it.navController.currentDestination?.id)
         }
+        val waitMessage = context.getString(R.string.backup_wait)
+        compose.onNodeWithText(waitMessage).assertIsDisplayed()
         assertEquals(2, drive.writes)
         pending.setResult(null)
         await { vm.savingTo.value == null }
         compose.onAllNodes(progress, useUnmergedTree = true).assertCountEquals(0)
+        compose.onNodeWithText(context.getString(R.string.backup_drive_saved)).assertIsDisplayed()
+        compose.onNodeWithText(waitMessage).assertDoesNotExist()
+        capture("settings-drive-saved-snackbar.png")
         saveToDrive.assertIsEnabled()
         scenario.onActivity {
             it.onBackPressedDispatcher.onBackPressed()
