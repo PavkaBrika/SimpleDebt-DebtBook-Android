@@ -24,6 +24,7 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.Menu
 import android.view.View
+import android.view.ViewStub
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
@@ -83,6 +84,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     CreateFinanceCategoryFragment.OnClickListener, FinanceDetailsFragment.OnClickListener,
     GoalsFragment.OnClickListener, CreateGoalsFragment.OnButtonClickListener, GoalDetailsFragment.OnClickListener {
 
+    private var bannerAd: BannerAdView? = null
     private var interstitialAd: InterstitialAd? = null
     private var interstitialAdLoader: InterstitialAdLoader? = null
     private var vib: Vibrator? = null
@@ -148,72 +150,38 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
 
-//        YANDEX MOBILE ADVERTISEMENT
-        MobileAds.setUserConsent(false)
-
-        //BANNER AD
-        val bannerAd: BannerAdView = findViewById(R.id.bannerAdView)
-
-        if (vm.adsDisabled.value != true) {
-            val adRequestBuild = AdRequest.Builder().build()
-
+        if (!BuildConfig.DEBUG && vm.adsDisabled.value != true) {
             var adWidthPixels = findViewById<ConstraintLayout>(R.id.rootLayout).width
             if (adWidthPixels == 0) {
                 adWidthPixels = resources.displayMetrics.widthPixels
             }
             val adWidth = (adWidthPixels / resources.displayMetrics.density).roundToInt()
 
-            bannerAd.apply {
-                setAdUnitId("R-M-1753297-1")
-//            setAdUnitId("R-M-DEMO-320x50")
-                setAdSize(BannerAdSize.stickySize(applicationContext, adWidth))
+            val bannerSlot = findViewById<ViewStub>(R.id.bannerAdSlot)
+            bannerAd = (bannerSlot.inflate() as BannerAdView).apply {
+                setAdSize(BannerAdSize.sticky(this@MainActivity, adWidth))
                 setBannerAdEventListener(object : BannerAdEventListener {
                     override fun onAdLoaded() {
                         Log.e(bannerTAG, "BANNER LOADED")
-                        if (isDestroyed) {
-                            bannerAd.destroy()
-                            return
-                        }
                     }
 
-                    override fun onAdFailedToLoad(p0: AdRequestError) {
-                        Log.e(bannerTAG, "BANNER LOAD FAILED")
+                    override fun onAdFailedToLoad(error: AdRequestError) {
+                        Log.e(bannerTAG, "Banner load failed: ${error.description}")
                     }
 
                     override fun onAdClicked() {
                         Log.e(bannerTAG, "BANNER CLICKED")
                     }
 
-                    override fun onLeftApplication() {
-                        Log.e(bannerTAG, "BANNER LEFT")
-                    }
-
-                    override fun onReturnedToApplication() {
-                        Log.e(bannerTAG, "BANNER RETURN")
-                    }
-
-                    override fun onImpression(p0: ImpressionData?) {
+                    override fun onImpression(impressionData: ImpressionData?) {
                         Log.e(bannerTAG, "BANNER IMPRESSION")
                     }
                 })
-                loadAd(adRequestBuild)
+                loadAd(AdRequest.Builder("R-M-1753297-1").build())
             }
 
-            interstitialAdLoader = InterstitialAdLoader(applicationContext).apply {
-                setAdLoadListener(object : InterstitialAdLoadListener {
-                    override fun onAdLoaded(interstitialAd: InterstitialAd) {
-                        Log.e(interstitialTAG, "Interstitial ad load success")
-                        this@MainActivity.interstitialAd = interstitialAd
-                    }
-
-                    override fun onAdFailedToLoad(p0: AdRequestError) {
-                        Log.e(interstitialTAG, "Interstitial ad load failed")
-                    }
-                })
-            }
+            interstitialAdLoader = InterstitialAdLoader(applicationContext)
             loadInterstitialAd()
-        } else {
-            bannerAd.visibility = View.GONE
         }
 
         //NAVIGATION
@@ -334,8 +302,17 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     private fun loadInterstitialAd() {
-        val adRequestConfiguration = AdRequestConfiguration.Builder("R-M-1753297-2").build()
-        interstitialAdLoader?.loadAd(adRequestConfiguration)
+        val request = AdRequest.Builder("R-M-1753297-2").build()
+        interstitialAdLoader?.loadAd(request, object : InterstitialAdLoadListener {
+            override fun onAdLoaded(interstitialAd: InterstitialAd) {
+                Log.i(interstitialTAG, "Interstitial ad load success")
+                this@MainActivity.interstitialAd = interstitialAd
+            }
+
+            override fun onAdFailedToLoad(error: AdRequestError) {
+                Log.e(interstitialTAG, "Interstitial ad load failed: ${error.description}")
+            }
+        })
     }
 
     private fun showInterstitialAd() {
@@ -346,8 +323,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                     vm.onAdShow()
                 }
 
-                override fun onAdFailedToShow(p0: AdError) {
-                    Log.e(interstitialTAG, "Interstitial ad failed to show")
+                override fun onAdFailedToShow(adError: AdError) {
+                    Log.e(interstitialTAG, "Interstitial ad failed to show: ${adError.description}")
                     adPolicy.finish()
                     destroyInterstitialAd()
                     loadInterstitialAd()
@@ -356,8 +333,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 override fun onAdDismissed() {
                     Log.e(interstitialTAG, "Interstitial ad dismissed")
                     adPolicy.finish()
-                    interstitialAd?.setAdEventListener(null)
-                    interstitialAd = null
+                    destroyInterstitialAd()
                     loadInterstitialAd()
                 }
 
@@ -365,7 +341,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                     Log.e(interstitialTAG, "Interstitial ad clicked")
                 }
 
-                override fun onAdImpression(p0: ImpressionData?) {
+                override fun onAdImpression(impressionData: ImpressionData?) {
                     Log.e(interstitialTAG, "Interstitial ad impression")
                 }
             })
@@ -374,11 +350,12 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        interstitialAdLoader?.setAdLoadListener(null)
+        bannerAd?.destroy()
+        interstitialAdLoader?.cancelLoading()
         interstitialAdLoader = null
         destroyInterstitialAd()
         adPolicy.finish()
+        super.onDestroy()
     }
 
     private fun startTickVibration() {
@@ -432,6 +409,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onFilterButtonLongClick() {
+        if (BuildConfig.DEBUG) return
         vm.toggleAdsDisabled()
         val isNowDisabled = vm.adsDisabled.value == true
         Toast.makeText(this, if (isNowDisabled) "✓" else "✗", Toast.LENGTH_SHORT).show()
