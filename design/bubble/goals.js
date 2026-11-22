@@ -41,7 +41,8 @@ function goalListItem(g) {
 }
 flowViews.goals=f=>{
   const cards=savings.map(goalListItem).join('');
-  return layout(heading('Цели')+(cards||empty('Пока нет целей. Создайте первую цель накопления.')),primary('goal-new','Новая цель','plus'),nav('goals'),true);
+  return layout(heading('Цели')+(cards||empty('Пока нет целей. Создайте первую цель накопления.')),
+    {action:primary('goal-new','Новая цель','plus'),navigation:nav('goals')});
 };
 flowActions['goal-open']=(i,v)=>{frames[i].goalId=Number(v);go(i,'goalDetail');};
 function goalMovementTitle(deposit) {
@@ -49,9 +50,7 @@ function goalMovementTitle(deposit) {
   return deposit.cents > 0 ? 'Пополнение' : 'Снятие';
 }
 function goalScreenLayout(title,body,{menu='',action=''}={}) {
-  const footer=action?'<div class="goals-dock goal-form-dock"><div class="sticky-action">'+action+'</div>'+gesture+'</div>':gesture;
-  return '<div class="scroll goal-screen-scroll"><div class="goal-screen-head">'+status+backbar(title,menu)+'</div>'+
-    '<div class="goal-screen-body">'+body+'</div></div>'+footer;
+  return layout(body,{action,topBar:backbar(title,{action:menu,pillTitle:true})});
 }
 flowViews.goalDetail=f=>{
   const g=goalById(f.goalId),sum=saved(g),done=sum>=g.target;

@@ -80,7 +80,7 @@ function updateLedgerMotion(frame, panel, committed) {
 
 function enterRoute(panel, back) {
   if (reducedMotion.matches || !panel.getClientRects().length) return;
-  const content = panel.querySelector('.goal-screen-body') || panel.querySelector('.scroll');
+  const content = panel.querySelector('.screen-body');
   content.animate([
     {opacity:.65, transform:`translateX(${back ? -12 : 16}px)`},
     {opacity:1, transform:'none'}

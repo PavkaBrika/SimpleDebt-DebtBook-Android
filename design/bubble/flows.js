@@ -115,8 +115,10 @@ function listStateControl(f){
 function reviewList(f){
   const root=baseRoute(f.route), main=f.route===root;
   const titles={home:'Долги',finance:'Финансы',goals:'Цели',person:people.find(p=>p.id===f.personId)?.name,categoryHistory:categoryById(f.categoryId)?.name,goalDetail:goalById(f.goalId)?.name};
-  const title=titles[f.route], h=main?heading(title):backbar(title);
-  const withHeader=(body,action='')=>f.route==='goalDetail'?goalScreenLayout(title,body):layout(h+body,action,main?nav(root):'',f.route==='goals');
+  const title=titles[f.route];
+  const withHeader=(body,action='')=>layout((main?heading(title):'')+body,{
+    action,navigation:main?nav(root):'',topBar:main?'':backbar(title,{pillTitle:f.route==='goalDetail'})
+  });
   if(f.listState==='Загрузка')return withHeader('<div class="skeleton" role="status" aria-label="Загрузка"><i></i><i></i><i></i></div>');
   if(f.listState==='Ошибка')return withHeader(empty('Не удалось загрузить записи.')+primary('list-retry','Повторить','reset',true));
   const labels={home:'В книге пока нет долгов.',finance:'За этот период записей нет.',goals:'Целей пока нет.',person:'История долгов пуста.',categoryHistory:'Операций пока нет.',goalDetail:'Пополнений и снятий пока нет.'};

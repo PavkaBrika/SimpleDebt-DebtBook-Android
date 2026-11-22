@@ -40,7 +40,7 @@ flowViews.finance=f=>{
       '<div class="period-line" data-range="'+start+'/'+end+'">'+button('period-step','‹','-1','period-step')+button('period-pick',periodText(f,start,end),'','period-current','date')+button('period-step','›','1','period-step')+'</div>')+
     titleRow('Категории',f.period)+(cats.length?'<div class="people">'+cats.map(c=>`<button class="person-row" data-motion-row="category-${c.id}" data-act="category-view" data-value="${c.id}">${badge(c)}<span class="person-text"><strong>${escapeHtml(c.name)}</strong><small>${Math.round(totals.get(c.id)/total*100)}% от суммы</small></span><span class="money">${motionAmount('category-'+c.id,totals.get(c.id),f.financeCur)}</span>${icon('chevron',14)}</button>`).join('')+'</div>':empty('За этот период записей нет.'))+
     (f.day===TODAY?'':button('period-today','К текущей дате','','chip spaced','date'));
-  return layout(body,primary('record-new',f.financeDir==='Расходы'?'Добавить расход':'Добавить доход','plus'),nav('finance'));
+  return layout(body,{action:primary('record-new',f.financeDir==='Расходы'?'Добавить расход':'Добавить доход','plus'),navigation:nav('finance')});
 };
 flowActions['period-pick']=(i,v,b)=>{
   const f=frames[i]; showDialog(i,'Период',s=>'<div class="group">'+field('date','Интервал',picker('sheet.period',periods,s.period,'Интервал'))+field('date','Дата в периоде',entry('sheet.day',s.day,'date'))+'</div>',b,(_,s)=>{
@@ -65,7 +65,8 @@ flowViews.categoryHistory=f=>{
       <span class="money">${amount(e.cents,e.cur)}</span></button>
       <button class="row-edit" data-act="record-edit" data-value="${e.id}" aria-label="Редактировать операцию: ${label}" title="Редактировать операцию">${icon('edit',17)}</button></div>`;
   }).join('');
-  return layout(backbar(c.name)+'<div class="balance"><span class="eyebrow">За всё время · '+c.dir.toLowerCase()+'</span><div class="big-money">'+motionAmount('total',list.reduce((s,e)=>s+e.cents,0),f.financeCur)+'</div></div>'+titleRow('Операции',String(list.length))+(rows?'<div class="people">'+rows+'</div>':empty('Операций пока нет.')),primary('record-new','Добавить операцию','plus'));
+  return layout('<div class="balance"><span class="eyebrow">За всё время · '+c.dir.toLowerCase()+'</span><div class="big-money">'+motionAmount('total',list.reduce((s,e)=>s+e.cents,0),f.financeCur)+'</div></div>'+titleRow('Операции',String(list.length))+(rows?'<div class="people">'+rows+'</div>':empty('Операций пока нет.')),
+    {action:primary('record-new','Добавить операцию','plus'),topBar:backbar(c.name)});
 };
 flowActions['record-new']=i=>{
   const f=frames[i],c=f.route==='categoryHistory'?categoryById(f.categoryId):null;
@@ -84,8 +85,9 @@ flowViews.financeForm=f=>{
   const choices=cats.map(c=>`<button class="chip category-choice ${c.id===r.category?'active':''}" aria-pressed="${c.id===r.category}" data-act="record-category" data-value="${c.id}">${badge(c)}${escapeHtml(c.name)}</button>`).join('');
   const selected=categoryById(r.category);
   const category=r.id?'<div class="setting group"><span>Категория</span><strong>'+escapeHtml(selected.name)+'</strong></div>':titleRow('Категория')+'<div class="category-grid">'+choices+button('category-new','Категория','','chip','plus')+'</div>'+(selected?button('category-delete','Удалить выбранную категорию',selected.id,'text-action danger'):'');
-  return layout(backbar(r.id?'Редактировать операцию':r.dir==='Расходы'?'Новый расход':'Новый доход')+(r.id?'':segment('record-dir',directions,r.dir))+editAmount('record.sum',r.sum,r.cur)+
-    '<div class="group">'+field('date','Дата операции',entry('record.date',r.date,'date'))+field('note','Комментарий',entry('record.note',r.note,'text','maxlength="180" placeholder="Необязательно"'))+'</div>'+category+errorText(f),primary('record-save','Сохранить операцию','check'));
+  return layout((r.id?'':segment('record-dir',directions,r.dir))+editAmount('record.sum',r.sum,r.cur)+
+    '<div class="group">'+field('date','Дата операции',entry('record.date',r.date,'date'))+field('note','Комментарий',entry('record.note',r.note,'text','maxlength="180" placeholder="Необязательно"'))+'</div>'+category+errorText(f),
+    {action:primary('record-save','Сохранить операцию','check'),topBar:backbar(r.id?'Редактировать операцию':r.dir==='Расходы'?'Новый расход':'Новый доход')});
 };
 flowActions['record-dir']=(i,v)=>{const r=frames[i].record;r.dir=v;r.category=0;render(i,true);};
 flowActions['record-category']=(i,v)=>{frames[i].record.category=Number(v);render(i,true);};
@@ -99,7 +101,8 @@ flowActions['record-save']=i=>{
 flowActions['category-new']=i=>{frames[i].categoryDraft={name:'',emoji:'',color:'',emojiGroup:'Еда'};go(i,'categoryForm');};
 flowViews.categoryForm=f=>{
   const d=f.categoryDraft;
-  return layout(backbar('Новая категория')+'<div class="category-sample">'+badge(d)+'<strong>'+escapeHtml(d.name||'Категория')+'</strong></div><div class="group">'+field('note','Название',entry('categoryDraft.name',d.name,'text','maxlength="60"'))+'</div>'+titleRow('Значок')+field('flag','Набор значков',picker('categoryDraft.emojiGroup',Object.keys(emojiGroups),d.emojiGroup,'Набор значков'))+'<div class="choices">'+emojiGroups[d.emojiGroup].map(v=>button('category-emoji',v,v,'swatch '+(v===d.emoji?'picked':''))).join('')+'</div>'+titleRow('Цвет')+'<div class="choices">'+categoryPalette.map((v,index)=>`<button class="swatch ${v===d.color?'picked':''}" data-act="category-color" aria-label="Цвет ${index+1}" data-value="${v}" style="background:${v}">${v===d.color?icon('check',17):''}</button>`).join('')+'</div>'+errorText(f),primary('category-save','Сохранить категорию','check'));
+  return layout('<div class="category-sample">'+badge(d)+'<strong>'+escapeHtml(d.name||'Категория')+'</strong></div><div class="group">'+field('note','Название',entry('categoryDraft.name',d.name,'text','maxlength="60"'))+'</div>'+titleRow('Значок')+field('flag','Набор значков',picker('categoryDraft.emojiGroup',Object.keys(emojiGroups),d.emojiGroup,'Набор значков'))+'<div class="choices">'+emojiGroups[d.emojiGroup].map(v=>button('category-emoji',v,v,'swatch '+(v===d.emoji?'picked':''))).join('')+'</div>'+titleRow('Цвет')+'<div class="choices">'+categoryPalette.map((v,index)=>`<button class="swatch ${v===d.color?'picked':''}" data-act="category-color" aria-label="Цвет ${index+1}" data-value="${v}" style="background:${v}">${v===d.color?icon('check',17):''}</button>`).join('')+'</div>'+errorText(f),
+    {action:primary('category-save','Сохранить категорию','check'),topBar:backbar('Новая категория')});
 };
 flowActions['category-emoji']=(i,v)=>{frames[i].categoryDraft.emoji=v;render(i,true);};
 flowActions['category-color']=(i,v)=>{frames[i].categoryDraft.color=v;render(i,true);};

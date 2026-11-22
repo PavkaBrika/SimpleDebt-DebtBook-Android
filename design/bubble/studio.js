@@ -106,8 +106,8 @@ function nav(route) {
     <span class="nav-indicator" aria-hidden="true"></span>${buttons}</nav>`;
 }
 function heading(title,action='') { return '<div class="apphead"><h2>'+title+'</h2>'+action+'</div>'; }
-function backbar(title, action = '', avatar = '') {
-  return `<header class="detailhead">
+function backbar(title, {action='', avatar='', pillTitle=false}={}) {
+  return `<header class="detailhead${pillTitle?' detailhead-pill':''}">
     ${iconButton('back','Назад','back')}
     <div class="detail-title">${avatar}<h2>${escapeHtml(title)}</h2></div>
     ${action}
@@ -135,15 +135,14 @@ function home(f) {
     '<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
     (f.search?'<input class="search-field" data-bind="query" aria-label="Имя человека" placeholder="Найти по имени" value="'+escapeHtml(f.query)+'">':'')+
     '<div class="people">'+peopleList(f)+'</div>';
-  return layout(html,primary('new','Новый долг','plus'),nav('home'));
+  return layout(html,{action:primary('new','Новый долг','plus'),navigation:nav('home')});
 }
-function layout(body,action='',navigation='',goalsList=false) {
+function layout(body,{action='',navigation='',topBar=''}={}) {
   const cta=action?'<div class="sticky-action">'+action+'</div>':'';
-  if(goalsList) {
-    return status+'<div class="scroll goals-scroll">'+body+'</div><div class="goals-dock">'+cta+
-      '<div class="goals-nav">'+navigation+gesture+'</div></div>';
-  }
-  return status+'<div class="scroll">'+body+'</div>'+cta+navigation+gesture;
+  return '<div class="screen-top">'+status+topBar+'</div>'+
+    '<div class="scroll"><div class="screen-body">'+body+'</div></div>'+
+    '<div class="screen-dock">'+(navigation?cta:'')+
+    '<div class="screen-bottom-fade">'+(navigation||cta)+gesture+'</div></div>';
 }
 function loanCard(l,p) {
   const left=remaining(l), paid=Math.abs(l.principal)-left;
@@ -164,12 +163,12 @@ function history(p,f) {
 }
 function person(f) {
   const p=people.find(p=>p.id===f.personId), sum=balance(p), active=p.loans.filter(l=>remaining(l)>0), settled=p.loans.filter(l=>remaining(l)===0);
-  return layout(backbar(p.name,iconButton('new','Добавить долг этому человеку','plus'),motif(p.art))+
-    '<section class="balance"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+motionAmount('balance',Math.abs(sum),p.cur)+'</div></section>'+
+  return layout('<section class="balance"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+motionAmount('balance',Math.abs(sum),p.cur)+'</div></section>'+
     '<div class="history-actions">'+button('person-menu','Управление','','chip','more')+button('person-share','Поделиться','','chip','give')+'</div>'+
     (active.length?titleRow('Открытые долги',String(active.length))+active.map(l=>loanCard(l,p)).join(''):'')+
     (settled.length?titleRow('Погашенные долги',String(settled.length))+settled.map(l=>loanCard(l,p)).join(''):'')+
-    '<div class="section-title"><h3>История</h3>'+button('history-sort','Фильтр','','chip','settings')+'</div><div class="activity">'+(history(p,f)||empty('Записей нет.'))+'</div>');
+    '<div class="section-title"><h3>История</h3>'+button('history-sort','Фильтр','','chip','settings')+'</div><div class="activity">'+(history(p,f)||empty('Записей нет.'))+'</div>',
+    {topBar:backbar(p.name,{action:iconButton('new','Добавить долг этому человеку','plus'),avatar:motif(p.art)})});
 }
 function field(iconName,label,control) {
   return '<div class="field"><span class="field-icon">'+icon(iconName,17)+'</span><label class="field-body"><span class="label">'+label+'</span>'+control+'</label></div>';
@@ -188,9 +187,10 @@ function scheduleFields(obj,prefix,outstanding=true) {
 }
 function newDebt(f) {
   const d=f.d;
-  return layout(backbar(d.editId?'Редактировать долг':screenNames.new)+'<div class="segment">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
+  return layout('<div class="segment">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
     amountField('d.sum',d.sum,d.cur,!d.fixed)+'<div class="group">'+field('user','Человек',input('d.name',d.name,'Имя или название','text',d.fixed?'readonly':'maxlength="80"'))+
-    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+'</div>'+(!d.fixed?button('contacts','Выбрать из контактов','','text-action','user'):'')+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),primary('save','Сохранить долг','check'));
+    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+'</div>'+(!d.fixed?button('contacts','Выбрать из контактов','','text-action','user'):'')+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
+    {action:primary('save','Сохранить долг','check'),topBar:backbar(d.editId?'Редактировать долг':screenNames.new)});
 }
 function findLoan(f,id) { return people.find(p=>p.id===f.personId).loans.find(l=>l.id===id); }
 function sheet(f) {
@@ -214,8 +214,14 @@ function sheet(f) {
 const board=document.querySelector('#board');
 const mobile=document.querySelector('.mobile-switch');
 const sections=[];
-const goalDockObserver=new ResizeObserver(entries=>{
-  for(const {target,contentRect} of entries)target.parentElement?.style.setProperty('--goals-dock-height',contentRect.height+'px');
+const screenBars='.screen-top,.screen-dock';
+function updateScreenInset(bar) {
+  const height=bar.offsetHeight;
+  const edge=bar.classList.contains('screen-top')?'top':'bottom';
+  if(height)bar.parentElement.style.setProperty('--screen-'+edge+'-inset',height+'px');
+}
+const screenBarObserver=new ResizeObserver(entries=>{
+  for(const {target} of entries)updateScreenInset(target);
 });
 for(let i=0;i<3;i++) {
   const section=document.createElement('section');
@@ -249,8 +255,7 @@ function render(i,keepScroll=false,committed=false) {
   const lastRange=target.querySelector('.period-line')?.dataset.range;
   target.dataset.route=before?'':f.route;
   const y=keepScroll&&sameRoute?(target.querySelector('.scroll')?.scrollTop||0):0;
-  const previousDock=target.querySelector('.goals-dock');
-  if(previousDock)goalDockObserver.unobserve(previousDock);
+  for(const bar of target.querySelectorAll(screenBars))screenBarObserver.unobserve(bar);
   if(before) {
     const select='<select class="compare-select" data-bind="beforeScreen" aria-label="Снимок текущего приложения">'+Object.entries(screenNames).map(([k,v])=>'<option value="'+k+'" '+(f.beforeScreen===k?'selected':'')+'>'+v+'</option>').join('')+'</select>';
     target.innerHTML='<div class="panel-heading">'+select+'</div><div class="phone before"><img class="thumb" src="before/'+f.beforeScreen+'.webp" alt="Текущий экран: '+screenNames[f.beforeScreen]+'"></div><div class="before-mobile">'+select+'</div>';
@@ -259,10 +264,9 @@ function render(i,keepScroll=false,committed=false) {
   const listState=listStateControl(f);
   const html=listState&&f.listState&&f.listState!=='Данные'?reviewList(f):f.route==='home'?home(f):f.route==='person'?person(f):f.route==='new'?newDebt(f):flowViews[f.route](f);
   target.innerHTML='<div class="panel-heading">'+(screenNames[f.route]||flowNames[f.route])+listState+'</div><div class="phone">'+html+(f.sheet?sheet(f):'')+'</div>';
-  const dock=target.querySelector('.goals-dock');
-  if(dock){
-    dock.parentElement.style.setProperty('--goals-dock-height',dock.offsetHeight+'px');
-    goalDockObserver.observe(dock);
+  for(const bar of target.querySelectorAll(screenBars)){
+    updateScreenInset(bar);
+    screenBarObserver.observe(bar);
   }
   target.querySelector('.scroll').scrollTop=navigation?.origin?.y ?? y;
   if(navigation && !sameRoute) {
