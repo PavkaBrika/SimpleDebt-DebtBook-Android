@@ -84,7 +84,7 @@ Versions below reflect the checked-in build configuration in `develop_main`.
 | Backup | Google Sign-In, Google Drive API v3, Gson |
 | Export | Apache POI for Excel `.xls` files |
 | Authentication | AndroidX Biometric, Android Keystore for PIN encryption |
-| Advertising | Yandex Mobile Ads 7.18.4 |
+| Advertising | Yandex Mobile Ads 8.6.0 |
 | Tests | JUnit 5 in `domain`, JUnit 4-style app/data tests, Mockito, Coroutines Test, Orbit Test |
 
 ## 🚀 Getting started

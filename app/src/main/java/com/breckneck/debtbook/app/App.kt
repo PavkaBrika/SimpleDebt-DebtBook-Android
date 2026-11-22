@@ -2,8 +2,7 @@ package com.breckneck.debtbook.app
 
 import android.app.Application
 import android.util.Log
-import com.yandex.mobile.ads.common.InitializationListener
-import com.yandex.mobile.ads.common.MobileAds
+import com.yandex.mobile.ads.common.YandexAds
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -14,10 +13,9 @@ class App: Application() {
 
         com.breckneck.debtbook.debt.reminders.DebtReminders.get(this).start()
 
-        MobileAds.initialize(this, object: InitializationListener {
-            override fun onInitializationCompleted() {
-                Log.e("TAG", "Yandex initialized")
-            }
-        })
+        YandexAds.setUserConsent(false)
+        YandexAds.initialize(this) {
+            Log.i("YandexAds", "Yandex initialized")
+        }
     }
 }
