@@ -31,7 +31,7 @@ import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.util.*
 
 @Composable
-internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, onBack: () -> Unit, edit: (Finance) -> Unit, add: () -> Unit) {
+internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, hostInsets: PaddingValues, onBack: () -> Unit, edit: (Finance) -> Unit, add: () -> Unit) {
     val history by vm.history.collectAsState()
     val colors = bubbleColors()
     val title = GetFinanceCategoryNameInLocalLanguage().execute(vm.name, vm.direction, LocalContext.current)
@@ -41,9 +41,19 @@ internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, onBack: () -> Uni
     var confirm by rememberSaveable { mutableStateOf(false) }
     val selected = history.entries.find { it.id == actionId }
 
-    Column(Modifier.fillMaxSize().background(colors.background)) {
-        BubbleTopBar(title, onBack, PaddingValues(0.dp))
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.Top) {
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        topBar = {
+            BubbleTopBar(title, onBack, hostInsets)
+        },
+        bottomAction = {
+            BubbleButton(add, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                Text(stringResource(R.string.finance_add_entry), Modifier.padding(start = 8.dp))
+            }
+        },
+    ) { padding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.Top) {
             item {
                 Column(Modifier.fillMaxWidth().background(colors.mint, RoundedCornerShape(26.dp)).padding(16.dp)) {
                     Text(stringResource(R.string.finance_all_time, direction), color = colors.onMint)
@@ -65,10 +75,6 @@ internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, onBack: () -> Uni
                     }
                 }
             }
-        }
-        BubbleButton(add, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-            Text(stringResource(R.string.finance_add_entry), Modifier.padding(start = 8.dp))
         }
     }
     if (selected != null) {

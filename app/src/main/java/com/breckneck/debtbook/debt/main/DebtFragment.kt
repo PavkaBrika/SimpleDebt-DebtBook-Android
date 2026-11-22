@@ -5,13 +5,11 @@ import android.os.Bundle
 import android.view.*
 import android.widget.*
 import androidx.cardview.widget.CardView
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.*
 import com.breckneck.deptbook.domain.util.Filter
@@ -44,15 +42,9 @@ class DebtFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        ComposeView(requireContext()).apply {
-            id = R.id.humansLayout
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                DebtBookTheme {
-                    DebtListScreen(vm, requireActivity() as OnButtonClickListener, ::showHumanSortDialog) {
-                        openChangeDebtNameDialog(it)
-                    }
-                }
+        bubbleScreen(R.id.humansLayout) { insets ->
+            DebtListScreen(vm, insets, requireActivity() as OnButtonClickListener, ::showHumanSortDialog) {
+                openChangeDebtNameDialog(it)
             }
         }
 

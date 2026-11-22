@@ -1,6 +1,5 @@
 package com.breckneck.debtbook.settings.synchronization
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +28,7 @@ import java.util.TimeZone
 @Composable
 internal fun BackupScreen(
     vm: SynchronizationViewModel,
+    hostInsets: PaddingValues,
     driveAvailable: Boolean,
     onBack: () -> Unit,
     onExport: () -> Unit,
@@ -55,9 +55,13 @@ internal fun BackupScreen(
     val enabled = !busy && copies == null && preview == null
     var confirm by rememberSaveable { mutableIntStateOf(0) }
 
-    Column(Modifier.fillMaxSize().background(colors.background)) {
-        BubbleTopBar(stringResource(R.string.synchronization), onBack, PaddingValues(0.dp), backEnabled = !busy)
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        topBar = {
+            BubbleTopBar(stringResource(R.string.synchronization), onBack, hostInsets, backEnabled = !busy)
+        },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (busy && copies == null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Text(stringResource(R.string.backup_wait))

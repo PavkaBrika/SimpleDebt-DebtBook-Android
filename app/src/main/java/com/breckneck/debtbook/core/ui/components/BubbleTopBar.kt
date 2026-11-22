@@ -45,7 +45,6 @@ internal fun BubbleTopBar(
     hostInsets: PaddingValues,
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
-    floatingTitle: Boolean = false,
     leadingTitle: (@Composable () -> Unit)? = null,
     action: @Composable (Dp) -> Unit = { Spacer(Modifier.size(it)) },
 ) {
@@ -83,10 +82,10 @@ internal fun BubbleTopBar(
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             Row(
                 modifier = Modifier.height(bubbleHeight)
-                    .then(if (floatingTitle) Modifier.background(colors.headerBubble, CircleShape)
-                        .border(1.dp, colors.border, CircleShape) else Modifier)
+                    .background(colors.headerBubble, CircleShape)
+                    .border(1.dp, colors.border, CircleShape)
                     .semantics(mergeDescendants = true) { heading() }
-                    .padding(horizontal = if (floatingTitle) 14.dp else 0.dp),
+                    .padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

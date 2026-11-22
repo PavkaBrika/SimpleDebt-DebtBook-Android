@@ -3,6 +3,7 @@ package com.breckneck.debtbook.settings.synchronization
 import android.app.Activity
 import android.content.Intent
 import androidx.core.net.toUri
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.settings.openSettingsIntent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -13,15 +14,12 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.settings.synchronization.util.DriveServiceHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -75,21 +73,15 @@ class SynchronizationFragment : Fragment() {
             val account = GoogleSignIn.getLastSignedInAccount(requireContext())
             if (available && account != null) connect(account) else vm.setIsAuthorized(false)
         }
-        return ComposeView(requireContext()).apply {
-            id = R.id.backupComposeView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                DebtBookTheme {
-                    Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
-                        BackupScreen(vm, available,
-                            onBack = { if (!vm.blocksExit) (requireActivity() as SynchronizationInterface).onBackButtonClick() },
-                            onExport = { export.launch("SimpleDebt-backup.json") },
-                            onImport = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
-                            onSignIn = ::requestSignIn, onReconnect = ::reconnect, onSignOut = ::requestSignOut,
-                            onPrivacy = { requireContext().openSettingsIntent(Intent(Intent.ACTION_VIEW, getString(R.string.privacy_policy_url).toUri())) },
-                        )
-                    }
-                }
+        return bubbleScreen(R.id.backupComposeView) { insets ->
+            Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
+                BackupScreen(vm, insets, available,
+                    onBack = { if (!vm.blocksExit) (requireActivity() as SynchronizationInterface).onBackButtonClick() },
+                    onExport = { export.launch("SimpleDebt-backup.json") },
+                    onImport = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                    onSignIn = ::requestSignIn, onReconnect = ::reconnect, onSignOut = ::requestSignOut,
+                    onPrivacy = { requireContext().openSettingsIntent(Intent(Intent.ACTION_VIEW, getString(R.string.privacy_policy_url).toUri())) },
+                )
             }
         }
     }

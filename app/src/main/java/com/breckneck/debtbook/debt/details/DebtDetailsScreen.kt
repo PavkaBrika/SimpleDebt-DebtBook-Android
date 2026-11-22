@@ -45,7 +45,7 @@ import com.breckneck.deptbook.domain.util.MoneyDisplay
 import java.math.BigDecimal
 
 @Composable
-internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragment.OnButtonClickListener,
+internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, host: DebtDetailsFragment.OnButtonClickListener,
     sort: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit, onDue: (Int) -> Unit, onUndo: (Int) -> Unit) {
     val today = localDay()
     val name by vm.humanName.observeAsState("")
@@ -60,15 +60,20 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragme
     var manage by rememberSaveable { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf(false) }
     val colors = bubbleColors()
-    Column(Modifier.fillMaxSize().background(colors.background).semantics { testTagsAsResourceId = true }) {
-        BubbleTopBar(name, host::onBackButtonClick, PaddingValues(0.dp),
-            leadingTitle = { vm.humanId?.let { PersonMotif(it, Modifier.size(28.dp)) } }) { size ->
-            BubbleIconButton({ vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
-                Modifier.testTag("addDebtButton"), enabled = ready, diameter = size) {
-                Icon(Icons.Outlined.Add, stringResource(R.string.newdebt))
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        modifier = Modifier.semantics { testTagsAsResourceId = true },
+        topBar = {
+            BubbleTopBar(name, host::onBackButtonClick, hostInsets,
+                leadingTitle = { vm.humanId?.let { PersonMotif(it, Modifier.size(28.dp)) } }) { size ->
+                BubbleIconButton({ vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
+                    Modifier.testTag("addDebtButton"), enabled = ready, diameter = size) {
+                    Icon(Icons.Outlined.Add, stringResource(R.string.newdebt))
+                }
             }
-        }
-        LazyColumn(Modifier.testTag("personHistory"), contentPadding = PaddingValues(16.dp),
+        },
+    ) { padding ->
+        LazyColumn(Modifier.fillMaxSize().testTag("personHistory"), contentPadding = padding,
             verticalArrangement = Arrangement.Top) {
             item {
                 Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.mint, contentColor = colors.onMint) {

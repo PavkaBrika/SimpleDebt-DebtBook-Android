@@ -1,6 +1,5 @@
 package com.breckneck.debtbook.settings.main
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +28,7 @@ import com.breckneck.deptbook.domain.util.PinLockDelay
 @Composable
 internal fun SettingsScreen(
     vm: SettingsViewModel,
+    hostInsets: PaddingValues,
     main: MainViewModel,
     host: SettingsFragment.OnButtonClickListener,
     showBiometrics: Boolean,
@@ -52,8 +52,11 @@ internal fun SettingsScreen(
     val delays = listOf(R.string.pin_lock_immediately, R.string.pin_lock_30_seconds,
         R.string.pin_lock_1_minute, R.string.pin_lock_5_minutes).map { stringResource(it) }
 
-    Column(Modifier.fillMaxSize().background(colors.background)) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        tabs = { BubbleBottomBar(R.id.settingsFragment, host::onTabSelected) },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.settings), Modifier.semantics { heading() }, color = colors.ink,
                 style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
@@ -88,7 +91,6 @@ internal fun SettingsScreen(
                 SettingsRow(stringResource(R.string.app_version), value = BuildConfig.VERSION_NAME)
             }
         }
-        BubbleBottomBar(R.id.settingsFragment, host::onTabSelected)
     }
 
     when (sheet) {

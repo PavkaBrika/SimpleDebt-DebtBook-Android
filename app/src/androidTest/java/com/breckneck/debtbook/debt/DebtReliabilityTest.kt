@@ -5,7 +5,6 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.content.Context
 import android.graphics.Bitmap
 import java.io.File
-import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
@@ -142,18 +141,33 @@ class DebtReliabilityTest {
     @Test fun rootInsetsKeepNavigationAndSaveAboveSystemBarsAndKeyboard() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            capture("main")
+            val list = compose.awaitTag("peopleList").fetchSemanticsNode().boundsInWindow
+            val tabs = compose.onNode(hasText(context.getString(R.string.settings)) and isSelectable())
+                .assertIsDisplayed().fetchSemanticsNode().boundsInWindow
+            val search = compose.onNodeWithContentDescription(context.getString(R.string.find_person))
+                .assertIsDisplayed().fetchSemanticsNode().boundsInWindow
             scenario.onActivity { activity ->
-                val root = activity.findViewById<View>(R.id.rootLayout)
-                val insets = ViewCompat.getRootWindowInsets(root)!!
-                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                assertTrue(root.paddingTop >= bars.top)
-                assertTrue(root.paddingBottom >= bars.bottom)
-
+                val decor = activity.window.decorView
+                val bars = ViewCompat.getRootWindowInsets(decor)!!.getInsets(WindowInsetsCompat.Type.systemBars())
+                assertEquals(0f, list.top, 1f)
+                assertEquals(decor.height.toFloat(), list.bottom, 1f)
+                assertTrue(search.top >= bars.top)
+                assertTrue(tabs.bottom <= decor.height - bars.bottom)
             }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            compose.onNode(hasText(context.getString(R.string.settings)) and hasClickAction()).assertIsDisplayed()
+            capture("main")
             compose.awaitTag("addHumanButton").performClick()
+            val saveBeforeIme = compose.awaitTag("setFinanceButton").fetchSemanticsNode().boundsInWindow
+            val form = compose.onNode(hasScrollAction() and hasAnyDescendant(hasTestTag("directionPositive"))).fetchSemanticsNode().boundsInWindow
+            val back = compose.onNodeWithContentDescription(context.getString(R.string.back))
+                .fetchSemanticsNode().boundsInWindow
+            scenario.onActivity { activity ->
+                val decor = activity.window.decorView
+                val bars = ViewCompat.getRootWindowInsets(decor)!!.getInsets(WindowInsetsCompat.Type.systemBars())
+                assertEquals(0f, form.top, 1f)
+                assertEquals(decor.height.toFloat(), form.bottom, 1f)
+                assertTrue(back.top >= bars.top)
+                assertTrue(saveBeforeIme.bottom <= decor.height - bars.bottom)
+            }
             compose.awaitTag("debtSumEditText").performClick()
             var lastImeBottom = 0
             var stableImeFrames = 0
@@ -169,20 +183,33 @@ class DebtReliabilityTest {
                 }
                 shown
             }
-            scenario.onActivity { activity ->
-                val root = activity.findViewById<View>(R.id.rootLayout)
-                val ime = ViewCompat.getRootWindowInsets(root)!!.getInsets(WindowInsetsCompat.Type.ime())
-                assertTrue("root must avoid IME", root.paddingBottom >= ime.bottom)
-            }
             val save = compose.awaitTag("setFinanceButton").assertIsDisplayed().fetchSemanticsNode().boundsInWindow
             val amount = compose.awaitTag("debtSumEditText").assertIsFocused().fetchSemanticsNode().boundsInWindow
             scenario.onActivity { activity ->
-                val root = activity.findViewById<View>(R.id.rootLayout)
                 val keyboardTop = activity.window.decorView.height - lastImeBottom
-                assertTrue(save.bottom <= keyboardTop + 1 && amount.bottom <= keyboardTop + 1)
-                assertTrue(amount.top >= root.paddingTop)
+                assertTrue(save.bottom <= keyboardTop + 1)
+                assertTrue(amount.top >= back.bottom && amount.bottom <= save.top)
             }
             capture("keyboard")
+            androidx.test.espresso.Espresso.pressBack()
+            await("keyboard did not close") {
+                var hidden = false
+                scenario.onActivity {
+                    hidden = !ViewCompat.getRootWindowInsets(it.window.decorView)!!.isVisible(WindowInsetsCompat.Type.ime())
+                }
+                hidden
+            }
+            val note = compose.awaitTag("debtInfoEditText").performScrollTo()
+            note.performClick()
+            note.performTextReplacement("Repayment note")
+            compose.waitUntil(5000) {
+                val field = note.fetchSemanticsNode().boundsInWindow
+                val footer = compose.awaitTag("setFinanceButton").fetchSemanticsNode().boundsInWindow
+                footer.bottom <= saveBeforeIme.bottom - 1 && field.height > 0 &&
+                    field.top >= back.bottom && field.bottom <= footer.top
+            }
+            note.assertIsFocused().assertTextContains("Repayment note")
+            capture("comment-keyboard")
         }
     }
 }

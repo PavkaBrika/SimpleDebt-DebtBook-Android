@@ -1,16 +1,12 @@
 package com.breckneck.debtbook.goal.create.screen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,7 +35,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,11 +46,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -73,6 +66,7 @@ import com.breckneck.debtbook.common.toDMYFormat
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
+import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.BubbleTextFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.components.SettingsPickerBottomSheet
@@ -102,9 +96,6 @@ internal fun CreateGoalsContent(
     hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val colors = bubbleColors()
-    val direction = LocalLayoutDirection.current
-    val start = hostInsets.calculateStartPadding(direction) + 16.dp
-    val end = hostInsets.calculateEndPadding(direction) + 16.dp
     val goal = state.goal
     val enabled = state.isInitialized && !state.isSaving
     val title = stringResource(if (state.isEditMode) R.string.goal_edit else R.string.goal_new)
@@ -121,26 +112,19 @@ internal fun CreateGoalsContent(
         if (hasInputError) scroll.animateScrollTo(0)
     }
     BackHandler(enabled = state.isSaving) {}
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = colors.background,
-        contentColor = colors.ink,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         topBar = {
             BubbleTopBar(
-                floatingTitle = true,
                 title = title,
                 onBack = { onAction(CreateGoalsAction.BackClick) },
                 hostInsets = hostInsets,
                 backEnabled = !state.isSaving,
             )
         },
-        bottomBar = {
-            Column(
-                Modifier.fillMaxWidth().background(
-                    Brush.verticalGradient(listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = .9f))),
-                ).padding(start = start, end = end, top = 4.dp, bottom = hostInsets.calculateBottomPadding() + 4.dp),
-            ) {
+        bottomAction = {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                 if (state.saveFailed || state.photoFailed) {
                     Text(
                         stringResource(if (state.photoFailed) R.string.goal_photo_error else R.string.save_failed_retry),
@@ -167,13 +151,9 @@ internal fun CreateGoalsContent(
             }
         },
     ) { padding ->
-        if (!state.isInitialized) return@Scaffold
+        if (!state.isInitialized) return@BubbleScaffold
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(
-                start = start, end = end,
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = padding.calculateBottomPadding() + 8.dp,
-            ),
+            modifier = Modifier.fillMaxSize().verticalScroll(scroll).padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             BubbleGroup {

@@ -5,13 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,7 +21,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,10 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -46,6 +38,7 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
 import com.breckneck.debtbook.core.ui.components.BubbleListRow
+import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.BubbleSectionTitle
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.components.BubbleValueRow
@@ -108,18 +101,12 @@ private fun GoalDetailsContent(
     hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val colors = bubbleColors()
-    val direction = LocalLayoutDirection.current
-    val start = hostInsets.calculateStartPadding(direction) + 16.dp
-    val end = hostInsets.calculateEndPadding(direction) + 16.dp
     val secondaryColors = ButtonDefaults.buttonColors(containerColor = colors.mint, contentColor = colors.onMint)
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = colors.background,
-        contentColor = colors.ink,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         topBar = {
             BubbleTopBar(
-                floatingTitle = true,
                 title = goal.name,
                 onBack = onBack,
                 hostInsets = hostInsets,
@@ -131,21 +118,10 @@ private fun GoalDetailsContent(
                 }
             }
         },
-        bottomBar = {
-            Spacer(
-                Modifier.fillMaxWidth().height(hostInsets.calculateBottomPadding()).background(
-                    Brush.verticalGradient(listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = .9f))),
-                ),
-            )
-        },
-    ) { insets ->
+    ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = start, end = end,
-                top = insets.calculateTopPadding() + 8.dp,
-                bottom = insets.calculateBottomPadding() + 8.dp,
-            ),
+            contentPadding = padding,
         ) {
             item { GoalBalanceCard(goal) }
             if (!goal.isReached) {

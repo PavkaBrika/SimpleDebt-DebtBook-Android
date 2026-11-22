@@ -67,7 +67,7 @@ internal fun dueLabel(day: String, open: Boolean, today: String): String = when 
 }
 
 @Composable
-internal fun DebtListScreen(vm: DebtViewModel, host: DebtFragment.OnButtonClickListener,
+internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: DebtFragment.OnButtonClickListener,
     sort: () -> Unit, rename: (HumanDomain) -> Unit) {
     val colors = bubbleColors()
     val today = localDay()
@@ -84,8 +84,18 @@ internal fun DebtListScreen(vm: DebtViewModel, host: DebtFragment.OnButtonClickL
     val filter by vm.humanFilter.observeAsState(Filter.ALL)
     var picker by rememberSaveable { mutableStateOf(false) }
     val total = sums.first + sums.second
-    Column(Modifier.fillMaxSize().background(colors.background).semantics { testTagsAsResourceId = true }) {
-        LazyColumn(Modifier.weight(1f).testTag("peopleList"), contentPadding = PaddingValues(16.dp),
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        modifier = Modifier.semantics { testTagsAsResourceId = true },
+        bottomAction = {
+            BubbleButton({ host.onAddButtonClick(currency) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("addHumanButton")) {
+                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                Text(stringResource(R.string.newdebt), Modifier.padding(start = 8.dp))
+            }
+        },
+        tabs = { BubbleBottomBar(R.id.mainFragment, host::onTabSelected) },
+    ) { padding ->
+        LazyColumn(Modifier.fillMaxSize().testTag("peopleList"), contentPadding = padding,
             verticalArrangement = Arrangement.Top) {
             item {
                 Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -166,11 +176,6 @@ internal fun DebtListScreen(vm: DebtViewModel, host: DebtFragment.OnButtonClickL
                 }
             }
         }
-        BubbleButton({ host.onAddButtonClick(currency) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("addHumanButton")) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-            Text(stringResource(R.string.newdebt), Modifier.padding(start = 8.dp))
-        }
-        BubbleBottomBar(R.id.mainFragment, host::onTabSelected)
     }
     if (picker) {
         val options = (overviewCurrencies + currency).distinct().filter(String::isNotBlank)

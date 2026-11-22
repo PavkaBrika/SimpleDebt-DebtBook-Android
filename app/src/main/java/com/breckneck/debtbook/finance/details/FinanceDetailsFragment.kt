@@ -9,11 +9,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.finance.details.screen.FinanceDetailsScreen
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
@@ -30,16 +28,10 @@ class FinanceDetailsFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        ComposeView(requireContext()).apply {
-            id = com.breckneck.debtbook.R.id.financeHistoryView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        bubbleScreen(com.breckneck.debtbook.R.id.financeHistoryView) { insets ->
             val host = requireActivity() as OnClickListener
-            setContent {
-                DebtBookTheme {
-                    FinanceDetailsScreen(vm, host::onBackButtonClick, { host.onEditFinanceClick(it, vm.direction) },
-                        { host.onAddCategoryFinance(vm.categoryId, vm.currency, vm.day, vm.direction) })
-                }
-            }
+            FinanceDetailsScreen(vm, insets, host::onBackButtonClick, { host.onEditFinanceClick(it, vm.direction) },
+                { host.onAddCategoryFinance(vm.categoryId, vm.currency, vm.day, vm.direction) })
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

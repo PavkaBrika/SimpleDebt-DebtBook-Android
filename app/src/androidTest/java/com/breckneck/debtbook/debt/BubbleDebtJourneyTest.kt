@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
 import android.view.View
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.core.view.ViewCompat
@@ -83,8 +84,12 @@ class BubbleDebtJourneyTest {
 
     private fun text(value: String) = compose.onNodeWithText(value)
     private fun person() {
-        compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$anna"))
-        compose.onNodeWithTag("person-$anna").assertTextContains(context.getString(R.string.debt_today)).performClick()
+        val list = compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$anna"))
+        val row = compose.onNodeWithTag("person-$anna")
+        val overlap = row.fetchSemanticsNode().boundsInWindow.bottom -
+            compose.awaitTag("addHumanButton").fetchSemanticsNode().boundsInWindow.top
+        if (overlap > 0f) list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, overlap) }
+        row.assertTextContains(context.getString(R.string.debt_today)).performClick()
         compose.awaitTag("personHistory")
     }
     private fun balance(expected: String) {

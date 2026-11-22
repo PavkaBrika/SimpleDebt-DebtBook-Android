@@ -38,7 +38,6 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,6 +65,7 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
+import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.BubbleSectionTitle
 import com.breckneck.debtbook.core.ui.components.BubbleTextFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
@@ -84,6 +84,7 @@ private val errorExitAnimation: ExitTransition = shrinkVertically() + fadeOut(tw
 @Composable
 fun CreateFinanceCategoryScreen(
     vm: CreateFinanceCategoryViewModel,
+    hostInsets: PaddingValues,
     onBackClick: () -> Unit
 ) {
     val state by vm.collectAsState()
@@ -91,6 +92,7 @@ fun CreateFinanceCategoryScreen(
 
     CreateFinanceCategoryContent(
         state = state,
+        hostInsets = hostInsets,
         onBackClick = onBackClick,
         onNameChange = vm::onNameChange,
         onImageSelected = vm::onImageSelected,
@@ -107,7 +109,8 @@ fun CreateFinanceCategoryContent(
     onNameChange: (String) -> Unit,
     onImageSelected: (image: Int) -> Unit,
     onColorSelected: (color: String) -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: () -> Unit,
+    hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val spacing = MaterialTheme.spacing
     val nameError = if (state.isNameErrorVisible) stringResource(R.string.youmustentername) else null
@@ -117,11 +120,11 @@ fun CreateFinanceCategoryContent(
     var group by rememberSaveable { mutableIntStateOf(0) }
     var choosingGroup by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(
-        containerColor = bubbleColors().background, contentColor = bubbleColors().ink,
-        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
-        topBar = { BubbleTopBar(stringResource(R.string.create_new_category), onBackClick, PaddingValues(0.dp), backEnabled = !state.saving) },
-        bottomBar = {
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        contentPadding = PaddingValues(0.dp),
+        topBar = { BubbleTopBar(stringResource(R.string.create_new_category), onBackClick, hostInsets, backEnabled = !state.saving) },
+        bottomAction = {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                 if (state.saveFailed) Text(stringResource(R.string.save_failed_retry), color = bubbleColors().danger)
                 BubbleButton(onSaveClick, Modifier.fillMaxWidth(), enabled = !state.saving) {
@@ -134,8 +137,8 @@ fun CreateFinanceCategoryContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(padding)
         ) {
             CategoryPreview(
                 name = state.categoryName,

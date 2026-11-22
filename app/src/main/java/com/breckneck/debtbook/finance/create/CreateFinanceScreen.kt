@@ -1,6 +1,5 @@
 package com.breckneck.debtbook.finance.create
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +29,7 @@ import com.breckneck.deptbook.domain.util.LedgerDate
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinanceFragment.OnClickListener) {
+internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: PaddingValues, host: CreateFinanceFragment.OnClickListener) {
     val colors = bubbleColors()
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val direction by vm.direction.observeAsState(FinanceCategoryState.EXPENSE)
@@ -53,9 +52,23 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
     val title = if (vm.editing) R.string.finance_edit_entry else if (direction == FinanceCategoryState.EXPENSE)
         R.string.finance_new_expense else R.string.finance_new_income
 
-    Column(Modifier.fillMaxSize().background(colors.background)) {
-        BubbleTopBar(stringResource(title), host::onBackButtonClick, PaddingValues(0.dp), backEnabled = enabled)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        topBar = {
+            BubbleTopBar(stringResource(title), host::onBackButtonClick, hostInsets, backEnabled = enabled)
+        },
+        bottomAction = {
+            if (saveState == CreateFinanceViewModel.SaveState.ERROR) {
+                Text(stringResource(R.string.save_failed_retry), Modifier.padding(horizontal = 16.dp), color = colors.danger)
+            }
+            BubbleButton({ attempted = true; focus.clearFocus(); vm.save() },
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), enabled = enabled) {
+                Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
+                Text(stringResource(R.string.finance_save_entry), Modifier.padding(start = 8.dp))
+            }
+        },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (!vm.editing) FinanceDirection(direction) { if (enabled) vm.changeDirection(it) }
             val amountError = if (attempted && (amount.text.isEmpty() || vm.parsedAmount() == null))
@@ -96,14 +109,6 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, host: CreateFinance
                 }
             }
             if (failed) BubbleOutlinedButton(vm::reload) { Text(stringResource(R.string.history_retry)) }
-        }
-        if (saveState == CreateFinanceViewModel.SaveState.ERROR) {
-            Text(stringResource(R.string.save_failed_retry), Modifier.padding(horizontal = 16.dp), color = colors.danger)
-        }
-        BubbleButton({ attempted = true; focus.clearFocus(); vm.save() },
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), enabled = enabled) {
-            Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
-            Text(stringResource(R.string.finance_save_entry), Modifier.padding(start = 8.dp))
         }
     }
     if (calendar) FinanceDatePicker(day, onSelect = { vm.day.value = it; calendar = false }, onDismiss = { calendar = false })

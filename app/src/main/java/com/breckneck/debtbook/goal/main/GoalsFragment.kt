@@ -8,16 +8,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.BundleCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.launchOnLifecycleStarted
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.goal.main.screen.GoalsScreen
 import com.breckneck.deptbook.domain.model.Goal
 import dagger.hilt.android.AndroidEntryPoint
@@ -28,7 +25,6 @@ class GoalsFragment : Fragment() {
     private val vm by viewModels<GoalsViewModel>()
 
     interface OnClickListener {
-        val goalsContentInsets: PaddingValues
         fun onTabSelected(id: Int)
         fun onAddGoalButtonClick()
         fun onGoalClick(goal: Goal)
@@ -56,14 +52,8 @@ class GoalsFragment : Fragment() {
         }
 
         val host = requireNotNull(onButtonClickListener)
-        return ComposeView(requireContext()).apply {
-            id = R.id.goalsComposeView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                DebtBookTheme {
-                    GoalsScreen(vm = vm, hostInsets = host.goalsContentInsets, onTabSelected = host::onTabSelected)
-                }
-            }
+        return bubbleScreen(R.id.goalsComposeView) { insets ->
+            GoalsScreen(vm = vm, hostInsets = insets, onTabSelected = host::onTabSelected)
         }
     }
 
