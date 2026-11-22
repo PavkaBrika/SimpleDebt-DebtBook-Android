@@ -258,7 +258,7 @@ Launcher activity, хостит Jetpack Compose. Внешние `PINCodeState` �
 **Логика**: CHECK — сравнение ввода с сохранённым PIN. ENABLE — двойной ввод (FIRST → CONFIRMATION). DISABLE — ввод текущего PIN. CHANGE — проверка + новый ввод.
 
 ### CryptoManager
-AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`, файл: `crypto.txt`. Каждая запись использует новый cipher/IV и `AtomicFile`; чтение проверяет длины и весь файл, ошибка оставляет защиту включённой. Поддерживается ранее сохранённый legacy PIN при отсутствии encrypted-файла. Чтение и атомарная запись PIN находятся в `auth/PinCodeStore.kt`. «Забыли PIN?» запускает внутреннюю `PinRecoveryActivity` с системным подтверждением владельца и двойным вводом нового PIN.
+AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`, файл: `crypto.txt`. Каждая запись использует новый cipher/IV и `AtomicFile`; чтение проверяет длины и весь файл, ошибка оставляет защиту включённой. Поддерживается ранее сохранённый legacy PIN при отсутствии encrypted-файла. Чтение и атомарная запись PIN находятся в `auth/PinCodeStore.kt`. «Забыли PIN?» запускает внутреннюю `PinRecoveryActivity` с системным подтверждением владельца и двойным вводом нового PIN. Подтверждение открывается кнопкой «Продолжить» в нижнем листе Bubble с крестиком закрытия. Индикатор общей формы ввода увеличивает заполненную точку с 12 до 16 dp и сохраняет расстояние между центрами.
 
 ### Восстановление PIN
 - `auth/PinRecoveryActivity.kt`: не экспортируется; API30+ использует BiometricPrompt (BIOMETRIC_STRONG | DEVICE_CREDENTIAL), API23–29 — системное подтверждение пароля/рисунка/PIN телефона через KeyguardManager.
