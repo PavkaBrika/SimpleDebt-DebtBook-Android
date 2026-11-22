@@ -17,16 +17,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.navigation.ui.onNavDestinationSelected
 import com.breckneck.debtbook.auth.ActivityAuthGate
 import android.content.Intent
-import android.net.Uri
 import android.os.*
-import android.text.Editable
-import android.text.TextWatcher
 import android.util.Log
 import android.view.Menu
 import android.view.View
 import android.view.ViewStub
-import android.widget.Button
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -35,14 +30,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.debt.details.DebtDetailsFragment
 import com.breckneck.debtbook.debt.main.DebtFragment
 import com.breckneck.debtbook.debt.create.CreateDebtFragment
@@ -54,16 +51,14 @@ import com.breckneck.debtbook.goal.create.CreateGoalsFragment
 import com.breckneck.debtbook.goal.details.GoalDetailsFragment
 import com.breckneck.debtbook.goal.main.GoalsFragment
 import com.breckneck.debtbook.settings.main.SettingsFragment
+import com.breckneck.debtbook.settings.rating.AppRatingSheet
+import com.breckneck.debtbook.settings.rating.appReviewIntent
 import com.breckneck.debtbook.settings.synchronization.SynchronizationFragment
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.model.Finance
 import com.breckneck.deptbook.domain.model.Goal
-import com.breckneck.deptbook.domain.util.DEBT_QUANTITY_FOR_LAST_SHOW_APP_RATE_DIALOG
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.textfield.TextInputEditText
 import com.yandex.mobile.ads.banner.BannerAdEventListener
 import com.yandex.mobile.ads.banner.BannerAdSize
 import com.yandex.mobile.ads.banner.BannerAdView
@@ -127,18 +122,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             vib = getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
 
-        if (vm.isAppRateDialogShow.value == true)
-            showAppRateDialog(vm.isAppReviewDialogFromSettings.value!!)
-        if (vm.isAppReviewDialogShow.value == true)
-            showLowAppRateDialog(vm.isAppReviewDialogFromSettings.value!!)
-
-        vm.debtQuantity.observe(this) {
-            if (it >= vm.debtQuantityForAppRateDialogShow.value!! &&
-                vm.debtQuantityForAppRateDialogShow.value!! <= DEBT_QUANTITY_FOR_LAST_SHOW_APP_RATE_DIALOG
-            ) {
-                showAppRateDialog(false)
-            }
-        }
+        configureAppRating()
+        vm.debtQuantity.observe(this) { vm.showAppRating(fromSettings = false) }
 
         vm.getAppTheme()
         vm.appTheme.observe(this) { theme ->
@@ -293,7 +278,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         if (vm.adsDisabled.value == true || interstitialAd == null ||
             !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
             navController.currentDestination?.id !in TOP_LEVEL_DESTINATIONS ||
-            vm.isAppRateDialogShow.value == true || vm.isAppReviewDialogShow.value == true) return
+            vm.appRating != null) return
         if (adPolicy.tryStart(SystemClock.elapsedRealtime())) showInterstitialAd()
     }
 
@@ -551,7 +536,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
     //settings interface
     override fun onRateAppButtonClick() {
-        showAppRateDialog(true)
+        vm.showAppRating(fromSettings = true)
     }
 
     override fun onAuthorizationButtonClick() {
@@ -590,71 +575,44 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         vm.onActionClick()
     }
 
-    private fun showAppRateDialog(isFromSettings: Boolean) {
-        val rateAppBottomSheetDialog = BottomSheetDialog(this)
-        rateAppBottomSheetDialog.setContentView(R.layout.dialog_rate_app)
-        rateAppBottomSheetDialog.setCancelable(false)
-        rateAppBottomSheetDialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
-        vm.setAppReviewFromSettings(isFromSettings)
-        vm.setAppRateDialogShown(shown = true)
-
-        rateAppBottomSheetDialog.findViewById<Button>(R.id.confirmButton)!!.setOnClickListener {
-            when (vm.appRate.value) {
-                1, 2, 3 -> {
-                    showLowAppRateDialog(fromSettings = isFromSettings)
-                    rateAppBottomSheetDialog.dismiss()
-                }
-
-                4, 5 -> {
-                    launchMarketIntent()
-                    rateAppBottomSheetDialog.dismiss()
-                }
-
-                0 -> {
-                    vm.setAppReviewFromSettings(false)
-                    Toast.makeText(
-                        applicationContext,
-                        getString(R.string.rate_app_toast),
-                        Toast.LENGTH_SHORT
-                    ).show()
+    private fun configureAppRating() {
+        findViewById<ComposeView>(R.id.appRatingHost).setContent {
+            val lifecycleState by lifecycle.currentStateAsState()
+            val rating = vm.appRating
+            if (rating != null && lifecycleState.isAtLeast(Lifecycle.State.RESUMED) &&
+                AuthSession.canAccess(vm.isPINCodeEnabled.value == true, SystemClock.elapsedRealtime(), vm.pinLockDelayMillis())
+            ) {
+                DebtBookTheme {
+                    AppRatingSheet(
+                        state = rating,
+                        onSelect = {
+                            onTickVibration()
+                            vm.selectAppRating(it)
+                        },
+                        onReviewChange = vm::updateAppReview,
+                        onContinue = ::continueAppRating,
+                        onBackToRating = vm::returnToAppRating,
+                        onDismiss = vm::closeAppRating,
+                    )
                 }
             }
         }
+    }
 
-        rateAppBottomSheetDialog.findViewById<Button>(R.id.cancelButton)!!.setOnClickListener {
-            rateAppBottomSheetDialog.dismiss()
-        }
-
-        rateAppBottomSheetDialog.setOnDismissListener {
-            if (!isFromSettings)
-                vm.onAppRateDismiss()
-            vm.setAppRateDialogShown(shown = false)
-            vm.setAppReviewFromSettings(false)
-            vm.setAppRate(0)
-        }
-
-        val stars = listOf(R.id.rateStar1ImageView, R.id.rateStar2ImageView, R.id.rateStar3ImageView,
-            R.id.rateStar4ImageView, R.id.rateStar5ImageView).map {
-            requireNotNull(rateAppBottomSheetDialog.findViewById<ImageView>(it))
-        }
-        fun showRating(rating: Int) {
-            stars.forEachIndexed { index, star ->
-                star.isSelected = index + 1 == rating
-                if (index < rating) star.setColorFilter(ContextCompat.getColor(this, R.color.yellow))
-                else star.clearColorFilter()
+    private fun continueAppRating() {
+        val rating = vm.appRating ?: return
+        when {
+            rating.writingReview -> {
+                if (openSettingsIntent(appReviewIntent(this, rating.rating, rating.reviewText))) {
+                    vm.closeAppRating()
+                }
+            }
+            rating.rating in 1..3 -> vm.showAppReview()
+            rating.rating in 4..5 -> {
+                launchMarketIntent()
+                vm.closeAppRating()
             }
         }
-        stars.forEachIndexed { index, star ->
-            val rating = index + 1
-            star.contentDescription = getString(R.string.settings_rating, rating)
-            star.setOnClickListener {
-                onTickVibration()
-                vm.setAppRate(rating)
-                showRating(rating)
-            }
-        }
-        showRating(vm.appRate.value ?: 0)
-        rateAppBottomSheetDialog.show()
     }
 
     private fun launchMarketIntent() {
@@ -663,60 +621,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         } catch (_: ActivityNotFoundException) {
             openSettingsIntent(Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=$packageName".toUri()))
         }
-    }
-
-    private fun showLowAppRateDialog(fromSettings: Boolean) {
-        val lowRateBottomSheetDialog = BottomSheetDialog(this)
-        lowRateBottomSheetDialog.setContentView(R.layout.dialog_low_app_rate)
-        lowRateBottomSheetDialog.setCancelable(false)
-        lowRateBottomSheetDialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
-        vm.setAppReviewDialogShown(true)
-        val reviewEditText: TextInputEditText =
-            lowRateBottomSheetDialog.findViewById(R.id.reviewEditText)!!
-        val sendReviewButton: Button = lowRateBottomSheetDialog.findViewById(R.id.buttonOk)!!
-        val cancelButton: Button = lowRateBottomSheetDialog.findViewById(R.id.buttonCancel)!!
-        sendReviewButton.setOnClickListener {
-            val intent = Intent(Intent.ACTION_SENDTO)
-            intent.data = Uri.parse("mailto:pavlikbrichkin@yandex.ru")
-            intent.putExtra(
-                Intent.EXTRA_SUBJECT,
-                "${getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}"
-            )
-            intent.putExtra(Intent.EXTRA_TEXT, reviewEditText.text.toString())
-            if (openSettingsIntent(intent)) lowRateBottomSheetDialog.dismiss()
-        }
-
-        if (vm.appReviewText.value?.isEmpty() == false) {
-            reviewEditText.setText(vm.appReviewText.value)
-        }
-
-        reviewEditText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-
-            }
-
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-
-            }
-
-            override fun afterTextChanged(p0: Editable?) {
-                vm.setAppReviewText(text = p0.toString())
-            }
-        })
-
-        cancelButton.setOnClickListener {
-            lowRateBottomSheetDialog.dismiss()
-        }
-
-        lowRateBottomSheetDialog.setOnDismissListener {
-            if (!fromSettings)
-                vm.onAppRateDismiss()
-            vm.setAppReviewFromSettings(false)
-            vm.setAppReviewDialogShown(shown = false)
-            vm.setAppReviewText(text = "")
-        }
-
-        lowRateBottomSheetDialog.show()
     }
 
     companion object {
