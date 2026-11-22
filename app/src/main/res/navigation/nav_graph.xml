@@ -40,6 +40,13 @@
             app:exitAnim="@animator/goal_fade_out"
             app:popEnterAnim="@animator/goal_fade_in"
             app:popExitAnim="@animator/goal_pop_exit" />
+        <action
+            android:id="@+id/action_settingsFragment_to_appSecurityFragment"
+            app:destination="@id/appSecurityFragment"
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
     </fragment>
     <fragment
         android:id="@+id/newDebtFragment"
@@ -113,6 +120,23 @@
             android:name="name"
             app:argType="string"
             app:nullable="true" />
+    </fragment>
+    <fragment
+        android:id="@+id/appSecurityFragment"
+        android:name="com.breckneck.debtbook.settings.security.AppSecurityFragment"
+        android:label="@string/pin_code_lock">
+        <action
+            android:id="@+id/action_appSecurityFragment_to_pinManagementFragment"
+            app:destination="@id/pinManagementFragment"
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
+    </fragment>
+    <fragment
+        android:id="@+id/pinManagementFragment"
+        android:name="com.breckneck.debtbook.auth.PinManagementFragment">
+        <argument android:name="pinAction" app:argType="string" />
     </fragment>
     <fragment
         android:id="@+id/synchronizationFragment"

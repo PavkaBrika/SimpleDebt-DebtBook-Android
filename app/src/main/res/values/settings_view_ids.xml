@@ -1,4 +1,6 @@
 <resources>
     <item type="id" name="settingsComposeView" />
     <item type="id" name="backupComposeView" />
+    <item type="id" name="appSecurityComposeView" />
+    <item type="id" name="pinManagementComposeView" />
 </resources>

@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.auth
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -67,7 +68,11 @@ class AuthorizationViewModel @Inject constructor(
         _currentPINCode.value = getPINCode.execute()
     }
 
-    fun setDecryptedPINCode(code: String) {
+    internal fun loadStoredPIN(context: Context) {
+        setDecryptedPINCode(PinCodeStore(context).read(getPINCode.execute()))
+    }
+
+    private fun setDecryptedPINCode(code: String) {
         _currentPINCode.value = code.takeIf { it.length == 4 && it.all(Char::isDigit) } ?: ""
         pinReadFailed.value = _isPINCodeEnabled.value == true && _currentPINCode.value.isEmpty()
     }

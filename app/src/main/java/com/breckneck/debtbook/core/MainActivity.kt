@@ -94,7 +94,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             vm.getIsPINCodeEnabled()
             vm.isPINCodeEnabled.value == true
         },
-        lockDelayMillis = { vm.pinLockDelayMillis() }
+        lockDelayMillis = { vm.pinLockDelayMillis() },
+        keepWindowSecure = { ::navController.isInitialized && navController.currentDestination?.id == R.id.pinManagementFragment },
     )
     internal var screenInsets by mutableStateOf(PaddingValues(0.dp))
         private set
@@ -174,6 +175,10 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
         navController = navHostFragment.navController
+        navController.addOnDestinationChangedListener { _, _, _ ->
+            authGate.updateWindowSecurity(vm.isPINCodeEnabled.value == true)
+        }
+        vm.isPINCodeEnabled.observe(this, authGate::updateWindowSecurity)
 
         configureHostInsets()
         // NavigationUI keeps each tab's saved back stack. The destination draws its own bar.

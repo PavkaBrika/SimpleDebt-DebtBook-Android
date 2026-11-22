@@ -12,7 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 class ActivityAuthGate(
     private val activity: AppCompatActivity,
     private val pinEnabled: () -> Boolean,
-    private val lockDelayMillis: () -> Long
+    private val lockDelayMillis: () -> Long,
+    private val keepWindowSecure: () -> Boolean = { false },
 ) {
     private var awaitingAuthentication = false
     private val launcher = activity.registerForActivityResult(
@@ -57,10 +58,13 @@ class ActivityAuthGate(
         outState.putBoolean(AWAITING_AUTH, awaitingAuthentication)
     }
 
-    private fun updateVisibility() {
-        val enabled = pinEnabled()
-        if (enabled) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    fun updateWindowSecurity(pinEnabled: Boolean) {
+        if (pinEnabled || keepWindowSecure()) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    }
+
+    private fun updateVisibility() {
+        updateWindowSecurity(pinEnabled())
         activity.window.decorView.visibility =
             if (canAccess()) View.VISIBLE else View.INVISIBLE
     }

@@ -20,7 +20,8 @@ app/src/main/java/com/breckneck/debtbook/
 │   │   └── CryptoManager.kt          # AES + Keystore шифрование PIN
 │   ├── AuthSession.kt                # Только в памяти: доступ после проверки PIN/биометрии; policy action extras
 │   ├── ActivityAuthGate.kt            # Блокировка Main при запуске/возврате с сохранением back stack
-│   ├── AuthorizationActivity.kt      # Launcher Activity (hosts Compose)
+│   ├── AuthorizationActivity.kt      # Запуск приложения и проверка входа
+│   ├── PinManagementFragment.kt      # Установка, смена и отключение PIN внутри Main
 │   └── AuthorizationViewModel.kt     # VM авторизации
 ├── common/
 │   ├── Compose.kt                    # @PreviewDark — аннотация для dark-mode превью
@@ -60,7 +61,7 @@ app/src/main/java/com/breckneck/debtbook/
 
 ## MainActivity
 
-Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`). `exported=false`; `ActivityAuthGate` скрывает содержимое до проверки PIN, сохраняет текущую навигацию и повторно блокирует доступ после ухода в фон с учётом `GetPinLockDelay`: сразу (по умолчанию), 30 секунд, 1 минута или 5 минут. `AuthSession` хранит начало фона только в памяти и использует монотонное время `SystemClock.elapsedRealtime()`; launcher проверяет тот же интервал. Смена конфигурации не сбрасывает сессию; новый процесс всегда заблокирован независимо от настройки. При PIN включён `FLAG_SECURE`.
+Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`). `exported=false`; `ActivityAuthGate` скрывает содержимое до проверки PIN, сохраняет текущую навигацию и повторно блокирует доступ после ухода в фон с учётом `GetPinLockDelay`: сразу (по умолчанию), 30 секунд, 1 минута или 5 минут. `AuthSession` хранит начало фона только в памяти и использует монотонное время `SystemClock.elapsedRealtime()`; launcher проверяет тот же интервал. Смена конфигурации не сбрасывает сессию; новый процесс всегда заблокирован независимо от настройки. При включённом PIN и во время его первичной установки действует `FLAG_SECURE`.
 
 ### Характеристики
 - Хостит `NavHostFragment` с `nav_graph.xml`
@@ -234,14 +235,14 @@ App Launch → AuthorizationActivity (launcher)
         │     └── [fail/cancel] → PIN input
         └── [PIN input]
               ├── [correct] → MainActivity
-              └── [wrong] → shake + retry
+              └── [wrong] → error + retry
 ```
 
 ### AuthorizationActivity
-Launcher activity, хостит Jetpack Compose. Внешние `PINCodeState` всегда преобразуются в CHECK; ENABLE допускается только при выключенном PIN и внутреннем caller, CHANGE/DISABLE — при включённом PIN и внутреннем caller. Вызывается из Settings через Activity Result API. Успех PIN/биометрии открывает `AuthSession` и возвращает результат без пересоздания Main; результат сам по себе не даёт доступ.
+Launcher activity, хостит Jetpack Compose. Внешние `PINCodeState` всегда преобразуются в CHECK; ENABLE допускается только при выключенном PIN и внутреннем caller, CHANGE/DISABLE — при включённом PIN и внутреннем caller. При возврате из фона `ActivityAuthGate` открывает экран проверки через Activity Result API. Успех PIN или биометрии открывает `AuthSession` и возвращает результат в существующее окно. Gate проверяет сессию при получении результата.
 
 ### AuthorizationScreen
-Composable-функции: `AuthorizationScreen` (корневой, маршрутизация по `PINCodeAction`), `UnlockScreen` (проверка PIN), `PINCodeSection` (точки + цифровая клавиатура).
+`AuthorizationScreen` подключает биометрию и восстановление. `PinEntryScreen` обрабатывает ввод для проверки, установки, смены и отключения PIN. `PinEntryLayout` задаёт общую вёрстку для ввода и восстановления PIN. Заголовок и индикатор находятся около верхней трети окна, цифровые клавиши — у нижнего края безопасной области. «Выйти» на экране входа и «Отмена» в форме восстановления расположены вверху. На низком экране форма прокручивается.
 
 ### AuthorizationViewModel
 Класс находится в `auth/` (не `auth/viewmodel/`). **Зависимости**: `GetPINCodeEnabled`, `SetPINCodeEnabled`, `GetPINCode`, `SetPINCode`, `GetIsFingerprintAuthEnabled`, `SetIsFingerprintAuthEnabled`. Отключение PIN также отключает биометрию; чтение повреждённого PIN не выключает защиту.
@@ -257,7 +258,7 @@ Composable-функции: `AuthorizationScreen` (корневой, маршру
 **Логика**: CHECK — сравнение ввода с сохранённым PIN. ENABLE — двойной ввод (FIRST → CONFIRMATION). DISABLE — ввод текущего PIN. CHANGE — проверка + новый ввод.
 
 ### CryptoManager
-AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`, файл: `crypto.txt`. Каждая запись использует новый cipher/IV и `AtomicFile`; чтение проверяет длины и весь файл, ошибка оставляет защиту включённой. Поддерживается ранее сохранённый legacy PIN при отсутствии encrypted-файла. Общая запись PIN вынесена в `auth/PinCodeStore.kt` (AtomicFile); скрытый сброс по логотипу удалён. «Забыли PIN?» запускает внутреннюю `PinRecoveryActivity` с системным подтверждением владельца и двойным вводом нового PIN.
+AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`, файл: `crypto.txt`. Каждая запись использует новый cipher/IV и `AtomicFile`; чтение проверяет длины и весь файл, ошибка оставляет защиту включённой. Поддерживается ранее сохранённый legacy PIN при отсутствии encrypted-файла. Чтение и атомарная запись PIN находятся в `auth/PinCodeStore.kt`. «Забыли PIN?» запускает внутреннюю `PinRecoveryActivity` с системным подтверждением владельца и двойным вводом нового PIN. Подтверждение открывается кнопкой «Продолжить» в нижнем листе Bubble с крестиком закрытия. Индикатор общей формы ввода увеличивает заполненную точку с 12 до 16 dp и сохраняет расстояние между центрами.
 
 ### Восстановление PIN
 - `auth/PinRecoveryActivity.kt`: не экспортируется; API30+ использует BiometricPrompt (BIOMETRIC_STRONG | DEVICE_CREDENTIAL), API23–29 — системное подтверждение пароля/рисунка/PIN телефона через KeyguardManager.
@@ -268,7 +269,7 @@ AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`
 Обёртка над `androidx.biometric.BiometricPrompt`. Буферизованный канал не теряет ранние callback; повторный открытый prompt не создаётся. Только CHECK с ранее включённой биометрией принимает success, навигация выполняется однократно в эффекте.
 
 ### Связь с Settings
-PIN изменяет `AuthorizationViewModel` после проверки; Settings обновляет состояние из хранилища при результате. Main не доверяет `PINCodeState` из сторонних Activity result. Биометрия → `SettingsViewModel.setIsFingerprintAuthEnabled()`. Задержка повторного запроса PIN → `SettingsViewModel.setPinLockDelay()` и `Get/SetPinLockDelay` (Hilt DomainModule); влияет на Main и launcher.
+Экран защиты открывает `PinManagementFragment` в навигации Main. При завершении операции Main перечитывает состояние защиты. Возврат из формы происходит в текущей сессии. Уход приложения в фон запускает блокировку через `ActivityAuthGate`. `SettingsViewModel.setIsFingerprintAuthEnabled()` сохраняет биометрию, а `SettingsViewModel.setPinLockDelay()` сохраняет задержку для Main и launcher через `Get/SetPinLockDelay`.
 
 ---
 

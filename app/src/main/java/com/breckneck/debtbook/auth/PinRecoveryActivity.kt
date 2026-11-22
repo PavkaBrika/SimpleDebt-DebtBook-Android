@@ -13,27 +13,23 @@ import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Error
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Step
-import com.breckneck.debtbook.auth.screen.ButtonsSection
-import com.breckneck.debtbook.auth.screen.PINCodeSection
+import com.breckneck.debtbook.auth.screen.PinEntryError
+import com.breckneck.debtbook.auth.screen.PinEntryLayout
 import com.breckneck.debtbook.core.enableBubbleEdgeToEdge
-import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
+import com.breckneck.debtbook.core.ui.components.BubbleBottomSheet
+import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.core.ui.theme.spacing
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
-import com.breckneck.deptbook.domain.util.PINCodeEnterState
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -125,35 +121,22 @@ class PinRecoveryActivity : AppCompatActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecoverySheet(state: PinRecoveryViewModel.State, onVerify: () -> Unit, onCancel: () -> Unit) {
-    val spacing = MaterialTheme.spacing
-    DebtBookBottomSheet(onDismiss = onCancel) {
-        Column(
-            Modifier.fillMaxWidth().testTag("pinRecoverySheet")
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = spacing.space24, vertical = spacing.space24)
+    BubbleBottomSheet(onDismiss = onCancel, modifier = Modifier.testTag("pinRecoverySheet")) { enabled, close ->
+        BubbleSheetHeader(stringResource(R.string.pin_recovery_title), close, enabled = enabled)
+        Text(
+            stringResource(R.string.pin_recovery_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = bubbleColors().muted,
+        )
+        RecoveryError(state.error)
+        BubbleButton(
+            onClick = onVerify,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled && state.step != Step.VERIFYING,
         ) {
-            Text(stringResource(R.string.pin_recovery_title), style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(spacing.space12))
-            Text(stringResource(R.string.pin_recovery_message), style = MaterialTheme.typography.bodyMedium)
-            if (state.error != null) {
-                Spacer(Modifier.height(spacing.space12))
-                RecoveryError(state.error)
-            }
-            Spacer(Modifier.height(spacing.space20))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing.space8, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
-                Button(onClick = onVerify, enabled = state.step != Step.VERIFYING,
-                    modifier = Modifier.heightIn(min = spacing.space48)) {
-                    Text(stringResource(R.string.pin_recovery_verify), textAlign = TextAlign.Center)
-                }
-            }
+            Text(stringResource(R.string.pin_recovery_verify))
         }
     }
 }
@@ -165,48 +148,31 @@ private fun RecoveryPinScreen(
     onBackspace: () -> Unit,
     onCancel: () -> Unit
 ) {
-    val spacing = MaterialTheme.spacing
-    Surface(Modifier.fillMaxSize()) {
-        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
-            // Short/landscape screens can scroll; on phones the keypad stays at the bottom.
-            Column(
-                Modifier.widthIn(max = 480.dp).fillMaxWidth()
-                    .verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(
-                    Modifier.padding(horizontal = spacing.space24, vertical = spacing.space24),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(spacing.space12)
-                ) {
-                    Text(stringResource(if (state.step == Step.NEW_PIN) R.string.enter_new_pin else R.string.confirm_your_pin),
-                        style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                    RecoveryError(state.error)
-                }
-                PINCodeSection(Modifier.widthIn(max = 240.dp).fillMaxWidth().padding(vertical = spacing.space24),
-                    state.digits, PINCodeEnterState.FIRST)
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()
-                        .testTag("pinRecoveryCancel").padding(bottom = spacing.space8)) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                    ButtonsSection(modifier = Modifier.testTag("pinRecoveryKeypad"), showFingerprintButton = false,
-                        onDigitButtonClick = onDigit, onBackspaceButtonClick = onBackspace)
-                }
+    val colors = bubbleColors()
+    PinEntryLayout(
+        hostInsets = WindowInsets.safeDrawing.asPaddingValues(),
+        prompt = if (state.step == Step.NEW_PIN) R.string.enter_new_pin else R.string.confirm_your_pin,
+        pin = state.digits,
+        header = {
+            TextButton(onClick = onCancel, modifier = Modifier.testTag("pinRecoveryCancel")) {
+                Text(stringResource(R.string.cancel), color = colors.action)
             }
-        }
-    }
+        },
+        supportingContent = { RecoveryError(state.error) },
+        keypadModifier = Modifier.testTag("pinRecoveryKeypad"),
+        onDigit = onDigit,
+        onBackspace = onBackspace,
+    )
 }
 
 @Composable
 private fun RecoveryError(error: Error?) {
     error?.let {
-        Text(stringResource(when (it) {
+        PinEntryError(stringResource(when (it) {
             Error.UNAVAILABLE -> R.string.pin_recovery_unavailable
             Error.CANCELLED -> R.string.pin_recovery_cancelled
             Error.MISMATCH -> R.string.pin_recovery_mismatch
             Error.SAVE_FAILED -> R.string.pin_save_failed_message
-        }), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        }))
     }
 }

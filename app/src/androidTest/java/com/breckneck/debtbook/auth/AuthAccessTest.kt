@@ -3,9 +3,11 @@ package com.breckneck.debtbook.auth
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
@@ -79,6 +81,20 @@ class AuthAccessTest {
             assertFalse(AuthSession.isUnlocked)
             "1234".forEach { digit -> compose.onNodeWithText(digit.toString()).performClick() }
             compose.waitUntil(5_000) { AuthSession.isUnlocked }
+        }
+    }
+
+    @Test fun unlockKeepsTheKeypadAtTheBottomAndExitAboveThePrompt() {
+        ActivityScenario.launch(AuthorizationActivity::class.java).use {
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            val prompt = compose.onNodeWithText(context.getString(R.string.enter_pin))
+                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            val exit = compose.onNodeWithText(context.getString(R.string.exit))
+                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            val zero = compose.onNodeWithText("0").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            assertTrue("PIN prompt should be in the top half", prompt.center.y < root.height / 2)
+            assertTrue("Exit should be above the PIN prompt", exit.bottom < prompt.top)
+            assertTrue("The last keypad row should be near the bottom", zero.bottom > root.height * .86f)
         }
     }
 
