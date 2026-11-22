@@ -8,16 +8,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.launchOnLifecycleStarted
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.goal.create.screen.CreateGoalsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -29,7 +26,6 @@ class CreateGoalsFragment : Fragment() {
     private lateinit var getImageUriActivityResult: ActivityResultLauncher<String?>
 
     interface OnButtonClickListener {
-        val goalsContentInsets: PaddingValues
         fun onBackButtonClick()
     }
 
@@ -50,15 +46,8 @@ class CreateGoalsFragment : Fragment() {
         savedInstanceState: Bundle?,
     ): View {
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        val host = requireNotNull(onClickListener)
-        return ComposeView(requireContext()).apply {
-            id = R.id.createGoalComposeView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                DebtBookTheme {
-                    CreateGoalsScreen(vm = vm, hostInsets = host.goalsContentInsets)
-                }
-            }
+        return bubbleScreen(R.id.createGoalComposeView) { insets ->
+            CreateGoalsScreen(vm = vm, hostInsets = insets)
         }
     }
 

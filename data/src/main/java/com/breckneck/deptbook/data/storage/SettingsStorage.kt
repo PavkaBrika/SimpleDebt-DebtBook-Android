@@ -8,14 +8,6 @@ interface SettingsStorage {
 
     fun getUserData(): UserData
 
-    fun setFirstMainCurrency(currency: String)
-
-    fun getFirstMainCurrency(): String
-
-    fun setSecondMainCurrency(currency: String)
-
-    fun getSecondMainCurrency(): String
-
     fun setDefaultCurrency(currency: String)
 
     fun getDefaultCurrency(): String
@@ -54,7 +46,7 @@ interface SettingsStorage {
 
     fun setFinanceCurrency(currency: String)
 
-    fun getFinanceCurrency(): String
+    fun getFinanceCurrency(): String?
 
     fun setPINCodeEnabled(isEnabled: Boolean)
 

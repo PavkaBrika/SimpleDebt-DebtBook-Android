@@ -6,14 +6,6 @@ import com.breckneck.deptbook.domain.util.HumanOrderAttribute
 
 interface SettingsRepository {
 
-    fun setFirstMainCurrency(currency: String)
-
-    fun getFirstMainCurrency(): String
-
-    fun setSecondMainCurrency(currency: String)
-
-    fun getSecondMainCurrency(): String
-
     fun setDefaultCurrency(currency: String)
 
     fun getDefaultCurrency(): String
@@ -56,7 +48,7 @@ interface SettingsRepository {
 
     fun setFinanceCurrency(currency: String)
 
-    fun getFinanceCurrency(): String
+    fun getFinanceCurrency(): String?
 
     fun setPINCodeEnabled(isEnabled: Boolean)
 

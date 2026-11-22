@@ -51,7 +51,7 @@ class DebtStatementJourneyTest {
     }
     private fun displayedText(): String {
         var text = ""
-        onView(withId(R.id.statementText)).check { view, _ -> text = (view as TextView).text.toString() }
+        onView(withId(R.id.statementText)).inRoot(isDialog()).check { view, _ -> text = (view as TextView).text.toString() }
         return text
     }
 
@@ -100,12 +100,12 @@ class DebtStatementJourneyTest {
                 compose.onNodeWithTag("debtActionsCancel").performClick()
                 tap(R.id.settledDebtsTab)
                 preview()
-                onView(withId(R.id.statementText)).check(matches(
+                onView(withId(R.id.statementText)).inRoot(isDialog()).check(matches(
                     isDescendantOfA(withId(com.google.android.material.R.id.design_bottom_sheet))
                 ))
                 fun line(id: Int, value: String) = screen.screenString(id).format(value)
-                onView(withId(R.id.includeSettled)).check(matches(isNotChecked()))
-                onView(withId(R.id.includeEarlyEntries)).check(matches(isNotChecked()))
+                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isNotChecked()))
+                onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isNotChecked()))
                 val open = displayedText()
                 assertFalse(open.contains(earlyNote))
                 assertTrue(open.contains(line(R.string.statement_you_owe, "10 250 RUB")))
@@ -133,8 +133,8 @@ class DebtStatementJourneyTest {
                 )) assertTrue(expected, all.contains(expected))
                 assertTrue(all.contains(earlyNote))
                 screen.recreate()
-                onView(withId(R.id.includeEarlyEntries)).check(matches(isChecked()))
-                onView(withId(R.id.includeSettled)).check(matches(isChecked()))
+                onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isChecked()))
+                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isChecked()))
                 assertEquals(all, displayedText())
                 tap(R.id.includeEarlyEntries)
                 val onlySettledAndOpen = displayedText()
@@ -156,8 +156,8 @@ class DebtStatementJourneyTest {
                 onView(withId(R.id.showNegativeRadioButton)).inRoot(isDialog()).perform(scrollTo(), click())
                 onView(withId(R.id.confirmButton)).inRoot(isDialog()).perform(scrollTo(), click())
                 preview()
-                onView(withId(R.id.includeSettled)).check(matches(isNotChecked()))
-                onView(withId(R.id.includeEarlyEntries)).check(matches(withEffectiveVisibility(Visibility.GONE)))
+                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isNotChecked()))
+                onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(withEffectiveVisibility(Visibility.GONE)))
                 assertTrue(displayedText().contains(screen.screenString(R.string.statement_empty)))
                 tap(R.id.includeSettled)
                 val selected = displayedText()
@@ -166,7 +166,7 @@ class DebtStatementJourneyTest {
                 assertTrue(selected.contains(line(R.string.statement_borrowed, "500 RUB")))
                 assertFalse(selected.contains(line(R.string.statement_lent, "16 000 RUB")))
                 screen.recreate()
-                onView(withId(R.id.includeSettled)).check(matches(isChecked()))
+                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isChecked()))
                 val shown = displayedText()
                 assertEquals(selected, shown)
                 compose.waitUntil(8000) {

@@ -6,9 +6,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.BundleCompat
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
@@ -16,7 +13,7 @@ import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.launchOnLifecycleStarted
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.deptbook.domain.model.Goal
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -25,21 +22,14 @@ class GoalDetailsFragment : Fragment() {
     private val vm by viewModels<GoalDetailsViewModel>()
 
     interface OnClickListener {
-        val goalsContentInsets: PaddingValues
         fun onEditGoalButtonClick(goal: Goal)
         fun onBackButtonClick()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
-        ComposeView(requireContext()).apply {
-            id = R.id.goalDetailsComposeView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        bubbleScreen(R.id.goalDetailsComposeView) { insets ->
             val host = requireActivity() as OnClickListener
-            setContent {
-                DebtBookTheme {
-                    GoalDetailsScreen(vm, host.goalsContentInsets, onBack = host::onBackButtonClick)
-                }
-            }
+            GoalDetailsScreen(vm, insets, onBack = host::onBackButtonClick)
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

@@ -85,9 +85,9 @@ def seed():
         if node is None:
             node = ET.SubElement(prefs, 'boolean', name=name)
         node.set('value', value)
-    currency = next((item for item in prefs if item.get('name') == 'main_currency_first'), None)
+    currency = next((item for item in prefs if item.get('name') == 'default_currency'), None)
     if currency is None:
-        currency = ET.SubElement(prefs, 'string', name='main_currency_first')
+        currency = ET.SubElement(prefs, 'string', name='default_currency')
     currency.text = 'EUR'
     write_private(path, ET.tostring(prefs, encoding='utf-8', xml_declaration=True))
 

@@ -3,7 +3,6 @@ package com.breckneck.debtbook.core
 import android.content.ActivityNotFoundException
 import androidx.core.net.toUri
 import com.breckneck.debtbook.settings.openSettingsIntent
-import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -14,9 +13,6 @@ import database.AppDataBase
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
-import androidx.core.view.doOnNextLayout
-import android.graphics.Rect
-import android.widget.EditText
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.ui.onNavDestinationSelected
 import com.breckneck.debtbook.auth.ActivityAuthGate
@@ -28,6 +24,7 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.Menu
 import android.view.View
+import android.view.ViewStub
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
@@ -40,8 +37,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
-import androidx.core.view.updateLayoutParams
-import androidx.compose.ui.platform.ComposeView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
@@ -89,6 +84,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     CreateFinanceCategoryFragment.OnClickListener, FinanceDetailsFragment.OnClickListener,
     GoalsFragment.OnClickListener, CreateGoalsFragment.OnButtonClickListener, GoalDetailsFragment.OnClickListener {
 
+    private var bannerAd: BannerAdView? = null
     private var interstitialAd: InterstitialAd? = null
     private var interstitialAdLoader: InterstitialAdLoader? = null
     private var vib: Vibrator? = null
@@ -105,7 +101,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         },
         lockDelayMillis = { vm.pinLockDelayMillis() }
     )
-    override var goalsContentInsets by mutableStateOf(PaddingValues(0.dp))
+    internal var screenInsets by mutableStateOf(PaddingValues(0.dp))
         private set
     private lateinit var tabMenu: Menu
     lateinit var navController: NavController
@@ -113,7 +109,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         authGate.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableBubbleEdgeToEdge()
 //        val config = resources.configuration
 //        val lang = "fr" // your language code
 //        val locale = Locale(lang)
@@ -154,72 +150,38 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
 
-//        YANDEX MOBILE ADVERTISEMENT
-        MobileAds.setUserConsent(false)
-
-        //BANNER AD
-        val bannerAd: BannerAdView = findViewById(R.id.bannerAdView)
-
-        if (vm.adsDisabled.value != true) {
-            val adRequestBuild = AdRequest.Builder().build()
-
+        if (!BuildConfig.DEBUG && vm.adsDisabled.value != true) {
             var adWidthPixels = findViewById<ConstraintLayout>(R.id.rootLayout).width
             if (adWidthPixels == 0) {
                 adWidthPixels = resources.displayMetrics.widthPixels
             }
             val adWidth = (adWidthPixels / resources.displayMetrics.density).roundToInt()
 
-            bannerAd.apply {
-                setAdUnitId("R-M-1753297-1")
-//            setAdUnitId("R-M-DEMO-320x50")
-                setAdSize(BannerAdSize.stickySize(applicationContext, adWidth))
+            val bannerSlot = findViewById<ViewStub>(R.id.bannerAdSlot)
+            bannerAd = (bannerSlot.inflate() as BannerAdView).apply {
+                setAdSize(BannerAdSize.sticky(this@MainActivity, adWidth))
                 setBannerAdEventListener(object : BannerAdEventListener {
                     override fun onAdLoaded() {
                         Log.e(bannerTAG, "BANNER LOADED")
-                        if (isDestroyed) {
-                            bannerAd.destroy()
-                            return
-                        }
                     }
 
-                    override fun onAdFailedToLoad(p0: AdRequestError) {
-                        Log.e(bannerTAG, "BANNER LOAD FAILED")
+                    override fun onAdFailedToLoad(error: AdRequestError) {
+                        Log.e(bannerTAG, "Banner load failed: ${error.description}")
                     }
 
                     override fun onAdClicked() {
                         Log.e(bannerTAG, "BANNER CLICKED")
                     }
 
-                    override fun onLeftApplication() {
-                        Log.e(bannerTAG, "BANNER LEFT")
-                    }
-
-                    override fun onReturnedToApplication() {
-                        Log.e(bannerTAG, "BANNER RETURN")
-                    }
-
-                    override fun onImpression(p0: ImpressionData?) {
+                    override fun onImpression(impressionData: ImpressionData?) {
                         Log.e(bannerTAG, "BANNER IMPRESSION")
                     }
                 })
-                loadAd(adRequestBuild)
+                loadAd(AdRequest.Builder("R-M-1753297-1").build())
             }
 
-            interstitialAdLoader = InterstitialAdLoader(applicationContext).apply {
-                setAdLoadListener(object : InterstitialAdLoadListener {
-                    override fun onAdLoaded(interstitialAd: InterstitialAd) {
-                        Log.e(interstitialTAG, "Interstitial ad load success")
-                        this@MainActivity.interstitialAd = interstitialAd
-                    }
-
-                    override fun onAdFailedToLoad(p0: AdRequestError) {
-                        Log.e(interstitialTAG, "Interstitial ad load failed")
-                    }
-                })
-            }
+            interstitialAdLoader = InterstitialAdLoader(applicationContext)
             loadInterstitialAd()
-        } else {
-            bannerAd.visibility = View.GONE
         }
 
         //NAVIGATION
@@ -245,65 +207,26 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     private fun configureHostInsets() {
         val root = findViewById<View>(R.id.rootLayout)
         val dock = findViewById<View>(R.id.bottomDock)
-        val host = findViewById<View>(R.id.frameLayout)
-        val defaultContrast = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && window.isNavigationBarContrastEnforced
-        var overlayGoals = false
         var safeBars = Insets.NONE
 
-        fun updateGoalsInsets() {
-            if (overlayGoals) {
-                val density = resources.displayMetrics.density
-                goalsContentInsets = PaddingValues.Absolute(
-                    left = (safeBars.left / density).dp,
-                    top = (safeBars.top / density).dp,
-                    right = (safeBars.right / density).dp,
-                    bottom = (dock.height / density).dp,
-                )
-            }
+        fun updateScreenInsets() {
+            val density = resources.displayMetrics.density
+            screenInsets = PaddingValues.Absolute(
+                left = (safeBars.left / density).dp,
+                top = (safeBars.top / density).dp,
+                right = (safeBars.right / density).dp,
+                bottom = (dock.height / density).dp,
+            )
         }
-        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateGoalsInsets() }
-
+        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateScreenInsets() }
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
-            val bottom = maxOf(bars.bottom, ime.bottom)
-            // Amount fields on the list and in details use a separate modal window.
-            val goalForm = navController.currentDestination?.id == R.id.createGoalsFragment
-            val drawBehindBars = overlayGoals && (!goalForm || ime.bottom <= bars.bottom)
-            val revealInput = !overlayGoals && ime.bottom > bars.bottom && root.paddingBottom != ime.bottom
-            safeBars = bars
-            root.updatePadding(
-                left = if (overlayGoals) 0 else bars.left, top = if (overlayGoals) 0 else bars.top,
-                right = if (overlayGoals) 0 else bars.right, bottom = if (drawBehindBars) 0 else bottom,
-            )
-            dock.updatePadding(
-                left = if (overlayGoals) bars.left else 0, right = if (overlayGoals) bars.right else 0,
-                bottom = if (drawBehindBars) bars.bottom else 0,
-            )
-            updateGoalsInsets()
-            if (revealInput) root.doOnNextLayout {
-                (root.findFocus() as? EditText)?.let { input ->
-                    input.requestRectangleOnScreen(Rect(0, 0, input.width, input.height), true)
-                }
-            }
-            WindowInsetsCompat.CONSUMED
-        }
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            val goals = when (destination.id) {
-                R.id.goalsFragment, R.id.goalDetailsFragment, R.id.createGoalsFragment -> true
-                else -> false
-            }
-            if (goals != overlayGoals) {
-                overlayGoals = goals
-                host.updateLayoutParams<ConstraintLayout.LayoutParams> {
-                    bottomToTop = if (goals) ConstraintLayout.LayoutParams.UNSET else R.id.bottomDock
-                    bottomToBottom = if (goals) ConstraintLayout.LayoutParams.PARENT_ID else ConstraintLayout.LayoutParams.UNSET
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    window.isNavigationBarContrastEnforced = !goals && defaultContrast
-                }
-            }
-            ViewCompat.requestApplyInsets(root)
+            safeBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val keyboardOpen = ime > safeBars.bottom
+            dock.translationY = if (keyboardOpen) -ime.toFloat() else 0f
+            dock.updatePadding(left = safeBars.left, right = safeBars.right, bottom = if (keyboardOpen) 0 else safeBars.bottom)
+            updateScreenInsets()
+            insets
         }
         ViewCompat.requestApplyInsets(root)
     }
@@ -379,8 +302,17 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     private fun loadInterstitialAd() {
-        val adRequestConfiguration = AdRequestConfiguration.Builder("R-M-1753297-2").build()
-        interstitialAdLoader?.loadAd(adRequestConfiguration)
+        val request = AdRequest.Builder("R-M-1753297-2").build()
+        interstitialAdLoader?.loadAd(request, object : InterstitialAdLoadListener {
+            override fun onAdLoaded(interstitialAd: InterstitialAd) {
+                Log.i(interstitialTAG, "Interstitial ad load success")
+                this@MainActivity.interstitialAd = interstitialAd
+            }
+
+            override fun onAdFailedToLoad(error: AdRequestError) {
+                Log.e(interstitialTAG, "Interstitial ad load failed: ${error.description}")
+            }
+        })
     }
 
     private fun showInterstitialAd() {
@@ -391,8 +323,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                     vm.onAdShow()
                 }
 
-                override fun onAdFailedToShow(p0: AdError) {
-                    Log.e(interstitialTAG, "Interstitial ad failed to show")
+                override fun onAdFailedToShow(adError: AdError) {
+                    Log.e(interstitialTAG, "Interstitial ad failed to show: ${adError.description}")
                     adPolicy.finish()
                     destroyInterstitialAd()
                     loadInterstitialAd()
@@ -401,8 +333,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 override fun onAdDismissed() {
                     Log.e(interstitialTAG, "Interstitial ad dismissed")
                     adPolicy.finish()
-                    interstitialAd?.setAdEventListener(null)
-                    interstitialAd = null
+                    destroyInterstitialAd()
                     loadInterstitialAd()
                 }
 
@@ -410,7 +341,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                     Log.e(interstitialTAG, "Interstitial ad clicked")
                 }
 
-                override fun onAdImpression(p0: ImpressionData?) {
+                override fun onAdImpression(impressionData: ImpressionData?) {
                     Log.e(interstitialTAG, "Interstitial ad impression")
                 }
             })
@@ -419,11 +350,12 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        interstitialAdLoader?.setAdLoadListener(null)
+        bannerAd?.destroy()
+        interstitialAdLoader?.cancelLoading()
         interstitialAdLoader = null
         destroyInterstitialAd()
         adPolicy.finish()
+        super.onDestroy()
     }
 
     private fun startTickVibration() {
@@ -471,12 +403,13 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         vm.onActionClick()
     }
 
-    override fun onAddButtonClick(currency: String?) {
-        navController.navigate(R.id.action_mainFragment_to_newDebtFragment, Bundle().apply { currency?.let { putString("currency", it) } })
+    override fun onAddButtonClick() {
+        navController.navigate(R.id.action_mainFragment_to_newDebtFragment)
         vm.onActionClick()
     }
 
     override fun onFilterButtonLongClick() {
+        if (BuildConfig.DEBUG) return
         vm.toggleAdsDisabled()
         val isNowDisabled = vm.adsDisabled.value == true
         Toast.makeText(this, if (isNowDisabled) "✓" else "✗", Toast.LENGTH_SHORT).show()

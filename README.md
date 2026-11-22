@@ -20,7 +20,8 @@ Financial records are stored locally with Room. Google Drive backup and restore 
 - 📝 Record amounts, dates, notes, and a currency for each person's account.
 - 👥 Pick a name from device contacts or enter it manually.
 - 🔎 Search by name, filter by debt direction, and sort by name, amount, or date.
-- 📊 View totals in two selected currencies, share debt details, and export a person's debt history to Excel (`.xls`).
+- 📊 View totals by currency, share debt details, and export a person's debt history to Excel (`.xls`).
+- 🌐 Start with the currency for your device's region and change the default in Settings.
 
 ### 💰 Income and expenses
 
@@ -84,7 +85,7 @@ Versions below reflect the checked-in build configuration in `develop_main`.
 | Backup | Google Sign-In, Google Drive API v3, Gson |
 | Export | Apache POI for Excel `.xls` files |
 | Authentication | AndroidX Biometric, Android Keystore for PIN encryption |
-| Advertising | Yandex Mobile Ads 7.18.4 |
+| Advertising | Yandex Mobile Ads 8.6.0 |
 | Tests | JUnit 5 in `domain`, JUnit 4-style app/data tests, Mockito, Coroutines Test, Orbit Test |
 
 ## 🚀 Getting started

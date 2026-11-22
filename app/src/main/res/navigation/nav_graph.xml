@@ -68,7 +68,9 @@
             app:argType="integer" />
         <argument
             android:name="currency"
-            app:argType="string" />
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
         <!-- sum is a Double Bundle extra; Navigation XML has no double arg type. -->
         <argument
             android:name="date"

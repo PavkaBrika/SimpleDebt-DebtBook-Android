@@ -3,9 +3,9 @@
 const flowViews = {}, flowActions = {};
 const flowNames = {categoryHistory:'История категории', financeForm:'Финансовая запись', categoryForm:'Новая категория', goalDetail:'Детали цели', goalForm:'Форма цели', backup:'Резервная копия', security:'Защита', pin:'Вход по PIN', recovery:'Восстановление PIN'};
 const flowRoots = {categoryHistory:'finance',financeForm:'finance',categoryForm:'finance',goalDetail:'goals',goalForm:'goals',backup:'settings',security:'settings',pin:'settings',recovery:'settings'};
-const currencyCodes = 'USD EUR RUB BYN UAH KZT JPY GBP AUD CAD CHF CNY SEK MXN PLN AED RON SAR RSD TJS TRY UZS MNT CZK AZN AMD BGN ILS'.split(' ');
+const currencyCodes = 'USD EUR RUB BYN UAH KZT JPY GBP AUD CAD CHF CNY SEK MXN PLN AED RON SAR RSD TJS TRY UZS MNT CZK AZN AMD BGN ILS VND BRL INR KRW IDR THB TWD NZD SGD HKD'.split(' ');
 function featureFrame() {
-  return {financeDir:'Расходы',financeCur:'RUB',period:'День',day:TODAY,goalId:null,categoryId:null,trail:[],peopleOrder:'Исходный порядок',historyOrder:'Дата операции ↓',historyFilter:'Все'};
+  return {financeDir:'Расходы',financeCur:defaultCurrency(),period:'День',day:TODAY,goalId:null,categoryId:null,trail:[],peopleOrder:'Исходный порядок',historyOrder:'Дата операции ↓',historyFilter:'Все'};
 }
 function go(i, route) {
   const f=frames[i]; f.trail.push(f.route); setRoute(f,route,'forward'); render(i);
@@ -76,7 +76,7 @@ function demoSnapshot() {
   return {format:'SimpleDebt-design-2',people,finance:ledger,goals:savings,preferences:{...prefs},serial};
 }
 function applySnapshot(data) {
-  people=data.people;ledger=data.finance;savings=data.goals;prefs=data.preferences;serial=data.serial;
+  people=data.people;ledger=data.finance;savings=data.goals;prefs={defaultCur:data.preferences.defaultCur,shareSum:data.preferences.shareSum,theme:data.preferences.theme,delay:data.preferences.delay};serial=data.serial;
 }
 function baseRoute(route) {return flowRoots[route] || (route==='person'||route==='new'?'home':route);}
 function repairRoute(f) {
@@ -115,8 +115,10 @@ function listStateControl(f){
 function reviewList(f){
   const root=baseRoute(f.route), main=f.route===root;
   const titles={home:'Долги',finance:'Финансы',goals:'Цели',person:people.find(p=>p.id===f.personId)?.name,categoryHistory:categoryById(f.categoryId)?.name,goalDetail:goalById(f.goalId)?.name};
-  const title=titles[f.route], h=main?heading(title):backbar(title);
-  const withHeader=(body,action='')=>f.route==='goalDetail'?goalScreenLayout(title,body):layout(h+body,action,main?nav(root):'',f.route==='goals');
+  const title=titles[f.route];
+  const withHeader=(body,action='')=>layout((main?heading(title):'')+body,{
+    action,navigation:main?nav(root):'',topBar:main?'':backbar(title,{pillTitle:f.route==='goalDetail'})
+  });
   if(f.listState==='Загрузка')return withHeader('<div class="skeleton" role="status" aria-label="Загрузка"><i></i><i></i><i></i></div>');
   if(f.listState==='Ошибка')return withHeader(empty('Не удалось загрузить записи.')+primary('list-retry','Повторить','reset',true));
   const labels={home:'В книге пока нет долгов.',finance:'За этот период записей нет.',goals:'Целей пока нет.',person:'История долгов пуста.',categoryHistory:'Операций пока нет.',goalDetail:'Пополнений и снятий пока нет.'};

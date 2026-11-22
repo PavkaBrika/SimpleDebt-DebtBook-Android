@@ -28,6 +28,7 @@ import com.breckneck.debtbook.auth.PinRecoveryViewModel.Error
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Step
 import com.breckneck.debtbook.auth.screen.ButtonsSection
 import com.breckneck.debtbook.auth.screen.PINCodeSection
+import com.breckneck.debtbook.core.enableBubbleEdgeToEdge
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.spacing
@@ -50,6 +51,7 @@ class PinRecoveryActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableBubbleEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (!getPinEnabled.execute()) { finish(); return }
         // Re-create the callback on configuration changes so AndroidX can reconnect it.

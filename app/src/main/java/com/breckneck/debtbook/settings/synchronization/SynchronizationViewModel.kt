@@ -49,6 +49,7 @@ class SynchronizationViewModel @Inject constructor(
     private val backupFiles = BackupFiles(context)
     private val backupTransfer = BackupTransfer(getAllAppData::execute, replaceAllAppData::execute, backupFiles::retainPrevious, backupFiles, getFinanceCurrency::execute)
     enum class RestoreSource { FILE, DRIVE_LATEST, DRIVE_PREVIOUS, BEFORE_RESTORE }
+    internal enum class SaveDestination { DRIVE, FILE }
     enum class CompletedOperation { FILE_SAVED, DRIVE_SAVED, RESTORED }
     class RestorePreview(val createdAt: Long?, val records: Int, val photoCount: Int,
         val legacy: Boolean, val legacyFinanceCurrency: String,
@@ -80,9 +81,9 @@ class SynchronizationViewModel @Inject constructor(
     private var _driveServiceHelper = MutableLiveData<BackupDrive?>()
     val driveServiceHelper: LiveData<BackupDrive?>
         get() = _driveServiceHelper
-    private val _isSynchronizing = MutableLiveData<Boolean>(false)
-    val isSynchronizing: LiveData<Boolean>
-        get() = _isSynchronizing
+    private val _savingTo = MutableLiveData<SaveDestination?>(null)
+    internal val savingTo: LiveData<SaveDestination?>
+        get() = _savingTo
     private val _isRestoring = MutableLiveData<Boolean>(false)
     val isRestoring: LiveData<Boolean>
         get() = _isRestoring
@@ -156,7 +157,7 @@ class SynchronizationViewModel @Inject constructor(
         if (busy() || driveReady.value != true) return
         val helper = driveServiceHelper.value ?: return
         val existingId = fileId.value
-        _isSynchronizing.value = true
+        _savingTo.value = SaveDestination.DRIVE
         _operationError.value = null
         viewModelScope.launch {
             try {
@@ -178,12 +179,12 @@ class SynchronizationViewModel @Inject constructor(
             } catch (error: Exception) {
                 _operationError.value = error
             } finally {
-                _isSynchronizing.value = false
+                _savingTo.value = null
             }
         }
     }
 
-    private fun transferring() = isSynchronizing.value == true || isRestoring.value == true
+    private fun transferring() = savingTo.value != null || isRestoring.value == true
     val blocksExit: Boolean get() = transferring() && driveBackups.value == null
 
     private fun busy() = transferring() || restorePreview.value != null || driveBackups.value != null
@@ -296,7 +297,7 @@ class SynchronizationViewModel @Inject constructor(
 
     fun exportFile(uri: Uri) {
         if (busy()) return
-        _isSynchronizing.value = true
+        _savingTo.value = SaveDestination.FILE
         _operationError.value = null
         viewModelScope.launch {
             try {
@@ -309,7 +310,7 @@ class SynchronizationViewModel @Inject constructor(
                 operationSucceeded.value = CompletedOperation.FILE_SAVED
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) { _operationError.value = error }
-            finally { _isSynchronizing.value = false }
+            finally { _savingTo.value = null }
         }
     }
 

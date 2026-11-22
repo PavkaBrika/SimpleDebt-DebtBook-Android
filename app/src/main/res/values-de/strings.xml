@@ -43,9 +43,6 @@
     <string name="continue_b">Weiter</string>
     <string name="rate_app_toast">Bitte bewerten Sie die App, indem Sie auf die Sterne klicken.</string>
     <string name="app_already_rated_hint">Sorry, App ist bereits bewertet</string>
-    <string name="main_currencies_hint">Die Statistiken für diese Währungen werden auf dem Hauptbildschirm angezeigt</string>
-    <string name="first_main_currency">Erste Hauptwährung</string>
-    <string name="second_main_currency">Zweite Hauptwährung</string>
     <string name="default_currency">Standardwährung</string>
     <string name="default_currencies_hint">Diese Währung wird beim Hinzufügen neuer Schulden standardmäßig ausgewählt</string>
     <string name="more_detailed_share_text">Saldo im geteilten Verlauf</string>

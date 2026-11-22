@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,18 +38,18 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-internal fun FinanceScreen(vm: FinanceViewModel, host: FinanceFragment.OnButtonClickListener) {
+internal fun FinanceScreen(vm: FinanceViewModel, hostInsets: PaddingValues, host: FinanceFragment.OnButtonClickListener) {
     val state by vm.summary.collectAsState()
     FinanceContent(state, vm::setPeriod, vm::setCurrency, vm::setDirection,
         onCategory = { host.onFinanceCategoryClick(it.name, it.id, it.state, state.currency, state.period.day) },
         onAdd = { host.onAddFinanceButtonClick(state.direction, state.period.day, state.currency) },
-        retry = vm::refresh, onTab = host::onTabSelected)
+        retry = vm::refresh, onTab = host::onTabSelected, hostInsets = hostInsets)
 }
 
 @Composable
 private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> Unit, setCurrency: (String) -> Unit,
     selectDirection: (FinanceCategoryState) -> Unit, onCategory: (FinanceCategory) -> Unit,
-    onAdd: () -> Unit, retry: () -> Unit, onTab: (Int) -> Unit) {
+    onAdd: () -> Unit, retry: () -> Unit, onTab: (Int) -> Unit, hostInsets: PaddingValues = PaddingValues(0.dp)) {
     val colors = bubbleColors()
     val expenses = state.direction == FinanceCategoryState.EXPENSE
     val direction = stringResource(if (expenses) R.string.expenses else R.string.revenues)
@@ -58,8 +57,17 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
     var picker by rememberSaveable { mutableIntStateOf(0) }
     val slideDistance = with(androidx.compose.ui.platform.LocalDensity.current) { 12.dp.roundToPx() }
     val period = state.period
-    Column(Modifier.fillMaxSize().background(colors.background)) {
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp),
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        bottomAction = {
+            BubbleButton(onAdd, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                Text(stringResource(if (expenses) R.string.finance_add_expense else R.string.finance_add_income), Modifier.padding(start = 8.dp))
+            }
+        },
+        tabs = { BubbleBottomBar(R.id.financeFragment, onTab) },
+    ) { padding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding,
             verticalArrangement = Arrangement.Top) {
             item {
                 Text(stringResource(R.string.finances), color = colors.ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
@@ -115,19 +123,14 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
                 BubbleOutlinedButton({ setPeriod(period.copy(day = LedgerDate.today())) }) { Text(stringResource(R.string.finance_today)) }
             }
         }
-        BubbleButton(onAdd, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-            Text(stringResource(if (expenses) R.string.finance_add_expense else R.string.finance_add_income), Modifier.padding(start = 8.dp))
-        }
-        BubbleBottomBar(R.id.financeFragment, onTab)
     }
     when (picker) {
         R.string.select_interval -> PeriodSheet(period, intervals, onApply = { setPeriod(it); picker = 0 }, onDismiss = { picker = 0 })
         R.string.select_currency -> {
-            val options = stringArrayResource(R.array.currencies).toList()
+            val options = currencyOptions(stringArrayResource(R.array.currencies).toList(), state.currency)
             SettingsPickerBottomSheet(stringResource(picker), options,
-                options.indexOfFirst { it.substringAfterLast(' ') == state.currency },
-                onItemSelected = { setCurrency(options[it].substringAfterLast(' ')); picker = 0 }, onDismiss = { picker = 0 })
+                options.indexOfFirst { currencyCode(it) == state.currency },
+                onItemSelected = { setCurrency(currencyCode(options[it])); picker = 0 }, onDismiss = { picker = 0 })
         }
     }
 }

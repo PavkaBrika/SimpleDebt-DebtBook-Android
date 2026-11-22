@@ -8,7 +8,6 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
@@ -41,7 +40,7 @@ internal fun ComposeTestRule.enterDebtDate(scenario: ActivityScenario<MainActivi
 
 internal fun ComposeTestRule.openDueCalendarInForm() {
     awaitTag("createDebtDue").performScrollTo().performClick()
-    onNodeWithTag("dueDatePicker").assertExists()
+    awaitTag("dueDatePicker").assertExists()
 }
 
 internal fun testDay(offset: Int) = LedgerDate.fromDate(GregorianCalendar().apply { add(java.util.Calendar.DAY_OF_MONTH, offset) }.time)

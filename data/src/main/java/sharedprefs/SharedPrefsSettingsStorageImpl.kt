@@ -4,13 +4,12 @@ import android.content.Context
 import com.breckneck.deptbook.data.storage.SettingsStorage
 import com.breckneck.deptbook.domain.util.DEBT_QUANTITY_FOR_NEXT_SHOW_APP_RATE_DIALOG
 import entity.UserData
+import util.DeviceCurrency
 import util.ORDER_DEBT_BY_DATE
 import util.ORDER_HUMAN_BY_DATE
 
 private const val SHARED_PREFS_SETTINGS = "shared_prefs_settings"
-private const val MAIN_CURRENCY_FIRST = "main_currency_first" // currency that shown statistics in main fragment
-private const val MAIN_CURRENCY_SECOND = "main_currency_second" // currency that shown statistics in main fragment
-private const val DEFAULT_CURRENCY = "default_currency" // start currency in switch in NewDebtFragment
+private const val DEFAULT_CURRENCY = "default_currency"
 private const val SUM_IN_SHARE_TEXT = "sum_in_share_text" // enable sum for each debt
 private const val APP_RATE = "app_rate"
 private const val APP_THEME = "app_theme"
@@ -45,28 +44,12 @@ class SharedPrefsSettingsStorageImpl(val context: Context): SettingsStorage {
             USER_EMAIL, "")!!)
     }
 
-    override fun setFirstMainCurrency(currency: String) {
-        sharedPreferences.edit().putString(MAIN_CURRENCY_FIRST, currency).apply()
-    }
-
-    override fun getFirstMainCurrency(): String {
-        return sharedPreferences.getString(MAIN_CURRENCY_FIRST, "USD")!!
-    }
-
-    override fun setSecondMainCurrency(currency: String) {
-        sharedPreferences.edit().putString(MAIN_CURRENCY_SECOND, currency).apply()
-    }
-
-    override fun getSecondMainCurrency(): String {
-        return sharedPreferences.getString(MAIN_CURRENCY_SECOND, "EUR")!!
-    }
-
     override fun setDefaultCurrency(currency: String) {
         sharedPreferences.edit().putString(DEFAULT_CURRENCY, currency).apply()
     }
 
     override fun getDefaultCurrency(): String {
-        return sharedPreferences.getString(DEFAULT_CURRENCY, "USD")!!
+        return sharedPreferences.getString(DEFAULT_CURRENCY, null) ?: DeviceCurrency.get(context)
     }
 
     override fun setAddSumInShareText(addSumInShareText: Boolean) {
@@ -149,8 +132,8 @@ class SharedPrefsSettingsStorageImpl(val context: Context): SettingsStorage {
         sharedPreferences.edit().putString(FINANCE_CURRENCY, currency).apply()
     }
 
-    override fun getFinanceCurrency(): String {
-        return sharedPreferences.getString(FINANCE_CURRENCY, "USD")!!
+    override fun getFinanceCurrency(): String? {
+        return sharedPreferences.getString(FINANCE_CURRENCY, null)
     }
 
     override fun setPINCodeEnabled(isEnabled: Boolean) {

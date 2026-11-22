@@ -62,7 +62,6 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtQuantityForAppRateDialogShow
 import com.breckneck.deptbook.domain.usecase.Settings.GetFinanceCurrency
-import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsAuthorized
@@ -71,7 +70,6 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetPINCode
 import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.SetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetUserData
 import com.breckneck.deptbook.domain.usecase.Settings.SetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.SetAppTheme
@@ -79,7 +77,6 @@ import com.breckneck.deptbook.domain.usecase.Settings.SetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtQuantityForAppRateDialogShow
 import com.breckneck.deptbook.domain.usecase.Settings.SetFinanceCurrency
-import com.breckneck.deptbook.domain.usecase.Settings.SetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetIsFingerprintAuthEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.SetIsAuthorized
@@ -88,7 +85,6 @@ import com.breckneck.deptbook.domain.usecase.Settings.SetAdsDisabled
 import com.breckneck.deptbook.domain.usecase.Settings.SetLastSyncDate
 import com.breckneck.deptbook.domain.usecase.Settings.SetPINCode
 import com.breckneck.deptbook.domain.usecase.Settings.SetPINCodeEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.SetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetUserData
 import dagger.Module
 import dagger.Provides
@@ -186,26 +182,6 @@ object DomainModule {
         ReplaceAllDebts(debtRepository = debtRepository)
 
     // ── SETTINGS (singleton — read from SharedPreferences once per session) ──
-
-    @Provides
-    @Singleton
-    fun provideSetFirstMainCurrency(settingsRepository: SettingsRepository) =
-        SetFirstMainCurrency(settingsRepository = settingsRepository)
-
-    @Provides
-    @Singleton
-    fun provideGetFirstMainCurrency(settingsRepository: SettingsRepository) =
-        GetFirstMainCurrency(settingsRepository = settingsRepository)
-
-    @Provides
-    @Singleton
-    fun provideSetSecondMainCurrency(settingsRepository: SettingsRepository) =
-        SetSecondMainCurrency(settingsRepository = settingsRepository)
-
-    @Provides
-    @Singleton
-    fun provideGetSecondMainCurrency(settingsRepository: SettingsRepository) =
-        GetSecondMainCurrency(settingsRepository = settingsRepository)
 
     @Provides
     @Singleton

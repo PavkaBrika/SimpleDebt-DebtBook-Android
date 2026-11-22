@@ -4,12 +4,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -23,11 +21,9 @@ class CreateFinanceFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        ComposeView(requireContext()).apply {
-            id = com.breckneck.debtbook.R.id.financeFormView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        bubbleScreen(com.breckneck.debtbook.R.id.financeFormView) { insets ->
             val host = requireActivity() as OnClickListener
-            setContent { DebtBookTheme { CreateFinanceScreen(vm, host) } }
+            CreateFinanceScreen(vm, insets, host)
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

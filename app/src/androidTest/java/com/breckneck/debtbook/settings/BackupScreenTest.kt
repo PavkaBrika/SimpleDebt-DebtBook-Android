@@ -33,7 +33,8 @@ class BackupScreenTest {
         compose.waitUntil(10_000) { compose.onAllNodes(matcher).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         return compose.onNode(matcher)
     }
-    private fun closeSheet() = compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
+    private fun closeSheet() = compose.onNodeWithContentDescription(context.getString(R.string.cancel))
+        .performScrollTo().performClick()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val prefs get() = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
     private lateinit var originalPrefs: Map<String, *>

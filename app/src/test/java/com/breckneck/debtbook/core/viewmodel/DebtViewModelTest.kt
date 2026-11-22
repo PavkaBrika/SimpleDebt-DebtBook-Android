@@ -12,7 +12,7 @@ import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.GetAllHumansUseCase
 import com.breckneck.deptbook.domain.usecase.Human.UpdateHuman
-import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
+import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
@@ -38,8 +38,7 @@ class DebtViewModelTest {
 
     private val getAllDebts = Mockito.mock(GetAllDebts::class.java)
     private val getAllHumansUseCase = Mockito.mock(GetAllHumansUseCase::class.java)
-    private val getFirstMainCurrency = Mockito.mock(GetFirstMainCurrency::class.java)
-    private val getSecondMainCurrency = Mockito.mock(com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency::class.java)
+    private val getDefaultCurrency = Mockito.mock(GetDefaultCurrency::class.java)
     private val updateHuman = Mockito.mock(UpdateHuman::class.java)
     private val setHumanOrder = Mockito.mock(SetHumanOrder::class.java)
     private val getHumanOrder = Mockito.mock(GetHumanOrder::class.java)
@@ -50,8 +49,7 @@ class DebtViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         whenever(getHumanOrder.execute()).thenReturn(Pair(HumanOrderAttribute.Sum, true))
-        whenever(getSecondMainCurrency.execute()).thenReturn("EUR")
-        whenever(getFirstMainCurrency.execute()).thenReturn("$")
+        whenever(getDefaultCurrency.execute()).thenReturn("RUB")
         whenever(getAllHumansUseCase.execute()).thenReturn(emptyList())
         whenever(getAllDebts.execute()).thenReturn(emptyList())
         viewModel = DebtViewModel(
@@ -61,8 +59,7 @@ class DebtViewModelTest {
                 override fun <T> run(block: () -> T): T = block()
             },
             getAllHumansUseCase = getAllHumansUseCase,
-            getFirstMainCurrency = getFirstMainCurrency,
-            getSecondMainCurrency = getSecondMainCurrency,
+            getDefaultCurrency = getDefaultCurrency,
             getHumanOrder = getHumanOrder,
             setHumanOrder = setHumanOrder,
             updateHuman = updateHuman
@@ -73,7 +70,7 @@ class DebtViewModelTest {
     fun tearDown() {
         Mockito.reset(
             getAllHumansUseCase,
-            getFirstMainCurrency,
+            getDefaultCurrency,
             updateHuman,
             setHumanOrder,
             getHumanOrder,

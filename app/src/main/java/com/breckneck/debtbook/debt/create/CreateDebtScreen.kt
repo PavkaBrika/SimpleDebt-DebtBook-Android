@@ -39,7 +39,7 @@ import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
 
 @Composable
-internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () -> Unit, feedback: () -> Unit,
+internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues, args: Bundle, back: () -> Unit, feedback: () -> Unit,
     saved: (Int, String, String) -> Unit) {
     val context = LocalContext.current
     val colors = bubbleColors()
@@ -68,10 +68,41 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () ->
         } catch (_: SecurityException) { Toast.makeText(context, R.string.no_permission, Toast.LENGTH_SHORT).show() }
     }
 
-    Column(Modifier.fillMaxSize().background(bubbleColors().background).semantics { testTagsAsResourceId = true }) {
-        BubbleTopBar(stringResource(if (debtId > 0) R.string.editdebtcollaps else R.string.newdebt), back,
-            PaddingValues(0.dp), backEnabled = !busy)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+    BubbleScaffold(
+        hostInsets = hostInsets,
+        modifier = Modifier.semantics { testTagsAsResourceId = true },
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        topBar = {
+            BubbleTopBar(stringResource(if (debtId > 0) R.string.editdebtcollaps else R.string.newdebt), back,
+                hostInsets, backEnabled = !busy)
+        },
+        bottomAction = {
+            if (error != 0 || failed) Text(stringResource(if (error != 0) error else R.string.history_change_failed),
+                Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
+            BubbleButton({
+                val parsed = DecimalInput.parse(amount.text.toString(), currency, previous?.abs())
+                error = when {
+                    name.text.isBlank() && personId <= 0 -> R.string.youmustentername
+                    parsed == null || parsed.signum() < 0 -> R.string.invalid_decimal_amount
+                    parsed.signum() == 0 -> R.string.zerodebt
+                    vm.hasPastReminder() && DebtReminders.get(context).allowed() -> R.string.debt_future_time
+                    else -> 0
+                }
+                if (error == 0 && parsed != null) {
+                    if (vm.remind.value == true && vm.hasDueChange && !DebtReminders.get(context).allowed()) {
+                        vm.dueDay.value?.let { vm.setDueDraft(it, null) }
+                    }
+                    feedback()
+                    vm.saveDebt(personId, debtId, name.text.toString().trim(), if (positive) parsed else -parsed,
+                        vm.date.value ?: LedgerDate.today(), note.text.toString())
+                }
+            }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("setFinanceButton"), enabled = !busy && savedId == null) {
+                Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
+                Text(stringResource(R.string.debt_save), Modifier.padding(start = 8.dp))
+            }
+        },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp).selectableGroup()) {
                 for (direction in listOf(true, false)) {
@@ -129,33 +160,10 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, args: Bundle, back: () ->
             BubbleSectionTitle(stringResource(R.string.debt_return_section))
             BubbleGroup { DebtDueFields(vm) }
         }
-        if (error != 0 || failed) Text(stringResource(if (error != 0) error else R.string.history_change_failed),
-            Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
-        BubbleButton({
-            val parsed = DecimalInput.parse(amount.text.toString(), currency, previous?.abs())
-            error = when {
-                name.text.isBlank() && personId <= 0 -> R.string.youmustentername
-                parsed == null || parsed.signum() < 0 -> R.string.invalid_decimal_amount
-                parsed.signum() == 0 -> R.string.zerodebt
-                vm.hasPastReminder() && DebtReminders.get(context).allowed() -> R.string.debt_future_time
-                else -> 0
-            }
-            if (error == 0 && parsed != null) {
-                if (vm.remind.value == true && vm.hasDueChange && !DebtReminders.get(context).allowed()) {
-                    vm.dueDay.value?.let { vm.setDueDraft(it, null) }
-                }
-                feedback()
-                vm.saveDebt(personId, debtId, name.text.toString().trim(), if (positive) parsed else -parsed,
-                    vm.date.value ?: LedgerDate.today(), note.text.toString())
-            }
-        }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("setFinanceButton"), enabled = !busy && savedId == null) {
-            Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
-            Text(stringResource(R.string.debt_save), Modifier.padding(start = 8.dp))
-        }
     }
     if (picker) {
-        val options = stringArrayResource(R.array.currencies).toList()
-        SettingsPickerBottomSheet(stringResource(R.string.select_currency), options, options.indexOfFirst { it.substringAfterLast(' ') == currency },
-            { vm.currency.value = options[it].substringAfterLast(' '); picker = false }, { picker = false })
+        val options = currencyOptions(stringArrayResource(R.array.currencies).toList(), currency)
+        SettingsPickerBottomSheet(stringResource(R.string.select_currency), options, options.indexOfFirst { currencyCode(it) == currency },
+            { vm.currency.value = currencyCode(options[it]); picker = false }, { picker = false })
     }
 }

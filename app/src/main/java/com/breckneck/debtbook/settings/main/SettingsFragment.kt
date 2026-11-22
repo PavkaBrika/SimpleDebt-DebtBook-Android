@@ -3,6 +3,7 @@ package com.breckneck.debtbook.settings.main
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import androidx.core.net.toUri
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.settings.openSettingsIntent
 import android.os.Build
 import android.os.Bundle
@@ -19,8 +20,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.Surface
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.setFragmentResultListener
@@ -29,7 +28,6 @@ import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.AuthorizationActivity
 import com.breckneck.debtbook.core.MainViewModel
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -64,6 +62,7 @@ class SettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        vm.refreshDefaultCurrency()
         main.getIsPINCodeEnabled()
         vm.getIsFingerprintAuthEnabled()
         biometricStatus = BiometricManager.from(requireContext()).canAuthenticate(BIOMETRIC_STRONG)
@@ -72,26 +71,20 @@ class SettingsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         val host = requireActivity() as OnButtonClickListener
-        return ComposeView(requireContext()).apply {
-            id = R.id.settingsComposeView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                DebtBookTheme {
-                    Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
-                        SettingsScreen(vm, main, host,
-                            showBiometrics = biometricStatus == BiometricManager.BIOMETRIC_SUCCESS ||
-                                (Build.VERSION.SDK_INT >= 30 && biometricStatus == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED),
-                            onBiometrics = ::changeBiometrics,
-                            onPin = { action -> authorize.launch(Intent(requireContext(), AuthorizationActivity::class.java)
-                                .putExtra("PINCodeState", action.name)) },
-                            onTheme = { theme ->
-                                vm.setAppTheme(theme)
-                                main.getAppTheme()
-                            },
-                            onExternal = ::openExternal,
-                        )
-                    }
-                }
+        return bubbleScreen(R.id.settingsComposeView) { insets ->
+            Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
+                SettingsScreen(vm, insets, main, host,
+                    showBiometrics = biometricStatus == BiometricManager.BIOMETRIC_SUCCESS ||
+                        (Build.VERSION.SDK_INT >= 30 && biometricStatus == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED),
+                    onBiometrics = ::changeBiometrics,
+                    onPin = { action -> authorize.launch(Intent(requireContext(), AuthorizationActivity::class.java)
+                        .putExtra("PINCodeState", action.name)) },
+                    onTheme = { theme ->
+                        vm.setAppTheme(theme)
+                        main.getAppTheme()
+                    },
+                    onExternal = ::openExternal,
+                )
             }
         }
     }

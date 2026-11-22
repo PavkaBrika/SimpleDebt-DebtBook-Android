@@ -1,7 +1,19 @@
 'use strict';
 const themeChoices=['Светлая','Тёмная','Системная'];
 const delays=['Сразу','Через 30 секунд','Через минуту','Через 5 минут'];
-function defaultPrefs(){return {first:'RUB',second:'USD',defaultCur:'RUB',shareSum:false,theme:'Светлая',delay:delays[0]};}
+const automaticCurrency=(()=>{
+  const region=new Intl.Locale(navigator.language||'en').maximize().region;
+  const currencies={
+    RU:'RUB',BY:'BYN',UA:'UAH',KZ:'KZT',JP:'JPY',GB:'GBP',AU:'AUD',CA:'CAD',CH:'CHF',
+    CN:'CNY',SE:'SEK',MX:'MXN',PL:'PLN',AE:'AED',RO:'RON',SA:'SAR',RS:'RSD',TJ:'TJS',
+    TR:'TRY',UZ:'UZS',MN:'MNT',CZ:'CZK',AZ:'AZN',AM:'AMD',IL:'ILS',VN:'VND',
+    BR:'BRL',IN:'INR',KR:'KRW',ID:'IDR',TH:'THB',TW:'TWD',NZ:'NZD',SG:'SGD',HK:'HKD',
+  };
+  const euroRegions='AD AT BE BG CY DE EE ES FI FR GR HR IE IT LT LU LV MC ME MT NL PT SI SK SM VA XK'.split(' ');
+  return currencies[region]||(euroRegions.includes(region)?'EUR':'USD');
+})();
+function defaultPrefs(){return {defaultCur:null,shareSum:false,theme:'Светлая',delay:delays[0]};}
+function defaultCurrency(){return prefs.defaultCur??automaticCurrency;}
 let prefs=defaultPrefs(), demoPin='',biometric=false,driveSigned=false,cloudCopies=[],previousCopy=null;
 function resetDemo(){
   people=freshData();ledger=freshLedger();savings=freshGoals();serial=100;prefs=defaultPrefs();dark=false;
@@ -39,7 +51,7 @@ function validSnapshot(s) {
   try{
     if(s?.format!=='SimpleDebt-design-2'||!positive(s.serial)||!s.preferences)return false;
     const p=s.preferences;
-    if(![p.first,p.second,p.defaultCur].every(cur)||typeof p.shareSum!=='boolean'||!themeChoices.includes(p.theme)||!delays.includes(p.delay))return false;
+    if((p.defaultCur!==null&&!cur(p.defaultCur))||typeof p.shareSum!=='boolean'||!themeChoices.includes(p.theme)||!delays.includes(p.delay))return false;
     if(!rows(s.people,p=>string(p.name)&&cur(p.cur)&&num(p.art)&&p.art>=0&&rows(p.loans,l=>num(l.principal)&&l.principal!==0&&string(l.note)&&date(l.date)&&optionalDate(l.due)&&string(l.reminder)&&(!l.reminder||(/^([01]\d|2[0-3]):[0-5]\d$/.test(l.reminder)&&l.due))&&rows(l.returns,r=>positive(r.amount)&&date(r.date)&&typeof r.cancelled==='boolean')&&remaining(l)>=0)))return false;
     if(!rows(s.finance.categories,c=>string(c.name)&&directions.includes(c.dir)&&string(c.emoji)&&/^#[0-9a-f]{6}$/i.test(c.color)))return false;
     const cats=new Set(s.finance.categories.map(c=>c.id));
@@ -50,16 +62,21 @@ function validSnapshot(s) {
     return groups.every(group=>group.every(item=>item.id<s.serial));
   }catch{return false;}
 }
-flowViews.settings=f=>layout(heading('Настройки')+titleRow('Приложение')+'<div class="group">'+rowAction('pref','Первая основная валюта','first',prefs.first)+rowAction('pref','Вторая основная валюта','second',prefs.second)+rowAction('pref','Валюта по умолчанию','defaultCur',prefs.defaultCur)+rowAction('pref','Оформление','theme',prefs.theme)+rowAction('pref-share','Баланс в тексте истории','',prefs.shareSum?'Вкл.':'Выкл.')+'</div>'+titleRow('Данные и защита')+'<div class="group">'+rowAction('backup-open','Резервная копия','','Файл / Drive')+rowAction('security-open','Защита входа','',demoPin?'PIN включён':'Выключена')+'</div>'+titleRow('О приложении')+'<div class="group">'+['Оценить приложение','Написать разработчику','Поддержать проект','Политика конфиденциальности'].map(v=>rowAction('external-preview',v,v)).join('')+'<div class="setting"><span>Версия Android-приложения</span><span>4.6.4</span></div></div>','',nav('settings'));
+flowViews.settings=f=>layout(heading('Настройки')+titleRow('Приложение')+'<div class="group">'+rowAction('pref','Валюта по умолчанию','defaultCur',defaultCurrency())+rowAction('pref','Оформление','theme',prefs.theme)+rowAction('pref-share','Баланс в тексте истории','',prefs.shareSum?'Вкл.':'Выкл.')+'</div>'+titleRow('Данные и защита')+'<div class="group">'+rowAction('backup-open','Резервная копия','','Файл / Drive')+rowAction('security-open','Защита входа','',demoPin?'PIN включён':'Выключена')+'</div>'+titleRow('О приложении')+'<div class="group">'+['Оценить приложение','Написать разработчику','Поддержать проект','Политика конфиденциальности'].map(v=>rowAction('external-preview',v,v)).join('')+'<div class="setting"><span>Версия Android-приложения</span><span>4.6.4</span></div></div>',
+  {navigation:nav('settings')});
 flowActions.pref=(i,key,b)=>{
-  const labels={first:'Первая основная валюта',second:'Вторая основная валюта',defaultCur:'Валюта по умолчанию',theme:'Оформление',delay:'Блокировать после выхода'};
+  const labels={defaultCur:'Валюта по умолчанию',theme:'Оформление',delay:'Блокировать после выхода'};
   const values=key==='theme'?themeChoices:key==='delay'?delays:currencyCodes;
   showDialog(i,labels[key],s=>field('settings',labels[key],picker('sheet.choice',values,s.choice,labels[key])),b,(_,s)=>{
+    const previous=defaultCurrency();
     prefs[key]=s.choice;
-    if(key==='first')frames.forEach(f=>f.cur=s.choice);
+    if(key==='defaultCur')frames.forEach(f=>{
+      if(f.cur===previous)f.cur=s.choice;
+      if(f.financeCur===previous)f.financeCur=s.choice;
+    });
     if(key==='theme')applyDemoTheme();
     changed(i,'Настройка сохранена');
-  },'Применить',{choice:prefs[key]});
+  },'Применить',{choice:key==='defaultCur'?defaultCurrency():prefs[key]});
 };
 flowActions['pref-share']=i=>{prefs.shareSum=!prefs.shareSum;changed(i,'Настройка сохранена');};
 flowActions['external-preview']=(i,v,b)=>{
@@ -68,7 +85,8 @@ flowActions['external-preview']=(i,v,b)=>{
   showDialog(i,v,()=>'<p class="note">'+descriptions[v]+'</p>'+(v==='Политика конфиденциальности'?'<a class="chip" href="../../docs/privacy_policy.html" target="_blank" rel="noopener">Прочитать политику</a>':v==='Написать разработчику'?'<a class="chip" href="mailto:pavlikbrichkin@yandex.ru?subject=SimpleDebt%204.6.4">Открыть почту</a>':'<a class="chip" href="https://pay.cloudtips.ru/p/5c867537" target="_blank" rel="noopener">Открыть страницу поддержки</a>'),b);
 };
 flowActions['backup-open']=i=>go(i,'backup');
-flowViews.backup=()=>layout(backbar('Резервная копия')+titleRow('Копия в файл')+'<div class="group">'+rowAction('backup-save','Сохранить файл')+'<label class="setting file-label"><strong>Восстановить из файла</strong>'+icon('chevron',16)+'<input type="file" accept=".json,application/json" data-file="backup" aria-label="Открыть копию прототипа"></label>'+(previousCopy?rowAction('backup-previous','Вернуть данные до восстановления'):'')+'</div><p class="note">Файл содержит демонстрационные записи прототипа.</p>'+titleRow('Google Drive')+'<div class="group">'+(driveSigned?rowAction('drive-save','Сохранить копию')+rowAction('drive-list','Выбрать копию','',String(cloudCopies.length))+rowAction('drive-logout','Выйти из демоаккаунта'):rowAction('drive-login','Войти в демоаккаунт'))+'</div><p class="note">В прототипе копии Drive хранятся в этом браузере.</p>');
+flowViews.backup=()=>layout(titleRow('Копия в файл')+'<div class="group">'+rowAction('backup-save','Сохранить файл')+'<label class="setting file-label"><strong>Восстановить из файла</strong>'+icon('chevron',16)+'<input type="file" accept=".json,application/json" data-file="backup" aria-label="Открыть копию прототипа"></label>'+(previousCopy?rowAction('backup-previous','Вернуть данные до восстановления'):'')+'</div><p class="note">Файл содержит демонстрационные записи прототипа.</p>'+titleRow('Google Drive')+'<div class="group">'+(driveSigned?rowAction('drive-save','Сохранить копию')+rowAction('drive-list','Выбрать копию','',String(cloudCopies.length))+rowAction('drive-logout','Выйти из демоаккаунта'):rowAction('drive-login','Войти в демоаккаунт'))+'</div><p class="note">В прототипе копии Drive хранятся в этом браузере.</p>',
+  {topBar:backbar('Резервная копия')});
 flowActions['backup-save']=i=>{downloadFile('SimpleDebt-demo.json','application/json',JSON.stringify(demoSnapshot(),null,2));toast(i,'Файл копии подготовлен');};
 function snapshotCounts(s){return 'Людей: '+s.people.length+' · Долгов: '+s.people.reduce((n,p)=>n+p.loans.length,0)+' · Финансовых операций: '+s.finance.entries.length+' · Целей: '+s.goals.length;}
 function restorePreview(i,data,label,b) {
@@ -96,7 +114,8 @@ flowActions['drive-save']=i=>{
 flowActions['drive-list']=(i,v,b)=>showDialog(i,'Копии в Drive',()=>cloudCopies.length?'<div class="group">'+cloudCopies.map((c,j)=>rowAction('drive-restore',c.label,j,j?'Предыдущая':'Последняя')).join('')+'</div>':empty('Ещё нет сохранённых копий.'),b);
 flowActions['drive-restore']=(i,v,b)=>{const copy=cloudCopies[Number(v)];if(copy)restorePreview(i,copy.data,copy.label,b);};
 flowActions['security-open']=i=>go(i,'security');
-flowViews.security=()=>layout(backbar('Защита входа')+'<div class="group">'+(demoPin?rowAction('pin-start','Проверить вход','unlock')+rowAction('pin-start','Изменить PIN','change')+rowAction('pin-start','Выключить PIN','disable')+rowAction('pref','Блокировать после выхода','delay',prefs.delay)+rowAction('bio-pref','Биометрия','',biometric?'Вкл.':'Выкл.'):rowAction('pin-start','Установить тестовый PIN','setup'))+'</div><p class="note">Демонстрационный PIN действует до перезагрузки вкладки. Используйте тестовые цифры.</p>');
+flowViews.security=()=>layout('<div class="group">'+(demoPin?rowAction('pin-start','Проверить вход','unlock')+rowAction('pin-start','Изменить PIN','change')+rowAction('pin-start','Выключить PIN','disable')+rowAction('pref','Блокировать после выхода','delay',prefs.delay)+rowAction('bio-pref','Биометрия','',biometric?'Вкл.':'Выкл.'):rowAction('pin-start','Установить тестовый PIN','setup'))+'</div><p class="note">Демонстрационный PIN действует до перезагрузки вкладки. Используйте тестовые цифры.</p>',
+  {topBar:backbar('Защита входа')});
 function startPin(i,mode,next=null){
   const f=frames[i];f.auth={mode,stage:mode==='setup'?'new':'verify',digits:'',first:'',next};go(i,'pin');
 }
@@ -109,7 +128,8 @@ function finishPin(i,msg){
 }
 flowViews.pin=f=>{
   const a=f.auth,title=a.stage==='new'?'Новый PIN':a.stage==='repeat'?'Повторите PIN':'Введите PIN';
-  return layout(backbar(title)+'<p class="note center">Демонстрационный код из четырёх цифр</p><div class="pin-dots" aria-label="Введено цифр: '+a.digits.length+'">'+Array.from({length:4},(_,n)=>n<a.digits.length?'●':'○').join(' ')+'</div><div class="keypad">'+['1','2','3','4','5','6','7','8','9','0','⌫'].map(n=>button('pin-digit',n,n,'key')).join('')+'</div>'+errorText(f)+(a.stage==='verify'?button('pin-recover','Забыли PIN?','','text-action')+(biometric?button('bio-verify','Вход по биометрии','','text-action'):''):''));
+  return layout('<p class="note center">Демонстрационный код из четырёх цифр</p><div class="pin-dots" aria-label="Введено цифр: '+a.digits.length+'">'+Array.from({length:4},(_,n)=>n<a.digits.length?'●':'○').join(' ')+'</div><div class="keypad">'+['1','2','3','4','5','6','7','8','9','0','⌫'].map(n=>button('pin-digit',n,n,'key')).join('')+'</div>'+errorText(f)+(a.stage==='verify'?button('pin-recover','Забыли PIN?','','text-action')+(biometric?button('bio-verify','Вход по биометрии','','text-action'):''):''),
+    {topBar:backbar(title)});
 };
 flowActions['pin-digit']=(i,v)=>{
   const f=frames[i],a=f.auth;f.error='';
@@ -134,7 +154,8 @@ flowActions['bio-verify']=(i,v,b)=>confirmAction(i,b,'Подтверждение
   f.auth.stage='new';render(i);
 },'Подтвердить');
 flowActions['pin-recover']=i=>go(i,'recovery');
-flowViews.recovery=()=>layout(backbar('Восстановление PIN')+'<div class="group"><p class="note">Подтвердите блокировку устройства, затем дважды введите новый PIN. Записи сохранятся.</p></div>',primary('recover-device','Подтвердить на устройстве','check'));
+flowViews.recovery=()=>layout('<div class="group"><p class="note">Подтвердите блокировку устройства, затем дважды введите новый PIN. Записи сохранятся.</p></div>',
+  {action:primary('recover-device','Подтвердить на устройстве','check'),topBar:backbar('Восстановление PIN')});
 flowActions['recover-device']=(i,v,b)=>confirmAction(i,b,'Проверка устройства','Демонстрация системного экрана Android. После подтверждения откроется ввод нового PIN.',()=>{const f=frames[i];f.trail.pop();setRoute(f,'pin');f.auth.stage='new';f.auth.digits='';render(i);},'Подтвердить');
 // A notification is previewed explicitly in the browser. Android schedules and gates the real entry.
 flowActions['reminder-preview']=(i,v,b)=>{

@@ -16,8 +16,9 @@ app/src/main/java/com/breckneck/debtbook/settings/
 └── synchronization/
     ├── util/
     │   └── DriveServiceHelper.kt      # Хелпер Google Drive API
+    ├── BackupScreen.kt                # Compose-экран резервного копирования
     ├── BackupTransfer.kt              # Свежий snapshot перед upload; проверка JSON до restore
-    ├── SynchronizationFragment.kt     # Экран синхронизации
+    ├── SynchronizationFragment.kt     # Compose-хост и системные действия
     └── SynchronizationViewModel.kt    # VM синхронизации
 ```
 
@@ -25,7 +26,6 @@ app/src/main/java/com/breckneck/debtbook/settings/
 
 ### Layouts
 - `fragment_settings.xml` — экран настроек
-- `fragment_synchronization.xml` — экран синхронизации
 - `dialog_setting.xml` — диалог выбора значения настройки
 - `item_setting.xml` — элемент настройки (radio button)
 - `dialog_pincode_lock.xml` — PIN, смена PIN, задержка блокировки и отпечаток
@@ -73,7 +73,7 @@ VM экрана настроек.
 
 ## SynchronizationViewModel
 
-VM экрана синхронизации с Google Drive.
+VM экрана резервного копирования в файл и Google Drive.
 
 ### Зависимости
 - `GetIsAuthorized` / `SetIsAuthorized` — статус авторизации
@@ -84,9 +84,9 @@ VM экрана синхронизации с Google Drive.
 - `Set/GetLastSyncDate` — дата последней синхронизации
 
 ### Ключевая логика
-- **Бэкап**: `uploadBackup()` читает актуальный `AppDataLists` непосредственно перед JSON/upload; snapshot при открытии экрана не кэшируется.
-- **Восстановление**: `restoreBackup()` → download JSON → проверка обязательных списков/полей → `ReplaceAllAppData`; ошибка разбора не достигает записи в БД.
-- **Состояния**: `isSynchronizing`, `isRestoring` взаимно исключают операции; завершаются в `finally`, сохраняются при пересоздании view. `operationError` отображается с возможностью повторить действие.
+- `uploadBackup()` и `exportFile()` получают актуальный снимок `AppDataLists` перед записью JSON.
+- `loadDriveBackups()` и `restoreFile()` проверяют копии для предпросмотра. `confirmRestore()` применяет выбранную копию через `BackupTransfer` и `ReplaceAllAppData`.
+- `savingTo` указывает место текущего сохранения, Drive или файл. Сохранение и восстановление взаимно исключают друг друга. Состояние операции хранится во ViewModel и сбрасывается в `finally`. После `operationError` действие можно повторить.
 - `BackupTransfer` не меняет формат backup и Room schema. Полная совместимость старых форматов/версионирование и хранение предыдущей копии относятся к R1b.
 - **Авторизация**: Google Sign-In + Google Drive scope
 - **DriveServiceHelper**: обёртка над Google Drive API v3 (upload/download файлов)
@@ -136,4 +136,6 @@ VM экрана синхронизации с Google Drive.
 
 ### R1b — резервная копия / восстановление
 
-Раздел всегда доступен, включая устройства без Google Play Services. `SynchronizationViewModel` координирует SAF-файлы и Drive через `BackupTransfer`: предварительная проверка и preview (дата/число записей/фото) → явное подтверждение → атомарная замена. `BackupFiles` хранит страховочную копию в AtomicFile и переносит фото байтами. После восстановления можно вернуть предыдущие локальные данные; перед перезаписью Drive сохраняется предыдущая проверенная версия отдельным файлом. Новый прокручиваемый `dialog_restore_backup.xml` поддерживает крупный текст. Формат/ограничения — `docs/r1b-data-contract.md`.
+В «Настройки → Резервная копия» Google Drive расположен над блоком «Копия в файл». Горизонтальные разделители разграничивают действия в обоих блоках и версии в списке копий Drive. Во время сохранения индикатор показывается внутри строки «Сохранить в Google Drive» или «Сохранить файл» и исчезает по завершении операции.
+
+Раздел всегда доступен, включая устройства без Google Play Services. `SynchronizationViewModel` координирует SAF-файлы и Drive через `BackupTransfer`: предварительная проверка и preview (дата/число записей/фото) → явное подтверждение → атомарная замена. `BackupFiles` хранит страховочную копию в AtomicFile и переносит фото байтами. После восстановления можно вернуть предыдущие локальные данные; перед перезаписью Drive сохраняется предыдущая проверенная версия отдельным файлом. Предпросмотр открывается в прокручиваемом нижнем листе Compose. Формат/ограничения — `docs/r1b-data-contract.md`.

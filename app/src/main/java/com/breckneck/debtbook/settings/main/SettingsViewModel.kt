@@ -9,24 +9,16 @@ import androidx.lifecycle.ViewModel
 import com.breckneck.deptbook.domain.usecase.Settings.GetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.GetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
-import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.SetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.SetDefaultCurrency
-import com.breckneck.deptbook.domain.usecase.Settings.SetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetIsFingerprintAuthEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.SetSecondMainCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val setFirstMainCurrency: SetFirstMainCurrency,
-    private val getFirstMainCurrency: GetFirstMainCurrency,
-    private val setSecondMainCurrency: SetSecondMainCurrency,
-    private val getSecondMainCurrency: GetSecondMainCurrency,
     private val setDefaultCurrency: SetDefaultCurrency,
     private val getDefaultCurrency: GetDefaultCurrency,
     private val setAddSumInShareText: SetAddSumInShareText,
@@ -48,12 +40,6 @@ class SettingsViewModel @Inject constructor(
     }
 
 
-    private val _firstMainCurrency = MutableLiveData<String>()
-    val firstMainCurrency: LiveData<String>
-        get() = _firstMainCurrency
-    private val _secondMainCurrency = MutableLiveData<String>()
-    val secondMainCurrency: LiveData<String>
-        get() = _secondMainCurrency
     private val _defaultCurrency = MutableLiveData<String>()
     val defaultCurrency: LiveData<String>
         get() = _defaultCurrency
@@ -68,32 +54,12 @@ class SettingsViewModel @Inject constructor(
         get() = _isFingerprintAuthEnabled
 
     init {
-        getFirstMainCurrency()
-        getSecondMainCurrency()
-        getDefaultCurrency()
+        refreshDefaultCurrency()
         getAppTheme()
         getSumInShareText()
     }
 
-    private fun getFirstMainCurrency() {
-        _firstMainCurrency.value = getFirstMainCurrency.execute()
-    }
-
-    fun setFirstMainCurrency(currency: String) {
-        setFirstMainCurrency.execute(currency = currency)
-        _firstMainCurrency.value = currency
-    }
-
-    private fun getSecondMainCurrency() {
-        _secondMainCurrency.value = getSecondMainCurrency.execute()
-    }
-
-    fun setSecondMainCurrency(currency: String) {
-        setSecondMainCurrency.execute(currency = currency)
-        _secondMainCurrency.value = currency
-    }
-
-    private fun getDefaultCurrency() {
+    fun refreshDefaultCurrency() {
         _defaultCurrency.value = getDefaultCurrency.execute()
     }
 

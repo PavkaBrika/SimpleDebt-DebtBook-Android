@@ -4,8 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
@@ -14,9 +12,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import com.breckneck.debtbook.core.bubbleScreen
 
 @AndroidEntryPoint
 class CreateFinanceCategoryFragment : Fragment() {
@@ -27,11 +25,9 @@ class CreateFinanceCategoryFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        ComposeView(requireContext()).apply {
-            id = R.id.financeCategoryView
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        bubbleScreen(R.id.financeCategoryView) { insets ->
             val host = requireActivity() as OnClickListener
-            setContent { DebtBookTheme { CreateFinanceCategoryScreen(vm, host::onBackButtonClick) } }
+            CreateFinanceCategoryScreen(vm, insets, host::onBackButtonClick)
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

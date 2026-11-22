@@ -19,22 +19,6 @@ class SettingsRepositoryImpl(private val settingsStorage: SettingsStorage): Sett
         return User(name = userData.name, userData.email)
     }
 
-    override fun setFirstMainCurrency(currency: String) {
-        settingsStorage.setFirstMainCurrency(currency = currency)
-    }
-
-    override fun getFirstMainCurrency(): String {
-        return settingsStorage.getFirstMainCurrency()
-    }
-
-    override fun setSecondMainCurrency(currency: String) {
-        settingsStorage.setSecondMainCurrency(currency = currency)
-    }
-
-    override fun getSecondMainCurrency(): String {
-        return settingsStorage.getSecondMainCurrency()
-    }
-
     override fun setDefaultCurrency(currency: String) {
         settingsStorage.setDefaultCurrency(currency = currency)
     }
@@ -134,7 +118,7 @@ class SettingsRepositoryImpl(private val settingsStorage: SettingsStorage): Sett
         settingsStorage.setFinanceCurrency(currency = currency)
     }
 
-    override fun getFinanceCurrency(): String {
+    override fun getFinanceCurrency(): String? {
         return settingsStorage.getFinanceCurrency()
     }
 

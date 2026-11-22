@@ -21,36 +21,6 @@ class SettingsUseCasesTest {
         Mockito.reset(settingsRepository)
     }
 
-    // --- GetFirstMainCurrency / SetFirstMainCurrency ---
-
-    @Test
-    fun `GetFirstMainCurrency should return currency from repository`() {
-        Mockito.`when`(settingsRepository.getFirstMainCurrency()).thenReturn("USD")
-        val result = GetFirstMainCurrency(settingsRepository).execute()
-        Assertions.assertEquals("USD", result)
-    }
-
-    @Test
-    fun `SetFirstMainCurrency should call setFirstMainCurrency with correct value`() {
-        SetFirstMainCurrency(settingsRepository).execute(currency = "EUR")
-        verify(settingsRepository).setFirstMainCurrency("EUR")
-    }
-
-    // --- GetSecondMainCurrency / SetSecondMainCurrency ---
-
-    @Test
-    fun `GetSecondMainCurrency should return currency from repository`() {
-        Mockito.`when`(settingsRepository.getSecondMainCurrency()).thenReturn("RUB")
-        val result = GetSecondMainCurrency(settingsRepository).execute()
-        Assertions.assertEquals("RUB", result)
-    }
-
-    @Test
-    fun `SetSecondMainCurrency should call setSecondMainCurrency with correct value`() {
-        SetSecondMainCurrency(settingsRepository).execute(currency = "GBP")
-        verify(settingsRepository).setSecondMainCurrency("GBP")
-    }
-
     // --- GetDefaultCurrency / SetDefaultCurrency ---
 
     @Test
@@ -71,8 +41,15 @@ class SettingsUseCasesTest {
     @Test
     fun `GetFinanceCurrency should return currency from repository`() {
         Mockito.`when`(settingsRepository.getFinanceCurrency()).thenReturn("USD")
-        val result = GetFinanceCurrency(settingsRepository).execute()
+        val result = GetFinanceCurrency(settingsRepository).execute { "RUB" }
         Assertions.assertEquals("USD", result)
+    }
+
+    @Test
+    fun `GetFinanceCurrency uses the caller default for an unset preference`() {
+        val currency = GetFinanceCurrency(settingsRepository)
+        Assertions.assertEquals("VND", currency.execute { "VND" })
+        Assertions.assertEquals("USD", currency.execute())
     }
 
     @Test

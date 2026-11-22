@@ -5,15 +5,11 @@ import com.breckneck.debtbook.settings.main.SettingsViewModel
 import com.breckneck.deptbook.domain.usecase.Settings.GetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.GetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
-import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.SetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.SetDefaultCurrency
-import com.breckneck.deptbook.domain.usecase.Settings.SetFirstMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetIsFingerprintAuthEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.SetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.SetPinLockDelay
 import com.breckneck.deptbook.domain.util.PinLockDelay
@@ -31,10 +27,6 @@ class SettingsViewModelTest {
     @get:Rule
     val instantTaskRule = InstantTaskExecutorRule()
 
-    private val setFirstMainCurrency = Mockito.mock(SetFirstMainCurrency::class.java)
-    private val getFirstMainCurrency = Mockito.mock(GetFirstMainCurrency::class.java)
-    private val setSecondMainCurrency = Mockito.mock(SetSecondMainCurrency::class.java)
-    private val getSecondMainCurrency = Mockito.mock(GetSecondMainCurrency::class.java)
     private val setDefaultCurrency = Mockito.mock(SetDefaultCurrency::class.java)
     private val getDefaultCurrency = Mockito.mock(GetDefaultCurrency::class.java)
     private val setAddSumInShareText = Mockito.mock(SetAddSumInShareText::class.java)
@@ -52,17 +44,11 @@ class SettingsViewModelTest {
     @Before
     fun setUp() {
         Mockito.`when`(getPinLockDelay.execute()).thenReturn(PinLockDelay.IMMEDIATE)
-        Mockito.`when`(getFirstMainCurrency.execute()).thenReturn("USD")
-        Mockito.`when`(getSecondMainCurrency.execute()).thenReturn("EUR")
         Mockito.`when`(getDefaultCurrency.execute()).thenReturn("USD")
         Mockito.`when`(getAppTheme.execute()).thenReturn("light")
         Mockito.`when`(getAddSumInShareText.execute()).thenReturn(false)
 
         viewModel = SettingsViewModel(
-            setFirstMainCurrency = setFirstMainCurrency,
-            getFirstMainCurrency = getFirstMainCurrency,
-            setSecondMainCurrency = setSecondMainCurrency,
-            getSecondMainCurrency = getSecondMainCurrency,
             setDefaultCurrency = setDefaultCurrency,
             getDefaultCurrency = getDefaultCurrency,
             setAddSumInShareText = setAddSumInShareText,
@@ -79,23 +65,11 @@ class SettingsViewModelTest {
     @After
     fun tearDown() {
         Mockito.reset(
-            setFirstMainCurrency, getFirstMainCurrency,
-            setSecondMainCurrency, getSecondMainCurrency,
             setDefaultCurrency, getDefaultCurrency,
             setAddSumInShareText, getAddSumInShareText,
             getAppTheme, setAppTheme,
             setIsFingerprintAuthEnabled, getIsFingerprintAuthEnabled
         )
-    }
-
-    @Test
-    fun `init should load firstMainCurrency from use case`() {
-        assertEquals("USD", viewModel.firstMainCurrency.value)
-    }
-
-    @Test
-    fun `init should load secondMainCurrency from use case`() {
-        assertEquals("EUR", viewModel.secondMainCurrency.value)
     }
 
     @Test
@@ -111,20 +85,6 @@ class SettingsViewModelTest {
     @Test
     fun `init should load addSumInShareText from use case`() {
         assertFalse(viewModel.addSumInShareText.value!!)
-    }
-
-    @Test
-    fun `setFirstMainCurrency should update LiveData and call use case`() {
-        viewModel.setFirstMainCurrency("RUB")
-        assertEquals("RUB", viewModel.firstMainCurrency.value)
-        Mockito.verify(setFirstMainCurrency).execute(currency = "RUB")
-    }
-
-    @Test
-    fun `setSecondMainCurrency should update LiveData and call use case`() {
-        viewModel.setSecondMainCurrency("GBP")
-        assertEquals("GBP", viewModel.secondMainCurrency.value)
-        Mockito.verify(setSecondMainCurrency).execute(currency = "GBP")
     }
 
     @Test

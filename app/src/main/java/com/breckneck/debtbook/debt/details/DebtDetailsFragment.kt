@@ -26,16 +26,14 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.debt.reminders.DebtDateSheet
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.usecase.Debt.ExportDebtDataInExcelUseCase
@@ -87,20 +85,14 @@ class DebtDetailsFragment : Fragment() {
     private val vm by viewModels<DebtDetailsViewModel>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        ComposeView(requireContext()).apply {
-            id = R.id.debtDetailsSheets
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                DebtBookTheme {
-                    var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
-                    DebtDetailsScreen(vm, requireActivity() as OnButtonClickListener, ::showSortDialog,
-                        ::showDeleteHumanDialog, { showShareDialog(vm.humanName.value, vm.humanCurrency) },
-                        onRecord = { id -> initialSheet = DebtSheet.ACTIONS; vm.selectDebtAction(id) },
-                        onDue = { id -> initialSheet = DebtSheet.DUE; vm.selectDebtAction(id) },
-                        onUndo = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
-                    DebtSheets(initialSheet) { initialSheet = DebtSheet.ACTIONS }
-                }
-            }
+        bubbleScreen(R.id.debtDetailsSheets) { insets ->
+            var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
+            DebtDetailsScreen(vm, insets, requireActivity() as OnButtonClickListener, ::showSortDialog,
+                ::showDeleteHumanDialog, { showShareDialog(vm.humanName.value, vm.humanCurrency) },
+                onRecord = { id -> initialSheet = DebtSheet.ACTIONS; vm.selectDebtAction(id) },
+                onDue = { id -> initialSheet = DebtSheet.DUE; vm.selectDebtAction(id) },
+                onUndo = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
+            DebtSheets(initialSheet) { initialSheet = DebtSheet.ACTIONS }
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

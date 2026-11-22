@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import javax.inject.Inject
+import com.breckneck.debtbook.core.enableBubbleEdgeToEdge
 import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -50,6 +51,7 @@ class AuthorizationActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableBubbleEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         trustedCaller = callingActivity?.packageName == packageName
         vm.setPINCodeAction(allowedPINAction(
