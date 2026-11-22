@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.breckneck.debtbook.BuildConfig
@@ -193,6 +194,22 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         configureHostInsets()
         // NavigationUI keeps each tab's saved back stack. The destination draws its own bar.
         tabMenu = PopupMenu(this, findViewById<View>(R.id.bottomDock)).apply { inflate(R.menu.menu_bottom_nav) }.menu
+
+        val navigationPreferences = getPreferences(MODE_PRIVATE)
+        if (savedInstanceState == null && intent.action == ACTION_OPEN_FROM_LAUNCHER) {
+            val savedTab = navigationPreferences.getString(LAST_TAB, null)
+            val tabId = RESTORABLE_TABS.entries.firstOrNull { it.value == savedTab }?.key
+            if (tabId != null && tabId != navController.currentDestination?.id) {
+                tabMenu.findItem(tabId)?.onNavDestinationSelected(navController)
+            }
+        }
+        var previousDestinationId = navController.currentDestination?.id
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id == previousDestinationId) return@addOnDestinationChangedListener
+            previousDestinationId = destination.id
+            val tab = RESTORABLE_TABS[destination.id] ?: return@addOnDestinationChangedListener
+            navigationPreferences.edit { putString(LAST_TAB, tab) }
+        }
     }
 
     override fun onTabSelected(id: Int) {
@@ -720,8 +737,14 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     companion object {
+        internal const val ACTION_OPEN_FROM_LAUNCHER = "com.breckneck.debtbook.action.OPEN_FROM_LAUNCHER"
         private val adPolicy = InterstitialPolicy(SystemClock.elapsedRealtime())
-        private val TOP_LEVEL_DESTINATIONS = setOf(R.id.mainFragment, R.id.financeFragment,
-            R.id.goalsFragment, R.id.settingsFragment)
+        private const val LAST_TAB = "last_tab"
+        private val RESTORABLE_TABS = mapOf(
+            R.id.mainFragment to "debts",
+            R.id.financeFragment to "finances",
+            R.id.goalsFragment to "goals",
+        )
+        private val TOP_LEVEL_DESTINATIONS = RESTORABLE_TABS.keys + R.id.settingsFragment
     }
 }
