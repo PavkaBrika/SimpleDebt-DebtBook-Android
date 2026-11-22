@@ -6,10 +6,17 @@ import org.junit.Rule
 import com.breckneck.debtbook.settings.edgeSwipe
 import com.breckneck.debtbook.settings.requirePredictiveGestures
 import android.content.Context
+import android.os.Build
+import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
+import androidx.biometric.BiometricManager
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
+import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.pressBack
@@ -18,9 +25,11 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.settings.security.AppSecurityFragment
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import org.junit.*
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import sharedprefs.SharedPrefsSettingsStorageImpl
 import java.io.File
 
@@ -69,6 +78,58 @@ class PinLockDelayDeviceTest {
         if (rateKey in originalPrefs) editor.putInt(rateKey, originalPrefs[rateKey] as Int) else editor.remove(rateKey)
         editor.commit()
         AuthSession.lock()
+    }
+
+    @Test fun fingerprintIsAvailableBeforeProtectionResumes() {
+        val status = BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+        assumeTrue(status == BiometricManager.BIOMETRIC_SUCCESS ||
+            (Build.VERSION.SDK_INT >= 30 && status == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED))
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            var resumed = false
+            var protection: AppSecurityFragment? = null
+            val holdBeforeResume = object : FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentViewCreated(
+                    fm: FragmentManager, fragment: Fragment, view: View, savedInstanceState: Bundle?
+                ) {
+                    if (fragment is AppSecurityFragment) {
+                        protection = fragment
+                        fm.beginTransaction().setMaxLifecycle(fragment, Lifecycle.State.STARTED).commit()
+                    }
+                }
+
+                override fun onFragmentResumed(fm: FragmentManager, fragment: Fragment) {
+                    if (fragment is AppSecurityFragment) resumed = true
+                }
+            }
+            scenario.onActivity {
+                val host = it.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
+                host.childFragmentManager.registerFragmentLifecycleCallbacks(holdBeforeResume, false)
+            }
+            val label = context.getString(R.string.unlock_with_fingerprint)
+            val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+            fun containsLabel(node: AccessibilityNodeInfo?): Boolean {
+                if (node == null) return false
+                return node.text?.toString() == label || (0 until node.childCount).any {
+                    containsLabel(node.getChild(it))
+                }
+            }
+            try {
+                openProtection()
+                // Compose tests only register roots whose lifecycle has reached RESUMED.
+                compose.waitUntil(10_000) { containsLabel(automation.rootInActiveWindow) }
+                scenario.onActivity { assertFalse("Protection must not have resumed yet", resumed) }
+            } finally {
+                scenario.onActivity {
+                    val host = it.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
+                    host.childFragmentManager.unregisterFragmentLifecycleCallbacks(holdBeforeResume)
+                    protection?.let { fragment ->
+                        host.childFragmentManager.beginTransaction()
+                            .setMaxLifecycle(fragment, Lifecycle.State.RESUMED).commit()
+                    }
+                }
+            }
+            awaitNode(hasText(label)).assertIsDisplayed()
+        }
     }
 
     @Test fun settingPersistsAndIsShownAfterRecreation() {

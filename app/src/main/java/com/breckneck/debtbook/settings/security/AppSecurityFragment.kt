@@ -46,11 +46,12 @@ class AppSecurityFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         refreshProtection()
-        biometricStatus = BiometricManager.from(requireContext()).canAuthenticate(BIOMETRIC_STRONG)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
-        bubbleScreen(R.id.appSecurityComposeView) { insets ->
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        // The enter animation can draw this view before the fragment reaches RESUMED.
+        refreshProtection()
+        return bubbleScreen(R.id.appSecurityComposeView) { insets ->
             AppSecurityScreen(
                 hostInsets = insets,
                 vm = vm,
@@ -66,10 +67,12 @@ class AppSecurityFragment : Fragment() {
                 onTick = (requireActivity() as MainActivity)::onTickVibration,
             )
         }
+    }
 
     private fun refreshProtection() {
         main.getIsPINCodeEnabled()
         vm.getIsFingerprintAuthEnabled()
+        biometricStatus = BiometricManager.from(requireContext()).canAuthenticate(BIOMETRIC_STRONG)
     }
 
     private fun openPin(action: PINCodeAction) {
