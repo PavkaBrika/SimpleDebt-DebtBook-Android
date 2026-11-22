@@ -36,12 +36,7 @@
     <string name="light_theme">Licht</string>
     <string name="dark_theme">Dunkelheit</string>
     <string name="email_subject">E-Mail über Simple Debt Book app, Version</string>
-    <string name="review_hint">Erzählen Sie uns von Ihren Erfahrungen</string>
-    <string name="review_dialog_title">Überprüfung</string>
-    <string name="rate_this_app">Diese App bewerten</string>
-    <string name="later">Später</string>
     <string name="continue_b">Weiter</string>
-    <string name="rate_app_toast">Bitte bewerten Sie die App, indem Sie auf die Sterne klicken.</string>
     <string name="app_already_rated_hint">Sorry, App ist bereits bewertet</string>
     <string name="default_currency">Standardwährung</string>
     <string name="default_currencies_hint">Diese Währung wird beim Hinzufügen neuer Schulden standardmäßig ausgewählt</string>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rating_review_title">Was können wir verbessern?</string>
+    <string name="rating_review_hint">Dein Feedback</string>
+    <string name="rating_open_email">E-Mail öffnen</string>
+    <string name="rating_open_store">Google Play öffnen</string>
+    <string name="rating_email_subject">Feedback zu SimpleDebt %1$s</string>
+    <string name="rating_score">Bewertung: %1$d/5</string>
+</resources>

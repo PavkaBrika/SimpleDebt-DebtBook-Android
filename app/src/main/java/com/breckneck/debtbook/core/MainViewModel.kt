@@ -1,22 +1,27 @@
 package com.breckneck.debtbook.core
 
 import android.util.Log
-import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.breckneck.debtbook.settings.rating.AppRatingState
 import com.breckneck.deptbook.domain.usecase.Ad.SaveClicksUseCase
 import com.breckneck.deptbook.domain.usecase.Ad.GetClicksUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetDebtQuantity
 import com.breckneck.deptbook.domain.usecase.Settings.GetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtQuantityForAppRateDialogShow
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
+import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtQuantityForAppRateDialogShow
 import com.breckneck.deptbook.domain.usecase.Settings.SetIsFingerprintAuthEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.SetPINCodeEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.GetAdsDisabled
 import com.breckneck.deptbook.domain.usecase.Settings.SetAdsDisabled
+import com.breckneck.deptbook.domain.util.DEBT_QUANTITY_FOR_LAST_SHOW_APP_RATE_DIALOG
 import com.breckneck.deptbook.domain.util.DEBT_QUANTITY_FOR_NEXT_SHOW_APP_RATE_DIALOG
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -42,27 +47,12 @@ class MainViewModel @Inject constructor(
 
     private val TAG = "MainActivityViewModel"
 
-    private val _isAppRateDialogShow = MutableLiveData<Boolean>()
-    val isAppRateDialogShow: LiveData<Boolean>
-        get() = _isAppRateDialogShow
-    private val _isAppReviewDialogShow = MutableLiveData<Boolean>()
-    val isAppReviewDialogShow: LiveData<Boolean>
-        get() = _isAppReviewDialogShow
-    private val _isAppReviewDialogFromSettings = MutableLiveData<Boolean>()
-    val isAppReviewDialogFromSettings: LiveData<Boolean>
-        get() = _isAppReviewDialogFromSettings
+    internal var appRating by mutableStateOf<AppRatingState?>(null)
+        private set
     private val _debtQuantity = MutableLiveData<Int>(0)
     val debtQuantity: LiveData<Int>
         get() = _debtQuantity
-    private val _appRate = MutableLiveData<Int>()
-    val appRate: LiveData<Int>
-        get() = _appRate
-    private val _appReviewText = MutableLiveData<String>()
-    val appReviewText: LiveData<String>
-        get() = _appReviewText
-    private val _debtQuantityForAppRateDialogShow = MutableLiveData<Int>()
-    val debtQuantityForAppRateDialogShow: LiveData<Int>
-        get() = _debtQuantityForAppRateDialogShow
+    private var nextRatingPrompt = getDebtQuantityForAppRateDialogShow.execute()
     private val _adClicksCounter = MutableLiveData<Int>()
     val adClicksCounter: LiveData<Int>
         get() = _adClicksCounter
@@ -81,7 +71,6 @@ class MainViewModel @Inject constructor(
 
     init {
         Log.e(TAG, "Main Activity View Model Started")
-        getDebtQuantityForAppRateDialogShow()
         getDebtQuantity()
         getAdClicksCounter()
         getAppTheme()
@@ -105,37 +94,37 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun setAppRateDialogShown(shown: Boolean) {
-        _isAppRateDialogShow.value = shown
+    internal fun showAppRating(fromSettings: Boolean) {
+        if (appRating != null) return
+        val automaticPromptDue = (debtQuantity.value ?: 0) >= nextRatingPrompt &&
+            nextRatingPrompt <= DEBT_QUANTITY_FOR_LAST_SHOW_APP_RATE_DIALOG
+        if (!fromSettings && !automaticPromptDue) return
+        appRating = AppRatingState(fromSettings)
     }
 
-    fun setAppReviewDialogShown(shown: Boolean) {
-        _isAppReviewDialogShow.value = shown
+    internal fun selectAppRating(rating: Int) {
+        appRating = appRating?.copy(rating = rating)
     }
 
-    fun setAppReviewFromSettings(fromSettings: Boolean) {
-        _isAppReviewDialogFromSettings.value = fromSettings
+    internal fun showAppReview() {
+        appRating = appRating?.copy(writingReview = true)
     }
 
-    fun setAppRate(rate: Int) {
-        _appRate.value = rate
+    internal fun updateAppReview(text: String) {
+        appRating = appRating?.copy(reviewText = text)
     }
 
-    fun setAppReviewText(text: String) {
-        _appReviewText.value = text
-    }
-
-    fun onAppRateDismiss() {
-        _debtQuantityForAppRateDialogShow.value = _debtQuantityForAppRateDialogShow.value!! + DEBT_QUANTITY_FOR_NEXT_SHOW_APP_RATE_DIALOG
-        setDebtQuantityForAppRateDialogShow.execute(debtQuantityForAppRateDialogShow.value!!)
+    internal fun closeAppRating() {
+        val rating = appRating ?: return
+        if (!rating.fromSettings) {
+            nextRatingPrompt += DEBT_QUANTITY_FOR_NEXT_SHOW_APP_RATE_DIALOG
+            setDebtQuantityForAppRateDialogShow.execute(nextRatingPrompt)
+        }
+        appRating = null
     }
 
     fun onAddDebt() {
         _debtQuantity.value = _debtQuantity.value!! + 1
-    }
-
-    private fun getDebtQuantityForAppRateDialogShow() {
-        _debtQuantityForAppRateDialogShow.value = getDebtQuantityForAppRateDialogShow.execute()
     }
 
     private fun getAdClicksCounter() {
