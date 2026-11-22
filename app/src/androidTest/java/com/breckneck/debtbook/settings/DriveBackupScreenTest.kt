@@ -206,7 +206,12 @@ class DriveBackupScreenTest {
     }
     @Test fun signingOutLeavesLocalRecordsAndRequiresConfirmation() = withScreen { _, vm, drive ->
         val local = repo.getAllAppData()
+        drive.files[SynchronizationViewModel.BACKUP_FILE_NAME] = BackupCodec().encode(local)
+        val copies = drive.files.toMap()
         action(R.string.log_out).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.backup_drive_sign_out_title)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.backup_drive_sign_out_message)).assertIsDisplayed()
+        capture("settings-backup-sign-out.png")
         closeSheet()
         compose.waitForIdle()
         assertTrue(vm.isAuthorized.value == true)
@@ -216,6 +221,7 @@ class DriveBackupScreenTest {
         await { vm.isAuthorized.value == false }
         assertNull(vm.driveServiceHelper.value)
         assertEquals(local, repo.getAllAppData())
+        assertEquals(copies, drive.files)
         assertEquals(0, drive.writes)
     }
 

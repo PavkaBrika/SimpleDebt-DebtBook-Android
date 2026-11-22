@@ -1,7 +1,14 @@
 package com.breckneck.debtbook.settings
 
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.PatternMatcher
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.core.text.HtmlCompat
 import org.junit.Rule
 import android.content.Context
 import android.graphics.Bitmap
@@ -18,7 +25,10 @@ import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.settings.synchronization.SynchronizationViewModel
 import com.breckneck.deptbook.domain.backup.BackupCodec
 import com.breckneck.deptbook.domain.model.*
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -47,7 +57,7 @@ class BackupScreenTest {
 
     @After fun restorePreferences() {
         val edit = prefs.edit()
-        for (key in listOf("ads_disabled", "pin_code_is_enabled", "debts_quantity_for_app_rate_dialog_show")) {
+        for (key in listOf("ads_disabled", "pin_code_is_enabled", "debts_quantity_for_app_rate_dialog_show", "is_authorized")) {
             when (val original = originalPrefs[key]) {
                 is Int -> edit.putInt(key, original)
                 is Boolean -> edit.putBoolean(key, original)
@@ -74,6 +84,46 @@ class BackupScreenTest {
         File(context.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
     }
+
+    @Test fun signedOutNoticeLinksToThePrivacyPolicy() {
+        assumeTrue(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val url = Uri.parse(context.getString(R.string.privacy_policy_url))
+        val filter = IntentFilter(Intent.ACTION_VIEW).apply {
+            addDataScheme(requireNotNull(url.scheme))
+            addDataAuthority(requireNotNull(url.host), null)
+            addDataPath(requireNotNull(url.path), PatternMatcher.PATTERN_LITERAL)
+        }
+        val privacyIntent = instrumentation.addMonitor(filter, null, true)
+        prefs.edit().putBoolean("is_authorized", false).commit()
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use {
+                action(R.string.settings).performClick()
+                val summary = context.getString(R.string.backup_formats)
+                assertTrue(summary.startsWith("Drive / "))
+                action(R.string.synchronization).performScrollTo().assertTextContains(summary).performClick()
+                val signIn = action(R.string.sign_in_with_google)
+                val text = HtmlCompat.fromHtml(
+                    context.getString(R.string.backup_drive_privacy_notice),
+                    HtmlCompat.FROM_HTML_MODE_COMPACT,
+                ).toString()
+                val notice = compose.onNodeWithText(text).performScrollTo().assertHasClickAction().assertIsEnabled()
+                val label = notice.fetchSemanticsNode().config[SemanticsProperties.Text].single()
+                val link = label.spanStyles.single { it.item.textDecoration == TextDecoration.Underline }
+                assertTrue(link.start > 0 && link.end < label.length)
+                val fileHeading = compose.onNodeWithText(context.getString(R.string.backup_local_title)).fetchSemanticsNode()
+                val noticeTop = notice.fetchSemanticsNode().positionInRoot.y
+                assertTrue(noticeTop > signIn.fetchSemanticsNode().positionInRoot.y && noticeTop < fileHeading.positionInRoot.y)
+                capture("settings-backup-privacy.png")
+                notice.performTouchInput { click(Offset(8f, center.y / 2f)) }
+                compose.waitForIdle()
+                assertEquals(1, privacyIntent.hits)
+            }
+        } finally {
+            instrumentation.removeMonitor(privacyIntent)
+        }
+    }
+
     @Test fun edgeSwipeRevealsSettingsAndPopsOnlyOnCommit() {
         requirePredictiveGestures(context)
         val instrumentation = InstrumentationRegistry.getInstrumentation()

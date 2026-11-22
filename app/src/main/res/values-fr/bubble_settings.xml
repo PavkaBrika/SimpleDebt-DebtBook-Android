@@ -7,5 +7,5 @@
     <string name="backup_local_title">Sauvegarde locale</string>
     <string name="settings_rating">Noter %1$d sur 5</string>
     <string name="settings_no_handler">Aucune application disponible pour cette action.</string>
-    <string name="backup_formats">Fichier / Drive</string>
+    <string name="backup_formats">Drive / Fichier</string>
 </resources>

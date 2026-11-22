@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.settings.synchronization
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,11 +11,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
@@ -95,11 +99,19 @@ internal fun BackupScreen(
                     SettingsRow(stringResource(R.string.log_out), enabled = enabled) { confirm = R.string.log_out }
                 }
             } else if (driveAvailable) {
-                BubbleGroup {
-                    SettingsRow(stringResource(R.string.sign_in_with_google), enabled = enabled, onClick = onSignIn)
-                    HorizontalDivider(color = colors.border)
-                    SettingsRow(stringResource(R.string.by_authorizing_you_agree_to_the,
-                        stringResource(R.string.privacy_policy_in_agreement)), enabled = enabled, onClick = onPrivacy)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    BubbleGroup {
+                        SettingsRow(stringResource(R.string.sign_in_with_google), enabled = enabled, onClick = onSignIn)
+                    }
+                    Text(
+                        text = AnnotatedString.fromHtml(stringResource(R.string.backup_drive_privacy_notice)),
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable(enabled = enabled, onClickLabel = stringResource(R.string.privacy_policy), onClick = onPrivacy)
+                            .heightIn(min = 48.dp)
+                            .wrapContentHeight(Alignment.CenterVertically),
+                        color = colors.muted,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             } else Text(stringResource(R.string.backup_drive_unavailable), color = colors.muted)
             BubbleSectionTitle(stringResource(R.string.backup_local_title))
@@ -125,8 +137,15 @@ internal fun BackupScreen(
     if (confirm != 0) {
         val save = confirm == R.string.synchronize
         BubbleBottomSheet(onDismiss = { confirm = 0 }) { active, close ->
-            BubbleSheetHeader(stringResource(confirm), close, enabled = active)
-            Text(if (save) stringResource(R.string.backup_drive_save_confirm, email) else stringResource(R.string.do_you_really_want_to_log_out))
+            BubbleSheetHeader(
+                stringResource(if (save) R.string.synchronize else R.string.backup_drive_sign_out_title),
+                close,
+                enabled = active,
+            )
+            Text(
+                if (save) stringResource(R.string.backup_drive_save_confirm, email)
+                else stringResource(R.string.backup_drive_sign_out_message)
+            )
             BubbleButton(onClick = {
                 confirm = 0
                 if (save) vm.uploadBackup() else onSignOut()
