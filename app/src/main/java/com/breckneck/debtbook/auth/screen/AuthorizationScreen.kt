@@ -12,24 +12,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
@@ -52,10 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +61,6 @@ import com.breckneck.debtbook.auth.PinCodeStore
 import com.breckneck.debtbook.auth.util.BiometricPromptManager
 import com.breckneck.debtbook.auth.util.BiometricPromptManager.BiometricResult
 import com.breckneck.debtbook.core.ui.components.BubbleIconButton
-import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.deptbook.domain.util.PINCodeAction.*
@@ -107,7 +98,7 @@ internal fun AuthorizationScreen(
             )
         }) else null,
         onRecoverPin = onRecoverPin.takeIf { checking },
-        onExit = activity::finishAndRemoveTask,
+        onExit = if (checking) activity::finishAndRemoveTask else null,
         onContact = {
             emailLauncher.launch(Intent(Intent.ACTION_SENDTO).apply {
                 data = "mailto:pavlikbrichkin@yandex.ru".toUri()
@@ -207,76 +198,53 @@ internal fun PinEntryScreen(
         CONFIRMATION -> if (vm.pinCodeAction.value == CHANGE) R.string.enter_new_pin else R.string.confirm_your_pin
         INCORRECT -> R.string.pin_code_is_incorrect
     }
-    BubbleScaffold(hostInsets = hostInsets, topBar = topBar) { padding ->
-        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            Column(
-                Modifier.widthIn(max = 480.dp).fillMaxWidth().verticalScroll(rememberScrollState())
-                    .heightIn(min = maxHeight).padding(padding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-            ) {
-                if (onContact != null) {
-                    BubbleIconButton(onContact, Modifier.align(Alignment.End)) {
-                        Icon(Icons.Outlined.MailOutline, stringResource(R.string.write_email_to_developer))
+    PinEntryLayout(
+        hostInsets = hostInsets,
+        prompt = prompt,
+        pin = enteredPINCode,
+        pinState = pinCodeEnterState,
+        topBar = topBar,
+        header = {
+            if (onContact != null) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        if (onExit != null) {
+                            TextButton(onClick = onExit) {
+                                Text(stringResource(R.string.exit), color = colors.danger, textAlign = TextAlign.Center)
+                            }
+                        }
                     }
                     Image(
                         painterResource(R.drawable.app_icon),
                         contentDescription = stringResource(R.string.app_icon),
-                        modifier = Modifier.size(64.dp),
+                        modifier = Modifier.size(48.dp),
                     )
-                }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        stringResource(prompt),
-                        Modifier.semantics {
-                            heading()
-                            liveRegion = LiveRegionMode.Polite
-                        },
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = if (pinCodeEnterState == INCORRECT) colors.danger else colors.ink,
-                        textAlign = TextAlign.Center,
-                    )
-                    PINCodeSection(Modifier.widthIn(max = 144.dp).fillMaxWidth(), enteredPINCode, pinCodeEnterState)
-                    if (vm.pinReadFailed.value || biometricError) {
-                        Text(
-                            stringResource(if (vm.pinReadFailed.value) R.string.pin_unavailable
-                                else R.string.something_went_wrong_please_login_with_your_pin_code),
-                            Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                            color = colors.danger,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-                ButtonsSection(
-                    modifier = Modifier.widthIn(max = 360.dp),
-                    onFingerprintButtonClick = onFingerprint,
-                    onDigitButtonClick = { digit ->
-                        vm.changeEnteredPINCode(enteredPINCode + digit)
-                        if (pinCodeEnterState == INCORRECT) vm.setPINCodeEnterState(FIRST)
-                    },
-                    onBackspaceButtonClick = { vm.changeEnteredPINCode(enteredPINCode.dropLast(1)) },
-                )
-                if (onRecoverPin != null && onExit != null) {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TextButton(onClick = onRecoverPin, modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.pin_recovery_title), color = colors.action, textAlign = TextAlign.Center)
-                        }
-                        TextButton(onClick = onExit, modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.exit), color = colors.danger, textAlign = TextAlign.Center)
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                        BubbleIconButton(onContact) {
+                            Icon(Icons.Outlined.MailOutline, stringResource(R.string.write_email_to_developer))
                         }
                     }
                 }
             }
-        }
-    }
+        },
+        supportingContent = {
+            if (vm.pinReadFailed.value || biometricError) {
+                PinEntryError(stringResource(if (vm.pinReadFailed.value) R.string.pin_unavailable
+                    else R.string.something_went_wrong_please_login_with_your_pin_code))
+            }
+            if (onRecoverPin != null) {
+                TextButton(onClick = onRecoverPin) {
+                    Text(stringResource(R.string.pin_recovery_title), color = colors.action, textAlign = TextAlign.Center)
+                }
+            }
+        },
+        onFingerprint = onFingerprint,
+        onDigit = { digit ->
+            vm.changeEnteredPINCode(enteredPINCode + digit)
+            if (pinCodeEnterState == INCORRECT) vm.setPINCodeEnterState(FIRST)
+        },
+        onBackspace = { vm.changeEnteredPINCode(enteredPINCode.dropLast(1)) },
+    )
     if (saveFailed) {
         AlertDialog(
             onDismissRequest = { saveFailed = false },

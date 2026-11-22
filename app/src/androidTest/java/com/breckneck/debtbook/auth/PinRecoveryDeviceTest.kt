@@ -15,6 +15,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -224,7 +225,12 @@ class PinRecoveryDeviceTest {
             }
             val cancel = compose.onNodeWithTag("pinRecoveryCancel").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
             val keypad = compose.onNodeWithTag("pinRecoveryKeypad").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-            assertTrue("Cancel must be above the entire keypad", cancel.bottom <= keypad.top)
+            val prompt = compose.onNodeWithText(context.getString(R.string.enter_new_pin))
+                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            assertTrue("Cancel must be above the PIN prompt", cancel.bottom < prompt.top)
+            assertTrue("The prompt should be near the upper third", prompt.center.y in root.height * .22f..root.height * .45f)
+            assertTrue("The keypad should end near the bottom", keypad.bottom > root.height * .86f)
             capturePinLayout()
             enterAppPin("5678")
             waitForText(R.string.confirm_your_pin)

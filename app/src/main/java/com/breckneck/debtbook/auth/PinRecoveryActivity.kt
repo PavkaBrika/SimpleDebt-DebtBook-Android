@@ -22,19 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Error
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Step
-import com.breckneck.debtbook.auth.screen.ButtonsSection
-import com.breckneck.debtbook.auth.screen.PINCodeSection
+import com.breckneck.debtbook.auth.screen.PinEntryLayout
 import com.breckneck.debtbook.core.enableBubbleEdgeToEdge
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
-import com.breckneck.deptbook.domain.util.PINCodeEnterState
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -166,42 +163,21 @@ private fun RecoveryPinScreen(
     onBackspace: () -> Unit,
     onCancel: () -> Unit
 ) {
-    val spacing = MaterialTheme.spacing
     val colors = bubbleColors()
-    Surface(Modifier.fillMaxSize(), color = colors.background, contentColor = colors.ink) {
-        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
-            // Short/landscape screens can scroll; on phones the keypad stays at the bottom.
-            Column(
-                Modifier.widthIn(max = 480.dp).fillMaxWidth()
-                    .verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(
-                    Modifier.padding(horizontal = spacing.space24, vertical = spacing.space24),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(spacing.space12)
-                ) {
-                    Text(stringResource(if (state.step == Step.NEW_PIN) R.string.enter_new_pin else R.string.confirm_your_pin),
-                        style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                    RecoveryError(state.error)
-                    PINCodeSection(Modifier.widthIn(max = 144.dp).fillMaxWidth(),
-                        state.digits, PINCodeEnterState.FIRST)
-                }
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = spacing.space16, vertical = spacing.space16),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()
-                        .testTag("pinRecoveryCancel").padding(bottom = spacing.space8)) {
-                        Text(stringResource(R.string.cancel), color = colors.action)
-                    }
-                    ButtonsSection(modifier = Modifier.testTag("pinRecoveryKeypad"),
-                        onDigitButtonClick = onDigit, onBackspaceButtonClick = onBackspace)
-                }
+    PinEntryLayout(
+        hostInsets = WindowInsets.safeDrawing.asPaddingValues(),
+        prompt = if (state.step == Step.NEW_PIN) R.string.enter_new_pin else R.string.confirm_your_pin,
+        pin = state.digits,
+        header = {
+            TextButton(onClick = onCancel, modifier = Modifier.testTag("pinRecoveryCancel")) {
+                Text(stringResource(R.string.cancel), color = colors.action)
             }
-        }
-    }
+        },
+        supportingContent = { RecoveryError(state.error) },
+        keypadModifier = Modifier.testTag("pinRecoveryKeypad"),
+        onDigit = onDigit,
+        onBackspace = onBackspace,
+    )
 }
 
 @Composable

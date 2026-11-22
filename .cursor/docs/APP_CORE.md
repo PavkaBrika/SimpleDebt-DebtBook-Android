@@ -242,7 +242,7 @@ App Launch → AuthorizationActivity (launcher)
 Launcher activity, хостит Jetpack Compose. Внешние `PINCodeState` всегда преобразуются в CHECK; ENABLE допускается только при выключенном PIN и внутреннем caller, CHANGE/DISABLE — при включённом PIN и внутреннем caller. При возврате из фона `ActivityAuthGate` открывает экран проверки через Activity Result API. Успех PIN или биометрии открывает `AuthSession` и возвращает результат в существующее окно. Gate проверяет сессию при получении результата.
 
 ### AuthorizationScreen
-`AuthorizationScreen` подключает биометрию и восстановление. `PinEntryScreen` обрабатывает ввод для проверки, установки, смены и отключения PIN. Экран использует палитру Bubble и делит индикатор ввода и цифровую клавиатуру с восстановлением.
+`AuthorizationScreen` подключает биометрию и восстановление. `PinEntryScreen` обрабатывает ввод для проверки, установки, смены и отключения PIN. `PinEntryLayout` задаёт общую вёрстку для ввода и восстановления PIN. Заголовок и индикатор находятся около верхней трети окна, цифровые клавиши — у нижнего края безопасной области. «Выйти» на экране входа и «Отмена» в форме восстановления расположены вверху. На низком экране форма прокручивается.
 
 ### AuthorizationViewModel
 Класс находится в `auth/` (не `auth/viewmodel/`). **Зависимости**: `GetPINCodeEnabled`, `SetPINCodeEnabled`, `GetPINCode`, `SetPINCode`, `GetIsFingerprintAuthEnabled`, `SetIsFingerprintAuthEnabled`. Отключение PIN также отключает биометрию; чтение повреждённого PIN не выключает защиту.
