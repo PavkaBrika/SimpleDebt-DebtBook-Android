@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -280,9 +281,15 @@ internal fun PINCodeSection(
                 },
                 label = "PIN dot",
             )
-            Box(Modifier.size(12.dp).then(
-                if (filled) Modifier.background(color, CircleShape) else Modifier.border(1.5.dp, color, CircleShape)
-            ))
+            val diameter by animateDpAsState(
+                targetValue = if (filled) 16.dp else 12.dp,
+                label = "PIN dot diameter",
+            )
+            Box(Modifier.size(16.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(diameter).then(
+                    if (filled) Modifier.background(color, CircleShape) else Modifier.border(1.5.dp, color, CircleShape)
+                ))
+            }
         }
     }
 }

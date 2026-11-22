@@ -13,6 +13,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -116,6 +118,7 @@ class PinRecoveryDeviceTest {
         pin.forEach { compose.onNodeWithText(it.toString()).performClick() }
     }
     private fun capturePinLayout(name: String = "fix-pin-layout.png") {
+        compose.waitForIdle()
         // Screenshot only: production keeps FLAG_SECURE throughout this flow.
         lateinit var activity: PinRecoveryActivity
         var windows = emptyList<Pair<android.view.View, android.view.WindowManager.LayoutParams>>()
@@ -169,7 +172,10 @@ class PinRecoveryDeviceTest {
             compose.onNodeWithTag("pinRecoverySheet").assertIsDisplayed()
             compose.onNodeWithText(context.getString(R.string.pin_recovery_verify)).assertIsDisplayed()
             capturePinLayout("polish-pin-sheet.png")
-            compose.onNodeWithText(context.getString(R.string.cancel)).performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
+            compose.waitUntil(15_000) {
+                compose.onAllNodesWithTag("pinRecoverySheet").fetchSemanticsNodes(atLeastOneRootRequired = false).isEmpty()
+            }
             waitForText(R.string.pin_recovery_title)
             assertUnchanged()
         }
@@ -232,6 +238,9 @@ class PinRecoveryDeviceTest {
             assertTrue("The prompt should be near the upper third", prompt.center.y in root.height * .22f..root.height * .45f)
             assertTrue("The keypad should end near the bottom", keypad.bottom > root.height * .86f)
             capturePinLayout()
+            enterAppPin("5")
+            capturePinLayout("pin-filled-indicator.png")
+            compose.onNodeWithContentDescription(context.getString(R.string.backspace)).performClick()
             enterAppPin("5678")
             waitForText(R.string.confirm_your_pin)
             assertUnchanged()

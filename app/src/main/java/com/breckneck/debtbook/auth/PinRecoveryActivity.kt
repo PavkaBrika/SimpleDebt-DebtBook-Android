@@ -13,24 +13,22 @@ import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.testTag
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Error
 import com.breckneck.debtbook.auth.PinRecoveryViewModel.Step
+import com.breckneck.debtbook.auth.screen.PinEntryError
 import com.breckneck.debtbook.auth.screen.PinEntryLayout
 import com.breckneck.debtbook.core.enableBubbleEdgeToEdge
-import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
+import com.breckneck.debtbook.core.ui.components.BubbleBottomSheet
+import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
-import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -123,35 +121,22 @@ class PinRecoveryActivity : AppCompatActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecoverySheet(state: PinRecoveryViewModel.State, onVerify: () -> Unit, onCancel: () -> Unit) {
-    val spacing = MaterialTheme.spacing
-    DebtBookBottomSheet(onDismiss = onCancel) {
-        Column(
-            Modifier.fillMaxWidth().testTag("pinRecoverySheet")
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = spacing.space24, vertical = spacing.space24)
+    BubbleBottomSheet(onDismiss = onCancel, modifier = Modifier.testTag("pinRecoverySheet")) { enabled, close ->
+        BubbleSheetHeader(stringResource(R.string.pin_recovery_title), close, enabled = enabled)
+        Text(
+            stringResource(R.string.pin_recovery_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = bubbleColors().muted,
+        )
+        RecoveryError(state.error)
+        BubbleButton(
+            onClick = onVerify,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled && state.step != Step.VERIFYING,
         ) {
-            Text(stringResource(R.string.pin_recovery_title), style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(spacing.space12))
-            Text(stringResource(R.string.pin_recovery_message), style = MaterialTheme.typography.bodyMedium)
-            if (state.error != null) {
-                Spacer(Modifier.height(spacing.space12))
-                RecoveryError(state.error)
-            }
-            Spacer(Modifier.height(spacing.space20))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing.space8, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
-                Button(onClick = onVerify, enabled = state.step != Step.VERIFYING,
-                    modifier = Modifier.heightIn(min = spacing.space48)) {
-                    Text(stringResource(R.string.pin_recovery_verify), textAlign = TextAlign.Center)
-                }
-            }
+            Text(stringResource(R.string.pin_recovery_verify))
         }
     }
 }
@@ -183,11 +168,11 @@ private fun RecoveryPinScreen(
 @Composable
 private fun RecoveryError(error: Error?) {
     error?.let {
-        Text(stringResource(when (it) {
+        PinEntryError(stringResource(when (it) {
             Error.UNAVAILABLE -> R.string.pin_recovery_unavailable
             Error.CANCELLED -> R.string.pin_recovery_cancelled
             Error.MISMATCH -> R.string.pin_recovery_mismatch
             Error.SAVE_FAILED -> R.string.pin_save_failed_message
-        }), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        }))
     }
 }
