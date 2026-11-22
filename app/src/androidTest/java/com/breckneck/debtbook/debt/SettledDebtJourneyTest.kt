@@ -145,6 +145,7 @@ class SettledDebtJourneyTest {
         tap(R.id.deleteButton) // Text
         val statement = onView(withId(R.id.statementText)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
         await { runCatching { statement.check(matches(isDisplayed())) }.isSuccess }
+        onView(withId(R.id.includeEarlyEntries)).check(matches(withEffectiveVisibility(Visibility.GONE)))
         for ((label, total) in listOf(R.string.statement_lent to 1000, R.string.statement_borrowed to 1000,
             R.string.statement_even to 0)) {
             statement.check(matches(withText(containsString(screen.screenString(label).format("${amount(total)} RUB")))))

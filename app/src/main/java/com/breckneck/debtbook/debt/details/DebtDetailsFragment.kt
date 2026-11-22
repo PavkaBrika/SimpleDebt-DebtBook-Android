@@ -173,10 +173,11 @@ class DebtDetailsFragment : Fragment() {
             val rest = vm.remaining(debt)
             val currency = vm.humanCurrency.orEmpty()
             val hasRepayments = vm.hasRepayments(debt.id)
+            val earlyEntry = debt.repaymentOfId == null && vm.originalDebt(debt.id) == null
             val close = { resetSheet(); vm.selectDebtAction(null) }
             when (sheet) {
                 DebtSheet.ACTIONS -> DebtActionsSheet(
-                    debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments,
+                    debt, debt.repaymentOfId?.let(vm::originalDebt), currency, rest, hasRepayments, earlyEntry,
                     onDismiss = close,
                     onRepay = { close(); vm.openRepayment(debt) },
                     onDue = { sheet = DebtSheet.DUE },
@@ -210,7 +211,7 @@ class DebtDetailsFragment : Fragment() {
                             debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) },
                             stringResource(R.string.repayment_cancel_confirm, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
                         ).joinToString("\n")
-                        else stringResource(R.string.debt_delete_question),
+                        else stringResource(if (earlyEntry) R.string.early_entry_delete_question else R.string.debt_delete_question),
                         confirmText = action,
                         dismissText = stringResource(R.string.cancel),
                         onConfirm = { close(); vm.deleteDebt(debt) },
@@ -274,7 +275,8 @@ class DebtDetailsFragment : Fragment() {
         val details = if (debt.repaymentOfId != null) {
             debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, vm.humanCurrency.orEmpty()) }
         } else {
-            getString(R.string.debt_remaining, MoneyDisplay.formatExact(vm.remaining(debt), vm.humanCurrency.orEmpty()), vm.humanCurrency)
+            val remaining = vm.loans.value?.loan(debt.id)?.remaining ?: debt.sum.abs()
+            getString(R.string.debt_remaining, MoneyDisplay.formatExact(remaining, vm.humanCurrency.orEmpty()), vm.humanCurrency)
         }
         val description = listOfNotNull(getString(debt.historyTitle()), details, debt.info?.takeIf { it.isNotBlank() })
         return debt.copy(info = description.joinToString("; "))

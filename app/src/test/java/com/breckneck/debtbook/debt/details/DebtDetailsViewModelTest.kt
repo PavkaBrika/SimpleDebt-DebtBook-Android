@@ -27,6 +27,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.*
+import java.math.BigDecimal
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -43,13 +44,15 @@ class DebtDetailsViewModelTest {
     private val getOrder: GetDebtOrder = mock()
     private val setOrder: SetDebtOrder = mock()
     private val recordRepayment: RecordRepaymentUseCase = mock()
-    private val record = DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "1 Jan 2026")
+    private val record = DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "1 Jan 2026", recordedAsLoan = true)
+
+    private val person = com.breckneck.deptbook.domain.model.HumanDomain(7, "Person", record.sum, "EUR", BigDecimal.ZERO)
 
     @Before fun setup() {
         Dispatchers.setMain(Dispatchers.Unconfined)
         whenever(getOrder.execute()).thenReturn(DebtOrderAttribute.CreationDate to false)
         whenever(debts.execute(any())).thenReturn(listOf(record))
-        whenever(people.getHuman(7)).thenReturn(com.breckneck.deptbook.domain.model.HumanDomain(7, "Person", record.sum, "EUR"))
+        whenever(people.getHuman(7)).thenReturn(person)
     }
     @After fun teardown() = Dispatchers.resetMain()
 
@@ -98,7 +101,7 @@ class DebtDetailsViewModelTest {
     @Test fun `committed request recovered from saved state closes form without another payment`() {
         val saved = SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR", "repaymentDebtId" to 9,
             "repaymentRequestId" to "request-000000001", "repaymentAmount" to "2.34", "repaymentDay" to "2026-11-16"))
-        val payment = record.copy(id = 10, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, operationId = "request-000000001")
+        val payment = record.copy(id = 10, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, recordedAsLoan = false, operationId = "request-000000001")
         whenever(debts.execute(7)).thenReturn(listOf(record, payment))
         val model = vm(saved)
         model.screenState.await { it == DebtDetailsState.SUCCESS }
@@ -189,21 +192,21 @@ class DebtDetailsViewModelTest {
 
     @Test fun `archive selection survives recreation and groups repayments without narrowing exports`() {
         val other = record.copy(id = 10, sum = record.sum.negate())
-        val first = record.copy(id = 11, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, date = "2026-11-10")
-        val last = record.copy(id = 12, sum = "-10".toBigDecimal(), repaymentOfId = 9, date = "2026-11-20")
+        val first = record.copy(id = 11, sum = "-2.34".toBigDecimal(), repaymentOfId = 9, recordedAsLoan = false, date = "2026-11-10")
+        val last = record.copy(id = 12, sum = "-10".toBigDecimal(), repaymentOfId = 9, recordedAsLoan = false, date = "2026-11-20")
         val history = listOf(record, other, last, first)
         whenever(debts.execute(7)).thenReturn(history)
         val saved = SavedStateHandle(mapOf("idHuman" to 7))
         val model = vm(saved)
         model.screenState.await { it == DebtDetailsState.SUCCESS }
         assertEquals(listOf(other), model.visibleDebtRows.value)
-        model.selectDebtSection(true)
+        model.selectDebtSection(DebtSection.SETTLED)
         assertEquals(listOf(record, first, last), model.visibleDebtRows.value)
         assertEquals(history.toSet(), model.resultedDebtList.value!!.toSet())
 
         val recreated = vm(SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) }))
         recreated.screenState.await { it == DebtDetailsState.SUCCESS }
-        assertEquals(true, recreated.showSettledDebts.value)
+        assertEquals(DebtSection.SETTLED, recreated.section.value)
         assertEquals(listOf(record, first, last), recreated.visibleDebtRows.value)
 
         val undone = last.copy(cancelled = true)
@@ -211,9 +214,46 @@ class DebtDetailsViewModelTest {
         recreated.retry()
         recreated.screenState.await { it == DebtDetailsState.EMPTY }
         assertTrue(recreated.visibleDebtRows.value!!.isEmpty())
-        recreated.selectDebtSection(false)
+        recreated.selectDebtSection(DebtSection.OPEN)
         assertEquals(listOf(record, first, undone, other), recreated.visibleDebtRows.value)
         assertEquals(0, recreated.remaining(record).compareTo("10".toBigDecimal()))
+    }
+
+    @Test fun `early history opens by default and keeps its balance when switching sections`() {
+        val old = record.copy(recordedAsLoan = false, info = "Original note")
+        whenever(debts.execute(7)).thenReturn(listOf(old))
+        whenever(people.getHuman(7)).thenReturn(person.copy(sumDebt = "15.34".toBigDecimal(), openingAdjustment = 3.toBigDecimal()))
+        val model = vm()
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(DebtSection.EARLY, model.section.value)
+        assertEquals(listOf(old), model.visibleDebtRows.value)
+        assertEquals(0, model.openingAdjustment.value!!.compareTo("3".toBigDecimal()))
+        for (section in listOf(DebtSection.OPEN, DebtSection.SETTLED)) {
+            model.selectDebtSection(section)
+            assertEquals(DebtDetailsState.EMPTY, model.screenState.value)
+            assertEquals("15.34".toBigDecimal(), model.overallSum.value)
+            assertEquals(listOf(old), model.resultedDebtList.value)
+        }
+    }
+
+    @Test fun `mixed history keeps an early entry separate from the loan and its payment`() {
+        val early = record.copy(id = 8, sum = "-1".toBigDecimal(), recordedAsLoan = false)
+        val payment = record.copy(id = 10, sum = "-2.34".toBigDecimal(), repaymentOfId = record.id, recordedAsLoan = false)
+        val rows = listOf(early, record, payment)
+        whenever(debts.execute(7)).thenReturn(rows)
+        whenever(people.getHuman(7)).thenReturn(person.copy(sumDebt = 9.toBigDecimal()))
+        val state = SavedStateHandle(mapOf("idHuman" to 7))
+        val model = vm(state)
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(DebtSection.OPEN, model.section.value)
+        assertEquals(listOf(record, payment), model.visibleDebtRows.value)
+        assertEquals(0, model.remaining(record).compareTo("10".toBigDecimal()))
+        model.selectDebtSection(DebtSection.EARLY)
+        assertEquals(listOf(early), model.visibleDebtRows.value)
+        val recreated = vm(SavedStateHandle(state.keys().associateWith { state.get<Any?>(it) }))
+        recreated.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(listOf(early), recreated.visibleDebtRows.value)
+        assertEquals(rows, recreated.resultedDebtList.value)
     }
 
     @Test fun `human deletion navigates only after both writes complete and ignores duplicate tap`() {

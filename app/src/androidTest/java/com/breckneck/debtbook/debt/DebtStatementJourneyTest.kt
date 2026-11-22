@@ -35,7 +35,7 @@ class DebtStatementJourneyTest {
     private val dao = AppDataBase(context).appDao()
     private val name = "Statement " + System.nanoTime().toString(36)
     private fun tap(id: Int) {
-        if (id in listOf(R.id.shareHumanButton, R.id.sortButton, R.id.settledDebtsTab)) {
+        if (id in listOf(R.id.shareHumanButton, R.id.sortButton, R.id.earlyEntriesTab, R.id.settledDebtsTab)) {
             val tag = context.resources.getResourceEntryName(id)
             compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
             compose.onNodeWithTag(tag).performClick()
@@ -72,6 +72,8 @@ class DebtStatementJourneyTest {
         val previousRateThreshold = prefs.all[rateKey] as? Int
         prefs.edit().putInt(rateKey, Int.MAX_VALUE).commit()
         try {
+            val earlyNote = "Earlier receipt"
+            val early = add(250, 1, earlyNote)
             val lent = add(16000, 1, "Original loan")
             add(-3600, 4, "First payment", lent.id)
             add(-2400, 7, "Second payment", lent.id)
@@ -89,6 +91,13 @@ class DebtStatementJourneyTest {
                 compose.onNodeWithText("RUB", substring = true).performClick()
                 compose.onNodeWithTag("peopleList").performScrollToNode(hasText(name))
                 compose.onNodeWithText(name).performClick()
+                compose.awaitTag("openDebtsTab").assertIsSelected()
+                tap(R.id.earlyEntriesTab)
+                compose.record(early.id).assertTextContains(earlyNote).assertTextContains("+250\u00a0₽")
+                    .assertTextContains(screen.screenString(R.string.early_entry)).performClick()
+                compose.awaitTag("editButton").assertExists()
+                compose.onNodeWithTag("repaymentButton").assertDoesNotExist()
+                compose.onNodeWithTag("debtActionsCancel").performClick()
                 tap(R.id.settledDebtsTab)
                 preview()
                 onView(withId(R.id.statementText)).check(matches(
@@ -96,7 +105,15 @@ class DebtStatementJourneyTest {
                 ))
                 fun line(id: Int, value: String) = screen.screenString(id).format(value)
                 onView(withId(R.id.includeSettled)).check(matches(isNotChecked()))
+                onView(withId(R.id.includeEarlyEntries)).check(matches(isNotChecked()))
                 val open = displayedText()
+                assertFalse(open.contains(earlyNote))
+                assertTrue(open.contains(line(R.string.statement_you_owe, "10 250 RUB")))
+                tap(R.id.includeEarlyEntries)
+                val withEarly = displayedText()
+                assertTrue(withEarly.contains(line(R.string.statement_entry, "+250 RUB")))
+                assertEquals(1, withEarly.lines().count { it == earlyNote })
+                assertFalse(withEarly.contains(line(R.string.statement_borrowed, "500 RUB")))
                 assertTrue(open.contains(line(R.string.statement_remaining, "10 000 RUB")))
                 assertFalse(open.contains(line(R.string.statement_borrowed, "500 RUB")))
                 assertFalse(open.contains("First payment"))
@@ -109,11 +126,20 @@ class DebtStatementJourneyTest {
                 onView(withId(R.id.cancelButton)).check(matches(isCompletelyDisplayed()))
                 val all = displayedText()
                 for (expected in listOf(
-                    line(R.string.statement_you_owe, "10 000 RUB"), line(R.string.statement_lent, "16 000 RUB"),
+                    line(R.string.statement_you_owe, "10 250 RUB"), line(R.string.statement_lent, "16 000 RUB"),
                     line(R.string.statement_repaid, "6 000 RUB"), line(R.string.statement_remaining, "10 000 RUB"),
                     line(R.string.statement_cancelled, "800 RUB"), line(R.string.statement_borrowed, "500 RUB"),
                     line(R.string.statement_remaining, "0 RUB")
                 )) assertTrue(expected, all.contains(expected))
+                assertTrue(all.contains(earlyNote))
+                screen.recreate()
+                onView(withId(R.id.includeEarlyEntries)).check(matches(isChecked()))
+                onView(withId(R.id.includeSettled)).check(matches(isChecked()))
+                assertEquals(all, displayedText())
+                tap(R.id.includeEarlyEntries)
+                val onlySettledAndOpen = displayedText()
+                assertFalse(onlySettledAndOpen.contains(earlyNote))
+                assertTrue(onlySettledAndOpen.contains(line(R.string.statement_borrowed, "500 RUB")))
                 tap(R.id.includeSettled)
                 assertEquals(open, displayedText())
                 tap(R.id.cancelButton)
@@ -131,11 +157,12 @@ class DebtStatementJourneyTest {
                 onView(withId(R.id.confirmButton)).inRoot(isDialog()).perform(scrollTo(), click())
                 preview()
                 onView(withId(R.id.includeSettled)).check(matches(isNotChecked()))
+                onView(withId(R.id.includeEarlyEntries)).check(matches(withEffectiveVisibility(Visibility.GONE)))
                 assertTrue(displayedText().contains(screen.screenString(R.string.statement_empty)))
                 tap(R.id.includeSettled)
                 val selected = displayedText()
                 assertTrue(selected.contains(screen.screenString(R.string.statement_negative)))
-                assertTrue(selected.contains(line(R.string.statement_you_owe, "10 000 RUB")))
+                assertTrue(selected.contains(line(R.string.statement_you_owe, "10 250 RUB")))
                 assertTrue(selected.contains(line(R.string.statement_borrowed, "500 RUB")))
                 assertFalse(selected.contains(line(R.string.statement_lent, "16 000 RUB")))
                 screen.recreate()
@@ -155,7 +182,10 @@ class DebtStatementJourneyTest {
                 assertEquals(Intent.ACTION_SEND, intent.action)
                 assertEquals("text/plain", intent.type)
                 assertEquals(shown, intent.getStringExtra(Intent.EXTRA_TEXT))
-                InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("input keyevent 4")
+                val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+                val chooserPackage = requireNotNull(sent.single().resolveActivity(context.packageManager)).packageName
+                compose.waitUntil(8000) { automation.rootInActiveWindow?.packageName == chooserPackage }
+                automation.executeShellCommand("input keyevent 4")
                     .use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
                 compose.awaitTag("settledDebtsTab").assertIsSelected()
                 assertEquals(1, sent.size)

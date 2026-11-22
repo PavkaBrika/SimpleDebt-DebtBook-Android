@@ -3,4 +3,9 @@
     <string name="settled_debts">Погашенные долги</string>
     <string name="no_open_debts">Открытых долгов нет</string>
     <string name="no_settled_debts">Погашенных долгов нет</string>
+    <string name="early_entries">Ранние записи</string>
+    <string name="early_entry">Ранняя запись</string>
+    <string name="no_early_entries">Подходящих ранних записей нет</string>
+    <string name="opening_adjustment">Начальная поправка · %1$s %2$s</string>
+    <string name="early_entry_delete_question">Удалить эту запись?</string>
 </resources>

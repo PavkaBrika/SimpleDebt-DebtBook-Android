@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+enum class DebtSection { OPEN, SETTLED, EARLY }
 enum class DebtDetailsState { LOADING, SUCCESS, EMPTY, ERROR }
 enum class RepaymentFeedback { SETTLED, OVER_LIMIT }
 
@@ -66,8 +67,8 @@ class DebtDetailsViewModel @Inject constructor(
     val history: LiveData<List<DebtDomain>> get() = _initialDebtList
     private val _loans = MutableLiveData<PersonDebtHistory>()
     val loans: LiveData<PersonDebtHistory> get() = _loans
-    private val _showSettledDebts = savedStateHandle.getLiveData("showSettledDebts", false)
-    val showSettledDebts: LiveData<Boolean> get() = _showSettledDebts
+    private val _section = MutableLiveData<DebtSection>()
+    val section: LiveData<DebtSection> get() = _section
     private val _visibleDebtRows = MutableLiveData<List<DebtDomain>>()
     val visibleDebtRows: LiveData<List<DebtDomain>> get() = _visibleDebtRows
 
@@ -89,6 +90,9 @@ class DebtDetailsViewModel @Inject constructor(
     private val _overallSum = MutableLiveData<BigDecimal>()
     val overallSum: LiveData<BigDecimal>
         get() = _overallSum
+
+    private val _openingAdjustment = MutableLiveData<BigDecimal>()
+    val openingAdjustment: LiveData<BigDecimal> get() = _openingAdjustment
 
     private val _debtDeleted = MutableLiveData<Unit>()
     val debtDeleted: LiveData<Unit>
@@ -131,15 +135,14 @@ class DebtDetailsViewModel @Inject constructor(
     val repaymentFeedback = feedback.asSharedFlow()
     val repaymentRemaining = MutableLiveData<BigDecimal>()
 
-    fun originalDebt(id: Int): DebtDomain? = _loans.value?.let { history ->
-        history.loan(id)?.original ?: history.zeroAmountEntries.firstOrNull { it.id == id }
-    }
+    fun originalDebt(id: Int): DebtDomain? = _loans.value?.loan(id)?.original
     fun hasRepayments(id: Int): Boolean = !_loans.value?.loan(id)?.repayments.isNullOrEmpty()
     fun remaining(debt: DebtDomain): BigDecimal = _loans.value?.loan(debt.id)?.remaining ?: BigDecimal.ZERO
 
-    fun selectDebtSection(settled: Boolean) {
-        if (settled == _showSettledDebts.value) return
-        _showSettledDebts.value = settled
+    fun selectDebtSection(section: DebtSection) {
+        if (section == _section.value) return
+        savedStateHandle["debtSection"] = section
+        _section.value = section
         if (_screenState.value == DebtDetailsState.SUCCESS || _screenState.value == DebtDetailsState.EMPTY) updateVisibleRows()
     }
 
@@ -242,19 +245,28 @@ class DebtDetailsViewModel @Inject constructor(
                     Triple(rows, balance, PersonDebtHistory.from(rows))
                 }
                 _loans.value = personLoans
+                val requested = savedStateHandle.get<DebtSection>("debtSection")
+                    ?: DebtSection.SETTLED.takeIf { savedStateHandle.get<Boolean>("showSettledDebts") == true }
+                _section.value = when {
+                    requested == DebtSection.EARLY && personLoans.earlyEntries.isEmpty() -> DebtSection.OPEN
+                    requested != null -> requested
+                    personLoans.openLoans.isEmpty() && personLoans.earlyEntries.isNotEmpty() -> DebtSection.EARLY
+                    else -> DebtSection.OPEN
+                }
                 _initialDebtList.value = debts
                 _overallSum.value = person.sumDebt
+                _openingAdjustment.value = person.openingAdjustment
                 _humanName.value = person.name
                 _humanCurrency = person.currency
                 val request = savedStateHandle.get<String>("repaymentRequestId")
                 if (request != null && debts.any { it.operationId == request }) closeRepayment()
                 repaymentDebtId.value?.let { selected ->
-                    val original = debts.firstOrNull { it.id == selected && it.repaymentOfId == null }
+                    val original = originalDebt(selected)
                     if (original == null) closeRepayment() else repaymentRemaining.value = remaining(original)
                 }
                 savedStateHandle.remove<Int>("openDebtId")?.let { requested ->
                     personLoans.loan(requested)?.let { loan ->
-                        selectDebtSection(loan.remaining.signum() == 0)
+                        selectDebtSection(if (loan.remaining.signum() == 0) DebtSection.SETTLED else DebtSection.OPEN)
                         selectDebtAction(requested)
                     }
                 }
@@ -283,19 +295,18 @@ class DebtDetailsViewModel @Inject constructor(
 
     private fun updateVisibleRows() {
         val history = _loans.value ?: return
-        val settled = _showSettledDebts.value == true
-        val section = if (settled) history.settledLoans else history.openLoans
-        val sectionById = section.associateBy { it.original.id }
-        val rows = buildList {
-            for (row in _resultedDebtList.value.orEmpty()) {
-                if (row.repaymentOfId != null) continue
-                val loan = sectionById[row.id]
-                if (loan != null) {
-                    add(loan.original)
-                    addAll(loan.repayments)
-                } else if (!settled && row.sum.signum() == 0) {
-                    // A legacy zero entry remains accessible in the person's records.
-                    add(row)
+        val sorted = _resultedDebtList.value.orEmpty()
+        val rows = when (_section.value) {
+            DebtSection.EARLY -> sorted.filter { it.repaymentOfId == null && history.loan(it.id) == null }
+            else -> {
+                val loans = if (_section.value == DebtSection.SETTLED) history.settledLoans else history.openLoans
+                val sectionById = loans.associateBy { it.original.id }
+                buildList {
+                    for (row in sorted) {
+                        val loan = sectionById[row.id] ?: continue
+                        add(loan.original)
+                        addAll(loan.repayments)
+                    }
                 }
             }
         }

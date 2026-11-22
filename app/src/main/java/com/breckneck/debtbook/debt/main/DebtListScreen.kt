@@ -160,7 +160,7 @@ internal fun DebtListScreen(vm: DebtViewModel, host: DebtFragment.OnButtonClickL
                         Text(person.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         val day = deadlines[person.id]
                         Text(if (day != null) dueLabel(day, true, today) else stringResource(
-                            if (person.id in settled) R.string.repayment_closed else R.string.debt_no_due),
+                            if (person.sumDebt.signum() == 0 && person.id in settled) R.string.repayment_closed else R.string.debt_no_due),
                             style = MaterialTheme.typography.bodySmall, color = if (day != null && day < today) colors.danger else colors.muted)
                     }
                 }

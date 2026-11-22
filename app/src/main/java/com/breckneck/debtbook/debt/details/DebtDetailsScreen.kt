@@ -54,8 +54,9 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragme
     val state by vm.screenState.observeAsState()
     val busy by vm.isDeleting.observeAsState(false)
     val rows by vm.visibleDebtRows.observeAsState(emptyList())
-    val history by vm.resultedDebtList.observeAsState(emptyList())
-    val settled by vm.showSettledDebts.observeAsState(false)
+    val loans by vm.loans.observeAsState()
+    val section by vm.section.observeAsState(DebtSection.OPEN)
+    val adjustment by vm.openingAdjustment.observeAsState(BigDecimal.ZERO)
     val ready = !busy && state in listOf(DebtDetailsState.SUCCESS, DebtDetailsState.EMPTY)
     var manage by rememberSaveable { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -63,7 +64,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragme
     Column(Modifier.fillMaxSize().background(colors.background).semantics { testTagsAsResourceId = true }) {
         BubbleTopBar(name, host::onBackButtonClick, PaddingValues(0.dp),
             leadingTitle = { vm.humanId?.let { PersonMotif(it, Modifier.size(28.dp)) } }) { size ->
-            BubbleIconButton({ vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
+            if (section != DebtSection.SETTLED) BubbleIconButton({ vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
                 Modifier.testTag("addDebtButton"), enabled = ready, diameter = size) {
                 Icon(Icons.Outlined.Add, stringResource(R.string.newdebt))
             }
@@ -80,6 +81,11 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragme
                         }
                         Text("${stringResource(label)} · $currency", style = MaterialTheme.typography.labelLarge)
                         sum?.let { AnimatedAmount(it.abs(), it.abs().financeMoney(currency), style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold)) }
+                        if (adjustment.signum() != 0) {
+                            val amount = MoneyDisplay.formatExact(adjustment, currency)
+                            Text(stringResource(R.string.opening_adjustment, if (adjustment.signum() > 0) "+$amount" else amount, currency),
+                                style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }
@@ -102,30 +108,23 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragme
                 }
             }
             item {
-                // Keep the archived-loan view reachable even when its current count is zero.
                 FlowRow(Modifier.fillMaxWidth().selectableGroup().padding(top = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                    for (archive in listOf(false, true)) {
-                        val selected = archive == settled
-                        val label = stringResource(if (archive) R.string.settled_debts else R.string.open_debts)
-                        val modifier = Modifier.testTag(if (archive) "settledDebtsTab" else "openDebtsTab")
-                            .selectable(selected, role = Role.Tab) { vm.selectDebtSection(archive) }.heightIn(min = 48.dp)
-                        Box(modifier, contentAlignment = Alignment.CenterStart) {
-                            Text(label, color = if (selected) colors.ink else colors.muted,
+                    for (tab in DebtSection.entries) {
+                        if (tab == DebtSection.EARLY && loans?.earlyEntries.isNullOrEmpty()) continue
+                        val (label, tag) = when (tab) {
+                            DebtSection.OPEN -> R.string.open_debts to "openDebtsTab"
+                            DebtSection.SETTLED -> R.string.settled_debts to "settledDebtsTab"
+                            DebtSection.EARLY -> R.string.early_entries to "earlyEntriesTab"
+                        }
+                        val selected = section == tab
+                        Box(Modifier.testTag(tag).selectable(selected, role = Role.Tab) { vm.selectDebtSection(tab) }
+                            .heightIn(min = 48.dp), contentAlignment = Alignment.CenterStart) {
+                            Text(stringResource(label), color = if (selected) colors.ink else colors.muted,
                                 style = if (selected) MaterialTheme.typography.titleLarge else MaterialTheme.typography.labelMedium,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
                         }
                     }
-                }
-            }
-            when (state) {
-                DebtDetailsState.ERROR -> item { BubbleOutlinedButton(vm::retry) { Text(stringResource(R.string.history_retry)) } }
-                DebtDetailsState.LOADING, null -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                DebtDetailsState.EMPTY -> item { Text(stringResource(if (settled) R.string.no_settled_debts else R.string.no_open_debts),
-                    Modifier.testTag("emptyDebtsLayout"), color = colors.muted) }
-                DebtDetailsState.SUCCESS -> items(rows.filter { it.repaymentOfId == null }, key = { it.id }) { row ->
-                    val rest = vm.remaining(row)
-                    LoanCard(row, rest, currency, today, ready, { onRecord(row.id) }, { onDue(row.id) }, { vm.openRepayment(row) })
                 }
             }
             item {
@@ -136,18 +135,26 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragme
                     }
                 }
             }
-            if (ready) itemsIndexed(history, key = { _, entry -> "event-${entry.id}" }) { index, entry ->
-                BubbleGroupedRow(index, history.size) {
-                    val tag = if (entry.repaymentOfId == null) "event-${entry.id}" else "record-${entry.id}"
-                    BubbleListRow(Modifier.clickable {
-                        if (entry.repaymentOfId != null && !entry.cancelled) onUndo(entry.id) else onRecord(entry.id)
-                    }.testTag(tag).padding(12.dp),
-                        leading = { Icon(if (entry.sum.signum() < 0) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast,
-                            null, Modifier.background(colors.fill, CircleShape).padding(8.dp).size(16.dp)) },
-                        trailing = { Text(entry.sum.signedMoney(currency), fontWeight = FontWeight.SemiBold,
-                            textDecoration = if (entry.cancelled) TextDecoration.LineThrough else null) }) {
-                        Text(stringResource(entry.historyTitle()), style = MaterialTheme.typography.titleSmall)
-                        Text(LedgerDate.display(entry.date), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+            when (state) {
+                DebtDetailsState.ERROR -> item { BubbleOutlinedButton(vm::retry) { Text(stringResource(R.string.history_retry)) } }
+                DebtDetailsState.LOADING, null -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                DebtDetailsState.EMPTY -> item {
+                    val message = when (section) {
+                        DebtSection.OPEN -> R.string.no_open_debts
+                        DebtSection.SETTLED -> R.string.no_settled_debts
+                        DebtSection.EARLY -> R.string.no_early_entries
+                    }
+                    Text(stringResource(message), Modifier.testTag("emptyDebtsLayout"), color = colors.muted)
+                }
+                DebtDetailsState.SUCCESS -> items(rows, key = { it.id }) { row ->
+                    val loan = loans?.loan(row.id)
+                    if (loan != null) {
+                        LoanCard(row, loan.remaining, currency, today, ready,
+                            { onRecord(row.id) }, { onDue(row.id) }, { vm.openRepayment(row) })
+                    } else {
+                        HistoryEntry(row, currency, enabled = ready) {
+                            if (row.repaymentOfId != null && !row.cancelled) onUndo(row.id) else onRecord(row.id)
+                        }
                     }
                 }
             }
@@ -159,6 +166,23 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, host: DebtDetailsFragme
             text = { OutlinedTextField(input, { input = it }, singleLine = true, label = { Text(stringResource(R.string.person_name)) }) },
             confirmButton = { TextButton({ vm.rename(input); renaming = false }, enabled = input.isNotBlank()) { Text(stringResource(R.string.save)) } },
             dismissButton = { TextButton({ renaming = false }) { Text(stringResource(R.string.cancel)) } })
+    }
+}
+
+@Composable
+private fun HistoryEntry(row: DebtDomain, currency: String, enabled: Boolean, onClick: () -> Unit) {
+    val colors = bubbleColors()
+    val early = row.repaymentOfId == null
+    BubbleGroup(Modifier.padding(start = if (early) 0.dp else 16.dp, top = 2.dp, bottom = 2.dp)) {
+        BubbleListRow(Modifier.clickable(enabled = enabled, onClick = onClick).testTag("record-${row.id}").padding(12.dp),
+            leading = { Icon(if (row.sum.signum() < 0) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast,
+                null, Modifier.background(colors.fill, CircleShape).padding(8.dp).size(16.dp)) },
+            trailing = { Text(row.sum.signedMoney(currency), fontWeight = FontWeight.SemiBold,
+                textDecoration = if (row.cancelled) TextDecoration.LineThrough else null) }) {
+            Text(stringResource(row.historyTitle(early)), style = MaterialTheme.typography.titleSmall)
+            Text(LedgerDate.display(row.date), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+            row.info?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
     }
 }
 

@@ -16,16 +16,23 @@ import java.util.Locale
 class PersonDebtStatementTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val old = DebtDomain(1, 1000.toBigDecimal(), 1, "Original note", "2025-01-01")
-    private fun statement(rows: List<DebtDomain>, language: String, balance: String = "0", detailed: Boolean = false): String {
+    private fun statement(
+        rows: List<DebtDomain>,
+        language: String,
+        balance: String = "0",
+        detailed: Boolean = false,
+        includeEarlyEntries: Boolean = false
+    ): String {
         val config = Configuration(context.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)) }
         return formatPersonDebtStatement(context.createConfigurationContext(config).resources, "Anna", "RUB",
-            balance.toBigDecimal(), PersonDebtHistory.from(rows), Filter.ALL, DebtOrderAttribute.CreationDate to false, detailed)
+            balance.toBigDecimal(), PersonDebtHistory.from(rows), Filter.ALL, DebtOrderAttribute.CreationDate to false,
+            detailed, includeEarlyEntries = includeEarlyEntries)
     }
 
     @Test fun oppositeLoansAndUnclassifiedMovementsInRussianAndEnglish() {
         val oldRows = listOf(old, old.copy(id = 2, sum = -old.sum, info = "Other note", date = "raw date"))
         for (lang in listOf("ru", "en")) {
-            val neutral = statement(oldRows, lang)
+            val neutral = statement(oldRows, lang, includeEarlyEntries = true)
             val known = statement(oldRows.map { it.copy(recordedAsLoan = true) }, lang)
             val lend = if (lang == "ru") "Мой заём — " else "I lent you "
             val borrow = if (lang == "ru") "Ваш заём — " else "You lent me "
@@ -35,6 +42,18 @@ class PersonDebtStatementTest {
             assertFalse(neutral.contains(lend) || neutral.contains(borrow))
             listOf("Original note", "Other note", "raw date", "+1 000 RUB", "-1 000 RUB").forEach { assertTrue(neutral.contains(it)) }
         }
+    }
+
+    @Test fun earlyOnlyStatementKeepsBalanceAndCountsOnlyIncludedMovements() {
+        val mixed = old.copy(sum = (-200).toBigDecimal(), info = "Early mixed note")
+        // The stored balance includes an opening adjustment of +10 RUB.
+        val omitted = statement(listOf(mixed), "en", "-190", detailed = true)
+        val included = statement(listOf(mixed), "en", "-190", detailed = true, includeEarlyEntries = true)
+        for (text in listOf(omitted, included)) assertTrue(text.contains("I owe you 190 RUB"))
+        assertFalse(omitted.contains("Early mixed note"))
+        assertFalse(omitted.contains("Running total"))
+        assertTrue(included.contains("Entry · -200 RUB\nEarly mixed note"))
+        assertTrue(included.contains("Running total of entries shown · -200 RUB"))
     }
 
     @Test fun compactStatementShowsOnlyTheLoanSummaryByDefault() {

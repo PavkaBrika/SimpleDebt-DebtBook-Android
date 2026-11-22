@@ -42,6 +42,7 @@ internal fun DebtActionsSheet(
     currency: String,
     remaining: BigDecimal,
     hasRepayments: Boolean,
+    earlyEntry: Boolean,
     onDismiss: () -> Unit,
     onRepay: () -> Unit,
     onEdit: () -> Unit,
@@ -59,8 +60,10 @@ internal fun DebtActionsSheet(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(debt.historyTitle()), style = MaterialTheme.typography.titleLarge)
-                    Text("${MoneyDisplay.formatExact(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
+                    Text(stringResource(debt.historyTitle(earlyEntry)), style = MaterialTheme.typography.titleLarge)
+                    val amount = if (earlyEntry) debt.sum else debt.sum.abs()
+                    val sign = if (earlyEntry && amount.signum() > 0) "+" else ""
+                    Text("$sign${MoneyDisplay.formatExact(amount, currency)} $currency · ${LedgerDate.display(debt.date)}",
                         style = MaterialTheme.typography.bodyMedium)
                 }
                 if (!isRepayment && !hasRepayments) {

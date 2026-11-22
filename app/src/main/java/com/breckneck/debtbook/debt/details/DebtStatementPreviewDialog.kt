@@ -3,6 +3,7 @@ package com.breckneck.debtbook.debt.details
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.databinding.SheetDebtStatementPreviewBinding
@@ -35,19 +36,24 @@ class DebtStatementPreviewDialog : BottomSheetDialogFragment(R.layout.sheet_debt
             sheet.sendButton.isEnabled = ready
             if (!ready) {
                 sheet.includeSettled.isEnabled = false
+                sheet.includeEarlyEntries.isVisible = false
                 sheet.statementText.setText(if (state == DebtDetailsState.ERROR) R.string.history_load_failed else R.string.loading)
                 return
             }
             val history = requireNotNull(card.loans.value)
             val filter = requireNotNull(card.debtFilter.value)
             sheet.includeSettled.isEnabled = history.settledLoans.any { history.includesEntry(it.original, filter) }
+            sheet.includeEarlyEntries.isVisible = history.earlyEntries.any { history.includesEntry(it, filter) }
             sheet.statementText.text = formatPersonDebtStatement(
                 resources, card.humanName.value.orEmpty(), card.humanCurrency.orEmpty(),
                 requireNotNull(card.overallSum.value), history, filter, requireNotNull(card.debtOrder.value),
-                includeRunningTotals = getAddSumInShareText.execute(), includeSettled = sheet.includeSettled.isChecked
+                includeRunningTotals = getAddSumInShareText.execute(),
+                includeSettled = sheet.includeSettled.isChecked,
+                includeEarlyEntries = sheet.includeEarlyEntries.isChecked
             )
         }
         sheet.includeSettled.setOnCheckedChangeListener { _, _ -> render(card.screenState.value) }
+        sheet.includeEarlyEntries.setOnCheckedChangeListener { _, _ -> render(card.screenState.value) }
         card.screenState.observe(viewLifecycleOwner, ::render)
     }
 

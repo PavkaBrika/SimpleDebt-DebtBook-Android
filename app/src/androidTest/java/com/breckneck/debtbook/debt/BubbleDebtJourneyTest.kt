@@ -167,6 +167,37 @@ class BubbleDebtJourneyTest {
         assertEquals(0, dao.getHumanSumDebt(euro).compareTo(810.toBigDecimal()))
     }
 
+    @Test fun earlyOnlyCardKeepsItsCommentAndBalanceUntilDeletionIsConfirmed() {
+        val note = "Earlier transfer"
+        val opening = BigDecimal("7.89")
+        val entry = dao.getAllDebtsById(euro).single().copy(recordedAsLoan = false, dueDay = null, info = note)
+        dao.updateDebt(entry)
+        dao.updateHuman(requireNotNull(dao.getHuman(euro)).copy(openingAdjustment = opening, sumDebt = opening + entry.sum))
+
+        text("RUB").performClick()
+        compose.onNodeWithText("EUR", substring = true).performClick()
+        compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$euro"))
+        compose.onNodeWithTag("person-$euro").performClick()
+        compose.awaitTag("earlyEntriesTab").assertIsSelected()
+        val adjustment = context.getString(R.string.opening_adjustment, "+" + MoneyDisplay.formatExact(opening, "EUR"), "EUR")
+        text(adjustment).assertExists()
+        compose.record(entry.id).assertTextContains(note).assertTextContains(LedgerDate.display(today)).performClick()
+        compose.awaitTag("editButton").performClick()
+        compose.awaitTag("debtInfoEditText").performScrollTo().performTextReplacement("Receipt")
+        compose.awaitTag("setFinanceButton").performClick()
+        compose.record(entry.id).assertTextContains("Receipt").performClick()
+        compose.onNodeWithTag("deleteButton").performClick()
+        text(context.getString(R.string.early_entry_delete_question)).assertExists()
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.cancel))).performClick()
+        compose.awaitTag("debtActionsCancel").performClick()
+        compose.record(entry.id).assertTextContains("Receipt").performClick()
+        compose.onNodeWithTag("deleteButton").performClick()
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.delete))).performClick()
+        compose.awaitTag("emptyDebtsLayout").assertTextContains(context.getString(R.string.no_open_debts))
+        compose.onNodeWithTag("earlyEntriesTab").assertDoesNotExist()
+        assertEquals(0, dao.getHumanSumDebt(euro).compareTo(opening))
+    }
+
     @Test fun exactLegacyBalanceSurvivesFullRepaymentAndRename() {
         val principal = BigDecimal("12.3456")
         val opening = BigDecimal("7.89")

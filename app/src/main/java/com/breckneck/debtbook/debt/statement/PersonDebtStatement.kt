@@ -22,7 +22,8 @@ fun formatPersonDebtStatement(
     filter: Filter,
     order: Pair<DebtOrderAttribute, Boolean>,
     includeRunningTotals: Boolean,
-    includeSettled: Boolean = false
+    includeSettled: Boolean = false,
+    includeEarlyEntries: Boolean = false
 ): String = buildString {
     val locale = ConfigurationCompat.getLocales(resources.configuration)[0] ?: java.util.Locale.getDefault()
     fun money(value: BigDecimal) = "${MoneyDisplay.formatExact(value, currency, locale)} $currency"
@@ -47,10 +48,8 @@ fun formatPersonDebtStatement(
     appendLine(resources.getString(balanceLabel, money(balance.abs())))
     appendLine()
 
-    val loans = if (includeSettled) history.openLoans + history.settledLoans else history.openLoans
-    val originals = loans.map { it.original } + history.zeroAmountEntries
-    val selected = originals.filter { history.includesEntry(it, filter) }
-    val unclassified = selected.any { history.loan(it.id)?.hasKnownPurpose != true }
+    val selected = history.statementOriginals(includeSettled, includeEarlyEntries).filter { history.includesEntry(it, filter) }
+    val unclassified = selected.any { history.loan(it.id) == null }
     val heading = when (filter) {
         Filter.ALL -> R.string.statement_all
         Filter.POSITIVE -> if (unclassified) R.string.statement_positive_entries else R.string.statement_positive
@@ -61,7 +60,7 @@ fun formatPersonDebtStatement(
     for ((index, row) in sortDebts(selected, order).withIndex()) {
         if (index > 0) append("\n\n")
         val loan = history.loan(row.id)
-        if (loan == null || !loan.hasKnownPurpose) {
+        if (loan == null) {
             appendEntry(row, resources.getString(R.string.statement_entry, signed(row.sum)), includeNote = true)
             continue
         }

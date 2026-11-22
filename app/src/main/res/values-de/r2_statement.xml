@@ -20,5 +20,6 @@
     <string name="statement_positive_entries">Buchungen (Darlehen von mir und Einträge ≥ 0):</string>
     <string name="statement_negative_entries">Buchungen (Darlehen von Ihnen und Einträge ≤ 0):</string>
     <string name="statement_include_settled">Getilgte Darlehen einbeziehen</string>
+    <string name="statement_include_early_entries">Frühere Einträge einbeziehen</string>
     <string name="statement_empty">Keine passenden Buchungen</string>
 </resources>

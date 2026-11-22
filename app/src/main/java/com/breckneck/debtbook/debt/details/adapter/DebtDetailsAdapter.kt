@@ -29,6 +29,7 @@ import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.debtbook.debt.details.historyTitle
 import com.breckneck.debtbook.debt.details.originalDebtLabel
+import com.breckneck.deptbook.domain.model.LoanHistory
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -38,8 +39,7 @@ class DebtDetailsAdapter(
     debtDomainListImmutable: List<DebtDomain>,
     private val debtClickListener: OnDebtClickListener,
     private val currencyText: String,
-    private val remaining: (DebtDomain) -> BigDecimal,
-    private val originalDebt: (Int) -> DebtDomain?
+    private val findLoan: (Int) -> LoanHistory?
 ) : RecyclerView.Adapter<DebtDetailsAdapter.DebtViewHolder>() {
 
     private val debtDomainList: MutableList<DebtDomain> = debtDomainListImmutable.toMutableList()
@@ -154,21 +154,22 @@ class DebtDetailsAdapter(
         val debtDomain = debtDomainList[position]
         holder.debtCardView.tag = debtDomain.id
         val context = holder.itemView.context
-        val rest = if (debtDomain.repaymentOfId == null) remaining(debtDomain) else BigDecimal.ZERO
+        val originalId = debtDomain.repaymentOfId
+        val loan = findLoan(originalId ?: debtDomain.id)
+        val rest = loan?.remaining ?: BigDecimal.ZERO
         holder.bindDates(debtDomain, rest)
         holder.itemView.alpha = if (debtDomain.cancelled) 0.65f else 1f
-        holder.operation.setText(debtDomain.historyTitle())
-        val originalId = debtDomain.repaymentOfId
+        holder.operation.setText(debtDomain.historyTitle(earlyEntry = loan == null))
         val details = if (originalId == null) {
             buildList {
-                if (rest < debtDomain.sum.abs()) {
+                if (loan != null && rest < debtDomain.sum.abs()) {
                     add(context.getString(R.string.debt_repaid, MoneyDisplay.formatExact(debtDomain.sum.abs() - rest, currencyText), currencyText))
                     add(if (rest.signum() == 0) context.getString(R.string.repayment_closed)
                         else context.getString(R.string.debt_remaining, MoneyDisplay.formatExact(rest, currencyText), currencyText))
                 }
             }.joinToString("\n")
         } else {
-            originalDebt(originalId)?.let { context.originalDebtLabel(it, currencyText) }.orEmpty()
+            loan?.original?.let { context.originalDebtLabel(it, currencyText) }.orEmpty()
         }
         holder.remaining.text = details
         holder.remaining.visibility = if (details.isBlank()) View.GONE else View.VISIBLE

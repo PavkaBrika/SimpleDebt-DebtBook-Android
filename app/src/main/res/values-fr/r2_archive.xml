@@ -3,4 +3,9 @@
     <string name="settled_debts">Dettes remboursées</string>
     <string name="no_open_debts">Aucune dette en cours</string>
     <string name="no_settled_debts">Aucune dette remboursée</string>
+    <string name="early_entries">Écritures anciennes</string>
+    <string name="early_entry">Écriture ancienne</string>
+    <string name="no_early_entries">Aucune écriture ancienne correspondante</string>
+    <string name="opening_adjustment">Ajustement initial · %1$s %2$s</string>
+    <string name="early_entry_delete_question">Supprimer cette écriture ?</string>
 </resources>

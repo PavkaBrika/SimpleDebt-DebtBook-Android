@@ -74,7 +74,7 @@ def seed():
             db.execute('DELETE FROM Debt WHERE idHuman=900030')
             db.execute('DELETE FROM Human WHERE id=900030')
             db.execute("INSERT INTO Human(id,name,sumDebt,currency,openingAdjustment) VALUES(900030,'R2 test','100','EUR','0')")
-            db.execute("INSERT INTO Debt(id,sum,idHuman,info,date,cancelled) VALUES(900030,'100',900030,'Process fixture','2026-11-16',0)")
+            db.execute("INSERT INTO Debt(id,sum,idHuman,info,date,cancelled,recordedAsLoan) VALUES(900030,'100',900030,'Process fixture','2026-11-16',0,1)")
         db.close()
         call('shell', 'run-as', pkg, 'rm', '-f', 'databases/HumanDataBase-wal', 'databases/HumanDataBase-shm')
         write_private('databases/HumanDataBase', target.read_bytes())

@@ -97,7 +97,9 @@ class DebtViewModel @Inject constructor(
         getHumanOrder()
         setListStateLoading()
         viewModelScope.launch {
-            _searchQuery.debounce(500).collectLatest { publishHumans() }
+            _searchQuery.debounce(500).collectLatest {
+                if (_isSearching.value == true) publishHumans()
+            }
         }
     }
 
@@ -109,7 +111,8 @@ class DebtViewModel @Inject constructor(
             try {
                 val (persons, loans) = withContext(Dispatchers.IO) {
                     val (persons, rows) = transaction.run { getAllHumansUseCase.execute() to getAllDebts.execute() }
-                    persons to rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
+                    val rowsByPerson = rows.groupBy { it.idHuman }
+                    persons to persons.associate { it.id to PersonDebtHistory.from(rowsByPerson[it.id].orEmpty()) }
                 }
                 overviewCurrencies.value = (listOf(getFirstMainCurrency.execute(), getSecondMainCurrency.execute()) +
                     persons.map { it.currency }).distinct()
@@ -148,7 +151,7 @@ class DebtViewModel @Inject constructor(
         _mainSums.value = inCurrency.filter { it.sumDebt.signum() > 0 }.sumOf { it.sumDebt } to
             inCurrency.filter { it.sumDebt.signum() < 0 }.sumOf { it.sumDebt }
         val filter = humanFilter.value ?: Filter.ALL
-        val sorted = orderHumans(inCurrency.filter { filter == Filter.ALL || histories[it.id]?.matches(filter) == true })
+        val sorted = orderHumans(inCurrency.filter { histories.getValue(it.id).matches(filter, it.sumDebt) })
         val query = if (_isSearching.value == true) _searchQuery.value.trim() else ""
         val visible = sorted.filter { it.name.contains(query, ignoreCase = true) }
         _resultedHumanList.value = visible

@@ -66,7 +66,7 @@ class PartialRepaymentScreenTest {
     }
     private fun seed(sign: Int) {
         dao.insertHuman(Human(humanId, "R2 test", BigDecimal.ZERO, "EUR"))
-        dao.saveDebt(Debt(originalId, (100 * sign).toBigDecimal(), humanId, "Original loan", "2026-11-16"))
+        dao.saveDebt(Debt(originalId, (100 * sign).toBigDecimal(), humanId, "Original loan", "2026-11-16", recordedAsLoan = true))
     }
     private fun details(activity: MainActivity) =
         ((activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
