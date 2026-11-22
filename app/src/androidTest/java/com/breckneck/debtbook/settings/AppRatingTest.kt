@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.MailTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.BuildConfig
@@ -70,6 +69,10 @@ class AppRatingTest {
         try {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 openRatingFromSettings()
+                val reviewBack = compose.onNode(
+                    hasAnyAncestor(isDialog()) and hasContentDescription(context.getString(R.string.back)),
+                )
+                reviewBack.assertDoesNotExist()
                 action(R.string.continue_b).assertIsNotEnabled()
                 star(2).performClick().assertIsSelected()
                 action(R.string.continue_b).performClick()
@@ -80,8 +83,7 @@ class AppRatingTest {
 
                 compose.onNodeWithText(context.getString(R.string.rating_score, 2)).assertExists()
                 compose.onNode(hasSetTextAction()).assertTextContains(review)
-                closeSoftKeyboard()
-                pressBack()
+                reviewBack.performScrollTo().performClick().assertDoesNotExist()
                 star(2).assertIsSelected()
                 action(R.string.continue_b).performClick()
                 awaitNode(hasSetTextAction()).assertTextContains(review)
