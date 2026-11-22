@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.settings.rating
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -53,6 +56,7 @@ internal fun AppRatingSheet(
     onSelect: (Int) -> Unit,
     onReviewChange: (String) -> Unit,
     onContinue: () -> Unit,
+    onBackToRating: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val colors = bubbleColors()
@@ -66,6 +70,8 @@ internal fun AppRatingSheet(
             shouldDismissOnClickOutside = false,
         ),
     ) {
+        BackHandler(enabled = state.writingReview, onBack = onBackToRating)
+
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 20.dp),
@@ -124,6 +130,7 @@ private fun AppRatingStars(rating: Int, onSelect: (Int) -> Unit) {
                 val filled = star <= rating
                 Box(
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                        .clip(CircleShape)
                         .selectable(
                             selected = star == rating,
                             role = Role.RadioButton,

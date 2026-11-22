@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.MailTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.BuildConfig
@@ -79,6 +80,11 @@ class AppRatingTest {
 
                 compose.onNodeWithText(context.getString(R.string.rating_score, 2)).assertExists()
                 compose.onNode(hasSetTextAction()).assertTextContains(review)
+                closeSoftKeyboard()
+                pressBack()
+                star(2).assertIsSelected()
+                action(R.string.continue_b).performClick()
+                awaitNode(hasSetTextAction()).assertTextContains(review)
                 action(R.string.continue_b).performScrollTo().performClick().assertDoesNotExist()
                 assertEquals(1, mail.hits)
                 assertEquals(Int.MAX_VALUE, prefs.getInt(promptKey, -1))
@@ -106,21 +112,46 @@ class AppRatingTest {
         }
     }
 
-    @Test fun bothStepsUseContinueAndOnlyBackDismissesTheSheet() {
+    @Test fun bothStepsUseContinueAndIgnoreOutsideTapsAndSwipes() {
         ActivityScenario.launch(MainActivity::class.java).use {
             openRatingFromSettings()
             for (rating in 1..5) {
                 star(rating).performClick()
                 action(R.string.continue_b).assertIsEnabled()
             }
-            assertBackDismissesRating(R.string.rate_app)
-
-            openRatingFromSettings()
+            assertIgnoresOutsideTapAndSwipe(R.string.rate_app)
             star(2).performClick()
             action(R.string.continue_b).performClick()
             awaitNode(hasSetTextAction())
             action(R.string.continue_b).assertIsEnabled()
-            assertBackDismissesRating(R.string.rating_review_title)
+            assertIgnoresOutsideTapAndSwipe(R.string.rating_review_title)
+            pressBack()
+            star(2).assertIsSelected()
+            pressBack()
+            compose.onNode(isDialog()).assertDoesNotExist()
+            action(R.string.rate_app).assertExists()
+        }
+    }
+
+    @Test fun backFromReviewLetsTheUserChangeToFiveStars() {
+        val market = instrumentation.addMonitor(
+            IntentFilter(Intent.ACTION_VIEW).apply { addDataScheme("market") }, null, true,
+        )
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use {
+                openRatingFromSettings()
+                star(1).performClick()
+                action(R.string.continue_b).performClick()
+                awaitNode(hasSetTextAction())
+
+                pressBack()
+                star(1).assertIsSelected()
+                star(5).performClick().assertIsSelected()
+                action(R.string.continue_b).performClick().assertDoesNotExist()
+                assertEquals(1, market.hits)
+            }
+        } finally {
+            instrumentation.removeMonitor(market)
         }
     }
 
@@ -130,6 +161,9 @@ class AppRatingTest {
             star(1).performClick()
             action(R.string.continue_b).performClick()
             awaitNode(hasSetTextAction())
+            pressBack()
+            star(1).assertIsSelected()
+            assertEquals(0, prefs.getInt(promptKey, -1))
             pressBack()
             compose.onNode(isDialog()).assertDoesNotExist()
             assertEquals(10, prefs.getInt(promptKey, -1))
@@ -151,7 +185,7 @@ class AppRatingTest {
         }
     }
 
-    private fun assertBackDismissesRating(title: Int) {
+    private fun assertIgnoresOutsideTapAndSwipe(title: Int) {
         val dialog = compose.onNode(isDialog())
         compose.onNodeWithContentDescription(context.getString(R.string.cancel)).assertDoesNotExist()
         dialog.performTouchInput { click(Offset(centerX, 32.dp.toPx())) }
@@ -160,9 +194,6 @@ class AppRatingTest {
             swipe(center, center + Offset(0f, 120.dp.toPx()))
         }
         dialog.assertExists()
-        pressBack()
-        dialog.assertDoesNotExist()
-        action(R.string.settings).assertExists()
     }
 
     private fun openRatingFromSettings() {

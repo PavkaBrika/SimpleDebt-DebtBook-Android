@@ -591,6 +591,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                         },
                         onReviewChange = vm::updateAppReview,
                         onContinue = ::continueAppRating,
+                        onBackToRating = vm::returnToAppRating,
                         onDismiss = vm::closeAppRating,
                     )
                 }

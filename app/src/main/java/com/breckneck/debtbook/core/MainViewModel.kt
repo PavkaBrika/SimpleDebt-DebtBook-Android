@@ -110,6 +110,10 @@ class MainViewModel @Inject constructor(
         appRating = appRating?.copy(writingReview = true)
     }
 
+    internal fun returnToAppRating() {
+        appRating = appRating?.copy(writingReview = false)
+    }
+
     internal fun updateAppReview(text: String) {
         appRating = appRating?.copy(reviewText = text)
     }
