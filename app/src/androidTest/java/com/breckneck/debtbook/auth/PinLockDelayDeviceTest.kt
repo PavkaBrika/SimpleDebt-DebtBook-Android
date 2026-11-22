@@ -8,9 +8,11 @@ import com.breckneck.debtbook.settings.requirePredictiveGestures
 import android.content.Context
 import android.os.SystemClock
 import android.view.View
+import android.view.WindowManager
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
@@ -24,11 +26,15 @@ import java.io.File
 
 class PinLockDelayDeviceTest {
     @get:Rule val compose = createEmptyComposeRule()
-    private fun action(id: Int): SemanticsNodeInteraction {
-        val matcher = hasText(context.getString(id)) and hasClickAction()
-        compose.waitUntil(10_000) { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+    private fun action(id: Int) = awaitNode(hasText(context.getString(id)) and hasClickAction())
+
+    private fun awaitNode(matcher: SemanticsMatcher): SemanticsNodeInteraction {
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(matcher).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
         return compose.onNode(matcher)
     }
+
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val prefs get() = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
     private val file get() = File(context.filesDir, CRYPTO_FILE_NAME)
@@ -68,13 +74,20 @@ class PinLockDelayDeviceTest {
     @Test fun settingPersistsAndIsShownAfterRecreation() {
         prefs.edit().remove("pin_lock_delay_millis").commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            action(R.string.settings).performClick()
-            action(R.string.pin_code_lock).performScrollTo().performClick()
+            openProtection()
+            scenario.onActivity { assertEquals(R.id.appSecurityFragment, it.navController.currentDestination?.id) }
             action(R.string.pin_lock_immediately).assertIsDisplayed()
+            action(R.string.pin_lock_delay_title).performClick()
+            compose.onNode(hasText(context.getString(R.string.pin_lock_immediately)) and isSelected()).assertIsDisplayed()
+            compose.onNodeWithText(context.getString(R.string.pin_lock_delay_explanation)).assertIsDisplayed()
+            compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
+            action(R.string.pin_lock_immediately).assertIsDisplayed()
+            assertEquals(0L, SharedPrefsSettingsStorageImpl(context).getPinLockDelayMillis())
             action(R.string.pin_lock_delay_title).performClick()
             action(R.string.pin_lock_1_minute).performClick()
             compose.waitUntil(5000) { SharedPrefsSettingsStorageImpl(context).getPinLockDelayMillis() == 60_000L }
             assertEquals(60_000L, SharedPrefsSettingsStorageImpl(context).getPinLockDelayMillis())
+            compose.onNodeWithText(context.getString(R.string.pin_lock_delay_explanation)).assertDoesNotExist()
             scenario.recreate()
             action(R.string.pin_lock_1_minute).assertIsDisplayed()
         }
@@ -100,13 +113,10 @@ class PinLockDelayDeviceTest {
 
     @Test fun settingsCanSetChangeAndDisablePin() {
         prefs.edit().putBoolean("pin_code_is_enabled", false).commit()
-        ActivityScenario.launch(MainActivity::class.java).use {
-            action(R.string.settings).performClick()
-            action(R.string.pin_code_lock).performScrollTo().performClick()
-            fun enter(pin: String) {
-                for (digit in pin) compose.onNodeWithText(digit.toString()).performClick()
-            }
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            openProtection()
             action(R.string.enable_pin).performClick()
+            scenario.onActivity { assertTrue(it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) }
             enter("2468")
             enter("2468")
             action(R.string.change_pin_code).performClick()
@@ -116,6 +126,53 @@ class PinLockDelayDeviceTest {
             enter("5678")
             action(R.string.enable_pin).assertIsDisplayed()
             assertFalse(prefs.getBoolean("pin_code_is_enabled", true))
+            scenario.onActivity { assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) }
+        }
+    }
+
+    @Test fun backingOutOfChangeKeepsThePinAndUnlockedSession() {
+        prefs.edit().putLong("pin_lock_delay_millis", 0).commit()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            openProtection()
+
+            action(R.string.change_pin_code).performClick()
+            awaitNode(hasText(context.getString(R.string.enter_pin))).assertIsDisplayed()
+            pressBack()
+            action(R.string.change_pin_code).assertIsDisplayed()
+
+            action(R.string.change_pin_code).performClick()
+            enter("1234")
+            awaitNode(hasText(context.getString(R.string.enter_new_pin))).assertIsDisplayed()
+            enter("78")
+            compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
+            action(R.string.change_pin_code).assertIsDisplayed()
+
+            scenario.onActivity { assertEquals(R.id.appSecurityFragment, it.navController.currentDestination?.id) }
+            assertTrue(AuthSession.isUnlocked)
+            assertEquals("1234", PinCodeStore(context).read(""))
+            compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
+            action(R.string.pin_code_lock).assertIsDisplayed()
+        }
+    }
+
+    @Test fun backgroundingDuringPinChangeStillLocksTheApp() {
+        prefs.edit().putLong("pin_lock_delay_millis", 0).commit()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            openProtection()
+            action(R.string.change_pin_code).performClick()
+            enter("1234")
+            awaitNode(hasText(context.getString(R.string.enter_new_pin))).assertIsDisplayed()
+            scenario.moveToState(Lifecycle.State.CREATED)
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            action(R.string.pin_recovery_title).assertIsDisplayed()
+            assertFalse(AuthSession.isUnlocked)
+            compose.onNodeWithText(context.getString(R.string.enter_new_pin)).assertIsNotDisplayed()
+
+            enter("1234")
+            awaitNode(hasText(context.getString(R.string.enter_new_pin))).assertIsDisplayed()
+            pressBack()
+            action(R.string.change_pin_code).assertIsDisplayed()
+            assertTrue(AuthSession.isUnlocked)
         }
     }
 
@@ -154,5 +211,14 @@ class PinLockDelayDeviceTest {
                     .any { it is AuthorizationActivity })
             }
         }
+    }
+
+    private fun openProtection() {
+        action(R.string.settings).performClick()
+        action(R.string.pin_code_lock).performScrollTo().performClick()
+    }
+
+    private fun enter(pin: String) {
+        for (digit in pin) awaitNode(hasText(digit.toString()) and hasClickAction()).performClick()
     }
 }

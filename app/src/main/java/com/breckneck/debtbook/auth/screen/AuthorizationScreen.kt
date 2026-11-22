@@ -1,44 +1,40 @@
 package com.breckneck.debtbook.auth.screen
 
 import android.content.Intent
-import android.content.res.Configuration
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,54 +47,94 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Devices
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ChainStyle
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
-import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.core.ui.theme.Red
+import androidx.core.net.toUri
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.auth.AuthorizationViewModel
 import com.breckneck.debtbook.auth.PinCodeStore
 import com.breckneck.debtbook.auth.util.BiometricPromptManager
-import com.breckneck.debtbook.auth.util.BiometricPromptManager.*
+import com.breckneck.debtbook.auth.util.BiometricPromptManager.BiometricResult
+import com.breckneck.debtbook.core.ui.components.BubbleIconButton
+import com.breckneck.debtbook.core.ui.components.BubbleScaffold
+import com.breckneck.debtbook.core.ui.components.BubbleTopBar
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.deptbook.domain.util.PINCodeAction.*
 import com.breckneck.deptbook.domain.util.PINCodeEnterState
 import com.breckneck.deptbook.domain.util.PINCodeEnterState.*
-import com.breckneck.deptbook.domain.util.PINCodeAction
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.breckneck.debtbook.auth.AuthorizationViewModel
-import kotlin.math.roundToInt
 
 @Composable
-fun AuthorizationScreen(
+internal fun AuthorizationScreen(
     activity: AppCompatActivity,
-    vm: AuthorizationViewModel = hiltViewModel(),
+    vm: AuthorizationViewModel,
     biometricPromptManager: BiometricPromptManager,
     onAuthenticated: () -> Unit,
-    onRecoverPin: () -> Unit
+    onRecoverPin: () -> Unit,
 ) {
+    val checking = vm.pinCodeAction.value == CHECK
+    val biometricResult by biometricPromptManager.promptResults.collectAsState(initial = null)
+    LaunchedEffect(biometricResult) {
+        if (biometricResult == BiometricResult.AuthenticationSuccess &&
+            vm.isFingerprintAuthEnabled.value && checking) {
+            onAuthenticated()
+        }
+    }
+    val emailLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+    PinEntryScreen(
+        vm = vm,
+        hostInsets = WindowInsets.safeDrawing.asPaddingValues(),
+        onAuthenticated = onAuthenticated,
+        biometricError = biometricResult is BiometricResult.AuthenticationError,
+        onFingerprint = if (checking && vm.isFingerprintAuthEnabled.value) ({
+            biometricPromptManager.showBiometricPrompt(
+                title = activity.getString(R.string.login_in_the_debtbook),
+                description = activity.getString(R.string.scan_your_fingerprint),
+                authenticators = BIOMETRIC_STRONG,
+                negativeButtonText = activity.getString(R.string.cancel),
+            )
+        }) else null,
+        onRecoverPin = onRecoverPin.takeIf { checking },
+        onExit = activity::finishAndRemoveTask,
+        onContact = {
+            emailLauncher.launch(Intent(Intent.ACTION_SENDTO).apply {
+                data = "mailto:pavlikbrichkin@yandex.ru".toUri()
+                putExtra(Intent.EXTRA_SUBJECT, "${activity.getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}")
+            })
+        },
+    )
+}
+
+@Composable
+internal fun PinEntryScreen(
+    vm: AuthorizationViewModel,
+    hostInsets: PaddingValues,
+    onAuthenticated: () -> Unit,
+    title: String? = null,
+    onBack: (() -> Unit)? = null,
+    onFingerprint: (() -> Unit)? = null,
+    onRecoverPin: (() -> Unit)? = null,
+    onExit: (() -> Unit)? = null,
+    onContact: (() -> Unit)? = null,
+    biometricError: Boolean = false,
+) {
+    val context = LocalContext.current
     var saveFailed by remember { mutableStateOf(false) }
     fun savePIN(): Boolean {
         return try {
-            PinCodeStore(activity).save(vm.enteredPINCode.value)
+            PinCodeStore(context).save(vm.enteredPINCode.value)
             true
         } catch (_: Exception) {
             vm.resetPINCodes()
@@ -107,16 +143,13 @@ fun AuthorizationScreen(
             false
         }
     }
+
     val pinCodeEnterState by vm.pinCodeEnterState.collectAsState()
     val enteredPINCode by vm.enteredPINCode.collectAsState()
-    val biometricResult by biometricPromptManager.promptResults.collectAsState(initial = null)
-    LaunchedEffect(biometricResult) {
-        if (biometricResult == BiometricResult.AuthenticationSuccess &&
-            vm.isFingerprintAuthEnabled.value && vm.pinCodeAction.value == CHECK) {
-            onAuthenticated()
-        }
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(pinCodeEnterState) {
+        if (pinCodeEnterState == INCORRECT) haptics.performHapticFeedback(HapticFeedbackType.Reject)
     }
-    val emailLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
     LaunchedEffect(enteredPINCode) {
         if (enteredPINCode.length == 4) {
             when (vm.pinCodeAction.value) {
@@ -164,35 +197,86 @@ fun AuthorizationScreen(
             }
         }
     }
-    UnlockScreen(
-        pinCodeEnterState = pinCodeEnterState,
-        enteredPINCode = enteredPINCode,
-        pinCodeAction = vm.pinCodeAction.value,
-        biometricResult = biometricResult,
-        pinReadFailed = vm.pinReadFailed.value,
-        onFingerprintButtonClick = {
-            biometricPromptManager.showBiometricPrompt(
-                title = activity.getString(R.string.login_in_the_debtbook),
-                description = activity.getString(R.string.scan_your_fingerprint),
-                authenticators = BIOMETRIC_STRONG,
-                negativeButtonText = activity.getString(R.string.cancel)
-            )
-        },
-        onDigitButtonClick = { digit ->
-            vm.changeEnteredPINCode(PINCode = enteredPINCode + digit)
-            if (pinCodeEnterState == INCORRECT) vm.setPINCodeEnterState(FIRST)
-        },
-        onBackspaceButtonClick = { vm.changeEnteredPINCode(enteredPINCode.dropLast(1)) },
-        onCloseAppButtonClick = { activity.finishAndRemoveTask() },
-        onWriteToDevelopersButtonClick = {
-            emailLauncher.launch(Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:pavlikbrichkin@yandex.ru")
-                putExtra(Intent.EXTRA_SUBJECT, "${activity.getString(R.string.email_subject)} ${BuildConfig.VERSION_NAME}")
-            })
-        },
-        onRecoveryClick = onRecoverPin,
-        showFingerprintButton = vm.isFingerprintAuthEnabled.value && vm.pinCodeAction.value == CHECK
-    )
+
+    val colors = bubbleColors()
+    val topBar: (@Composable () -> Unit)? = if (title != null && onBack != null) {
+        { BubbleTopBar(title, onBack, hostInsets) }
+    } else null
+    val prompt = when (pinCodeEnterState) {
+        FIRST -> R.string.enter_pin
+        CONFIRMATION -> if (vm.pinCodeAction.value == CHANGE) R.string.enter_new_pin else R.string.confirm_your_pin
+        INCORRECT -> R.string.pin_code_is_incorrect
+    }
+    BubbleScaffold(hostInsets = hostInsets, topBar = topBar) { padding ->
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            Column(
+                Modifier.widthIn(max = 480.dp).fillMaxWidth().verticalScroll(rememberScrollState())
+                    .heightIn(min = maxHeight).padding(padding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            ) {
+                if (onContact != null) {
+                    BubbleIconButton(onContact, Modifier.align(Alignment.End)) {
+                        Icon(Icons.Outlined.MailOutline, stringResource(R.string.write_email_to_developer))
+                    }
+                    Image(
+                        painterResource(R.drawable.app_icon),
+                        contentDescription = stringResource(R.string.app_icon),
+                        modifier = Modifier.size(64.dp),
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        stringResource(prompt),
+                        Modifier.semantics {
+                            heading()
+                            liveRegion = LiveRegionMode.Polite
+                        },
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = if (pinCodeEnterState == INCORRECT) colors.danger else colors.ink,
+                        textAlign = TextAlign.Center,
+                    )
+                    PINCodeSection(Modifier.widthIn(max = 144.dp).fillMaxWidth(), enteredPINCode, pinCodeEnterState)
+                    if (vm.pinReadFailed.value || biometricError) {
+                        Text(
+                            stringResource(if (vm.pinReadFailed.value) R.string.pin_unavailable
+                                else R.string.something_went_wrong_please_login_with_your_pin_code),
+                            Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            color = colors.danger,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+                ButtonsSection(
+                    modifier = Modifier.widthIn(max = 360.dp),
+                    onFingerprintButtonClick = onFingerprint,
+                    onDigitButtonClick = { digit ->
+                        vm.changeEnteredPINCode(enteredPINCode + digit)
+                        if (pinCodeEnterState == INCORRECT) vm.setPINCodeEnterState(FIRST)
+                    },
+                    onBackspaceButtonClick = { vm.changeEnteredPINCode(enteredPINCode.dropLast(1)) },
+                )
+                if (onRecoverPin != null && onExit != null) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(onClick = onRecoverPin, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.pin_recovery_title), color = colors.action, textAlign = TextAlign.Center)
+                        }
+                        TextButton(onClick = onExit, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.exit), color = colors.danger, textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+            }
+        }
+    }
     if (saveFailed) {
         AlertDialog(
             onDismissRequest = { saveFailed = false },
@@ -208,417 +292,81 @@ fun AuthorizationScreen(
 }
 
 @Composable
-fun UnlockScreen(
+internal fun PINCodeSection(
+    modifier: Modifier,
+    pinCode: String,
     pinCodeEnterState: PINCodeEnterState,
-    enteredPINCode: String,
-    pinCodeAction: PINCodeAction,
-    biometricResult: BiometricResult? = null,
-    pinReadFailed: Boolean = false,
-    onFingerprintButtonClick: () -> Unit = {},
-    onDigitButtonClick: (String) -> Unit = {},
-    onBackspaceButtonClick: () -> Unit = {},
-    onCloseAppButtonClick: () -> Unit = {},
-    onWriteToDevelopersButtonClick: () -> Unit = {},
-    onRecoveryClick: () -> Unit = {},
-    showFingerprintButton: Boolean = true
 ) {
-    Scaffold(
-        topBar = {
-            IconButton(
-                onClick = { onWriteToDevelopersButtonClick() },
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(16.dp)
-                    .size(40.dp)
-                    .shadow(10.dp, shape = CircleShape)
-                    .clip(CircleShape)
-                    .background(color = MaterialTheme.colorScheme.surface)
-                    .border(1.dp, color = MaterialTheme.colorScheme.outline, shape = CircleShape)
-                    .padding(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MailOutline,
-                    contentDescription = stringResource(id = R.string.write_email_to_developer),
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    ) { contentPadding ->
-        ConstraintLayout(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(contentPadding),
-        ) {
-
-            val (appIcon, pinCodeSection, errorText, buttonSection) = createRefs()
-            createVerticalChain(
-                appIcon,
-                pinCodeSection,
-                errorText,
-                buttonSection,
-                chainStyle = ChainStyle.SpreadInside
-            )
-
-            Image(
-                modifier = Modifier
-                    .constrainAs(appIcon) {
-                        top.linkTo(parent.top)
-                        bottom.linkTo(pinCodeSection.top)
-                        centerHorizontallyTo(parent)
-                        height = Dimension.fillToConstraints
-                    }
-                    .size(100.dp),
-                painter = painterResource(id = R.drawable.app_icon),
-                contentDescription = stringResource(R.string.app_icon)
-            )
-            Column(
-                modifier = Modifier
-                    .constrainAs(pinCodeSection) {
-                        top.linkTo(appIcon.bottom)
-                        bottom.linkTo(errorText.top)
-                        centerHorizontallyTo(parent)
-                        height = Dimension.fillToConstraints
-                    },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Text(
-                    text = when (pinCodeEnterState) {
-                        FIRST -> stringResource(R.string.enter_pin)
-                        CONFIRMATION ->
-                            if (pinCodeAction == CHANGE) stringResource(R.string.enter_new_pin)
-                            else stringResource(R.string.confirm_your_pin)
-
-                        INCORRECT -> stringResource(R.string.pin_code_is_incorrect)
-                    },
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                PINCodeSection(
-                    modifier = Modifier
-                        .fillMaxWidth(0.5f),
-                    PINCode = enteredPINCode,
-                    pinCodeEnterState = pinCodeEnterState
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .constrainAs(errorText) {
-                        top.linkTo(pinCodeSection.bottom)
-                        bottom.linkTo(buttonSection.top)
-                        centerHorizontallyTo(parent)
-                        centerVerticallyTo(parent)
-                        height = Dimension.fillToConstraints
-                    }
-                    .padding(horizontal = 40.dp)
-                    .alpha(
-                        if (pinReadFailed || biometricResult is BiometricResult.AuthenticationError) 1f
-                        else 0f
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(if (pinReadFailed) R.string.pin_unavailable else R.string.something_went_wrong_please_login_with_your_pin_code),
-                    textAlign = TextAlign.Center
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .constrainAs(buttonSection) {
-                        top.linkTo(errorText.bottom)
-                        bottom.linkTo(parent.bottom)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                        height = Dimension.wrapContent
-                    }
-                    .height(IntrinsicSize.Min),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (pinCodeAction == CHECK) {
-                    TextButton(onClick = onRecoveryClick) {
-                        Text(stringResource(R.string.pin_recovery_title))
-                    }
-                    TextButton(
-                        onClick = {
-                            onCloseAppButtonClick()
-                        }
-                    ) {
-                        Text(
-                            text = stringResource(R.string.exit),
-                            fontSize = 16.sp,
-                            color = Red,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-                ButtonsSection(
-                    onFingerprintButtonClick = onFingerprintButtonClick,
-                    onDigitButtonClick = onDigitButtonClick,
-                    onBackspaceButtonClick = onBackspaceButtonClick,
-                    showFingerprintButton = showFingerprintButton
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun PINCodeSection(
-    modifier: Modifier = Modifier,
-    PINCode: String,
-    pinCodeEnterState: PINCodeEnterState
-) {
-    val shake = remember {
-        Animatable(0f)
-    }
-    LaunchedEffect(key1 = pinCodeEnterState) {
-        if (pinCodeEnterState == INCORRECT) {
-            for (i in 0..10) {
-                when (i % 2) {
-                    0 -> shake.animateTo(5f, spring(stiffness = 100_000f))
-                    else -> shake.animateTo(-5f, spring(stiffness = 100_000f))
-                }
-            }
-            shake.animateTo(0f)
-        }
-    }
+    val colors = bubbleColors()
     Row(
-        modifier = modifier
-            .offset { IntOffset(x = shake.value.roundToInt(), y = 0) },
+        modifier.semantics { progressBarRangeInfo = ProgressBarRangeInfo(pinCode.length.toFloat(), 0f..4f, 3) },
         horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        for (i in 1..4) {
-            val color = animateColorAsState(
-                targetValue = if (pinCodeEnterState == INCORRECT) {
-                    Color.Red
-                } else if (PINCode.length >= i) {
-                    MaterialTheme.colorScheme.onBackground
-                } else {
-                    Color.Gray
+        repeat(4) { index ->
+            val filled = pinCode.length > index
+            val color by animateColorAsState(
+                when {
+                    pinCodeEnterState == INCORRECT -> colors.danger
+                    filled -> colors.action
+                    else -> colors.muted
                 },
-                label = "Color",
-                animationSpec = tween(
-                    durationMillis = 300
-                )
+                label = "PIN dot",
             )
-
-            val scale = animateFloatAsState(
-                targetValue =
-                if (i <= PINCode.length) 1.3f
-                else 1f,
-                label = "Anim",
-                animationSpec = tween(
-                    durationMillis = 300
-                )
-            )
-
-            Icon(
-                painter = painterResource(id = R.drawable.baseline_circle_24),
-                contentDescription = stringResource(R.string.pin),
-                tint = color.value,
-                modifier = Modifier
-                    .size(32.dp)
-                    .scale(scale.value)
-            )
+            Box(Modifier.size(12.dp).then(
+                if (filled) Modifier.background(color, CircleShape) else Modifier.border(1.5.dp, color, CircleShape)
+            ))
         }
     }
-
 }
 
 @Composable
-fun DigitsButtonsRow(
-    modifier: Modifier = Modifier,
-    numbersList: List<Int>,
-    onDigitButtonClick: (String) -> Unit = {}
+internal fun ButtonsSection(
+    modifier: Modifier,
+    onDigitButtonClick: (String) -> Unit,
+    onBackspaceButtonClick: () -> Unit,
+    onFingerprintButtonClick: (() -> Unit)? = null,
 ) {
-    Row(
-        modifier = modifier
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (row in 0..2) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (column in 1..3) {
+                    val digit = (row * 3 + column).toString()
+                    PinKey(onClick = { onDigitButtonClick(digit) }, modifier = Modifier.weight(1f)) {
+                        Text(digit, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (onFingerprintButtonClick != null) {
+                PinKey(onFingerprintButtonClick, Modifier.weight(1f)) {
+                    Icon(painterResource(R.drawable.baseline_fingerprint_24),
+                        stringResource(R.string.touch_to_show_fingerprint_scanner))
+                }
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            PinKey({ onDigitButtonClick("0") }, Modifier.weight(1f)) {
+                Text("0", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            }
+            PinKey(onBackspaceButtonClick, Modifier.weight(1f)) {
+                Icon(painterResource(R.drawable.baseline_backspace_24), stringResource(R.string.backspace))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinKey(onClick: () -> Unit, modifier: Modifier, content: @Composable () -> Unit) {
+    val colors = bubbleColors()
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 52.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = colors.paper,
+        contentColor = colors.ink,
+        border = BorderStroke(1.dp, colors.border),
     ) {
-        for (i in numbersList.indices) {
-            TextButton(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(4.dp)
-                    .heightIn(min = 56.dp),
-                shape = CircleShape,
-                onClick = { onDigitButtonClick(numbersList[i].toString()) }
-            ) {
-                Text(
-                    modifier = Modifier.padding(4.dp),
-                    text = numbersList[i].toString(),
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-        }
+        Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) { content() }
     }
 }
-
-@Composable
-fun BottomButtonsSection(
-    modifier: Modifier = Modifier,
-    onFingerprintButtonClick: () -> Unit = {},
-    onDigitButtonClick: (String) -> Unit = {},
-    onBackspaceButtonClick: () -> Unit = {},
-    showFingerprintButton: Boolean = true
-) {
-    Row(
-        modifier = modifier
-            .height(64.dp)
-    ) {
-        if (showFingerprintButton) {
-            IconButton(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(4.dp)
-                    .heightIn(min = 56.dp),
-                onClick = onFingerprintButtonClick
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.baseline_fingerprint_24),
-                    contentDescription = stringResource(R.string.touch_to_show_fingerprint_scanner),
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-        } else {
-            Spacer(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(4.dp)
-            )
-        }
-
-        TextButton(
-            modifier = Modifier
-                .weight(1f)
-                .padding(4.dp)
-                    .heightIn(min = 56.dp),
-            shape = CircleShape,
-            onClick = {
-                onDigitButtonClick("0")
-            }
-        ) {
-            Text(
-                text = "0",
-                fontSize = 22.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-        IconButton(
-            modifier = Modifier
-                .weight(1f)
-                .padding(4.dp)
-                    .heightIn(min = 56.dp),
-            onClick = onBackspaceButtonClick
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.baseline_backspace_24),
-                contentDescription = stringResource(R.string.backspace),
-                tint = MaterialTheme.colorScheme.onBackground
-            )
-        }
-    }
-}
-
-@Composable
-fun TopShadow(
-    modifier: Modifier = Modifier,
-    alpha: Float = 0.1f,
-    height: Dp = 8.dp,
-    shape: Shape = RectangleShape
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height)
-            .clip(shape)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color.Black.copy(alpha = alpha),
-                    )
-                )
-            )
-    )
-}
-
-@Composable
-fun ButtonsSection(
-    modifier: Modifier = Modifier,
-    onFingerprintButtonClick: () -> Unit = {},
-    onDigitButtonClick: (String) -> Unit = {},
-    onBackspaceButtonClick: () -> Unit = {},
-    showFingerprintButton: Boolean = true
-) {
-    Box(modifier = modifier.fillMaxWidth()) {
-        TopShadow(
-            modifier = Modifier.offset(y = 32.dp),
-            height = 40.dp,
-            alpha = 0.3f,
-            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-        )
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-        ) {
-            Column(
-                verticalArrangement = Arrangement.Bottom,
-                modifier = Modifier
-                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            ) {
-                DigitsButtonsRow(
-                    modifier = Modifier,
-                    numbersList = listOf(1, 2, 3),
-                    onDigitButtonClick = onDigitButtonClick
-                )
-                DigitsButtonsRow(
-                    modifier = Modifier,
-                    numbersList = listOf(4, 5, 6),
-                    onDigitButtonClick = onDigitButtonClick
-                )
-                DigitsButtonsRow(
-                    modifier = Modifier,
-                    numbersList = listOf(7, 8, 9),
-                    onDigitButtonClick = onDigitButtonClick
-                )
-                BottomButtonsSection(
-                    modifier = Modifier,
-                    onFingerprintButtonClick = onFingerprintButtonClick,
-                    onBackspaceButtonClick = onBackspaceButtonClick,
-                    onDigitButtonClick = onDigitButtonClick,
-                    showFingerprintButton = showFingerprintButton
-                )
-            }
-        }
-    }
-}
-
-@Preview(device = Devices.NEXUS_5)
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
-@Composable
-fun UnlockScreenPreview() {
-    DebtBookTheme {
-        UnlockScreen(
-            pinCodeEnterState = FIRST,
-            enteredPINCode = "11",
-            pinCodeAction = CHECK
-        )
-    }
-}
-
-//@Preview
-//@Composable
-//fun ButtonsSectionPreview() {
-//    ButtonsSection(
-//        modifier = Modifier
-//            .background(MaterialTheme.colorScheme.background)
-//            .padding(32.dp)
-//    )
-//}

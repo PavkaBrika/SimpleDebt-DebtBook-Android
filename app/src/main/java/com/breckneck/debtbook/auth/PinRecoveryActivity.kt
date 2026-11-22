@@ -31,6 +31,7 @@ import com.breckneck.debtbook.auth.screen.PINCodeSection
 import com.breckneck.debtbook.core.enableBubbleEdgeToEdge
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
 import com.breckneck.deptbook.domain.util.PINCodeEnterState
@@ -166,7 +167,8 @@ private fun RecoveryPinScreen(
     onCancel: () -> Unit
 ) {
     val spacing = MaterialTheme.spacing
-    Surface(Modifier.fillMaxSize()) {
+    val colors = bubbleColors()
+    Surface(Modifier.fillMaxSize(), color = colors.background, contentColor = colors.ink) {
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
             // Short/landscape screens can scroll; on phones the keypad stays at the bottom.
             Column(
@@ -183,15 +185,18 @@ private fun RecoveryPinScreen(
                     Text(stringResource(if (state.step == Step.NEW_PIN) R.string.enter_new_pin else R.string.confirm_your_pin),
                         style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
                     RecoveryError(state.error)
+                    PINCodeSection(Modifier.widthIn(max = 144.dp).fillMaxWidth(),
+                        state.digits, PINCodeEnterState.FIRST)
                 }
-                PINCodeSection(Modifier.widthIn(max = 240.dp).fillMaxWidth().padding(vertical = spacing.space24),
-                    state.digits, PINCodeEnterState.FIRST)
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = spacing.space16, vertical = spacing.space16),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()
                         .testTag("pinRecoveryCancel").padding(bottom = spacing.space8)) {
-                        Text(stringResource(R.string.cancel))
+                        Text(stringResource(R.string.cancel), color = colors.action)
                     }
-                    ButtonsSection(modifier = Modifier.testTag("pinRecoveryKeypad"), showFingerprintButton = false,
+                    ButtonsSection(modifier = Modifier.testTag("pinRecoveryKeypad"),
                         onDigitButtonClick = onDigit, onBackspaceButtonClick = onBackspace)
                 }
             }

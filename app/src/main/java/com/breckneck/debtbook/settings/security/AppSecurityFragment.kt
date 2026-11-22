@@ -7,7 +7,6 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricPrompt
@@ -19,7 +18,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.auth.AuthorizationActivity
+import com.breckneck.debtbook.auth.PinManagementFragment
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.core.MainViewModel
 import com.breckneck.debtbook.core.bubbleScreen
@@ -32,9 +31,6 @@ import dagger.hilt.android.AndroidEntryPoint
 class AppSecurityFragment : Fragment() {
     private val vm by viewModels<SettingsViewModel>()
     private val main by activityViewModels<MainViewModel>()
-    private val authorize = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        refreshProtection()
-    }
     private lateinit var prompt: BiometricPrompt
     private var biometricStatus by mutableIntStateOf(BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE)
 
@@ -77,8 +73,12 @@ class AppSecurityFragment : Fragment() {
     }
 
     private fun openPin(action: PINCodeAction) {
-        authorize.launch(Intent(requireContext(), AuthorizationActivity::class.java)
-            .putExtra("PINCodeState", action.name))
+        val nav = findNavController()
+        if (nav.currentDestination?.id == R.id.appSecurityFragment) {
+            nav.navigate(R.id.action_appSecurityFragment_to_pinManagementFragment, Bundle().apply {
+                putString(PinManagementFragment.ACTION_ARGUMENT, action.name)
+            })
+        }
     }
 
     private fun changeBiometrics() {
