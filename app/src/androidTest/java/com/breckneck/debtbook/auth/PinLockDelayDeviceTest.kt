@@ -215,6 +215,9 @@ class PinLockDelayDeviceTest {
 
     private fun openProtection() {
         action(R.string.settings).performClick()
+        action(R.string.pin_code_lock).performScrollTo()
+        // The fixed settings tabs can overlay the target on a short screen.
+        awaitNode(hasScrollAction()).performTouchInput { swipeUp(startY = height * .72f, endY = height * .42f) }
         action(R.string.pin_code_lock).performScrollTo().performClick()
     }
 
