@@ -82,7 +82,7 @@ class SettledDebtJourneyTest {
         val prefs = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
         val old = prefs.all
         prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true)
-            .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).putString("default_currency", "RUB").putString("main_currency_first", "RUB").commit()
+            .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).putString("default_currency", "RUB").commit()
         var keepForRestart = false
         try {
             if (phase != "reopen") {
@@ -105,7 +105,7 @@ class SettledDebtJourneyTest {
                 marker.edit().remove(name).commit()
             }
             prefs.edit().apply {
-                for (key in listOf("pin_code_is_enabled", "ads_disabled", "debts_quantity_for_app_rate_dialog_show", "default_currency", "main_currency_first")) {
+                for (key in listOf("pin_code_is_enabled", "ads_disabled", "debts_quantity_for_app_rate_dialog_show", "default_currency")) {
                     when (val value = old[key]) {
                         is Boolean -> putBoolean(key, value)
                         is Int -> putInt(key, value)

@@ -62,6 +62,7 @@ class SettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        vm.refreshDefaultCurrency()
         main.getIsPINCodeEnabled()
         vm.getIsFingerprintAuthEnabled()
         biometricStatus = BiometricManager.from(requireContext()).canAuthenticate(BIOMETRIC_STRONG)

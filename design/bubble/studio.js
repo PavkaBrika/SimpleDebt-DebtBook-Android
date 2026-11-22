@@ -88,10 +88,10 @@ function dueLabel(l) {
   if(l.due==='2026-11-21') return 'Срок завтра';
   return 'До '+dateText(l.due);
 }
-function draft(cur='RUB') { return {name:'',note:'',sum:'',cur,dir:1,date:TODAY,due:'',remind:false,time:'09:00',fixed:0}; }
+function draft(cur=defaultCurrency()) { return {name:'',note:'',sum:'',cur,dir:1,date:TODAY,due:'',remind:false,time:'09:00',fixed:0}; }
 function frame(route) {
   const d=draft();
-  return {route,beforeScreen:route,personId:1,cur:prefs.first,filter:'all',query:'',search:false,d,back:'home',sheet:null,error:'',returnPoints:new Map(),...featureFrame()};
+  return {route,beforeScreen:route,personId:1,cur:defaultCurrency(),filter:'all',query:'',search:false,d,back:'home',sheet:null,error:'',returnPoints:new Map(),...featureFrame()};
 }
 ledger=freshLedger(); savings=freshGoals();
 loadDemo();
@@ -129,7 +129,7 @@ function home(f) {
   const chips=[['all','Все'],['positive','Мне должны'],['negative','Я должен']];
   const html=heading('Долги',iconButton('search',f.search?'Закрыть поиск':'Найти человека',f.search?'close':'search'))+
     balanceCard('Общий баланс',
-      '<select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([prefs.first,prefs.second,...people.map(p=>p.cur),f.cur])],f.cur)+'</select>',
+      '<select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([defaultCurrency(),...people.map(p=>p.cur)])],f.cur)+'</select>',
       motionAmount('net',plus-minus,f.cur,true),
       '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+motionAmount('credit',plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+motionAmount('debit',minus,f.cur)+'</strong></div></div>',coinArt())+
     '<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
@@ -431,7 +431,7 @@ board.addEventListener('click',event=>{
     case 'person':f.personId=Number(value);setRoute(f,'person','forward');break;
     case 'back':if(f.trail.length)return pop(i);setRoute(f,f.route==='new'?f.back:'home','back');break;
     case 'new':{
-      f.back=f.route;f.d=draft(prefs.defaultCur);
+      f.back=f.route;f.d=draft();
       if(f.route==='person'){const p=people.find(p=>p.id===f.personId);Object.assign(f.d,{fixed:p.id,name:p.name,cur:p.cur});}
       setRoute(f,'new','forward');break;
     }

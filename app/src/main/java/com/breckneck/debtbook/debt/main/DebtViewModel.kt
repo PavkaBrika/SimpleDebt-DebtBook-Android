@@ -11,9 +11,8 @@ import com.breckneck.deptbook.domain.model.PersonDebtHistory
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.*
-import com.breckneck.deptbook.domain.usecase.Settings.GetFirstMainCurrency
+import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
-import com.breckneck.deptbook.domain.usecase.Settings.GetSecondMainCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
@@ -37,8 +36,7 @@ class DebtViewModel @Inject constructor(
     private val getAllHumansUseCase: GetAllHumansUseCase,
     private val getAllDebts: GetAllDebts,
     private val transaction: DataTransaction,
-    private val getFirstMainCurrency: GetFirstMainCurrency,
-    private val getSecondMainCurrency: GetSecondMainCurrency,
+    private val getDefaultCurrency: GetDefaultCurrency,
     private val saved: SavedStateHandle,
     private val getHumanOrder: GetHumanOrder,
     private val setHumanOrder: SetHumanOrder,
@@ -52,7 +50,8 @@ class DebtViewModel @Inject constructor(
         get() = _screenState
     private var refreshJob: Job? = null
 
-    val currency = saved.getLiveData("listCurrency", getFirstMainCurrency.execute())
+    private val _currency = MutableLiveData(saved.get<String>("listCurrency") ?: getDefaultCurrency.execute())
+    val currency: LiveData<String> get() = _currency
     private val _mainSums = MutableLiveData<Pair<BigDecimal, BigDecimal>>()
     val mainSums: LiveData<Pair<BigDecimal, BigDecimal>> get() = _mainSums
     private var people = emptyList<HumanDomain>()
@@ -62,7 +61,8 @@ class DebtViewModel @Inject constructor(
     val deadlines = MutableLiveData<Map<Int, String?>>()
     val settled = MutableLiveData<Set<Int>>()
     fun selectCurrency(value: String) {
-        currency.value = value
+        saved["listCurrency"] = value.takeUnless { it == getDefaultCurrency.execute() }
+        _currency.value = value
         publishHumans()
     }
 
@@ -111,8 +111,12 @@ class DebtViewModel @Inject constructor(
                     val (persons, rows) = transaction.run { getAllHumansUseCase.execute() to getAllDebts.execute() }
                     persons to rows.groupBy { it.idHuman }.mapValues { PersonDebtHistory.from(it.value) }
                 }
-                overviewCurrencies.value = (listOf(getFirstMainCurrency.execute(), getSecondMainCurrency.execute()) +
-                    persons.map { it.currency }).distinct()
+                val defaultCurrency = getDefaultCurrency.execute()
+                val currencies = (listOf(defaultCurrency) + persons.map { it.currency }).distinct()
+                overviewCurrencies.value = currencies
+                val selected = saved.get<String>("listCurrency")?.takeIf { it in currencies && it != defaultCurrency }
+                saved["listCurrency"] = selected
+                _currency.value = selected ?: defaultCurrency
                 loadFailed.value = false
                 people = persons
                 histories = loans

@@ -403,8 +403,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         vm.onActionClick()
     }
 
-    override fun onAddButtonClick(currency: String?) {
-        navController.navigate(R.id.action_mainFragment_to_newDebtFragment, Bundle().apply { currency?.let { putString("currency", it) } })
+    override fun onAddButtonClick() {
+        navController.navigate(R.id.action_mainFragment_to_newDebtFragment)
         vm.onActionClick()
     }
 

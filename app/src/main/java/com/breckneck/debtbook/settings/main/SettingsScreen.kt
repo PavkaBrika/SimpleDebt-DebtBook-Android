@@ -39,11 +39,8 @@ internal fun SettingsScreen(
 ) {
     val colors = bubbleColors()
     var sheet by rememberSaveable { mutableIntStateOf(0) }
-    val currency = stringArrayResource(R.array.currencies).toList()
     val themes = listOf(R.string.system_theme, R.string.light_theme, R.string.dark_theme).map { stringResource(it) }
-    val first by vm.firstMainCurrency.observeAsState("")
-    val second by vm.secondMainCurrency.observeAsState("")
-    val default by vm.defaultCurrency.observeAsState("")
+    val defaultCurrency by vm.defaultCurrency.observeAsState("")
     val theme by vm.appTheme.observeAsState("")
     val share by vm.addSumInShareText.observeAsState(false)
     val locked by main.isPINCodeEnabled.observeAsState(false)
@@ -62,11 +59,10 @@ internal fun SettingsScreen(
                 style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             BubbleSectionTitle(stringResource(R.string.application))
             BubbleGroup {
-                for ((label, code) in listOf(R.string.first_main_currency to first, R.string.second_main_currency to second,
-                    R.string.default_currency to default)) {
-                    SettingsRow(stringResource(label), value = code) { sheet = label }
-                    HorizontalDivider(color = colors.border)
+                SettingsRow(stringResource(R.string.default_currency), value = defaultCurrency) {
+                    sheet = R.string.default_currency
                 }
+                HorizontalDivider(color = colors.border)
                 SettingsRow(stringResource(R.string.app_theme), value = theme.ifEmpty { themes.first() }) { sheet = R.string.app_theme }
                 HorizontalDivider(color = colors.border)
                 SettingsRow(stringResource(R.string.more_detailed_share_text),
@@ -113,16 +109,12 @@ internal fun SettingsScreen(
             val options = when (sheet) {
                 R.string.app_theme -> themes
                 R.string.pin_lock_delay_title -> delays
-                else -> currency
+                else -> currencyOptions(stringArrayResource(R.array.currencies).toList(), defaultCurrency)
             }
             val selected = when (sheet) {
                 R.string.app_theme -> themes.indexOf(theme).coerceAtLeast(0)
                 R.string.pin_lock_delay_title -> delay.ordinal
-                else -> currency.indexOfFirst { it.substringAfterLast(' ') == when (sheet) {
-                    R.string.first_main_currency -> first
-                    R.string.second_main_currency -> second
-                    else -> default
-                } }
+                else -> options.indexOfFirst { currencyCode(it) == defaultCurrency }
             }
             val parent = if (sheet == R.string.pin_lock_delay_title) R.string.pin_code_lock else 0
             SettingsPickerBottomSheet(stringResource(sheet), options, selected, onItemSelected = { index ->
@@ -133,12 +125,7 @@ internal fun SettingsScreen(
                 when (setting) {
                     R.string.app_theme -> onTheme(value)
                     R.string.pin_lock_delay_title -> vm.setPinLockDelay(PinLockDelay.entries[index])
-                    R.string.default_currency -> vm.setDefaultCurrency(value.substringAfterLast(' '))
-                    else -> {
-                        val code = value.substringAfterLast(' ')
-                        if (setting == R.string.first_main_currency) vm.setFirstMainCurrency(code) else vm.setSecondMainCurrency(code)
-                        main.setIsNeedUpdateDebtSums(true)
-                    }
+                    R.string.default_currency -> vm.setDefaultCurrency(currencyCode(value))
                 }
             }, onDismiss = { sheet = parent })
         }

@@ -88,7 +88,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
         hostInsets = hostInsets,
         modifier = Modifier.semantics { testTagsAsResourceId = true },
         bottomAction = {
-            BubbleButton({ host.onAddButtonClick(currency) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("addHumanButton")) {
+            BubbleButton(host::onAddButtonClick, Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("addHumanButton")) {
                 Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.newdebt), Modifier.padding(start = 8.dp))
             }

@@ -127,10 +127,10 @@ private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> 
     when (picker) {
         R.string.select_interval -> PeriodSheet(period, intervals, onApply = { setPeriod(it); picker = 0 }, onDismiss = { picker = 0 })
         R.string.select_currency -> {
-            val options = stringArrayResource(R.array.currencies).toList()
+            val options = currencyOptions(stringArrayResource(R.array.currencies).toList(), state.currency)
             SettingsPickerBottomSheet(stringResource(picker), options,
-                options.indexOfFirst { it.substringAfterLast(' ') == state.currency },
-                onItemSelected = { setCurrency(options[it].substringAfterLast(' ')); picker = 0 }, onDismiss = { picker = 0 })
+                options.indexOfFirst { currencyCode(it) == state.currency },
+                onItemSelected = { setCurrency(currencyCode(options[it])); picker = 0 }, onDismiss = { picker = 0 })
         }
     }
 }

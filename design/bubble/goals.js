@@ -76,7 +76,7 @@ function goalAdjustment(i,v,b,sign) {
 }
 flowActions['goal-add']=(i,v,b)=>goalAdjustment(i,v,b,1);
 flowActions['goal-sub']=(i,v,b)=>goalAdjustment(i,v,b,-1);
-flowActions['goal-new']=i=>{frames[i].goalDraft={id:0,name:'',target:'',saved:'',cur:prefs.defaultCur,due:'',photo:''};go(i,'goalForm');};
+flowActions['goal-new']=i=>{frames[i].goalDraft={id:0,name:'',target:'',saved:'',cur:defaultCurrency(),due:'',photo:''};go(i,'goalForm');};
 flowActions['goal-edit']=(i,v)=>{
   const g=goalById(Number(v));if(!g||saved(g)>=g.target)return;
   frames[i].goalId=g.id;frames[i].goalDraft={id:g.id,name:g.name,target:moneyInput(g.target),saved:moneyInput(saved(g)),initialSaved:saved(g),cur:g.cur,due:g.due,photo:g.photo};go(i,'goalForm');

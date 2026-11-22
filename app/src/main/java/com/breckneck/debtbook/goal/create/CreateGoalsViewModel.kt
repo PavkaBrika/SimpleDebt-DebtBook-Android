@@ -9,6 +9,8 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.currencyCode
+import com.breckneck.debtbook.core.ui.components.currencyOptions
 import com.breckneck.debtbook.goal.create.mapper.toCreateGoalUi
 import com.breckneck.debtbook.goal.create.mapper.toDomain
 import com.breckneck.deptbook.domain.util.DecimalInput
@@ -45,12 +47,14 @@ class CreateGoalsViewModel @Inject constructor(
     override val container = container<CreateGoalsState, CreateGoalsSideEffect>(
         initialState = CreateGoalsState.initial(),
         onCreate = {
-            val names = context.resources.getStringArray(R.array.currencies).toList()
             val isEditMode: Boolean = savedStateHandle.get<Boolean>("isEditGoal") ?: false
+            val currency = if (isEditMode) savedStateHandle.get<Goal>("goal")?.currency.orEmpty()
+                else getDefaultCurrency.execute()
+            val names = currencyOptions(context.resources.getStringArray(R.array.currencies).toList(), currency)
 
             reduce { state.copy(currencyNames = names, isEditMode = isEditMode) }
 
-            if (isEditMode) initEditMode() else initCreateMode()
+            if (isEditMode) initEditMode() else initCreateMode(currency)
         }
     )
 
@@ -99,8 +103,7 @@ class CreateGoalsViewModel @Inject constructor(
         }
     }
 
-    private fun initCreateMode() = intent {
-        val defaultCurrency = getDefaultCurrency.execute()
+    private fun initCreateMode(defaultCurrency: String) = intent {
         reduce {
             state.copy(
                 goal = state.goal.copy(
@@ -135,7 +138,7 @@ class CreateGoalsViewModel @Inject constructor(
 
     private fun onCurrencySelected(index: Int) = intent {
         val displayName = state.currencyNames.getOrNull(index) ?: return@intent
-        val symbol = displayName.substringAfterLast(" ")
+        val symbol = currencyCode(displayName)
         reduce {
             state.copy(
                 goal = state.goal.copy(
@@ -287,12 +290,10 @@ class CreateGoalsViewModel @Inject constructor(
     private class GoalPhotoException(cause: Exception) : IOException(cause)
 
     private fun currencyDisplayNameFor(currency: String): String =
-        //todo fix this - remove currencyNames. Store currency in ENUM.
-        container.stateFlow.value.currencyNames.firstOrNull { it.substringAfterLast(" ") == currency } ?: currency
+        container.stateFlow.value.currencyNames.firstOrNull { currencyCode(it) == currency } ?: currency
 
     private fun currencyIndexOf(currency: String): Int =
-        //todo fix this - remove currencyNames. Store currency in ENUM.
-        container.stateFlow.value.currencyNames.indexOfFirst { it.substringAfterLast(" ") == currency }
+        container.stateFlow.value.currencyNames.indexOfFirst { currencyCode(it) == currency }
             .coerceAtLeast(0)
 
 }

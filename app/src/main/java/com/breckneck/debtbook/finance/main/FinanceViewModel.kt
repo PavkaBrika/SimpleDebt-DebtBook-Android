@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.FinanceCategory
 import com.breckneck.deptbook.domain.model.FinanceCategoryWithFinances
 import com.breckneck.deptbook.domain.usecase.FinanceCategory.GetAllCategoriesWithFinances
+import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetFinanceCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetFinanceCurrency
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
@@ -85,12 +86,13 @@ internal data class FinanceSummary(
 @HiltViewModel
 class FinanceViewModel @Inject constructor(
     private val saved: SavedStateHandle,
-    getCurrency: GetFinanceCurrency,
+    private val getCurrency: GetFinanceCurrency,
+    private val getDefaultCurrency: GetDefaultCurrency,
     private val saveCurrency: SetFinanceCurrency,
     private val getEntries: GetAllCategoriesWithFinances,
 ) : ViewModel() {
     private val current = MutableStateFlow(FinanceSummary(
-        getCurrency.execute(), saved["direction"] ?: FinanceCategoryState.EXPENSE,
+        getCurrency.execute(getDefaultCurrency::execute), saved["direction"] ?: FinanceCategoryState.EXPENSE,
         FinancePeriod(saved["interval"] ?: FinanceInterval.DAY, saved["day"] ?: LedgerDate.today()),
     ))
     internal val summary = current.asStateFlow()
@@ -112,7 +114,11 @@ class FinanceViewModel @Inject constructor(
         refresh(current.value.copy(period = period, loading = true))
     }
 
-    fun refresh() = refresh(current.value)
+    fun refresh() {
+        val currency = getCurrency.execute(getDefaultCurrency::execute)
+        val selection = current.value
+        refresh(selection.copy(currency = currency, loading = selection.loading || currency != selection.currency))
+    }
 
     private fun refresh(selection: FinanceSummary) {
         load?.cancel()

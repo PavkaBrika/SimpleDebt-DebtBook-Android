@@ -49,7 +49,7 @@ class BubbleDebtJourneyTest {
     @Before fun launch() {
         val dark = InstrumentationRegistry.getArguments().getString("theme") == "dark"
         prefs.edit().putString("app_theme", context.getString(if (dark) R.string.dark_theme else R.string.light_theme))
-            .putBoolean("ads_disabled", true).putString("main_currency_first", "RUB")
+            .putBoolean("ads_disabled", true).putString("default_currency", "RUB")
             .putBoolean("pin_code_is_enabled", false).putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         for ((id, name, amount) in listOf(Triple(anna, "Анна", 12400), Triple(other, "Борис", 5900), Triple(euro, "Claire", 810))) {
             dao.insertHuman(Human(id, name, BigDecimal.ZERO, if (id == euro) "EUR" else "RUB"))
@@ -71,7 +71,7 @@ class BubbleDebtJourneyTest {
         if (::main.isInitialized) onActivity { it.finish() }
         for (id in listOf(anna, other, euro)) { dao.deleteDebtsByHumanId(id); dao.deleteHumanById(id) }
         prefs.edit().apply {
-            for (key in listOf("app_theme", "ads_disabled", "main_currency_first", "pin_code_is_enabled", "debts_quantity_for_app_rate_dialog_show")) {
+            for (key in listOf("app_theme", "ads_disabled", "default_currency", "pin_code_is_enabled", "debts_quantity_for_app_rate_dialog_show")) {
                 when (val value = old[key]) {
                     is Boolean -> putBoolean(key, value)
                     is String -> putString(key, value)
@@ -170,6 +170,9 @@ class BubbleDebtJourneyTest {
         compose.onNodeWithTag("person-$euro").assertTextContains("Claire")
         compose.onNodeWithTag("person-$anna").assertDoesNotExist()
         assertEquals(0, dao.getHumanSumDebt(euro).compareTo(810.toBigDecimal()))
+        compose.awaitTag("addHumanButton").performClick()
+        compose.awaitTag("setFinanceButton")
+        text("RUB").assertIsDisplayed()
     }
 
     @Test fun exactLegacyBalanceSurvivesFullRepaymentAndRename() {

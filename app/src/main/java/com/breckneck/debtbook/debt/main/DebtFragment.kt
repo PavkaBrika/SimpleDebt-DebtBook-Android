@@ -27,7 +27,7 @@ class DebtFragment : Fragment() {
     interface OnButtonClickListener {
         fun onHumanClick(idHuman: Int, currency: String, name: String)
 
-        fun onAddButtonClick(currency: String? = null)
+        fun onAddButtonClick()
         fun onTabSelected(id: Int)
 
         fun onFilterButtonLongClick()

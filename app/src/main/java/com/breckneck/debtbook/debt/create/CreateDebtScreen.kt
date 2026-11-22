@@ -162,8 +162,8 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
         }
     }
     if (picker) {
-        val options = stringArrayResource(R.array.currencies).toList()
-        SettingsPickerBottomSheet(stringResource(R.string.select_currency), options, options.indexOfFirst { it.substringAfterLast(' ') == currency },
-            { vm.currency.value = options[it].substringAfterLast(' '); picker = false }, { picker = false })
+        val options = currencyOptions(stringArrayResource(R.array.currencies).toList(), currency)
+        SettingsPickerBottomSheet(stringResource(R.string.select_currency), options, options.indexOfFirst { currencyCode(it) == currency },
+            { vm.currency.value = currencyCode(options[it]); picker = false }, { picker = false })
     }
 }

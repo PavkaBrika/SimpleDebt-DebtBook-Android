@@ -1,7 +1,19 @@
 'use strict';
 const themeChoices=['Светлая','Тёмная','Системная'];
 const delays=['Сразу','Через 30 секунд','Через минуту','Через 5 минут'];
-function defaultPrefs(){return {first:'RUB',second:'USD',defaultCur:'RUB',shareSum:false,theme:'Светлая',delay:delays[0]};}
+const automaticCurrency=(()=>{
+  const region=new Intl.Locale(navigator.language||'en').maximize().region;
+  const currencies={
+    RU:'RUB',BY:'BYN',UA:'UAH',KZ:'KZT',JP:'JPY',GB:'GBP',AU:'AUD',CA:'CAD',CH:'CHF',
+    CN:'CNY',SE:'SEK',MX:'MXN',PL:'PLN',AE:'AED',RO:'RON',SA:'SAR',RS:'RSD',TJ:'TJS',
+    TR:'TRY',UZ:'UZS',MN:'MNT',CZ:'CZK',AZ:'AZN',AM:'AMD',IL:'ILS',VN:'VND',
+    BR:'BRL',IN:'INR',KR:'KRW',ID:'IDR',TH:'THB',TW:'TWD',NZ:'NZD',SG:'SGD',HK:'HKD',
+  };
+  const euroRegions='AD AT BE BG CY DE EE ES FI FR GR HR IE IT LT LU LV MC ME MT NL PT SI SK SM VA XK'.split(' ');
+  return currencies[region]||(euroRegions.includes(region)?'EUR':'USD');
+})();
+function defaultPrefs(){return {defaultCur:null,shareSum:false,theme:'Светлая',delay:delays[0]};}
+function defaultCurrency(){return prefs.defaultCur??automaticCurrency;}
 let prefs=defaultPrefs(), demoPin='',biometric=false,driveSigned=false,cloudCopies=[],previousCopy=null;
 function resetDemo(){
   people=freshData();ledger=freshLedger();savings=freshGoals();serial=100;prefs=defaultPrefs();dark=false;
@@ -39,7 +51,7 @@ function validSnapshot(s) {
   try{
     if(s?.format!=='SimpleDebt-design-2'||!positive(s.serial)||!s.preferences)return false;
     const p=s.preferences;
-    if(![p.first,p.second,p.defaultCur].every(cur)||typeof p.shareSum!=='boolean'||!themeChoices.includes(p.theme)||!delays.includes(p.delay))return false;
+    if((p.defaultCur!==null&&!cur(p.defaultCur))||typeof p.shareSum!=='boolean'||!themeChoices.includes(p.theme)||!delays.includes(p.delay))return false;
     if(!rows(s.people,p=>string(p.name)&&cur(p.cur)&&num(p.art)&&p.art>=0&&rows(p.loans,l=>num(l.principal)&&l.principal!==0&&string(l.note)&&date(l.date)&&optionalDate(l.due)&&string(l.reminder)&&(!l.reminder||(/^([01]\d|2[0-3]):[0-5]\d$/.test(l.reminder)&&l.due))&&rows(l.returns,r=>positive(r.amount)&&date(r.date)&&typeof r.cancelled==='boolean')&&remaining(l)>=0)))return false;
     if(!rows(s.finance.categories,c=>string(c.name)&&directions.includes(c.dir)&&string(c.emoji)&&/^#[0-9a-f]{6}$/i.test(c.color)))return false;
     const cats=new Set(s.finance.categories.map(c=>c.id));
@@ -50,16 +62,20 @@ function validSnapshot(s) {
     return groups.every(group=>group.every(item=>item.id<s.serial));
   }catch{return false;}
 }
-flowViews.settings=f=>layout(heading('Настройки')+titleRow('Приложение')+'<div class="group">'+rowAction('pref','Первая основная валюта','first',prefs.first)+rowAction('pref','Вторая основная валюта','second',prefs.second)+rowAction('pref','Валюта по умолчанию','defaultCur',prefs.defaultCur)+rowAction('pref','Оформление','theme',prefs.theme)+rowAction('pref-share','Баланс в тексте истории','',prefs.shareSum?'Вкл.':'Выкл.')+'</div>'+titleRow('Данные и защита')+'<div class="group">'+rowAction('backup-open','Резервная копия','','Файл / Drive')+rowAction('security-open','Защита входа','',demoPin?'PIN включён':'Выключена')+'</div>'+titleRow('О приложении')+'<div class="group">'+['Оценить приложение','Написать разработчику','Поддержать проект','Политика конфиденциальности'].map(v=>rowAction('external-preview',v,v)).join('')+'<div class="setting"><span>Версия Android-приложения</span><span>4.6.4</span></div></div>','',nav('settings'));
+flowViews.settings=f=>layout(heading('Настройки')+titleRow('Приложение')+'<div class="group">'+rowAction('pref','Валюта по умолчанию','defaultCur',defaultCurrency())+rowAction('pref','Оформление','theme',prefs.theme)+rowAction('pref-share','Баланс в тексте истории','',prefs.shareSum?'Вкл.':'Выкл.')+'</div>'+titleRow('Данные и защита')+'<div class="group">'+rowAction('backup-open','Резервная копия','','Файл / Drive')+rowAction('security-open','Защита входа','',demoPin?'PIN включён':'Выключена')+'</div>'+titleRow('О приложении')+'<div class="group">'+['Оценить приложение','Написать разработчику','Поддержать проект','Политика конфиденциальности'].map(v=>rowAction('external-preview',v,v)).join('')+'<div class="setting"><span>Версия Android-приложения</span><span>4.6.4</span></div></div>','',nav('settings'));
 flowActions.pref=(i,key,b)=>{
-  const labels={first:'Первая основная валюта',second:'Вторая основная валюта',defaultCur:'Валюта по умолчанию',theme:'Оформление',delay:'Блокировать после выхода'};
+  const labels={defaultCur:'Валюта по умолчанию',theme:'Оформление',delay:'Блокировать после выхода'};
   const values=key==='theme'?themeChoices:key==='delay'?delays:currencyCodes;
   showDialog(i,labels[key],s=>field('settings',labels[key],picker('sheet.choice',values,s.choice,labels[key])),b,(_,s)=>{
+    const previous=defaultCurrency();
     prefs[key]=s.choice;
-    if(key==='first')frames.forEach(f=>f.cur=s.choice);
+    if(key==='defaultCur')frames.forEach(f=>{
+      if(f.cur===previous)f.cur=s.choice;
+      if(f.financeCur===previous)f.financeCur=s.choice;
+    });
     if(key==='theme')applyDemoTheme();
     changed(i,'Настройка сохранена');
-  },'Применить',{choice:prefs[key]});
+  },'Применить',{choice:key==='defaultCur'?defaultCurrency():prefs[key]});
 };
 flowActions['pref-share']=i=>{prefs.shareSum=!prefs.shareSum;changed(i,'Настройка сохранена');};
 flowActions['external-preview']=(i,v,b)=>{

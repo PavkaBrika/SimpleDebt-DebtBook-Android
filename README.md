@@ -20,7 +20,8 @@ Financial records are stored locally with Room. Google Drive backup and restore 
 - 📝 Record amounts, dates, notes, and a currency for each person's account.
 - 👥 Pick a name from device contacts or enter it manually.
 - 🔎 Search by name, filter by debt direction, and sort by name, amount, or date.
-- 📊 View totals in two selected currencies, share debt details, and export a person's debt history to Excel (`.xls`).
+- 📊 View totals by currency, share debt details, and export a person's debt history to Excel (`.xls`).
+- 🌐 Start with the currency for your device's region and change the default in Settings.
 
 ### 💰 Income and expenses
 

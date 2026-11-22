@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -32,7 +32,7 @@ import com.breckneck.debtbook.core.ui.theme.spacing
 
 /**
  * Generic bottom sheet for picking one option from a list (replaces dialog_setting.xml + SettingsAdapter).
- * Used in: NewDebt (currency), CreateGoals (currency), Finance (currency, interval), Settings (currency x3, theme).
+ * Used for currency, theme, and other single-choice settings.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,13 +77,12 @@ internal fun SettingsPickerContent(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(start = spacing.space24, end = spacing.space24, top = spacing.space24, bottom = spacing.space16)
         )
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp)
-                .verticalScroll(rememberScrollState())
         ) {
-            options.forEachIndexed { index, option ->
+            itemsIndexed(options) { index, option ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
