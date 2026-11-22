@@ -26,6 +26,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.view.ViewStub
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
@@ -82,6 +83,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     CreateFinanceCategoryFragment.OnClickListener, FinanceDetailsFragment.OnClickListener,
     GoalsFragment.OnClickListener, CreateGoalsFragment.OnButtonClickListener, GoalDetailsFragment.OnClickListener {
 
+    private var bannerAd: BannerAdView? = null
     private var interstitialAd: InterstitialAd? = null
     private var interstitialAdLoader: InterstitialAdLoader? = null
     private var vib: Vibrator? = null
@@ -163,17 +165,15 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
 
-        //BANNER AD
-        val bannerAd: BannerAdView = findViewById(R.id.bannerAdView)
-
-        if (vm.adsDisabled.value != true) {
+        if (!BuildConfig.DEBUG && vm.adsDisabled.value != true) {
             var adWidthPixels = findViewById<ConstraintLayout>(R.id.rootLayout).width
             if (adWidthPixels == 0) {
                 adWidthPixels = resources.displayMetrics.widthPixels
             }
             val adWidth = (adWidthPixels / resources.displayMetrics.density).roundToInt()
 
-            bannerAd.apply {
+            val bannerSlot = findViewById<ViewStub>(R.id.bannerAdSlot)
+            bannerAd = (bannerSlot.inflate() as BannerAdView).apply {
                 setAdSize(BannerAdSize.sticky(this@MainActivity, adWidth))
                 setBannerAdEventListener(object : BannerAdEventListener {
                     override fun onAdLoaded() {
@@ -197,8 +197,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
             interstitialAdLoader = InterstitialAdLoader(applicationContext)
             loadInterstitialAd()
-        } else {
-            bannerAd.visibility = View.GONE
         }
 
         //NAVIGATION
@@ -354,7 +352,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onDestroy() {
-        findViewById<BannerAdView>(R.id.bannerAdView).destroy()
+        bannerAd?.destroy()
         interstitialAdLoader?.cancelLoading()
         interstitialAdLoader = null
         destroyInterstitialAd()
@@ -413,6 +411,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onFilterButtonLongClick() {
+        if (BuildConfig.DEBUG) return
         vm.toggleAdsDisabled()
         val isNowDisabled = vm.adsDisabled.value == true
         Toast.makeText(this, if (isNowDisabled) "✓" else "✗", Toast.LENGTH_SHORT).show()

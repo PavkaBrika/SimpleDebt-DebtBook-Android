@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.yandex.mobile.ads.banner.BannerAdSize
 import com.yandex.mobile.ads.banner.BannerAdView
@@ -28,6 +29,7 @@ fun AdBannerComposable(
     adUnitId: String = "R-M-1753297-1",
     modifier: Modifier = Modifier
 ) {
+    if (BuildConfig.DEBUG) return
     val widthDp = LocalWindowInfo.current.containerDpSize.width.value.toInt()
     if (widthDp <= 0) return
     key(adUnitId, widthDp) {
