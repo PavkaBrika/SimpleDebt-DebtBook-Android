@@ -93,7 +93,7 @@ class SynchronizationFragment : Fragment() {
             }
         }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, transferBack)
-        vm.isSynchronizing.observe(viewLifecycleOwner) { transferBack.isEnabled = vm.blocksExit }
+        vm.savingTo.observe(viewLifecycleOwner) { transferBack.isEnabled = vm.blocksExit }
         vm.isRestoring.observe(viewLifecycleOwner) { transferBack.isEnabled = vm.blocksExit }
         vm.driveBackups.observe(viewLifecycleOwner) { transferBack.isEnabled = vm.blocksExit }
         vm.operationSucceeded.observe(viewLifecycleOwner) { operation ->

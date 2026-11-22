@@ -3,6 +3,7 @@ package com.breckneck.debtbook.settings.synchronization
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +22,7 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.settings.SettingsRow
 import com.breckneck.debtbook.settings.synchronization.SynchronizationViewModel.RestorePreview
 import com.breckneck.debtbook.settings.synchronization.SynchronizationViewModel.RestoreSource
+import com.breckneck.debtbook.settings.synchronization.SynchronizationViewModel.SaveDestination
 import java.text.DateFormat
 import java.util.Date
 import java.util.TimeZone
@@ -42,7 +44,7 @@ internal fun BackupScreen(
     val authorized by vm.isAuthorized.observeAsState(false)
     val ready by vm.driveReady.observeAsState(false)
     val failed by vm.driveConnectionFailed.observeAsState(false)
-    val saving by vm.isSynchronizing.observeAsState(false)
+    val savingTo by vm.savingTo.observeAsState()
     val restoring by vm.isRestoring.observeAsState(false)
     val hasPrevious by vm.hasPrevious.observeAsState(false)
     val copies by vm.driveBackups.observeAsState()
@@ -51,9 +53,10 @@ internal fun BackupScreen(
     val email by vm.emailAddress.observeAsState("")
     val lastSaved by vm.lastSyncDate.observeAsState("")
     val name by vm.userName.observeAsState("")
-    val busy = saving || restoring
+    val busy = savingTo != null || restoring
     val enabled = !busy && copies == null && preview == null
     var confirm by rememberSaveable { mutableIntStateOf(0) }
+    val saveProgress: @Composable () -> Unit = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
 
     BubbleScaffold(
         hostInsets = hostInsets,
@@ -62,43 +65,60 @@ internal fun BackupScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (busy && copies == null) {
+            if (restoring && copies == null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Text(stringResource(R.string.backup_wait))
             }
             if (error != null) Text(stringResource(R.string.backup_transfer_failed),
                 Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = colors.danger)
-            BubbleSectionTitle(stringResource(R.string.backup_local_title))
-            BubbleGroup {
-                SettingsRow(stringResource(R.string.backup_export_file), enabled = enabled, onClick = onExport)
-                androidx.compose.material3.HorizontalDivider(color = colors.border)
-                SettingsRow(stringResource(R.string.backup_import_file), enabled = enabled, onClick = onImport)
-                if (hasPrevious) SettingsRow(stringResource(R.string.backup_restore_previous_local),
-                    stringResource(R.string.backup_undo_hint), enabled, onClick = vm::restorePreviousLocalBackup)
-            }
-            Text(stringResource(R.string.backup_file_hint), color = colors.muted, style = MaterialTheme.typography.bodyMedium)
             BubbleSectionTitle(stringResource(R.string.authorize_to_avoid_losing_your_data))
             if (authorized) {
                 BubbleGroup {
                     SettingsRow(name, email)
+                    HorizontalDivider(color = colors.border)
                     if (failed) SettingsRow(stringResource(R.string.backup_drive_retry),
                         stringResource(R.string.backup_drive_connection_failed), enabled, onClick = onReconnect)
-                    else SettingsRow(stringResource(R.string.synchronize),
-                        when {
+                    else SettingsRow(
+                        title = stringResource(R.string.synchronize),
+                        detail = when {
                             !ready -> stringResource(R.string.backup_drive_connecting)
                             lastSaved.isNotBlank() -> "${stringResource(R.string.last_synchronization)} $lastSaved"
                             else -> null
-                        }, enabled && ready) { confirm = R.string.synchronize }
+                        },
+                        enabled = enabled && ready,
+                        supportingContent = if (savingTo == SaveDestination.DRIVE) saveProgress else null,
+                        onClick = { confirm = R.string.synchronize },
+                    )
+                    HorizontalDivider(color = colors.border)
                     SettingsRow(stringResource(R.string.backup_drive_choose), enabled = enabled && ready, onClick = vm::loadDriveBackups)
+                    HorizontalDivider(color = colors.border)
                     SettingsRow(stringResource(R.string.log_out), enabled = enabled) { confirm = R.string.log_out }
                 }
             } else if (driveAvailable) {
                 BubbleGroup {
                     SettingsRow(stringResource(R.string.sign_in_with_google), enabled = enabled, onClick = onSignIn)
+                    HorizontalDivider(color = colors.border)
                     SettingsRow(stringResource(R.string.by_authorizing_you_agree_to_the,
                         stringResource(R.string.privacy_policy_in_agreement)), enabled = enabled, onClick = onPrivacy)
                 }
             } else Text(stringResource(R.string.backup_drive_unavailable), color = colors.muted)
+            BubbleSectionTitle(stringResource(R.string.backup_local_title))
+            BubbleGroup {
+                SettingsRow(
+                    title = stringResource(R.string.backup_export_file),
+                    enabled = enabled,
+                    supportingContent = if (savingTo == SaveDestination.FILE) saveProgress else null,
+                    onClick = onExport,
+                )
+                HorizontalDivider(color = colors.border)
+                SettingsRow(stringResource(R.string.backup_import_file), enabled = enabled, onClick = onImport)
+                if (hasPrevious) {
+                    HorizontalDivider(color = colors.border)
+                    SettingsRow(stringResource(R.string.backup_restore_previous_local),
+                        stringResource(R.string.backup_undo_hint), enabled, onClick = vm::restorePreviousLocalBackup)
+                }
+            }
+            Text(stringResource(R.string.backup_file_hint), color = colors.muted, style = MaterialTheme.typography.bodyMedium)
         }
     }
 
@@ -129,7 +149,8 @@ internal fun BackupScreen(
                     else {
                         Text(stringResource(R.string.backup_drive_versions_hint))
                         BubbleGroup {
-                            copies.orEmpty().forEach { copy ->
+                            copies.orEmpty().forEachIndexed { index, copy ->
+                                if (index > 0) HorizontalDivider(color = colors.border)
                                 SettingsRow(stringResource(sourceTitle(copy.source)),
                                     copy.preview?.let { previewDetails(it) } ?: stringResource(R.string.backup_copy_unreadable),
                                     active && !restoring && copy.preview != null) { vm.chooseDriveBackup(copy) }
