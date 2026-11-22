@@ -5,28 +5,19 @@ import android.content.pm.ActivityInfo
 import androidx.core.net.toUri
 import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.settings.openSettingsIntent
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricPrompt
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.Surface
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.auth.AuthorizationActivity
 import com.breckneck.debtbook.core.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -41,20 +32,8 @@ class SettingsFragment : Fragment() {
 
     private val vm by viewModels<SettingsViewModel>()
     private val main by activityViewModels<MainViewModel>()
-    private val authorize = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        main.getIsPINCodeEnabled()
-        vm.getIsFingerprintAuthEnabled()
-    }
-    private lateinit var prompt: BiometricPrompt
-    private var biometricStatus by mutableIntStateOf(BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        prompt = BiometricPrompt(this, object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                if (main.isPINCodeEnabled.value == true) vm.setIsFingerprintAuthEnabled(true)
-            }
-        })
         setFragmentResultListener("settingsFragmentKey") { _, result ->
             if (result.getBoolean("isListModified")) main.setIsNeedUpdateDebtData(true)
         }
@@ -64,8 +43,6 @@ class SettingsFragment : Fragment() {
         super.onResume()
         vm.refreshDefaultCurrency()
         main.getIsPINCodeEnabled()
-        vm.getIsFingerprintAuthEnabled()
-        biometricStatus = BiometricManager.from(requireContext()).canAuthenticate(BIOMETRIC_STRONG)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -74,11 +51,12 @@ class SettingsFragment : Fragment() {
         return bubbleScreen(R.id.settingsComposeView) { insets ->
             Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
                 SettingsScreen(vm, insets, main, host,
-                    showBiometrics = biometricStatus == BiometricManager.BIOMETRIC_SUCCESS ||
-                        (Build.VERSION.SDK_INT >= 30 && biometricStatus == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED),
-                    onBiometrics = ::changeBiometrics,
-                    onPin = { action -> authorize.launch(Intent(requireContext(), AuthorizationActivity::class.java)
-                        .putExtra("PINCodeState", action.name)) },
+                    onAppSecurity = {
+                        val nav = findNavController()
+                        if (nav.currentDestination?.id == R.id.settingsFragment) {
+                            nav.navigate(R.id.action_settingsFragment_to_appSecurityFragment)
+                        }
+                    },
                     onTheme = { theme ->
                         vm.setAppTheme(theme)
                         main.getAppTheme()
@@ -86,20 +64,6 @@ class SettingsFragment : Fragment() {
                     onExternal = ::openExternal,
                 )
             }
-        }
-    }
-
-    private fun changeBiometrics() {
-        when {
-            vm.isFingerprintAuthEnabled.value == true -> vm.setIsFingerprintAuthEnabled(false)
-            biometricStatus == BiometricManager.BIOMETRIC_SUCCESS -> prompt.authenticate(
-                BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(getString(R.string.unlock_with_fingerprint))
-                    .setAllowedAuthenticators(BIOMETRIC_STRONG)
-                    .setNegativeButtonText(getString(R.string.cancel)).build()
-            )
-            Build.VERSION.SDK_INT >= 30 -> requireContext().openSettingsIntent(Intent(Settings.ACTION_BIOMETRIC_ENROLL)
-                .putExtra(Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED, BIOMETRIC_STRONG))
         }
     }
 

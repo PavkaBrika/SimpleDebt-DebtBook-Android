@@ -22,8 +22,6 @@ import com.breckneck.debtbook.core.MainViewModel
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.settings.SettingsRow
-import com.breckneck.deptbook.domain.util.PINCodeAction
-import com.breckneck.deptbook.domain.util.PinLockDelay
 
 @Composable
 internal fun SettingsScreen(
@@ -31,9 +29,7 @@ internal fun SettingsScreen(
     hostInsets: PaddingValues,
     main: MainViewModel,
     host: SettingsFragment.OnButtonClickListener,
-    showBiometrics: Boolean,
-    onBiometrics: () -> Unit,
-    onPin: (PINCodeAction) -> Unit,
+    onAppSecurity: () -> Unit,
     onTheme: (String) -> Unit,
     onExternal: (Int) -> Unit,
 ) {
@@ -44,10 +40,6 @@ internal fun SettingsScreen(
     val theme by vm.appTheme.observeAsState("")
     val share by vm.addSumInShareText.observeAsState(false)
     val locked by main.isPINCodeEnabled.observeAsState(false)
-    val biometric by vm.isFingerprintAuthEnabled.observeAsState(false)
-    val delay by vm.pinLockDelay.observeAsState(PinLockDelay.entries.first())
-    val delays = listOf(R.string.pin_lock_immediately, R.string.pin_lock_30_seconds,
-        R.string.pin_lock_1_minute, R.string.pin_lock_5_minutes).map { stringResource(it) }
 
     BubbleScaffold(
         hostInsets = hostInsets,
@@ -72,9 +64,11 @@ internal fun SettingsScreen(
             BubbleGroup {
                 SettingsRow(stringResource(R.string.synchronization), value = stringResource(R.string.backup_formats), onClick = host::onAuthorizationButtonClick)
                 HorizontalDivider(color = colors.border)
-                SettingsRow(stringResource(R.string.pin_code_lock), value = stringResource(if (locked) R.string.pin_on else R.string.pin_off)) {
-                    sheet = R.string.pin_code_lock
-                }
+                SettingsRow(
+                    stringResource(R.string.pin_code_lock),
+                    value = stringResource(if (locked) R.string.pin_on else R.string.pin_off),
+                    onClick = onAppSecurity,
+                )
             }
             BubbleSectionTitle(stringResource(R.string.info))
             BubbleGroup {
@@ -91,43 +85,25 @@ internal fun SettingsScreen(
 
     when (sheet) {
         0 -> Unit
-        R.string.pin_code_lock -> BubbleBottomSheet(onDismiss = { sheet = 0 }) { enabled, close ->
-            BubbleSheetHeader(stringResource(R.string.pin_code_lock), close, enabled = enabled)
-            BubbleGroup {
-                SettingsRow(stringResource(if (locked) R.string.disable_pin else R.string.enable_pin), enabled = enabled) {
-                    onPin(if (locked) PINCodeAction.DISABLE else PINCodeAction.ENABLE)
-                }
-                if (locked) {
-                    SettingsRow(stringResource(R.string.change_pin_code), enabled = enabled) { onPin(PINCodeAction.CHANGE) }
-                    SettingsRow(stringResource(R.string.pin_lock_delay_title), delays[delay.ordinal], enabled) { sheet = R.string.pin_lock_delay_title }
-                    if (showBiometrics) SettingsRow(stringResource(R.string.unlock_with_fingerprint),
-                        enabled = enabled, checked = biometric, onClick = onBiometrics)
-                }
-            }
-        }
         else -> {
             val options = when (sheet) {
                 R.string.app_theme -> themes
-                R.string.pin_lock_delay_title -> delays
                 else -> currencyOptions(stringArrayResource(R.array.currencies).toList(), defaultCurrency)
             }
             val selected = when (sheet) {
                 R.string.app_theme -> themes.indexOf(theme).coerceAtLeast(0)
-                R.string.pin_lock_delay_title -> delay.ordinal
                 else -> options.indexOfFirst { currencyCode(it) == defaultCurrency }
             }
-            val parent = if (sheet == R.string.pin_lock_delay_title) R.string.pin_code_lock else 0
             SettingsPickerBottomSheet(stringResource(sheet), options, selected, onItemSelected = { index ->
                 val setting = sheet
-                sheet = parent
+                sheet = 0
                 host.onTickVibration()
                 val value = options[index]
                 when (setting) {
                     R.string.app_theme -> onTheme(value)
-                    R.string.pin_lock_delay_title -> vm.setPinLockDelay(PinLockDelay.entries[index])
                     R.string.default_currency -> vm.setDefaultCurrency(currencyCode(value))
                 }
-            }, onDismiss = { sheet = parent })
+            }, onDismiss = { sheet = 0 })
         }
     }
 }
