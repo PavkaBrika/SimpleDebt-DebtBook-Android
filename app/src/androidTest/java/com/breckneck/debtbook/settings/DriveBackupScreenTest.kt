@@ -4,6 +4,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.sp
 import org.junit.Rule
 import android.content.Context
 import android.view.View
@@ -209,8 +211,20 @@ class DriveBackupScreenTest {
         drive.files[SynchronizationViewModel.BACKUP_FILE_NAME] = BackupCodec().encode(local)
         val copies = drive.files.toMap()
         action(R.string.log_out).performScrollTo().performClick()
-        compose.onNodeWithText(context.getString(R.string.backup_drive_sign_out_title)).assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.backup_drive_sign_out_message)).assertIsDisplayed()
+        val sheetText = listOf(
+            R.string.backup_drive_sign_out_title to 26.sp,
+            R.string.backup_drive_sign_out_message to 22.sp,
+            R.string.log_out to 19.sp,
+        )
+        for ((id, lineHeight) in sheetText) {
+            val label = hasText(context.getString(id)) and hasAnyAncestor(isDialog())
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNode(label, useUnmergedTree = true).assertIsDisplayed()
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            val style = layouts.single().layoutInput.style
+            assertEquals(lineHeight, style.lineHeight)
+            assertEquals(0.sp, style.letterSpacing)
+        }
         capture("settings-backup-sign-out.png")
         closeSheet()
         compose.waitForIdle()

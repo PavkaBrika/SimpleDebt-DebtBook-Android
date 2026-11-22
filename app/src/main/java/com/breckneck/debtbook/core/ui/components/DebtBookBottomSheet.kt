@@ -3,6 +3,7 @@ package com.breckneck.debtbook.core.ui.components
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
@@ -11,10 +12,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.sp
 
 /**
  * Project-standard bottom sheet wrapper.
@@ -41,6 +44,21 @@ fun DebtBookBottomSheet(
     properties: ModalBottomSheetProperties = ModalBottomSheetProperties(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val typography = MaterialTheme.typography
+    val sheetTypography = remember(typography) {
+        typography.copy(
+            headlineSmall = typography.headlineSmall.copy(lineHeight = 29.sp, letterSpacing = 0.sp),
+            titleLarge = typography.titleLarge.copy(lineHeight = 26.sp, letterSpacing = 0.sp),
+            titleMedium = typography.titleMedium.copy(lineHeight = 22.sp, letterSpacing = 0.sp),
+            titleSmall = typography.titleSmall.copy(lineHeight = 19.sp, letterSpacing = 0.sp),
+            bodyLarge = typography.bodyLarge.copy(lineHeight = 22.sp, letterSpacing = 0.sp),
+            bodyMedium = typography.bodyMedium.copy(lineHeight = 19.sp, letterSpacing = 0.sp),
+            bodySmall = typography.bodySmall.copy(letterSpacing = 0.sp),
+            labelLarge = typography.labelLarge.copy(lineHeight = 19.sp, letterSpacing = 0.sp),
+            labelMedium = typography.labelMedium.copy(letterSpacing = 0.sp),
+            labelSmall = typography.labelSmall.copy(letterSpacing = 0.sp),
+        )
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -51,8 +69,9 @@ fun DebtBookBottomSheet(
         contentColor = contentColor,
         dragHandle = null,
         properties = properties,
-        content = content,
-    )
+    ) {
+        MaterialTheme(typography = sheetTypography) { content() }
+    }
     if (hideRequested) {
         val onHidden by rememberUpdatedState(onDismiss)
         LaunchedEffect(sheetState) {
