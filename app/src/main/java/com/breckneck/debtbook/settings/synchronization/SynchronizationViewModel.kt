@@ -2,6 +2,7 @@ package com.breckneck.debtbook.settings.synchronization
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.debtbook.settings.synchronization.util.BackupDrive
@@ -43,7 +44,8 @@ class SynchronizationViewModel @Inject constructor(
     private val setUserData: SetUserData,
     private val setDateUseCase: SetDateUseCase,
     private val setLastSyncDate: SetLastSyncDate,
-    private val getLastSyncDate: GetLastSyncDate
+    private val getLastSyncDate: GetLastSyncDate,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val backupFiles = BackupFiles(context)
@@ -59,6 +61,8 @@ class SynchronizationViewModel @Inject constructor(
     val driveBackups = MutableLiveData<List<DriveBackup>?>(null)
     val driveReady = MutableLiveData(false)
     val driveConnectionFailed = MutableLiveData(false)
+    private val _driveSignInPending = savedStateHandle.getLiveData("driveSignInPending", false)
+    internal val driveSignInPending: LiveData<Boolean> = _driveSignInPending
     private var pendingRestore: String? = null
     val restorePreview = MutableLiveData<RestorePreview?>(null)
     val hasPrevious = MutableLiveData(backupFiles.hasPrevious())
@@ -312,6 +316,17 @@ class SynchronizationViewModel @Inject constructor(
             catch (error: Exception) { _operationError.value = error }
             finally { _savingTo.value = null }
         }
+    }
+
+    internal fun startDriveSignIn(): Boolean {
+        if (_driveSignInPending.value == true) return false
+        _operationError.value = null
+        _driveSignInPending.value = true
+        return true
+    }
+
+    internal fun finishDriveSignIn() {
+        _driveSignInPending.value = false
     }
 
     fun dismissOperationError() {

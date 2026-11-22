@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.settings.synchronization
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.core.net.toUri
 import com.breckneck.debtbook.core.bubbleScreen
@@ -51,16 +52,26 @@ class SynchronizationFragment : Fragment() {
         uri?.let(vm::restoreFile)
     }
     private val signIn = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        result.data?.let { data ->
-            GoogleSignIn.getSignedInAccountFromIntent(data)
-                .addOnSuccessListener { account ->
-                    connect(account)
+        val data = result.data
+        if (data == null) {
+            vm.finishDriveSignIn()
+            return@registerForActivityResult
+        }
+        GoogleSignIn.getSignedInAccountFromIntent(data).addOnCompleteListener { task ->
+            try {
+                if (!isAdded) return@addOnCompleteListener
+                if (task.isSuccessful) {
+                    connect(task.result)
                     vm.setIsAuthorized(true)
-                }.addOnFailureListener { error ->
-                    if ((error as? ApiException)?.statusCode != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+                } else {
+                    val error = task.exception
+                    if (error != null && (error as? ApiException)?.statusCode != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
                         vm.failDriveConnection(error)
                     }
                 }
+            } finally {
+                vm.finishDriveSignIn()
+            }
         }
     }
     private val authorize = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -69,7 +80,7 @@ class SynchronizationFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val available = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(requireContext()) == ConnectionResult.SUCCESS
-        if (vm.isAuthorized.value == true && vm.driveServiceHelper.value == null) {
+        if (vm.isAuthorized.value == true && vm.driveServiceHelper.value == null && vm.driveSignInPending.value != true) {
             val account = GoogleSignIn.getLastSignedInAccount(requireContext())
             if (available && account != null) connect(account) else vm.setIsAuthorized(false)
         }
@@ -121,10 +132,15 @@ class SynchronizationFragment : Fragment() {
     }
 
     private fun requestSignIn() {
-        vm.dismissOperationError()
+        if (!vm.startDriveSignIn()) return
         val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail().requestProfile().requestScopes(Scope(DriveScopes.DRIVE_APPDATA)).build()
-        signIn.launch(GoogleSignIn.getClient(requireActivity(), options).signInIntent)
+        try {
+            signIn.launch(GoogleSignIn.getClient(requireActivity(), options).signInIntent)
+        } catch (error: ActivityNotFoundException) {
+            vm.finishDriveSignIn()
+            vm.failDriveConnection(error)
+        }
     }
 
     private fun reconnect() {

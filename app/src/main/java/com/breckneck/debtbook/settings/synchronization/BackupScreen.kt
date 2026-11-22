@@ -48,6 +48,7 @@ internal fun BackupScreen(
     val authorized by vm.isAuthorized.observeAsState(false)
     val ready by vm.driveReady.observeAsState(false)
     val failed by vm.driveConnectionFailed.observeAsState(false)
+    val signingIn by vm.driveSignInPending.observeAsState(false)
     val savingTo by vm.savingTo.observeAsState()
     val restoring by vm.isRestoring.observeAsState(false)
     val hasPrevious by vm.hasPrevious.observeAsState(false)
@@ -59,8 +60,10 @@ internal fun BackupScreen(
     val name by vm.userName.observeAsState("")
     val busy = savingTo != null || restoring
     val enabled = !busy && copies == null && preview == null
+    val connecting = signingIn || (authorized && !ready && !failed)
+    val driveActionsEnabled = enabled && ready && !connecting
     var confirm by rememberSaveable { mutableIntStateOf(0) }
-    val saveProgress: @Composable () -> Unit = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+    val rowProgress: @Composable () -> Unit = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
 
     BubbleScaffold(
         hostInsets = hostInsets,
@@ -80,28 +83,40 @@ internal fun BackupScreen(
                 BubbleGroup {
                     SettingsRow(name, email)
                     HorizontalDivider(color = colors.border)
-                    if (failed) SettingsRow(stringResource(R.string.backup_drive_retry),
-                        stringResource(R.string.backup_drive_connection_failed), enabled, onClick = onReconnect)
-                    else SettingsRow(
-                        title = stringResource(R.string.synchronize),
-                        detail = when {
-                            !ready -> stringResource(R.string.backup_drive_connecting)
-                            lastSaved.isNotBlank() -> "${stringResource(R.string.last_synchronization)} $lastSaved"
-                            else -> null
-                        },
-                        enabled = enabled && ready,
-                        supportingContent = if (savingTo == SaveDestination.DRIVE) saveProgress else null,
-                        onClick = { confirm = R.string.synchronize },
-                    )
+                    when {
+                        connecting -> SettingsRow(
+                            title = stringResource(R.string.backup_drive_connecting),
+                            supportingContent = rowProgress,
+                        )
+                        failed -> SettingsRow(
+                            stringResource(R.string.backup_drive_retry),
+                            stringResource(R.string.backup_drive_connection_failed),
+                            enabled = enabled,
+                            onClick = onReconnect,
+                        )
+                        else -> SettingsRow(
+                            title = stringResource(R.string.synchronize),
+                            detail = if (lastSaved.isNotBlank()) "${stringResource(R.string.last_synchronization)} $lastSaved" else null,
+                            enabled = driveActionsEnabled,
+                            supportingContent = if (savingTo == SaveDestination.DRIVE) rowProgress else null,
+                            onClick = { confirm = R.string.synchronize },
+                        )
+                    }
                     HorizontalDivider(color = colors.border)
-                    SettingsRow(stringResource(R.string.backup_drive_choose), enabled = enabled && ready, onClick = vm::loadDriveBackups)
+                    SettingsRow(stringResource(R.string.backup_drive_choose), enabled = driveActionsEnabled, onClick = vm::loadDriveBackups)
                     HorizontalDivider(color = colors.border)
-                    SettingsRow(stringResource(R.string.log_out), enabled = enabled) { confirm = R.string.log_out }
+                    SettingsRow(stringResource(R.string.log_out), enabled = enabled && !signingIn) { confirm = R.string.log_out }
                 }
             } else if (driveAvailable) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     BubbleGroup {
-                        SettingsRow(stringResource(R.string.sign_in_with_google), enabled = enabled, onClick = onSignIn)
+                        SettingsRow(
+                            title = stringResource(R.string.sign_in_with_google),
+                            detail = if (signingIn) stringResource(R.string.backup_drive_connecting) else null,
+                            enabled = enabled && !signingIn,
+                            supportingContent = if (signingIn) rowProgress else null,
+                            onClick = onSignIn,
+                        )
                     }
                     Text(
                         text = AnnotatedString.fromHtml(stringResource(R.string.backup_drive_privacy_notice)),
@@ -119,7 +134,7 @@ internal fun BackupScreen(
                 SettingsRow(
                     title = stringResource(R.string.backup_export_file),
                     enabled = enabled,
-                    supportingContent = if (savingTo == SaveDestination.FILE) saveProgress else null,
+                    supportingContent = if (savingTo == SaveDestination.FILE) rowProgress else null,
                     onClick = onExport,
                 )
                 HorizontalDivider(color = colors.border)

@@ -280,6 +280,31 @@ class DriveBackupScreenTest {
         }
     }
 
+    @Test fun connectionShowsProgressUntilDriveIsReadyOrFails() = withScreen { scenario, vm, drive ->
+        val progress = SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
+        val indicator = compose.onNode(progress, useUnmergedTree = true)
+
+        scenario.onActivity { vm.setDriveServiceHelper(drive) }
+        compose.onNodeWithText(context.getString(R.string.backup_drive_connecting)).assertIsDisplayed()
+        indicator.assertIsDisplayed()
+        action(R.string.backup_drive_choose).assertIsNotEnabled()
+        action(R.string.backup_export_file).assertIsEnabled()
+        scenario.recreate()
+        indicator.assertIsDisplayed()
+        capture("settings-drive-connecting.png")
+
+        scenario.onActivity { vm.setFileId(null) }
+        action(R.string.synchronize).assertIsEnabled()
+        indicator.assertDoesNotExist()
+
+        scenario.onActivity {
+            vm.setDriveServiceHelper(drive)
+            vm.failDriveConnection(java.io.IOException("Offline"))
+        }
+        action(R.string.backup_drive_retry).assertIsEnabled()
+        indicator.assertDoesNotExist()
+    }
+
     @Test fun failedDriveReadCanBeRetriedWithoutWriting() = withScreen { _, vm, drive ->
         drive.pendingQuery = Tasks.forException(java.io.IOException("Offline"))
         action(R.string.backup_drive_choose).performScrollTo().performClick()

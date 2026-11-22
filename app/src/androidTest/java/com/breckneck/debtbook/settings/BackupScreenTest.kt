@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.settings
 
+import android.app.Activity
+import android.app.Instrumentation
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.PatternMatcher
@@ -121,6 +123,44 @@ class BackupScreenTest {
             }
         } finally {
             instrumentation.removeMonitor(privacyIntent)
+        }
+    }
+
+    @Test fun signInShowsProgressAndCancellationEnablesRetry() {
+        assumeTrue(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS)
+        prefs.edit().putBoolean("is_authorized", false).commit()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val cancelledSignIn = instrumentation.addMonitor(
+            "com.google.android.gms.auth.api.signin.internal.SignInHubActivity",
+            Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null),
+            true,
+        )
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                action(R.string.settings).performClick()
+                action(R.string.synchronization).performScrollTo().performClick()
+                val signIn = action(R.string.sign_in_with_google)
+                lateinit var vm: SynchronizationViewModel
+                scenario.onActivity { activity ->
+                    vm = ViewModelProvider(current(activity))[SynchronizationViewModel::class.java]
+                    assertTrue(vm.startDriveSignIn())
+                    assertFalse(vm.startDriveSignIn())
+                }
+
+                val progress = SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
+                val signInRow = hasClickAction() and hasAnyDescendant(hasText(context.getString(R.string.sign_in_with_google)))
+                signIn.assertIsNotEnabled()
+                compose.onNode(progress and hasAnyAncestor(signInRow), useUnmergedTree = true).assertIsDisplayed()
+                scenario.onActivity { vm.finishDriveSignIn() }
+
+                signIn.assertIsEnabled().performClick()
+                compose.waitUntil(5_000) { cancelledSignIn.hits == 1 && vm.driveSignInPending.value == false }
+                signIn.assertIsEnabled()
+                compose.onAllNodes(progress, useUnmergedTree = true).assertCountEquals(0)
+                assertFalse(vm.isAuthorized.value == true)
+            }
+        } finally {
+            instrumentation.removeMonitor(cancelledSignIn)
         }
     }
 
