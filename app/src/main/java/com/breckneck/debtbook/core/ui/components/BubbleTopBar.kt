@@ -46,6 +46,7 @@ internal fun BubbleTopBar(
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
     leadingTitle: (@Composable () -> Unit)? = null,
+    titleContent: (@Composable () -> Unit)? = null,
     action: @Composable (Dp) -> Unit = { Spacer(Modifier.size(it)) },
 ) {
     val colors = bubbleColors()
@@ -82,21 +83,25 @@ internal fun BubbleTopBar(
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             Row(
                 modifier = Modifier.height(bubbleHeight)
+                    .then(if (titleContent == null) Modifier.semantics(mergeDescendants = true) { heading() } else Modifier.fillMaxWidth())
                     .background(colors.headerBubble, CircleShape)
                     .border(1.dp, colors.border, CircleShape)
-                    .semantics(mergeDescendants = true) { heading() }
                     .padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                leadingTitle?.invoke()
-                Text(
-                    title,
-                    color = colors.ink,
-                    style = titleStyle,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (titleContent != null) {
+                    titleContent()
+                } else {
+                    leadingTitle?.invoke()
+                    Text(
+                        title,
+                        color = colors.ink,
+                        style = titleStyle,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         action(bubbleHeight)

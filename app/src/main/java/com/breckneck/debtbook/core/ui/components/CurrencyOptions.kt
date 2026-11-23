@@ -12,8 +12,16 @@ internal data class CurrencyChoice(
     fun matches(normalizedQuery: String): Boolean = searchText.contains(normalizedQuery)
 }
 
-internal fun currencyChoices(common: List<String>, selected: String, locale: Locale): List<CurrencyChoice> =
-    currencyOptions(common, selected).map { label ->
+internal fun currencyChoices(
+    common: List<String>,
+    selected: String,
+    regionalCurrency: String,
+    locale: Locale,
+): List<CurrencyChoice> {
+    val labels = currencyOptions(common, selected).associateBy(::currencyCode)
+    val regionalLabel = labels[regionalCurrency] ?: currencyLabel(regionalCurrency)
+    val orderedLabels = listOf(regionalLabel) + (labels - regionalCurrency).values
+    return orderedLabels.map { label ->
         val code = currencyCode(label)
         val region = currencyRegion(code)
         val country = region?.let { Locale.Builder().setRegion(it).build() } ?: Locale.ROOT
@@ -29,6 +37,7 @@ internal fun currencyChoices(common: List<String>, selected: String, locale: Loc
             ).joinToString("\n").normalizeCurrencySearch(),
         )
     }
+}
 
 internal fun currencyOptions(common: List<String>, selected: String): List<String> {
     val commonCodes = common.mapTo(mutableSetOf(), ::currencyCode)

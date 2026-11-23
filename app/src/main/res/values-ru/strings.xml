@@ -40,6 +40,7 @@
     <string name="app_already_rated_hint">Извините, приложение уже оценено</string>
     <string name="default_currency">Валюта по умолчанию</string>
     <string name="search_currency">Поиск валюты</string>
+    <string name="close_currency_search">Закрыть поиск</string>
     <string name="clear_currency_search">Очистить поиск</string>
     <string name="no_matching_currencies">Валюты не найдены</string>
     <string name="default_currencies_hint">Эта валюта будет выбрана по умолчанию при добавлении новых долгов</string>

@@ -21,13 +21,14 @@ internal fun BubbleScaffold(
     bottomAction: @Composable () -> Unit = {},
     tabs: (@Composable () -> Unit)? = null,
     snackbarHost: @Composable () -> Unit = {},
+    scrollBehindBarsWithIme: Boolean = false,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val colors = bubbleColors()
     val direction = LocalLayoutDirection.current
     val start = hostInsets.calculateStartPadding(direction)
     val end = hostInsets.calculateEndPadding(direction)
-    val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val insetContentForIme = !scrollBehindBarsWithIme && WindowInsets.ime.getBottom(LocalDensity.current) > 0
     Scaffold(
         modifier = modifier.fillMaxSize().imePadding(),
         containerColor = colors.background,
@@ -54,12 +55,12 @@ internal fun BubbleScaffold(
         val bottom = bars.calculateBottomPadding()
         Box(Modifier.fillMaxSize()) {
             // Give focus scrolling the unobstructed viewport while editing a field.
-            Box(Modifier.fillMaxSize().then(if (keyboardOpen) Modifier.padding(top = top, bottom = bottom) else Modifier)) {
+            Box(Modifier.fillMaxSize().then(if (insetContentForIme) Modifier.padding(top = top, bottom = bottom) else Modifier)) {
                 content(PaddingValues(
                     start = start + contentPadding.calculateStartPadding(direction),
-                    top = contentPadding.calculateTopPadding() + if (keyboardOpen) 0.dp else top,
+                    top = contentPadding.calculateTopPadding() + if (insetContentForIme) 0.dp else top,
                     end = end + contentPadding.calculateEndPadding(direction),
-                    bottom = contentPadding.calculateBottomPadding() + if (keyboardOpen) 0.dp else bottom,
+                    bottom = contentPadding.calculateBottomPadding() + if (insetContentForIme) 0.dp else bottom,
                 ))
             }
             if (topBar == null) {

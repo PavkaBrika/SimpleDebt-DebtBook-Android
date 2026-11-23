@@ -8,9 +8,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -23,11 +25,14 @@ import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.core.ui.components.currencyLabel
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import util.DeviceCurrency
 
 class SettingsPagesTest {
     @get:Rule val compose = createEmptyComposeRule()
@@ -68,8 +73,15 @@ class SettingsPagesTest {
             openSettings()
             action(R.string.default_currency).performClick()
             assertDestination(scenario, R.id.defaultCurrencyFragment)
-            awaitNode(hasText("🇨🇼 ANG")).assertIsSelected()
-            awaitNode(hasSetTextAction()).performTextInput("  vietnam  ")
+            val savedCurrency = awaitNode(hasText("🇨🇼 ANG")).assertIsSelected()
+            val regionalCurrency = awaitNode(hasText(currencyLabel(DeviceCurrency.get(context))))
+            assertTrue(
+                regionalCurrency.fetchSemanticsNode().boundsInRoot.top <
+                    savedCurrency.fetchSemanticsNode().boundsInRoot.top,
+            )
+            compose.onNode(hasSetTextAction()).assertDoesNotExist()
+            contentDescription(R.string.search_currency).performClick()
+            awaitNode(hasSetTextAction() and isFocused()).performTextInput("  vietnam  ")
             compose.onNodeWithText("🇻🇳 VND").assertIsDisplayed()
             compose.onNodeWithText("🇺🇸 USD").assertDoesNotExist()
 
@@ -94,9 +106,19 @@ class SettingsPagesTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             openSettings()
             action(R.string.default_currency).performClick()
-            awaitNode(hasSetTextAction()).performTextInput("no-match")
+            contentDescription(R.string.search_currency).performClick()
+            awaitNode(hasSetTextAction() and isFocused()).performTextInput("no-match")
             compose.onNodeWithText(context.getString(R.string.no_matching_currencies)).assertIsDisplayed()
-            compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
+            compose.onNodeWithText(context.getString(R.string.default_currency)).assertDoesNotExist()
+            contentDescription(R.string.clear_currency_search).performClick()
+            compose.onNodeWithText(context.getString(R.string.no_matching_currencies)).assertDoesNotExist()
+            contentDescription(R.string.close_currency_search).performClick()
+            compose.onNode(hasSetTextAction()).assertDoesNotExist()
+            compose.onNodeWithText(context.getString(R.string.default_currency)).assertIsDisplayed()
+
+            contentDescription(R.string.search_currency).performClick()
+            awaitNode(hasSetTextAction() and isFocused()).performTextInput("no-match")
+            contentDescription(R.string.back).performClick()
             assertDestination(scenario, R.id.settingsFragment)
             assertEquals("ANG", prefs.getString(currencyKey, null))
         }
@@ -131,6 +153,8 @@ class SettingsPagesTest {
     }
 
     private fun action(label: Int) = awaitNode(hasText(context.getString(label)) and hasClickAction())
+
+    private fun contentDescription(label: Int) = awaitNode(hasContentDescription(context.getString(label)))
 
     private fun awaitSelectedTheme(label: Int) {
         awaitNode(hasText(context.getString(label)) and isSelected()).assertIsSelected()

@@ -40,6 +40,7 @@
     <string name="app_already_rated_hint">Sorry, App ist bereits bewertet</string>
     <string name="default_currency">Standardwährung</string>
     <string name="search_currency">Währungen suchen</string>
+    <string name="close_currency_search">Suche schließen</string>
     <string name="clear_currency_search">Suche löschen</string>
     <string name="no_matching_currencies">Keine passenden Währungen</string>
     <string name="default_currencies_hint">Diese Währung wird beim Hinzufügen neuer Schulden standardmäßig ausgewählt</string>
