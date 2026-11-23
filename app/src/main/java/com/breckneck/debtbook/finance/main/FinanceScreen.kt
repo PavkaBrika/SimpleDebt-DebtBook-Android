@@ -92,9 +92,8 @@ private fun FinanceContent(
         if (state.period.isCurrent(today)) null else ({ setPeriod(state.period.atToday(today)) })
     val layoutDirection = LocalLayoutDirection.current
     val windowSize = LocalWindowInfo.current.containerSize
-    val headerInRow = with(LocalDensity.current) {
-        windowSize.height.toDp() < 420.dp && windowSize.width.toDp() >= 540.dp
-    }
+    val shortWindow = with(LocalDensity.current) { windowSize.height.toDp() < 420.dp }
+    val headerInRow = shortWindow && with(LocalDensity.current) { windowSize.width.toDp() >= 540.dp }
 
     LaunchedEffect(pager) {
         snapshotFlow { pager.settledPage }.collect { saveDirection(directions[it]) }
@@ -137,7 +136,7 @@ private fun FinanceContent(
                         Box(Modifier.weight(1f)) { FinanceOverview(state) }
                     }
                 } else {
-                    title()
+                    if (!shortWindow) title()
                     FinanceOverview(state)
                 }
                 Spacer(Modifier.height(8.dp))
@@ -158,6 +157,7 @@ private fun FinanceContent(
                 direction = directions[page],
                 listState = listStates[page],
                 padding = padding,
+                pinAddAction = !shortWindow,
                 stepPeriod = stepPeriod,
                 onPeriodClick = { choosingPeriod = true },
                 onCurrentPeriod = currentPeriodAction,
@@ -182,6 +182,7 @@ private fun FinancePage(
     direction: FinanceCategoryState,
     listState: LazyListState,
     padding: PaddingValues,
+    pinAddAction: Boolean,
     stepPeriod: (Int) -> Unit,
     onPeriodClick: () -> Unit,
     onCurrentPeriod: (() -> Unit)?,
@@ -198,31 +199,36 @@ private fun FinancePage(
     val layout = LocalLayoutDirection.current
     val start = padding.calculateStartPadding(layout)
     val end = padding.calculateEndPadding(layout)
-    val belowAction = (padding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
+    val addAction: @Composable (Modifier) -> Unit = { modifier ->
+        BubbleButton(onClick = onAdd, modifier = modifier, colors = financeActionColors(direction)) {
+            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+            val label = if (expenses) R.string.finance_add_expense else R.string.finance_add_income
+            Text(stringResource(label), Modifier.padding(start = 8.dp))
+        }
+    }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            Box(Modifier.padding(start = start, end = end, bottom = belowAction)) {
-                BubbleButton(
-                    onClick = onAdd,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    colors = financeActionColors(direction),
-                ) {
-                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                    val label = if (expenses) R.string.finance_add_expense else R.string.finance_add_income
-                    Text(stringResource(label), Modifier.padding(start = 8.dp))
+            if (pinAddAction) {
+                val belowAction = (padding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
+                Box(Modifier.padding(start = start, end = end, bottom = belowAction)) {
+                    addAction(Modifier.fillMaxWidth().padding(vertical = 4.dp))
                 }
             }
         },
     ) { bars ->
-        val listPadding = PaddingValues(
-            start = start,
-            top = padding.calculateTopPadding(),
-            end = end,
-            bottom = bars.calculateBottomPadding() + 16.dp,
-        )
+        val listPadding = if (pinAddAction) {
+            PaddingValues(
+                start = start,
+                top = padding.calculateTopPadding(),
+                end = end,
+                bottom = bars.calculateBottomPadding() + 16.dp,
+            )
+        } else {
+            padding
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().consumeWindowInsets(listPadding),
             state = listState,
@@ -268,6 +274,9 @@ private fun FinancePage(
                         }
                     }
                 }
+            }
+            if (!pinAddAction) {
+                item(key = "add-operation") { addAction(Modifier.fillMaxWidth().padding(top = 8.dp)) }
             }
             item(key = "categories") {
                 BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) {
