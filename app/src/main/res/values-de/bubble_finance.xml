@@ -4,7 +4,8 @@
     <string name="finance_categories">Kategorien</string>
     <string name="finance_previous">Vorheriger Zeitraum</string>
     <string name="finance_next">Nächster Zeitraum</string>
-    <string name="finance_today">Heute</string>
+    <string name="finance_current_period">Zum aktuellen Zeitraum</string>
+    <string name="finance_period_total">Saldo im Zeitraum</string>
     <string name="finance_empty_period">Keine Buchungen in diesem Zeitraum.</string>
     <string name="finance_new_expense">Neue Ausgabe</string>
     <string name="finance_new_income">Neue Einnahme</string>

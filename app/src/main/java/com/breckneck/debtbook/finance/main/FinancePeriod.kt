@@ -41,8 +41,11 @@ internal data class FinancePeriod(
         if (interval == FinanceInterval.DATE_RANGE) shiftRange(daysBetween(endDay, today))
         else FinancePeriod(interval, today)
 
-    fun isAtToday(today: String): Boolean =
-        if (interval == FinanceInterval.DATE_RANGE) endDay == today else day == today
+    fun isCurrent(today: String): Boolean = when (interval) {
+        FinanceInterval.DAY -> day == today
+        FinanceInterval.DATE_RANGE -> endDay == today
+        else -> today in days()
+    }
 
     fun entryDay(today: String): String =
         if (interval == FinanceInterval.DATE_RANGE && today in day..endDay) today else day

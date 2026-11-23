@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -76,15 +77,21 @@ private fun FinanceContent(
     hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val colors = bubbleColors()
-    val directions = FinanceCategoryState.entries
-    val pager = rememberPagerState(state.direction.ordinal) { directions.size }
+    val directions = remember { listOf(FinanceCategoryState.INCOME, FinanceCategoryState.EXPENSE) }
+    val pager = key(directions) {
+        rememberPagerState(directions.indexOf(state.direction)) { directions.size }
+    }
     val selected = directions[pager.targetPage]
-    val listStates = listOf(rememberLazyListState(), rememberLazyListState())
+    val listStates = key(directions) { listOf(rememberLazyListState(), rememberLazyListState()) }
     val scope = rememberCoroutineScope()
     var tabAnimation by remember { mutableStateOf<Job?>(null) }
     var choosingPeriod by rememberSaveable { mutableStateOf(false) }
     val today = LedgerDate.today()
+    val currentPeriodAction: (() -> Unit)? =
+        if (state.period.isCurrent(today)) null else ({ setPeriod(state.period.atToday(today)) })
     val layoutDirection = LocalLayoutDirection.current
+    val configuration = LocalConfiguration.current
+    val headerInRow = configuration.screenHeightDp < 420 && configuration.screenWidthDp >= 540
 
     LaunchedEffect(pager) {
         snapshotFlow { pager.settledPage }.collect { saveDirection(directions[it]) }
@@ -108,24 +115,32 @@ private fun FinanceContent(
                         bottom = 4.dp,
                     ),
             ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                val title: @Composable () -> Unit = {
                     Text(
                         stringResource(R.string.finances),
-                        Modifier.weight(1f).padding(vertical = 4.dp),
+                        Modifier.padding(vertical = 4.dp),
                         color = colors.ink,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (!state.period.isAtToday(today)) {
-                        TextButton(onClick = {
-                            setPeriod(state.period.atToday(today))
-                            listStates[pager.currentPage].requestScrollToItem(0)
-                        }) { Text(stringResource(R.string.finance_today)) }
-                    }
                 }
-                FinanceDirection(selected) { direction ->
+                if (headerInRow) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        title()
+                        Box(Modifier.weight(1f)) { FinanceOverview(state) }
+                    }
+                } else {
+                    title()
+                    FinanceOverview(state)
+                }
+                Spacer(Modifier.height(8.dp))
+                FinanceDirection(selected, directions) { direction ->
                     tabAnimation?.cancel()
-                    tabAnimation = scope.launch { pager.animateScrollToPage(direction.ordinal) }
+                    tabAnimation = scope.launch { pager.animateScrollToPage(directions.indexOf(direction)) }
                 }
             }
         },
@@ -142,6 +157,7 @@ private fun FinanceContent(
                 padding = padding,
                 stepPeriod = stepPeriod,
                 onPeriodClick = { choosingPeriod = true },
+                onCurrentPeriod = currentPeriodAction,
                 onCurrencyClick = onCurrencyClick,
                 onCategory = onCategory,
                 onAdd = { onAdd(directions[page]) },
@@ -165,6 +181,7 @@ private fun FinancePage(
     padding: PaddingValues,
     stepPeriod: (Int) -> Unit,
     onPeriodClick: () -> Unit,
+    onCurrentPeriod: (() -> Unit)?,
     onCurrencyClick: () -> Unit,
     onCategory: (FinanceCategory) -> Unit,
     onAdd: () -> Unit,
@@ -219,21 +236,31 @@ private fun FinancePage(
                         palette = palette,
                         artwork = { FinanceSummaryArtwork(direction, palette, it) },
                     ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            val arrowColors = IconButtonDefaults.iconButtonColors(
-                                containerColor = palette.border,
-                                contentColor = palette.content,
-                            )
-                            IconButton({ stepPeriod(-1) }, colors = arrowColors) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                val arrowColors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = palette.border,
+                                    contentColor = palette.content,
+                                )
+                                IconButton({ stepPeriod(-1) }, colors = arrowColors) {
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
+                                }
+                                TextButton(onPeriodClick, Modifier.weight(1f)) {
+                                    Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = palette.content)
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(state.period.label(), color = palette.content, textAlign = TextAlign.Center)
+                                }
+                                IconButton({ stepPeriod(1) }, colors = arrowColors) {
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
+                                }
                             }
-                            TextButton(onPeriodClick, Modifier.weight(1f)) {
-                                Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = palette.content)
-                                Spacer(Modifier.width(5.dp))
-                                Text(state.period.label(), color = palette.content, textAlign = TextAlign.Center)
-                            }
-                            IconButton({ stepPeriod(1) }, colors = arrowColors) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
+                            if (onCurrentPeriod != null) {
+                                TextButton(
+                                    onClick = onCurrentPeriod,
+                                    colors = ButtonDefaults.textButtonColors(contentColor = palette.content),
+                                ) {
+                                    Text(stringResource(R.string.finance_current_period), textAlign = TextAlign.Center)
+                                }
                             }
                         }
                     }
@@ -285,7 +312,7 @@ private fun FinancePreview() {
     val period = FinancePeriod(FinanceInterval.DAY, LedgerDate.today())
     DebtBookTheme {
         FinanceContent(
-            FinanceSummary("RUB", FinanceCategoryState.EXPENSE, period, summarizeFinances(emptyList(), "RUB", period)),
+            FinanceSummary("RUB", FinanceCategoryState.INCOME, period, summarizeFinances(emptyList(), "RUB", period)),
             {}, {}, {}, {}, {}, {}, {}, {},
         )
     }

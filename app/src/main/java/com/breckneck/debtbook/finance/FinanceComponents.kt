@@ -48,12 +48,15 @@ internal fun financeActionColors(direction: FinanceCategoryState): ButtonColors 
 }
 
 @Composable
-internal fun FinanceDirection(selected: FinanceCategoryState, select: (FinanceCategoryState) -> Unit) {
+internal fun FinanceDirection(
+    selected: FinanceCategoryState,
+    directions: List<FinanceCategoryState> = FinanceCategoryState.entries,
+    select: (FinanceCategoryState) -> Unit,
+) {
     val colors = bubbleColors()
     val haptic = LocalHapticFeedback.current
     val action = financeActionColors(selected)
     val tabColor by animateColorAsState(action.containerColor, tween(200), label = "Direction color")
-    val directions = listOf(FinanceCategoryState.EXPENSE, FinanceCategoryState.INCOME)
     BoxWithConstraints(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp)) {
         val width = maxWidth / directions.size
         val offset by animateDpAsState(width * directions.indexOf(selected), tween(200), label = "Direction")

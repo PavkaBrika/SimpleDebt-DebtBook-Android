@@ -80,6 +80,7 @@ class FinanceFlowTest {
     }
 
     @Test fun expenseRoundTripAndExactPeriodBalances() {
+        direction(R.string.expenses)
         act(R.string.finance_add_expense)
         input(R.string.sum, "255,75")
         input(R.string.comment, note)
@@ -114,7 +115,7 @@ class FinanceFlowTest {
         total("0")
     }
 
-    @Test fun swipeBetweenSummariesAndReturnToTodayFromTheCategoryList() {
+    @Test fun overviewAndPagesFollowTheSelectedPeriod() {
         val today = LedgerDate.today()
         val previous = FinancePeriod(FinanceInterval.DAY, today).shifted(-8).day
         fun entry(name: String, direction: FinanceCategoryStateData, day: String, amount: Int) {
@@ -126,17 +127,22 @@ class FinanceFlowTest {
         repeat(16) { entry("Earlier expense $it", FinanceCategoryStateData.EXPENSE, previous, 16 - it) }
         act(R.string.debts)
         act(R.string.finances)
+        val incomeTab = node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
+        val expenseTab = node(hasText(str(R.string.expenses)) and hasClickAction())
+        val overviewTitle = node(hasText(str(R.string.finance_period_total))).assertIsDisplayed()
+        assertTrue(incomeTab.fetchSemanticsNode().boundsInRoot.left < expenseTab.fetchSemanticsNode().boundsInRoot.left)
+        assertTrue(overviewTitle.fetchSemanticsNode().boundsInRoot.bottom <= incomeTab.fetchSemanticsNode().boundsInRoot.top)
+        total("90")
+        awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
+        capture("income-page")
+
+        summaryList().performTouchInput { swipeLeft() }
+        node(hasText(str(R.string.expenses)) and isSelected()).assertIsDisplayed()
         total("45")
         capture("expense-page")
-        summaryList().performTouchInput { swipeLeft() }
-        node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
-        total("90")
-        capture("income-page")
-        act(R.string.expenses)
-        total("45")
-        summaryList().performTouchInput { swipeLeft() }
-        total("90")
         summaryList().performTouchInput { swipeRight() }
+        incomeTab.assertIsDisplayed()
+        act(R.string.expenses)
         total("45")
 
         act(LedgerDate.display(today))
@@ -156,36 +162,44 @@ class FinanceFlowTest {
         node(hasText(LedgerDate.display(today)) and hasClickAction()).assertIsDisplayed()
         repeat(8) { desc(R.string.finance_previous) }
         total("136")
+        awaitText((-136).toBigDecimal().financeMoney("RUB"))
         val list = summaryList()
-        val todayAction = node(hasText(str(R.string.finance_today)) and hasClickAction())
-        val pinnedBounds = todayAction.fetchSemanticsNode().boundsInRoot
+        val pinnedBounds = overviewTitle.fetchSemanticsNode().boundsInRoot
         list.performScrollToIndex(5)
         val row = node(hasText("Earlier expense 3"))
         val distance = row.fetchSemanticsNode().boundsInRoot.center.y - pinnedBounds.center.y
         list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
         val scrolledBounds = row.fetchSemanticsNode().boundsInRoot
         assertTrue(pinnedBounds.center.y in scrolledBounds.top..scrolledBounds.bottom)
-        assertEquals(pinnedBounds, todayAction.fetchSemanticsNode().boundsInRoot)
+        assertEquals(pinnedBounds, overviewTitle.fetchSemanticsNode().boundsInRoot)
         list.performScrollToNode(hasText("Earlier expense 15"))
-        capture("today-action")
-        todayAction.assertIsDisplayed().performClick()
+        list.performScrollToIndex(0)
+        val date = node(hasText(LedgerDate.display(previous)) and hasClickAction())
+        val currentPeriod = hasText(str(R.string.finance_current_period)) and hasClickAction()
+        val currentPeriodAction = node(currentPeriod and hasAnyAncestor(verticalList)).assertIsDisplayed()
+        assertTrue(currentPeriodAction.fetchSemanticsNode().boundsInRoot.top >= date.fetchSemanticsNode().boundsInRoot.bottom)
+        capture("current-period")
+        currentPeriodAction.performClick()
         awaitText(LedgerDate.display(today))
         total("45")
+        awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
+        compose.onNode(currentPeriod).assertDoesNotExist()
     }
 
     @Test fun addButtonsBelongToThePageAndOpenItsOperation() {
         val pager = SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)
         val expense = hasText(str(R.string.finance_add_expense)) and hasClickAction()
         val income = hasText(str(R.string.finance_add_income)) and hasClickAction()
-        node(expense and hasAnyAncestor(pager)).performClick()
-        awaitText(str(R.string.finance_new_expense))
-        back()
-        summaryList().performTouchInput { swipeLeft() }
         node(income and hasAnyAncestor(pager)).performClick()
         awaitText(str(R.string.finance_new_income))
+        back()
+        summaryList().performTouchInput { swipeLeft() }
+        node(expense and hasAnyAncestor(pager)).performClick()
+        awaitText(str(R.string.finance_new_expense))
     }
 
     @Test fun customDateRangeIncludesBothEndsAndStepsByItsLength() {
+        direction(R.string.expenses)
         val first = "2026-01-31"
         val last = "2026-02-02"
         val period = FinancePeriod(FinanceInterval.DATE_RANGE, first, last)
@@ -212,10 +226,12 @@ class FinanceFlowTest {
         act(R.string.finance_apply_period)
         node(hasText(periodLabel(period)) and hasClickAction()).assertIsDisplayed()
         total("25")
+        awaitText((-25).toBigDecimal().financeMoney("RUB"))
         desc(R.string.finance_next)
         total("19")
+        awaitText((-19).toBigDecimal().financeMoney("RUB"))
         node(hasText(periodLabel(period.shifted(1))) and hasClickAction()).assertIsDisplayed()
-        act(R.string.finance_today)
+        act(R.string.finance_current_period)
         node(hasText(periodLabel(period.atToday(LedgerDate.today()))) and hasClickAction()).assertIsDisplayed()
     }
 
@@ -239,6 +255,7 @@ class FinanceFlowTest {
     }
 
     @Test fun outsidePeriodHistoryAndCrossCurrencyCategoryDeletion() {
+        direction(R.string.expenses)
         // Use a private category so confirming deletion can never remove a built-in category.
         val categoryId = dao.insertFinanceCategory(entity.FinanceCategoryData(0, books,
             util.FinanceCategoryStateData.EXPENSE, "#C5E1A5", 0x1F4DA)).toInt()
@@ -255,7 +272,7 @@ class FinanceFlowTest {
         input(R.string.comment, "Yesterday")
         act(R.string.finance_save_entry)
         total("2")
-        act(R.string.finance_today)
+        act(R.string.finance_current_period)
         total("3")
         act(books)
         awaitText("Yesterday")
@@ -337,6 +354,7 @@ class FinanceFlowTest {
             }
         }
 
+        direction(R.string.expenses)
         act(R.string.finance_add_expense)
         focus(str(R.string.finance_save_entry))
         input(R.string.sum, "6")
@@ -350,6 +368,7 @@ class FinanceFlowTest {
     }
 
     @Test fun keyboardLeavesSaveActionVisibleOnTheForm() {
+        direction(R.string.expenses)
         act(R.string.finance_add_expense)
         val amount = node(hasText(str(R.string.sum)) and hasSetTextAction()).performScrollTo()
         amount.performClick().performTextReplacement("12,34")
@@ -370,6 +389,7 @@ class FinanceFlowTest {
     }
 
     @Test fun monthBoundaryUsesTheSelectedDayInTheForm() {
+        direction(R.string.expenses)
         val day = LedgerDate.today()
         act(LedgerDate.display(day))
         act(R.string.finance_period_day)
@@ -393,6 +413,7 @@ class FinanceFlowTest {
     }
 
     @Test fun fractionalYenCannotBeSaved() {
+        direction(R.string.expenses)
         currency("RUB", R.string.jpy)
         act(R.string.finance_add_expense)
         act(R.string.food)
@@ -406,6 +427,7 @@ class FinanceFlowTest {
 
     @Test fun calendarDateSurvivesDeviceZoneChange() {
         Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 35)
+        direction(R.string.expenses)
         val zone = TimeZone.getDefault().id
         fun changeZone(id: String) {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(
@@ -437,6 +459,7 @@ class FinanceFlowTest {
 
     @Test fun predictiveBackRestoresDraftAndReturnsToHistoryAndSummary() {
         requirePredictiveGestures(context)
+        direction(R.string.expenses)
         act(R.string.finance_add_expense)
         input(R.string.sum, "255,75")
         input(R.string.comment, note)

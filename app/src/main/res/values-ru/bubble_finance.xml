@@ -4,7 +4,8 @@
     <string name="finance_categories">Категории</string>
     <string name="finance_previous">Предыдущий период</string>
     <string name="finance_next">Следующий период</string>
-    <string name="finance_today">Сегодня</string>
+    <string name="finance_current_period">К текущему периоду</string>
+    <string name="finance_period_total">Итог за период</string>
     <string name="finance_empty_period">За этот период записей нет.</string>
     <string name="finance_new_expense">Новый расход</string>
     <string name="finance_new_income">Новый доход</string>

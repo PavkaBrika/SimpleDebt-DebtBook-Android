@@ -4,7 +4,8 @@
     <string name="finance_categories">Categories</string>
     <string name="finance_previous">Previous period</string>
     <string name="finance_next">Next period</string>
-    <string name="finance_today">Today</string>
+    <string name="finance_current_period">Back to current period</string>
+    <string name="finance_period_total">Period total</string>
     <string name="finance_empty_period">No entries in this period.</string>
     <string name="finance_new_expense">New expense</string>
     <string name="finance_new_income">New income</string>
