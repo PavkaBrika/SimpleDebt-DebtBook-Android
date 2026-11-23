@@ -21,8 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -90,8 +91,10 @@ private fun FinanceContent(
     val currentPeriodAction: (() -> Unit)? =
         if (state.period.isCurrent(today)) null else ({ setPeriod(state.period.atToday(today)) })
     val layoutDirection = LocalLayoutDirection.current
-    val configuration = LocalConfiguration.current
-    val headerInRow = configuration.screenHeightDp < 420 && configuration.screenWidthDp >= 540
+    val windowSize = LocalWindowInfo.current.containerSize
+    val headerInRow = with(LocalDensity.current) {
+        windowSize.height.toDp() < 420.dp && windowSize.width.toDp() >= 540.dp
+    }
 
     LaunchedEffect(pager) {
         snapshotFlow { pager.settledPage }.collect { saveDirection(directions[it]) }
