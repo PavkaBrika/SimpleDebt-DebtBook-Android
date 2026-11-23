@@ -25,11 +25,13 @@ class AnimatedBalanceComponentsTest {
     @Test fun rollsChangingSignsAndKeepsAnUnchangedSignStill() {
         val amount = mutableStateOf(BigDecimal.ZERO)
         fun label(value: BigDecimal) = when (value.signum()) {
-            1 -> "+$value ₽"
-            -1 -> "−${value.abs()} ₽"
-            else -> "0 ₽"
+            1 -> "+$value"
+            -1 -> "−${value.abs()}"
+            else -> "0"
         }
-        compose.setContent { AnimatedAmount(amount.value, label(amount.value)) }
+        compose.setContent {
+            AnimatedAmount(amount.value, "${label(amount.value)}\u00a0₽")
+        }
 
         fun layers(text: String) = compose.onAllNodes(
             hasText(text) and SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult),
@@ -64,6 +66,38 @@ class AnimatedBalanceComponentsTest {
             change("75", "875", movesSign = false, showsOutgoingSign = false)
             change("875", "-30", movesSign = true, showsOutgoingSign = true)
             change("-30", "0", movesSign = false, showsOutgoingSign = true)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test fun currencyFollowsTheWidthOfTheAmountOnTheSameLine() {
+        val amount = mutableStateOf(BigDecimal("9"))
+        val currency = compose.onNodeWithText("\u00a0₽", useUnmergedTree = true)
+        compose.setContent { AnimatedAmount(amount.value, "${amount.value}\u00a0₽") }
+        fun currencyPosition() = currency.fetchSemanticsNode().positionInRoot
+        val narrow = currencyPosition()
+
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.runOnIdle { amount.value = BigDecimal("100") }
+            compose.mainClock.advanceTimeBy(144)
+            val growing = currencyPosition()
+            compose.mainClock.advanceTimeBy(500)
+            val wide = currencyPosition()
+
+            compose.runOnIdle { amount.value = BigDecimal("9") }
+            compose.mainClock.advanceTimeBy(144)
+            val shrinking = currencyPosition()
+            compose.mainClock.advanceTimeBy(500)
+
+            assertTrue(growing.x > narrow.x && growing.x < wide.x)
+            assertTrue(shrinking.x > narrow.x && shrinking.x < wide.x)
+            for (position in listOf(growing, wide, shrinking, currencyPosition())) {
+                assertEquals(narrow.y, position.y, 1f)
+            }
+            assertEquals(narrow.x, currencyPosition().x, 1f)
+            compose.onNodeWithText("9\u00a0₽").assertIsDisplayed()
         } finally {
             compose.mainClock.autoAdvance = true
         }
