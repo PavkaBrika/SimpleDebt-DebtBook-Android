@@ -1,11 +1,15 @@
 package com.breckneck.debtbook.finance.main
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,8 +32,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleBalancePalette
@@ -37,7 +47,7 @@ import com.breckneck.debtbook.core.ui.components.BubbleButton
 
 @Composable
 internal fun FinancePeriodControls(
-    label: String,
+    period: FinancePeriod,
     palette: BubbleBalancePalette,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -72,7 +82,7 @@ internal fun FinancePeriodControls(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp))
-                    Text(label, textAlign = TextAlign.Center)
+                    PeriodLabel(period)
                 }
             }
             IconButton(onNext, colors = arrowColors) {
@@ -92,5 +102,29 @@ internal fun FinancePeriodControls(
                 Text(stringResource(R.string.finance_current_period), textAlign = TextAlign.Center)
             }
         }
+    }
+}
+
+@Composable
+private fun PeriodLabel(period: FinancePeriod) {
+    val label = period.label()
+    val slideDistance = with(LocalDensity.current) { 12.dp.roundToPx() }
+    val forward = if (LocalLayoutDirection.current == LayoutDirection.Ltr) slideDistance else -slideDistance
+    AnimatedContent(
+        targetState = period,
+        modifier = Modifier.clearAndSetSemantics { text = AnnotatedString(label) },
+        contentAlignment = Alignment.Center,
+        contentKey = { it.label() },
+        transitionSpec = {
+            val from = initialState.days()
+            val to = targetState.days()
+            val earlier = to.start < from.start || (to.start == from.start && to.endInclusive < from.endInclusive)
+            val offset = if (earlier) -forward else forward
+            (slideInHorizontally(tween(180)) { offset } + fadeIn(tween(180))) togetherWith
+                (slideOutHorizontally(tween(180)) { -offset } + fadeOut(tween(180)))
+        },
+        label = "Period",
+    ) { shown ->
+        Text(shown.label(), textAlign = TextAlign.Center)
     }
 }

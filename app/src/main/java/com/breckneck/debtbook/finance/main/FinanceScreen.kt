@@ -244,7 +244,7 @@ private fun FinancePage(
                         artwork = { FinanceSummaryArtwork(direction, palette, it) },
                     ) {
                         FinancePeriodControls(
-                            label = state.period.label(),
+                            period = state.period,
                             palette = palette,
                             onPrevious = { stepPeriod(-1) },
                             onNext = { stepPeriod(1) },
