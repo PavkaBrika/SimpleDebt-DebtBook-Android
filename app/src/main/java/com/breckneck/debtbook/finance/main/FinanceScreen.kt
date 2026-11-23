@@ -14,7 +14,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,8 +37,6 @@ import com.breckneck.deptbook.domain.util.FinanceInterval
 import com.breckneck.deptbook.domain.util.LedgerDate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @Composable
 internal fun FinanceScreen(
@@ -50,14 +46,15 @@ internal fun FinanceScreen(
     onCurrencyClick: (String) -> Unit,
 ) {
     val state by vm.summary.collectAsState()
+    val entryDay = state.period.entryDay(LedgerDate.today())
     FinanceContent(
         state = state,
         setPeriod = vm::setPeriod,
         stepPeriod = vm::stepPeriod,
         onCurrencyClick = { onCurrencyClick(state.currency) },
         saveDirection = vm::setDirection,
-        onCategory = { host.onFinanceCategoryClick(it.name, it.id, it.state, state.currency, state.period.day) },
-        onAdd = { host.onAddFinanceButtonClick(it, state.period.day, state.currency) },
+        onCategory = { host.onFinanceCategoryClick(it.name, it.id, it.state, state.currency, entryDay) },
+        onAdd = { host.onAddFinanceButtonClick(it, entryDay, state.currency) },
         retry = vm::refresh,
         onTab = host::onTabSelected,
         hostInsets = hostInsets,
@@ -118,9 +115,9 @@ private fun FinanceContent(
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (state.period.day != today) {
+                    if (!state.period.isAtToday(today)) {
                         TextButton(onClick = {
-                            setPeriod(state.period.copy(day = today))
+                            setPeriod(state.period.atToday(today))
                             listStates[pager.currentPage].requestScrollToItem(0)
                         }) { Text(stringResource(R.string.finance_today)) }
                     }
@@ -162,7 +159,7 @@ private fun FinanceContent(
         }
     }
     if (choosingPeriod) {
-        PeriodSheet(state.period, onApply = {
+        FinancePeriodSheet(state.period, onApply = {
             setPeriod(it)
             choosingPeriod = false
         }, onDismiss = { choosingPeriod = false })
@@ -252,65 +249,6 @@ private fun FinancePage(
             }
         }
     }
-}
-
-@Composable
-private fun PeriodSheet(period: FinancePeriod, onApply: (FinancePeriod) -> Unit, onDismiss: () -> Unit) {
-    var interval by rememberSaveable { mutableStateOf(period.interval) }
-    var day by rememberSaveable { mutableStateOf(period.day) }
-    var calendar by rememberSaveable { mutableStateOf(false) }
-    var choices by remember { mutableStateOf(false) }
-    val draft = FinancePeriod(interval, day)
-    val dateLabel = when (interval) {
-        FinanceInterval.DAY -> R.string.finance_period_day
-        FinanceInterval.WEEK -> R.string.finance_period_week_day
-        FinanceInterval.MONTH -> R.string.finance_period_month_day
-        FinanceInterval.YEAR -> R.string.finance_period_year_day
-    }
-    BubbleBottomSheet(onDismiss) { active, close ->
-        BubbleSheetHeader(stringResource(R.string.finance_period), close, enabled = active)
-        BubbleGroup {
-            Box {
-                BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.select_interval), Modifier.clickable(enabled = active, role = Role.Button) { choices = true },
-                    trailing = { Icon(Icons.Outlined.ExpandMore, null) }) { Text(stringResource(interval.labelResource)) }
-                DropdownMenu(choices, { choices = false }) {
-                    FinanceInterval.entries.forEach { option ->
-                        DropdownMenuItem({ Text(stringResource(option.labelResource)) }, { interval = option; choices = false })
-                    }
-                }
-            }
-            HorizontalDivider(color = bubbleColors().border)
-            BubbleFieldRow(Icons.Outlined.DateRange, stringResource(dateLabel), Modifier.clickable(enabled = active, role = Role.Button) { calendar = true }) {
-                Text(LedgerDate.display(day))
-            }
-        }
-        if (interval != FinanceInterval.DAY) {
-            Text(
-                stringResource(R.string.finance_period_preview, draft.label()),
-                color = bubbleColors().muted,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        BubbleButton({ onApply(draft) }, Modifier.fillMaxWidth(), enabled = active) {
-            Text(stringResource(R.string.finance_apply_period))
-        }
-    }
-    if (calendar) FinanceDatePicker(day, onSelect = { day = it; calendar = false }, onDismiss = { calendar = false })
-}
-
-private val FinanceInterval.labelResource: Int
-    get() = when (this) {
-        FinanceInterval.DAY -> R.string.day
-        FinanceInterval.WEEK -> R.string.week
-        FinanceInterval.MONTH -> R.string.month
-        FinanceInterval.YEAR -> R.string.year_full
-    }
-
-private fun FinancePeriod.label(): String = when (interval) {
-    FinanceInterval.DAY -> LedgerDate.display(day)
-    FinanceInterval.WEEK -> days().let { LedgerDate.display(it.start) + " – " + LedgerDate.display(it.endInclusive) }
-    else -> SimpleDateFormat(if (interval == FinanceInterval.MONTH) "MMMM yyyy" else "yyyy", Locale.getDefault())
-        .format(requireNotNull(LedgerDate.localDate(day)))
 }
 
 @Preview

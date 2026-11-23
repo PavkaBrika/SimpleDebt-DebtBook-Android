@@ -57,7 +57,7 @@ class FinanceCurrencyTest {
                     if (duringChange.period == loaded.period) {
                         assertEquals(loaded.totalsFor(FinanceCategoryState.EXPENSE), expenses)
                     } else {
-                        assertEquals(loaded.period.step(-1), duringChange.period.day)
+                        assertEquals(loaded.period.shifted(-1).day, duringChange.period.day)
                         assertTrue(expenses.categories.isEmpty())
                         assertEquals(0, expenses.total.signum())
                     }

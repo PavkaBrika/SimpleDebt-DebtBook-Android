@@ -22,38 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.util.Calendar
 import javax.inject.Inject
-
-internal data class FinancePeriod(val interval: FinanceInterval, val day: String) {
-    private fun calendar() = Calendar.getInstance().apply { time = requireNotNull(LedgerDate.localDate(day)) }
-
-    private val field get() = when (interval) {
-        FinanceInterval.DAY -> Calendar.DATE
-        FinanceInterval.WEEK -> Calendar.WEEK_OF_YEAR
-        FinanceInterval.MONTH -> Calendar.MONTH
-        FinanceInterval.YEAR -> Calendar.YEAR
-    }
-
-    fun step(count: Int): String = calendar().apply {
-        if (interval == FinanceInterval.MONTH || interval == FinanceInterval.YEAR) set(Calendar.DAY_OF_MONTH, 1)
-        add(field, count)
-    }.let { LedgerDate.fromDate(it.time) }
-
-    fun days(): ClosedRange<String> {
-        val calendar = calendar()
-        when (interval) {
-            FinanceInterval.DAY -> Unit
-            FinanceInterval.WEEK -> calendar.add(Calendar.DATE, -(calendar.get(Calendar.DAY_OF_WEEK) + 5).mod(7))
-            FinanceInterval.MONTH -> calendar.set(Calendar.DAY_OF_MONTH, 1)
-            FinanceInterval.YEAR -> calendar.set(Calendar.DAY_OF_YEAR, 1)
-        }
-        val start = LedgerDate.fromDate(calendar.time)
-        calendar.add(field, 1)
-        calendar.add(Calendar.DATE, -1)
-        return start..LedgerDate.fromDate(calendar.time)
-    }
-}
 
 internal data class CategoryTotal(val category: FinanceCategory, val amount: BigDecimal, val percent: Int = 0)
 
@@ -105,9 +74,14 @@ class FinanceViewModel @Inject constructor(
     private val saveCurrency: SetFinanceCurrency,
     private val getEntries: GetAllCategoriesWithFinances,
 ) : ViewModel() {
+    private val savedDay = saved.get<String>("day") ?: LedgerDate.today()
     private val current = MutableStateFlow(FinanceSummary(
         getCurrency.execute(getDefaultCurrency::execute), saved["direction"] ?: FinanceCategoryState.EXPENSE,
-        FinancePeriod(saved["interval"] ?: FinanceInterval.DAY, saved["day"] ?: LedgerDate.today()),
+        FinancePeriod(
+            interval = saved["interval"] ?: FinanceInterval.DAY,
+            day = savedDay,
+            endDay = saved.get<String>("endDay") ?: savedDay,
+        ),
     ))
     internal val summary = current.asStateFlow()
     private var requestedPeriod = current.value.period
@@ -130,12 +104,13 @@ class FinanceViewModel @Inject constructor(
     internal fun setPeriod(period: FinancePeriod) {
         saved["interval"] = period.interval
         saved["day"] = period.day
+        saved["endDay"] = period.endDay
         requestedPeriod = period
         updateSummaries()
     }
 
     internal fun stepPeriod(count: Int) {
-        setPeriod(requestedPeriod.copy(day = requestedPeriod.step(count)))
+        setPeriod(requestedPeriod.shifted(count))
     }
 
     fun refresh() {

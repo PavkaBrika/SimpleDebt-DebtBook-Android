@@ -23,10 +23,16 @@
     <string name="finance_icon_set">Symbolgruppe</string>
     <string name="finance_period">Zeitraum</string>
     <string name="finance_period_day">Datum</string>
-    <string name="finance_period_week_day">Ein Datum in der Woche</string>
     <string name="finance_period_month_day">Ein Datum im Monat</string>
     <string name="finance_period_year_day">Ein Datum im Jahr</string>
     <string name="finance_period_preview">Ausgewählter Zeitraum: %1$s</string>
     <string name="finance_apply_period">Anzeigen</string>
     <string name="finance_entry_date">Buchungsdatum</string>
+    <string name="finance_date_range">Datumsbereich</string>
+    <string name="finance_range_start">Startdatum</string>
+    <string name="finance_range_end">Enddatum</string>
+    <string name="finance_range_invalid">Das Enddatum muss am oder nach dem Startdatum liegen.</string>
+    <string name="finance_choose_week">Woche auswählen</string>
+    <string name="finance_previous_month">Vorheriger Monat</string>
+    <string name="finance_next_month">Nächster Monat</string>
 </resources>

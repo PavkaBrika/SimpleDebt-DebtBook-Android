@@ -23,10 +23,16 @@
     <string name="finance_icon_set">Groupe d’icônes</string>
     <string name="finance_period">Période</string>
     <string name="finance_period_day">Date</string>
-    <string name="finance_period_week_day">Une date de la semaine</string>
     <string name="finance_period_month_day">Une date du mois</string>
     <string name="finance_period_year_day">Une date de l’année</string>
     <string name="finance_period_preview">Période à afficher : %1$s</string>
     <string name="finance_apply_period">Afficher</string>
     <string name="finance_entry_date">Date de l’opération</string>
+    <string name="finance_date_range">Plage de dates</string>
+    <string name="finance_range_start">Date de début</string>
+    <string name="finance_range_end">Date de fin</string>
+    <string name="finance_range_invalid">La date de fin doit être égale ou postérieure à la date de début.</string>
+    <string name="finance_choose_week">Choisir une semaine</string>
+    <string name="finance_previous_month">Mois précédent</string>
+    <string name="finance_next_month">Mois suivant</string>
 </resources>

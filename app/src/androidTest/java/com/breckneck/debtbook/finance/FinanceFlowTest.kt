@@ -115,14 +115,14 @@ class FinanceFlowTest {
 
     @Test fun swipeBetweenSummariesAndReturnToTodayFromTheCategoryList() {
         val today = LedgerDate.today()
-        val previous = FinancePeriod(FinanceInterval.DAY, today).step(-8)
+        val previous = FinancePeriod(FinanceInterval.DAY, today).shifted(-8).day
         fun entry(name: String, direction: FinanceCategoryStateData, day: String, amount: Int) {
             val category = dao.insertFinanceCategory(FinanceCategoryData(0, name, direction, "#C5E1A5", 0x1F4DA)).toInt()
             dao.insertFinance(FinanceData(0, amount.toBigDecimal(), Date(), null, category, "RUB", day))
         }
         entry("Expense today", FinanceCategoryStateData.EXPENSE, today, 45)
         entry("Income today", FinanceCategoryStateData.INCOME, today, 90)
-        repeat(16) { entry("Earlier expense $it", FinanceCategoryStateData.EXPENSE, previous, 1) }
+        repeat(16) { entry("Earlier expense $it", FinanceCategoryStateData.EXPENSE, previous, 16 - it) }
         act(R.string.debts)
         act(R.string.finances)
         total("45")
@@ -139,14 +139,20 @@ class FinanceFlowTest {
         act(LedgerDate.display(today))
         act(R.string.select_interval)
         act(R.string.week)
-        val week = FinancePeriod(FinanceInterval.WEEK, today).days()
-        val range = "${LedgerDate.display(week.start)} – ${LedgerDate.display(week.endInclusive)}"
-        node(hasText(context.getString(R.string.finance_period_preview, range))).assertIsDisplayed()
-        capture("period-preview")
+        val week = FinancePeriod(FinanceInterval.WEEK, today)
+        val previousWeek = week.shifted(-1)
+        act(R.string.finance_choose_week)
+        val month = FinancePeriod(FinanceInterval.MONTH, today).days()
+        if (previousWeek.days().endInclusive < month.start) desc(R.string.finance_previous_month)
+        val weekOption = node(hasText(periodLabel(previousWeek)) and hasClickAction()).performScrollTo()
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
+        capture("week-picker")
+        weekOption.performClick()
+        node(hasText(periodLabel(previousWeek)) and hasClickAction()).assertIsDisplayed()
         back()
         node(hasText(LedgerDate.display(today)) and hasClickAction()).assertIsDisplayed()
         repeat(8) { desc(R.string.finance_previous) }
-        total("16")
+        total("136")
         val list = summaryList()
         val todayAction = node(hasText(str(R.string.finance_today)) and hasClickAction())
         val pinnedBounds = todayAction.fetchSemanticsNode().boundsInRoot
@@ -164,8 +170,42 @@ class FinanceFlowTest {
         total("45")
     }
 
+    @Test fun customDateRangeIncludesBothEndsAndStepsByItsLength() {
+        val first = "2026-01-31"
+        val last = "2026-02-02"
+        val period = FinancePeriod(FinanceInterval.DATE_RANGE, first, last)
+        val category = dao.insertFinanceCategory(FinanceCategoryData(0, books,
+            FinanceCategoryStateData.EXPENSE, "#C5E1A5", 0x1F4DA)).toInt()
+        for ((day, amount) in listOf("2026-01-30" to 7, first to 12, last to 13, "2026-02-03" to 19)) {
+            dao.insertFinance(FinanceData(0, amount.toBigDecimal(), Date(), null, category, "RUB", day))
+        }
+        act(R.string.debts)
+        act(R.string.finances)
+        act(LedgerDate.display(LedgerDate.today()))
+        act(R.string.select_interval)
+        act(R.string.finance_date_range)
+        act(R.string.finance_range_start)
+        chooseCalendarDay("2026-02-04")
+        act(R.string.finance_range_end)
+        chooseCalendarDay(last)
+        node(hasText(str(R.string.finance_range_invalid))).assertIsDisplayed()
+        node(hasText(str(R.string.finance_apply_period))).assertIsNotEnabled()
+
+        act(R.string.finance_range_start)
+        chooseCalendarDay(first)
+        capture("range-draft")
+        act(R.string.finance_apply_period)
+        node(hasText(periodLabel(period)) and hasClickAction()).assertIsDisplayed()
+        total("25")
+        desc(R.string.finance_next)
+        total("19")
+        node(hasText(periodLabel(period.shifted(1))) and hasClickAction()).assertIsDisplayed()
+        act(R.string.finance_today)
+        node(hasText(periodLabel(period.atToday(LedgerDate.today()))) and hasClickAction()).assertIsDisplayed()
+    }
+
     @Test fun cancellingCurrencySelectionKeepsTheFinanceFilters() {
-        val yesterday = FinancePeriod(FinanceInterval.DAY, LedgerDate.today()).step(-1)
+        val yesterday = FinancePeriod(FinanceInterval.DAY, LedgerDate.today()).shifted(-1).day
         desc(R.string.finance_previous)
         direction(R.string.revenues)
         act("RUB")
@@ -315,23 +355,12 @@ class FinanceFlowTest {
     }
 
     @Test fun monthBoundaryUsesTheSelectedDayInTheForm() {
-        // The compact date picker uses the device's numeric date order.
         val day = LedgerDate.today()
         act(LedgerDate.display(day))
         act(R.string.finance_period_day)
-        compose.waitUntil(8000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
-        if (compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isEmpty()) {
-            compose.onNodeWithContentDescription(str(androidx.compose.material3.R.string.m3c_date_picker_switch_to_input_mode)).performClick()
-        }
-        val field = node(hasSetTextAction())
-        val date = requireNotNull(LedgerDate.localDate("2026-01-31"))
-        val digits = android.text.format.DateFormat.getDateFormatOrder(context).joinToString("") {
-            when (it) { 'd' -> "31"; 'M' -> "01"; else -> "2026" }
-        }
-        field.performTextReplacement(digits)
-        act(str(android.R.string.ok))
+        val january = "2026-01-31"
+        chooseCalendarDay(january)
         act(R.string.finance_apply_period)
-        val january = LedgerDate.fromDate(date)
         act(LedgerDate.display(january))
         act(R.string.select_interval)
         act(R.string.month)
@@ -418,6 +447,27 @@ class FinanceFlowTest {
             if (cancel) awaitText(note)
         }
         total("255.75")
+    }
+
+    private fun periodLabel(period: FinancePeriod): String {
+        val days = period.days()
+        return "${LedgerDate.display(days.start)} – ${LedgerDate.display(days.endInclusive)}"
+    }
+
+    private fun chooseCalendarDay(day: String) {
+        val field = hasSetTextAction()
+        val switchToInput = hasContentDescription(str(androidx.compose.material3.R.string.m3c_date_picker_switch_to_input_mode))
+        node(field or switchToInput)
+        if (compose.onAllNodes(field).fetchSemanticsNodes().isEmpty()) {
+            node(switchToInput).performClick()
+        }
+        val (year, month, date) = day.split('-')
+        // The compact date picker uses the device's numeric date order.
+        val digits = android.text.format.DateFormat.getDateFormatOrder(context).joinToString("") {
+            when (it) { 'd' -> date; 'M' -> month; else -> year }
+        }
+        node(field).performTextReplacement(digits)
+        act(str(android.R.string.ok))
     }
 
     private fun str(id: Int) = context.getString(id)

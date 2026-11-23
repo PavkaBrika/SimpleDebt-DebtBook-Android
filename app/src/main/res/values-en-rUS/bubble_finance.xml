@@ -23,10 +23,16 @@
     <string name="finance_icon_set">Icon set</string>
     <string name="finance_period">Period</string>
     <string name="finance_period_day">Date</string>
-    <string name="finance_period_week_day">Any date in the week</string>
     <string name="finance_period_month_day">Any date in the month</string>
     <string name="finance_period_year_day">Any date in the year</string>
     <string name="finance_period_preview">Period to show: %1$s</string>
     <string name="finance_apply_period">Show</string>
     <string name="finance_entry_date">Transaction date</string>
+    <string name="finance_date_range">Date range</string>
+    <string name="finance_range_start">Start date</string>
+    <string name="finance_range_end">End date</string>
+    <string name="finance_range_invalid">The end date must be on or after the start date.</string>
+    <string name="finance_choose_week">Choose a week</string>
+    <string name="finance_previous_month">Previous month</string>
+    <string name="finance_next_month">Next month</string>
 </resources>
