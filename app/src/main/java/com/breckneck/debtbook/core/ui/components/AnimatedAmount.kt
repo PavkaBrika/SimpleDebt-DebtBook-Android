@@ -52,15 +52,15 @@ fun AnimatedAmount(
                 }
             },
         ) { label ->
-            val digits = remember(label, previous, target, rolling) {
-                if (rolling) label.text.digitLayer(previous.text, target.text, moving = true)
+            val animatedText = remember(label, previous, target, rolling) {
+                if (rolling) label.text.amountLayer(previous.text, target.text, moving = true)
                 else AnnotatedString(label.text)
             }
-            Text(digits, style = style)
+            Text(animatedText, style = style)
         }
         if (rolling) {
             val stationary = remember(previous, target) {
-                target.text.digitLayer(previous.text, target.text, moving = false)
+                target.text.amountLayer(previous.text, target.text, moving = false)
             }
             Text(stationary, style = style)
         }
@@ -68,10 +68,15 @@ fun AnimatedAmount(
 }
 
 // Keep both layers in the original text layout, including wrapping, grouping and bidirectional text.
-private fun String.digitLayer(from: String, to: String, moving: Boolean) = buildAnnotatedString {
-    append(this@digitLayer)
-    this@digitLayer.forEachIndexed { index, character ->
-        val changed = character.isDigit() && (from.length != to.length || from.getOrNull(index) != to.getOrNull(index))
-        if (changed != moving) addStyle(SpanStyle(color = Color.Transparent), index, index + 1)
+private fun String.amountLayer(from: String, to: String, moving: Boolean) = buildAnnotatedString {
+    append(this@amountLayer)
+    this@amountLayer.forEachIndexed { index, character ->
+        val changed = from.getOrNull(index) != to.getOrNull(index)
+        val rolls = when {
+            character.isDigit() -> from.length != to.length || changed
+            character == '+' || character == '-' || character == '−' -> changed
+            else -> false
+        }
+        if (rolls != moving) addStyle(SpanStyle(color = Color.Transparent), index, index + 1)
     }
 }

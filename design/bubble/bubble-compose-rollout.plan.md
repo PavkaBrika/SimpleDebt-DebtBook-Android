@@ -250,6 +250,11 @@
 - С JDK 17 собраны debug APK и тестовый APK. Прошли 252 модульные проверки. Android Lint сообщил о 0 ошибках и 200 предупреждениях. На Android 6 прошли 15 проверок, проверка смены часового пояса пропущена по версии ОС. На Android 17 прошли 16. [Сборка](../../app/build/reports/finance-control-motion/gradle-final.log) · [API 23](../../app/build/reports/finance-control-motion/api23-final.log) · [API 37](../../app/build/reports/finance-control-motion/api37-final.log)
 - Проверки выполнены на ширине 320 dp. На Android 6 использованы светлая тема и шрифт 130%. На Android 17 в тёмной теме повторно прошли четыре проверки движения, нажатий и формы при шрифте 130%. Временные AVD созданы из установленных образов, остановлены и удалены. [Крупный шрифт](../../app/build/reports/finance-control-motion/large-font-api37.log)
 
+### F1 · анимация знака в общем итоге · 23 ноября 2026
+
+- В «Итогах за период» плюс и минус появляются, исчезают и сменяют друг друга вместе с прокруткой цифр. При изменении суммы с тем же знаком он остаётся на месте. [Анимация суммы](../../app/src/main/java/com/breckneck/debtbook/core/ui/components/AnimatedAmount.kt)
+- На Android 6 и 17 прошли по три проверки. Тест проверил положение и видимость знака на 128-й миллисекунде перехода. Сценарий «Финансы» проверил смену периода и итогов. Собраны debug APK и тестовый APK, прошли 252 модульные проверки. Android Lint сообщил о 0 ошибок и 200 предупреждениях. Временные AVD остановлены и удалены. [Сборка](../../app/build/reports/finance-sign-motion/gradle.log) · [API 23](../../app/build/reports/finance-sign-motion/api23.log) · [API 37](../../app/build/reports/finance-sign-motion/api37.log)
+
 ## Этап 4. Долги
 
 **Результат для пользователя.** Список показывает баланс и ближайший срок в выбранной валюте. Из карточки человека можно учесть или отменить возврат по конкретной записи. Эталон — `studio.js`, `debt-tools.js`. Код — [пакет debt](../../app/src/main/java/com/breckneck/debtbook/debt). Учитывай [правила возвратов](../../docs/r2-partial-repayments.md) и [условия доставки напоминаний](../../docs/r2-due-dates-reminders.md) и проверяй их по текущим тестам проекта.
