@@ -434,6 +434,17 @@ class GoalsFlowTest {
         compose.onNodeWithText("CoverReviewTrip2026").performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun currencyScreenKeepsTheGoalDraft() {
+        click(R.string.goal_new)
+        awaitDestination(R.id.createGoalsFragment)
+        textField(R.string.name).performTextReplacement(initialName)
+        textField(R.string.goal_target_amount).performTextReplacement("20000")
+        selectYen()
+        awaitGoal("JPY")
+        compose.onNodeWithText(initialName).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("20000").performScrollTo().assertIsDisplayed()
+    }
+
     @Test fun rotationPreservesFormDraftAndCurrency() {
         click(R.string.goal_new)
         awaitDestination(R.id.createGoalsFragment)
@@ -443,17 +454,7 @@ class GoalsFlowTest {
         compose.waitUntil(10000) { keyboardVisible() }
         ordinaryBack(R.id.createGoalsFragment)
         compose.waitUntil(10000) { !keyboardVisible() }
-        val yen = context.getString(R.string.jpy)
-        compose.onNodeWithText("RUB").performScrollTo().performClick()
-        awaitDestination(R.id.currencyPickerFragment)
-        val search = hasContentDescription(context.getString(R.string.search_currency))
-        compose.waitUntil(8000) { compose.onAllNodes(search).fetchSemanticsNodes(false).isNotEmpty() }
-        compose.onNode(search).performClick()
-        compose.waitUntil(8000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes(false).isNotEmpty() }
-        compose.onNode(hasSetTextAction()).performTextReplacement("JPY")
-        awaitGoal(yen)
-        compose.onNodeWithText(yen).performClick()
-        awaitDestination(R.id.createGoalsFragment)
+        selectYen()
         compose.waitUntil(10000) {
             compose.onAllNodesWithText(context.getString(R.string.select_currency)).fetchSemanticsNodes().isEmpty()
         }
@@ -611,6 +612,19 @@ class GoalsFlowTest {
 
     private fun awaitGoal(name: String) = compose.waitUntil(8000) {
         compose.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty()
+    }
+    private fun selectYen() {
+        compose.onNodeWithText("RUB").performScrollTo().performClick()
+        awaitDestination(R.id.currencyPickerFragment)
+        val search = hasContentDescription(context.getString(R.string.search_currency))
+        compose.waitUntil(8000) { compose.onAllNodes(search).fetchSemanticsNodes(false).isNotEmpty() }
+        compose.onNode(search).performClick()
+        compose.waitUntil(8000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes(false).isNotEmpty() }
+        compose.onNode(hasSetTextAction()).performTextReplacement("JPY")
+        val yen = context.getString(R.string.jpy)
+        awaitGoal(yen)
+        compose.onNodeWithText(yen).performClick()
+        awaitDestination(R.id.createGoalsFragment)
     }
     private fun openGoal(name: String) {
         awaitGoal(name)
