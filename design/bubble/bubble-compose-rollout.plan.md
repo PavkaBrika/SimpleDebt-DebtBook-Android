@@ -255,6 +255,11 @@
 - В «Итогах за период» плюс и минус появляются, исчезают и сменяют друг друга вместе с прокруткой цифр. При изменении суммы с тем же знаком он остаётся на месте. [Анимация суммы](../../app/src/main/java/com/breckneck/debtbook/core/ui/components/AnimatedAmount.kt)
 - На Android 6 и 17 прошли по три проверки. Тест проверил положение и видимость знака на 128-й миллисекунде перехода. Сценарий «Финансы» проверил смену периода и итогов. Собраны debug APK и тестовый APK, прошли 252 модульные проверки. Android Lint сообщил о 0 ошибок и 200 предупреждениях. Временные AVD остановлены и удалены. [Сборка](../../app/build/reports/finance-sign-motion/gradle.log) · [API 23](../../app/build/reports/finance-sign-motion/api23.log) · [API 37](../../app/build/reports/finance-sign-motion/api37.log)
 
+### F1 · переход даты и движение валюты · 23 ноября 2026
+
+- Стрелки «Финансов» снова сдвигают подпись даты с затуханием. Направление зависит от того, раньше или позже открываемый период. Символ валюты следует по горизонтали за изменением ширины однострочной суммы. При переносе длинной суммы сохраняется форматирование с неразрывным пробелом. [Управление периодом](../../app/src/main/java/com/breckneck/debtbook/finance/main/FinancePeriodControls.kt) · [Анимация суммы](../../app/src/main/java/com/breckneck/debtbook/core/ui/components/AnimatedAmount.kt)
+- На Android 6 и 17 прошли по семь проверок, включая промежуточные кадры движения даты и валюты в обе стороны, смену периода и пользовательский диапазон. Собраны debug APK и тестовый APK, прошли 252 модульные проверки. Android Lint сообщил о 0 ошибок и 200 предупреждениях. Временные AVD остановлены и удалены. [Сборка](../../app/build/reports/finance-date-currency-motion/gradle-final.log) · [API 23](../../app/build/reports/finance-date-currency-motion/api23.log) · [API 37](../../app/build/reports/finance-date-currency-motion/api37.log)
+
 ## Этап 4. Долги
 
 **Результат для пользователя.** Список показывает баланс и ближайший срок в выбранной валюте. Из карточки человека можно учесть или отменить возврат по конкретной записи. Эталон — `studio.js`, `debt-tools.js`. Код — [пакет debt](../../app/src/main/java/com/breckneck/debtbook/debt). Учитывай [правила возвратов](../../docs/r2-partial-repayments.md) и [условия доставки напоминаний](../../docs/r2-due-dates-reminders.md) и проверяй их по текущим тестам проекта.
