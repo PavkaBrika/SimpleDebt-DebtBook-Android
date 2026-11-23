@@ -101,7 +101,15 @@ class FinanceFlowTest {
         capture("summary")
         val id = dao.getAllFinances().single { it.info == note }.id
         act(books)
-        pencil()
+        val entryRow = node(hasText(note) and hasClickAction()).assertIsDisplayed()
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
+        capture("history-chevron")
+        entryRow.performTouchInput {
+            click(Offset(width - 12.dp.toPx(), center.y))
+        }
+        node(hasText(str(R.string.finance_edit_entry)) and hasClickAction()).assertIsDisplayed()
+        capture("entry-actions")
+        act(R.string.finance_edit_entry)
         input(R.string.sum, "300")
         act(R.string.finance_save_entry)
         awaitText(note)
@@ -120,12 +128,14 @@ class FinanceFlowTest {
     @Test fun overviewAndPagesFollowTheSelectedPeriod() {
         val today = LedgerDate.today()
         val previous = FinancePeriod(FinanceInterval.DAY, today).shifted(-8).day
-        fun entry(name: String, direction: FinanceCategoryStateData, day: String, amount: Int) {
-            val category = dao.insertFinanceCategory(FinanceCategoryData(0, name, direction, "#C5E1A5", 0x1F4DA)).toInt()
+        fun entry(name: String, direction: FinanceCategoryStateData, day: String, amount: Int, color: String = "#C5E1A5") {
+            val category = dao.insertFinanceCategory(FinanceCategoryData(0, name, direction, color, 0x1F4DA)).toInt()
             dao.insertFinance(FinanceData(0, amount.toBigDecimal(), Date(), null, category, "RUB", day))
         }
-        entry("Expense today", FinanceCategoryStateData.EXPENSE, today, 45)
-        entry("Income today", FinanceCategoryStateData.INCOME, today, 90)
+        entry("Expense today", FinanceCategoryStateData.EXPENSE, today, 36)
+        entry("Other expense", FinanceCategoryStateData.EXPENSE, today, 9, "#FFCCBC")
+        entry("Income today", FinanceCategoryStateData.INCOME, today, 60)
+        entry("Other income", FinanceCategoryStateData.INCOME, today, 30, "#B3E5FC")
         repeat(16) { entry("Earlier expense $it", FinanceCategoryStateData.EXPENSE, previous, 16 - it) }
         act(R.string.debts)
         act(R.string.finances)
@@ -136,11 +146,13 @@ class FinanceFlowTest {
         assertTrue(overviewTitle.fetchSemanticsNode().boundsInRoot.bottom <= incomeTab.fetchSemanticsNode().boundsInRoot.top)
         total("90")
         awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
+        node(hasText("Income today") and hasText(context.getString(R.string.finance_share_of_total, 67))).assertIsDisplayed()
         capture("income-page")
 
         summaryList().performTouchInput { swipeLeft() }
         node(hasText(str(R.string.expenses)) and isSelected()).assertIsDisplayed()
         total("45")
+        node(hasText("Expense today") and hasText(context.getString(R.string.finance_share_of_total, 80))).assertIsDisplayed()
         capture("expense-page")
         summaryList().performTouchInput { swipeRight() }
         incomeTab.assertIsDisplayed()
@@ -344,7 +356,7 @@ class FinanceFlowTest {
         direction(R.string.revenues)
         total("17.5", "EUR")
         act(R.string.salary)
-        pencil()
+        editEntry(str(R.string.salary))
         awaitText(str(R.string.salary))
         input(R.string.sum, "18,75")
         act(R.string.finance_save_entry)
@@ -391,8 +403,10 @@ class FinanceFlowTest {
         act(R.string.finance_save_entry)
         total("6")
         act(R.string.food)
-        node(hasContentDescription(str(R.string.finance_edit_entry), substring = true)).assertIsDisplayed()
+        node(hasText(str(R.string.food)) and hasClickAction()).assertIsDisplayed()
         SystemClock.sleep(350)
+        focus(str(R.string.food))
+        act(R.string.food)
         focus(str(R.string.finance_edit_entry))
     }
 
@@ -509,7 +523,7 @@ class FinanceFlowTest {
             changeZone("America/Adak")
             act(R.string.food)
             awaitText(LedgerDate.display(day))
-            pencil()
+            editEntry(note)
             awaitText(LedgerDate.display(day))
             act(R.string.finance_save_entry)
             awaitText(note)
@@ -536,7 +550,7 @@ class FinanceFlowTest {
         act(R.string.finance_save_entry)
         total("255.75")
         act(R.string.food)
-        pencil()
+        editEntry(note)
         input(R.string.sum, "301")
         gesture(R.id.financeFormView, R.id.financeHistoryView, note, cancel = true)
         awaitText("301")
@@ -586,7 +600,10 @@ class FinanceFlowTest {
     private fun input(label: Int, value: String) {
         node(hasSetTextAction() and hasText(str(label))).performScrollTo().performTextReplacement(value)
     }
-    private fun pencil() = node(hasContentDescription(str(R.string.finance_edit_entry), substring = true)).performClick()
+    private fun editEntry(label: String) {
+        act(label)
+        act(R.string.finance_edit_entry)
+    }
     private fun currency(from: String, to: Int) {
         act(from)
         awaitDestination(R.id.currencyPickerFragment)

@@ -89,10 +89,12 @@ internal fun FinanceCategory.localizedName() = GetFinanceCategoryNameInLocalLang
 
 @Composable
 internal fun CategoryBadge(category: FinanceCategory, modifier: Modifier = Modifier) {
-    Box(modifier.size(38.dp).background(Color(category.color.toColorInt()), CircleShape), contentAlignment = Alignment.Center) {
+    Box(modifier.size(38.dp).background(category.badgeColor, CircleShape), contentAlignment = Alignment.Center) {
         Text(String(Character.toChars(category.image)), color = Color.Black)
     }
 }
+
+internal val FinanceCategory.badgeColor: Color get() = Color(color.toColorInt())
 
 internal fun BigDecimal.financeMoney(currency: String): String {
     val symbol = if (currency == "RUB") "₽" else runCatching {

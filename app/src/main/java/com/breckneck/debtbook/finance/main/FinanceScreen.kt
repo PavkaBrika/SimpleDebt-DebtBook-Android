@@ -241,7 +241,7 @@ private fun FinancePage(
                         onCurrencyClick = onCurrencyClick,
                         balanceValue = amount,
                         palette = palette,
-                        artwork = { FinanceSummaryArtwork(direction, palette, it) },
+                        artwork = { FinanceSummaryChart(totals, palette, it) },
                     ) {
                         FinancePeriodControls(
                             period = state.period,
