@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.core.ui.components
 
+import android.os.Build
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -10,11 +11,16 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 
 /**
  * Project-standard bottom sheet wrapper.
@@ -51,8 +57,28 @@ fun DebtBookBottomSheet(
         contentColor = contentColor,
         dragHandle = null,
         properties = properties,
-        content = content,
-    )
+    ) {
+        val dialogView = LocalView.current
+        val window = (dialogView.parent as? DialogWindowProvider)?.window
+        val lightSheet = containerColor.luminance() > .5f
+        SideEffect {
+            if (window != null) {
+                // The modal owns a separate window. Its sheet surface already draws under the bar.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                    @Suppress("DEPRECATION")
+                    window.navigationBarColor = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O && lightSheet) {
+                        0x99000000.toInt()
+                    } else {
+                        android.graphics.Color.TRANSPARENT
+                    }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
+                WindowCompat.getInsetsController(window, dialogView)
+                    .isAppearanceLightNavigationBars = lightSheet
+            }
+        }
+        content()
+    }
     if (hideRequested) {
         val onHidden by rememberUpdatedState(onDismiss)
         LaunchedEffect(sheetState) {
