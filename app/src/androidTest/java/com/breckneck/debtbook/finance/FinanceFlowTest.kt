@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.node.RootForTest
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsActions
@@ -17,6 +18,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getAllSemanticsNodes
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
@@ -177,12 +179,22 @@ class FinanceFlowTest {
         val date = node(hasText(LedgerDate.display(previous)) and hasClickAction())
         val currentPeriod = hasText(str(R.string.finance_current_period)) and hasClickAction()
         val currentPeriodAction = node(currentPeriod and hasAnyAncestor(verticalList)).assertIsDisplayed()
-        assertTrue(currentPeriodAction.fetchSemanticsNode().boundsInRoot.top >= date.fetchSemanticsNode().boundsInRoot.bottom)
+        val returnBounds = currentPeriodAction.fetchSemanticsNode().boundsInRoot
+        val previousArrow = node(hasContentDescription(str(R.string.finance_previous))).fetchSemanticsNode().boundsInRoot
+        val nextArrow = node(hasContentDescription(str(R.string.finance_next))).fetchSemanticsNode().boundsInRoot
+        assertTrue(returnBounds.top >= date.fetchSemanticsNode().boundsInRoot.bottom)
+        assertTrue(returnBounds.left <= previousArrow.left)
+        assertTrue(returnBounds.right >= nextArrow.right)
         capture("current-period")
-        currentPeriodAction.performClick()
+        currentPeriodAction.performTouchInput { click(Offset(8.dp.toPx(), center.y)) }
         awaitText(LedgerDate.display(today))
         total("45")
         awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
+        compose.onNode(currentPeriod).assertDoesNotExist()
+
+        desc(R.string.finance_previous)
+        node(currentPeriod).performTouchInput { click(Offset(width - 8.dp.toPx(), center.y)) }
+        node(hasText(LedgerDate.display(today)) and hasClickAction()).assertIsDisplayed()
         compose.onNode(currentPeriod).assertDoesNotExist()
     }
 

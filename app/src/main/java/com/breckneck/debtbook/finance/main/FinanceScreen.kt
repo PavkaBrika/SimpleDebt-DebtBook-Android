@@ -10,10 +10,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -245,33 +243,14 @@ private fun FinancePage(
                         palette = palette,
                         artwork = { FinanceSummaryArtwork(direction, palette, it) },
                     ) {
-                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                val arrowColors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = palette.border,
-                                    contentColor = palette.content,
-                                )
-                                IconButton({ stepPeriod(-1) }, colors = arrowColors) {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
-                                }
-                                TextButton(onPeriodClick, Modifier.weight(1f)) {
-                                    Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = palette.content)
-                                    Spacer(Modifier.width(5.dp))
-                                    Text(state.period.label(), color = palette.content, textAlign = TextAlign.Center)
-                                }
-                                IconButton({ stepPeriod(1) }, colors = arrowColors) {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
-                                }
-                            }
-                            if (onCurrentPeriod != null) {
-                                TextButton(
-                                    onClick = onCurrentPeriod,
-                                    colors = ButtonDefaults.textButtonColors(contentColor = palette.content),
-                                ) {
-                                    Text(stringResource(R.string.finance_current_period), textAlign = TextAlign.Center)
-                                }
-                            }
-                        }
+                        FinancePeriodControls(
+                            label = state.period.label(),
+                            palette = palette,
+                            onPrevious = { stepPeriod(-1) },
+                            onNext = { stepPeriod(1) },
+                            onSelectPeriod = onPeriodClick,
+                            onCurrentPeriod = onCurrentPeriod,
+                        )
                     }
                 }
             }
