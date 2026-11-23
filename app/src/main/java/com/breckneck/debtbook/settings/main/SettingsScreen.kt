@@ -36,7 +36,6 @@ internal fun SettingsScreen(
     val colors = bubbleColors()
     val defaultCurrency by vm.defaultCurrency.observeAsState("")
     val theme by main.appTheme.observeAsState()
-    val share by vm.addSumInShareText.observeAsState(false)
     val locked by main.isPINCodeEnabled.observeAsState(false)
 
     BubbleScaffold(
@@ -52,9 +51,6 @@ internal fun SettingsScreen(
                 SettingsRow(stringResource(R.string.default_currency), value = currencyLabel(defaultCurrency), onClick = onDefaultCurrency)
                 HorizontalDivider(color = colors.border)
                 SettingsRow(stringResource(R.string.app_theme), value = stringResource(AppTheme.fromPreference(theme).label), onClick = onAppearance)
-                HorizontalDivider(color = colors.border)
-                SettingsRow(stringResource(R.string.more_detailed_share_text),
-                    checked = share) { vm.setSumInShareText(!share) }
             }
             BubbleSectionTitle(stringResource(R.string.settings_data_security))
             BubbleGroup {

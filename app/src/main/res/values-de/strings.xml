@@ -44,7 +44,6 @@
     <string name="clear_currency_search">Suche löschen</string>
     <string name="no_matching_currencies">Keine passenden Währungen</string>
     <string name="default_currencies_hint">Diese Währung wird beim Hinzufügen neuer Schulden standardmäßig ausgewählt</string>
-    <string name="more_detailed_share_text">Saldo im geteilten Verlauf</string>
     <string name="app_theme">Darstellung</string>
     <string name="rate_app">App bewerten</string>
     <string name="write_email_to_developer">E-Mail an Entwickler schreiben</string>

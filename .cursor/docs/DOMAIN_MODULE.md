@@ -194,7 +194,7 @@ Key-value хранилище настроек:
 - Сортировка: `debtOrder` (Pair<DebtOrderAttribute, Boolean>), `humanOrder`
 - Безопасность: `PINCodeEnabled`, `PINCode`, `isFingerprintAuthEnabled`, `get/setPinLockDelayMillis` (Long)
 - Синхронизация: `isAuthorized`, `userData` (User), `lastSyncDate`
-- UI: `addSumInShareText`, `debtQuantityForAppRateDialogShow`, `appIsRated`
+- UI: `debtQuantityForAppRateDialogShow`, `appIsRated`
 
 ### `AdRepository`
 Хранение количества кликов по рекламе: `getClicks()`, `saveClicks()`.

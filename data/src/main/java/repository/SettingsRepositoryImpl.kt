@@ -27,14 +27,6 @@ class SettingsRepositoryImpl(private val settingsStorage: SettingsStorage): Sett
         return settingsStorage.getDefaultCurrency()
     }
 
-    override fun setAddSumInShareText(addSumInShareText: Boolean) {
-        settingsStorage.setAddSumInShareText(addSumInShareText = addSumInShareText)
-    }
-
-    override fun getAddSumInShareText(): Boolean {
-        return settingsStorage.getAddSumInShareText()
-    }
-
     override fun setAppIsRated(isRated: Boolean) {
         settingsStorage.setAppIsRated(isRated = isRated)
     }

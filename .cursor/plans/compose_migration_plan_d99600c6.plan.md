@@ -208,7 +208,7 @@ flowchart LR
 
 - **Сложность:** Complex (~485 строк, 2+ bottom sheets)
 - **Текущий фрагмент:** [SettingsFragment.kt](app/src/main/java/com/breckneck/debtbook/settings/presentation/SettingsFragment.kt)
-- **ViewModel:** `SettingsViewModel` (LiveData: main/second/defaultCurrency, addSumInShareText, appTheme, settingsDialog state, isSynchronizationAvailable, isAuthorized, userName, emailAddress, isListModified, isFingerprintAuthEnabled)
+- **ViewModel:** `SettingsViewModel` (LiveData: main/second/defaultCurrency, appTheme, settingsDialog state, isSynchronizationAvailable, isAuthorized, userName, emailAddress, isListModified, isFingerprintAuthEnabled)
 - **Что делать:**
   - Список настроек: `LazyColumn` с секциями (General, Security, About)
   - `SettingsPickerBottomSheet` для валюты x3 и темы

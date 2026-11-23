@@ -6,11 +6,9 @@ import com.breckneck.deptbook.domain.util.PinLockDelay
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.breckneck.deptbook.domain.usecase.Settings.GetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.GetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetIsFingerprintAuthEnabled
-import com.breckneck.deptbook.domain.usecase.Settings.SetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.SetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.SetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetIsFingerprintAuthEnabled
@@ -21,8 +19,6 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val setDefaultCurrency: SetDefaultCurrency,
     private val getDefaultCurrency: GetDefaultCurrency,
-    private val setAddSumInShareText: SetAddSumInShareText,
-    private val getAddSumInShareText: GetAddSumInShareText,
     private val getAppTheme: GetAppTheme,
     private val setAppTheme: SetAppTheme,
     private val setIsFingerprintAuthEnabled: SetIsFingerprintAuthEnabled,
@@ -43,9 +39,6 @@ class SettingsViewModel @Inject constructor(
     private val _defaultCurrency = MutableLiveData<String>()
     val defaultCurrency: LiveData<String>
         get() = _defaultCurrency
-    private val _addSumInShareText = MutableLiveData<Boolean>()
-    val addSumInShareText: LiveData<Boolean>
-        get() = _addSumInShareText
     private val _appTheme = MutableLiveData<String>()
     val appTheme: LiveData<String>
         get() = _appTheme
@@ -56,7 +49,6 @@ class SettingsViewModel @Inject constructor(
     init {
         refreshDefaultCurrency()
         getAppTheme()
-        getSumInShareText()
     }
 
     fun refreshDefaultCurrency() {
@@ -75,15 +67,6 @@ class SettingsViewModel @Inject constructor(
     fun setAppTheme(theme: String) {
         setAppTheme.execute(theme = theme)
         _appTheme.value = theme
-    }
-
-    private fun getSumInShareText() {
-        _addSumInShareText.value = getAddSumInShareText.execute()
-    }
-
-    fun setSumInShareText(value: Boolean) {
-        setAddSumInShareText.execute(value)
-        _addSumInShareText.value = value
     }
 
     fun getIsFingerprintAuthEnabled() {

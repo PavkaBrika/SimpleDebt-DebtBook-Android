@@ -11,12 +11,9 @@
     <string name="statement_entry">Buchung · %1$s</string>
     <string name="statement_lent">Von mir verliehen — %1$s</string>
     <string name="statement_borrowed">Von Ihnen verliehen — %1$s</string>
-    <string name="statement_from_you">Ihre Rückzahlung an mich · %1$s</string>
-    <string name="statement_from_me">Meine Rückzahlung an Sie · %1$s</string>
     <string name="statement_cancelled">Stornierte Rückzahlung — %1$s</string>
     <string name="statement_repaid">Zurückgezahlt — %1$s</string>
     <string name="statement_remaining">Restbetrag — %1$s</string>
-    <string name="statement_subtotal">Zwischensumme der aufgeführten Buchungen · %1$s</string>
     <string name="statement_positive_entries">Buchungen (Darlehen von mir und Einträge ≥ 0):</string>
     <string name="statement_negative_entries">Buchungen (Darlehen von Ihnen und Einträge ≤ 0):</string>
     <string name="statement_include_settled">Getilgte Darlehen einbeziehen</string>

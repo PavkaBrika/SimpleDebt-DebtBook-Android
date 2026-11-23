@@ -20,13 +20,12 @@ class PersonDebtStatementTest {
         rows: List<DebtDomain>,
         language: String,
         balance: String = "0",
-        detailed: Boolean = false,
         includeEarlyEntries: Boolean = false
     ): String {
         val config = Configuration(context.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)) }
         return formatPersonDebtStatement(context.createConfigurationContext(config).resources, "Anna", "RUB",
             balance.toBigDecimal(), PersonDebtHistory.from(rows), Filter.ALL, DebtOrderAttribute.CreationDate to false,
-            detailed, includeEarlyEntries = includeEarlyEntries)
+            includeEarlyEntries = includeEarlyEntries)
     }
 
     @Test fun oppositeLoansAndUnclassifiedMovementsInRussianAndEnglish() {
@@ -44,19 +43,17 @@ class PersonDebtStatementTest {
         }
     }
 
-    @Test fun earlyOnlyStatementKeepsBalanceAndCountsOnlyIncludedMovements() {
+    @Test fun earlyOnlyStatementKeepsBalanceAndCanIncludeEarlierMovements() {
         val mixed = old.copy(sum = (-200).toBigDecimal(), info = "Early mixed note")
         // The stored balance includes an opening adjustment of +10 RUB.
-        val omitted = statement(listOf(mixed), "en", "-190", detailed = true)
-        val included = statement(listOf(mixed), "en", "-190", detailed = true, includeEarlyEntries = true)
+        val omitted = statement(listOf(mixed), "en", "-190")
+        val included = statement(listOf(mixed), "en", "-190", includeEarlyEntries = true)
         for (text in listOf(omitted, included)) assertTrue(text.contains("I owe you 190 RUB"))
         assertFalse(omitted.contains("Early mixed note"))
-        assertFalse(omitted.contains("Running total"))
         assertTrue(included.contains("Entry · -200 RUB\nEarly mixed note"))
-        assertTrue(included.contains("Running total of entries shown · -200 RUB"))
     }
 
-    @Test fun compactStatementShowsOnlyTheLoanSummaryByDefault() {
+    @Test fun statementSummarizesPaymentsUnderEachLoan() {
         val loan = old.copy(sum = 16000.toBigDecimal())
         val first = old.copy(id = 2, sum = (-3600).toBigDecimal(), date = "2025-01-02", repaymentOfId = loan.id)
         val second = first.copy(id = 3, sum = (-2400).toBigDecimal(), date = "2025-01-03")
@@ -71,19 +68,15 @@ class PersonDebtStatementTest {
             Возвращено — 6 000 RUB
             Остаток — 10 000 RUB
         """.trimIndent(), statement(rows, "ru", "10000"))
-        val detailed = statement(rows, "en", "10000", detailed = true)
-        assertTrue(detailed.contains("2 Jan 2025 · You repaid me 3 600 RUB"))
-        assertTrue(detailed.contains("3 Jan 2025 · You repaid me 2 400 RUB"))
     }
 
-    @Test fun runningTotalsAndOldFractionsSurviveCancellationAndOpeningAdjustment() {
+    @Test fun oldFractionsSurviveCancellationAndOpeningAdjustment() {
         val loan = old.copy(sum = "-10.005".toBigDecimal())
         val payment = old.copy(id = 2, sum = "2.50".toBigDecimal(), repaymentOfId = loan.id)
         val rows = listOf(loan, payment, payment.copy(id = 3, cancelled = true))
         // Includes a +1 opening adjustment.
-        val text = statement(rows, "en", "-6.505", detailed = true)
-        listOf("I owe you 6.505 RUB", "You lent me 10.005 RUB", "I repaid you 2.50 RUB",
+        val text = statement(rows, "en", "-6.505")
+        listOf("I owe you 6.505 RUB", "You lent me 10.005 RUB", "Cancelled repayment — 2.50 RUB",
             "Repaid — 2.50 RUB", "Remaining — 7.505 RUB").forEach { assertTrue(text, text.contains(it)) }
-        assertEquals(2, text.lines().count { it == "Running total of entries shown · -7.505 RUB" })
     }
 }

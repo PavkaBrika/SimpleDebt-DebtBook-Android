@@ -56,7 +56,6 @@ import com.breckneck.deptbook.domain.usecase.Human.GetLastHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Human.ReplaceAllHumans
 import com.breckneck.deptbook.domain.usecase.Human.SetHumanUseCase
 import com.breckneck.deptbook.domain.usecase.Human.UpdateHuman
-import com.breckneck.deptbook.domain.usecase.Settings.GetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.GetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetDebtOrder
@@ -71,7 +70,6 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.SetPinLockDelay
 import com.breckneck.deptbook.domain.usecase.Settings.GetPINCodeEnabled
 import com.breckneck.deptbook.domain.usecase.Settings.GetUserData
-import com.breckneck.deptbook.domain.usecase.Settings.SetAddSumInShareText
 import com.breckneck.deptbook.domain.usecase.Settings.SetAppTheme
 import com.breckneck.deptbook.domain.usecase.Settings.SetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.SetDebtOrder
@@ -192,16 +190,6 @@ object DomainModule {
     @Singleton
     fun provideGetDefaultCurrency(settingsRepository: SettingsRepository) =
         GetDefaultCurrency(settingsRepository = settingsRepository)
-
-    @Provides
-    @Singleton
-    fun provideSetAddSumInShareText(settingsRepository: SettingsRepository) =
-        SetAddSumInShareText(settingsRepository = settingsRepository)
-
-    @Provides
-    @Singleton
-    fun provideGetAddSumInShareText(settingsRepository: SettingsRepository) =
-        GetAddSumInShareText(settingsRepository = settingsRepository)
 
     @Provides
     @Singleton

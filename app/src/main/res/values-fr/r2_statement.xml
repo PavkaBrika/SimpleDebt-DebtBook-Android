@@ -11,12 +11,9 @@
     <string name="statement_entry">Écriture · %1$s</string>
     <string name="statement_lent">Prêt de ma part — %1$s</string>
     <string name="statement_borrowed">Prêt de votre part — %1$s</string>
-    <string name="statement_from_you">Votre remboursement · %1$s</string>
-    <string name="statement_from_me">Mon remboursement · %1$s</string>
     <string name="statement_cancelled">Remboursement annulé — %1$s</string>
     <string name="statement_repaid">Remboursé — %1$s</string>
     <string name="statement_remaining">Reste — %1$s</string>
-    <string name="statement_subtotal">Cumul des écritures affichées · %1$s</string>
     <string name="statement_positive_entries">Opérations (mes prêts et écritures ≥ 0) :</string>
     <string name="statement_negative_entries">Opérations (vos prêts et écritures ≤ 0) :</string>
     <string name="statement_include_settled">Inclure les prêts remboursés</string>

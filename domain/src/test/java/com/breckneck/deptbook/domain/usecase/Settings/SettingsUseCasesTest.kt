@@ -58,34 +58,6 @@ class SettingsUseCasesTest {
         verify(settingsRepository).setFinanceCurrency("EUR")
     }
 
-    // --- GetAddSumInShareText / SetAddSumInShareText ---
-
-    @Test
-    fun `GetAddSumInShareText should return true from repository`() {
-        Mockito.`when`(settingsRepository.getAddSumInShareText()).thenReturn(true)
-        val result = GetAddSumInShareText(settingsRepository).execute()
-        Assertions.assertTrue(result)
-    }
-
-    @Test
-    fun `GetAddSumInShareText should return false from repository`() {
-        Mockito.`when`(settingsRepository.getAddSumInShareText()).thenReturn(false)
-        val result = GetAddSumInShareText(settingsRepository).execute()
-        Assertions.assertFalse(result)
-    }
-
-    @Test
-    fun `SetAddSumInShareText should call setAddSumInShareText with true`() {
-        SetAddSumInShareText(settingsRepository).execute(addSumInShareText = true)
-        verify(settingsRepository).setAddSumInShareText(true)
-    }
-
-    @Test
-    fun `SetAddSumInShareText should call setAddSumInShareText with false`() {
-        SetAddSumInShareText(settingsRepository).execute(addSumInShareText = false)
-        verify(settingsRepository).setAddSumInShareText(false)
-    }
-
     // --- GetAppTheme / SetAppTheme ---
 
     @Test

@@ -8,17 +8,12 @@ import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.databinding.SheetDebtStatementPreviewBinding
 import com.breckneck.debtbook.debt.statement.formatPersonDebtStatement
-import com.breckneck.deptbook.domain.usecase.Settings.GetAddSumInShareText
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
-@AndroidEntryPoint
 class DebtStatementPreviewDialog : BottomSheetDialogFragment(R.layout.sheet_debt_statement_preview) {
     private val card by viewModels<DebtDetailsViewModel>(ownerProducer = { requireParentFragment() })
-    @Inject lateinit var getAddSumInShareText: GetAddSumInShareText
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -47,7 +42,6 @@ class DebtStatementPreviewDialog : BottomSheetDialogFragment(R.layout.sheet_debt
             sheet.statementText.text = formatPersonDebtStatement(
                 resources, card.humanName.value.orEmpty(), card.humanCurrency.orEmpty(),
                 requireNotNull(card.overallSum.value), history, filter, requireNotNull(card.debtOrder.value),
-                includeRunningTotals = getAddSumInShareText.execute(),
                 includeSettled = sheet.includeSettled.isChecked,
                 includeEarlyEntries = sheet.includeEarlyEntries.isChecked
             )

@@ -68,7 +68,6 @@
     <string name="clear_currency_search">Clear search</string>
     <string name="no_matching_currencies">No matching currencies</string>
     <string name="default_currencies_hint">This currency will be selected by default when adding new debts</string>
-    <string name="more_detailed_share_text">Balance in shared history</string>
     <string name="app_theme">Appearance</string>
     <string name="rate_app">Rate app</string>
     <string name="write_email_to_developer">Write email to developer</string>

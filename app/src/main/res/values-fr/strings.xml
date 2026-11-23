@@ -44,7 +44,6 @@
     <string name="clear_currency_search">Effacer la recherche</string>
     <string name="no_matching_currencies">Aucune devise trouvée</string>
     <string name="default_currencies_hint">Cette devise sera sélectionnée par défaut lors de l\'ajout de nouvelles dettes.</string>
-    <string name="more_detailed_share_text">Solde dans l’historique partagé</string>
     <string name="app_theme">Apparence</string>
     <string name="rate_app">Noter l\'application</string>
     <string name="write_email_to_developer">Écrire un courriel au développeur</string>

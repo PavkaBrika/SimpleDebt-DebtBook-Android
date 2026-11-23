@@ -76,7 +76,7 @@ function demoSnapshot() {
   return {format:'SimpleDebt-design-2',people,finance:ledger,goals:savings,preferences:{...prefs},serial};
 }
 function applySnapshot(data) {
-  people=data.people;ledger=data.finance;savings=data.goals;prefs={defaultCur:data.preferences.defaultCur,shareSum:data.preferences.shareSum,theme:data.preferences.theme,delay:data.preferences.delay};serial=data.serial;
+  people=data.people;ledger=data.finance;savings=data.goals;prefs={defaultCur:data.preferences.defaultCur,theme:data.preferences.theme,delay:data.preferences.delay};serial=data.serial;
 }
 function baseRoute(route) {return flowRoots[route] || (route==='person'||route==='new'?'home':route);}
 function repairRoute(f) {

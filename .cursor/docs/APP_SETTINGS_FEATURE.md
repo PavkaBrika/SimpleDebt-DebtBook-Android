@@ -35,7 +35,6 @@ VM экрана настроек.
 
 ### Зависимости
 - `Get/SetDefaultCurrency` — валюта по умолчанию для новых долгов
-- `Get/SetAddSumInShareText` — включать ли сумму в текст при шаринге
 - `Get/SetAppTheme` — тема (светлая/тёмная/системная)
 - `Get/SetIsFingerprintAuthEnabled` — включение биометрии
 - `Get/SetPinLockDelay` — интервал повторного запроса PIN после ухода в фон
@@ -44,7 +43,6 @@ VM экрана настроек.
 | Поле | Тип | Описание |
 |------|-----|---------|
 | `defaultCurrency` | `LiveData<String>` | Валюта по умолчанию |
-| `addSumInShareText` | `LiveData<Boolean>` | Сумма в тексте шаринга |
 | `appTheme` | `LiveData<String>` | Текущая тема |
 | `isFingerprintAuthEnabled` | `LiveData<Boolean>` | Биометрия |
 | `pinLockDelay` | `LiveData<PinLockDelay>` | Сразу / 30 секунд / 1 минута / 5 минут |
@@ -118,7 +116,6 @@ VM экрана резервного копирования в файл и Googl
 | App Theme | Светлая / Тёмная / Системная | String |
 | Debt Order | Сортировка долгов | Pair<DebtOrderAttribute, Boolean> |
 | Human Order | Сортировка людей | Pair<HumanOrderAttribute, Boolean> |
-| Add Sum In Share Text | Включать сумму в шаринг | Boolean |
 | PIN Code Enabled | PIN-замок включён | Boolean |
 | PIN Code | Зашифрованный PIN-код | String |
 | PIN Lock Delay | Задержка блокировки при уходе в фон; по умолчанию 0 | Long, миллисекунды |

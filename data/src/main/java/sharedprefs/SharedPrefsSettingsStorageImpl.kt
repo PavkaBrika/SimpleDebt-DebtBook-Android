@@ -10,7 +10,6 @@ import util.ORDER_HUMAN_BY_DATE
 
 private const val SHARED_PREFS_SETTINGS = "shared_prefs_settings"
 private const val DEFAULT_CURRENCY = "default_currency"
-private const val SUM_IN_SHARE_TEXT = "sum_in_share_text" // enable sum for each debt
 private const val APP_RATE = "app_rate"
 private const val APP_THEME = "app_theme"
 private const val DEBTS_QUANTITY_FOR_APP_RATE_DIALOG_SHOW = "debts_quantity_for_app_rate_dialog_show"
@@ -50,14 +49,6 @@ class SharedPrefsSettingsStorageImpl(val context: Context): SettingsStorage {
 
     override fun getDefaultCurrency(): String {
         return sharedPreferences.getString(DEFAULT_CURRENCY, null) ?: DeviceCurrency.get(context)
-    }
-
-    override fun setAddSumInShareText(addSumInShareText: Boolean) {
-        sharedPreferences.edit().putBoolean(SUM_IN_SHARE_TEXT, addSumInShareText).apply()
-    }
-
-    override fun getAddSumInShareText(): Boolean {
-        return sharedPreferences.getBoolean(SUM_IN_SHARE_TEXT, false)
     }
 
     override fun setAppIsRated(isRated: Boolean) {

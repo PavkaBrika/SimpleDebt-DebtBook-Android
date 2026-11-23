@@ -55,13 +55,11 @@ flowActions['loan-delete']=(i,v,b)=>{
 function exportRows(p) {
   const entries=[];
   for(const l of p.loans) {
-    entries.push({date:l.date,id:l.id,label:l.note||'Долг',cents:l.principal,cancelled:false});
-    for(const r of l.returns)entries.push({date:r.date,id:r.id,label:r.cancelled?'Возврат отменён':'Возврат',cents:-Math.sign(l.principal)*r.amount,cancelled:r.cancelled});
+    entries.push({date:l.date,id:l.id,label:l.note||'Долг',cents:l.principal});
+    for(const r of l.returns)entries.push({date:r.date,id:r.id,label:r.cancelled?'Возврат отменён':'Возврат',cents:-Math.sign(l.principal)*r.amount});
   }
-  let total=0;
-  return entries.sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id).map(e=>{
-    if(!e.cancelled)total+=e.cents;return [e.date,e.label,amount(e.cents,p.cur,true),...(prefs.shareSum?[amount(total,p.cur,true)]:[])];
-  });
+  return entries.sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id)
+    .map(e=>[e.date,e.label,amount(e.cents,p.cur,true)]);
 }
 function downloadFile(name,type,content) {
   const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');
@@ -73,7 +71,7 @@ flowActions['person-share']=(i,v,b)=>{
 };
 flowActions['share-text']=i=>{const p=personAt(i);downloadFile('SimpleDebt-'+p.name+'.txt','text/plain;charset=utf-8',shareText(p));};
 flowActions['share-excel']=i=>{
-  const p=personAt(i),rows=[['Дата','Запись','Сумма',...(prefs.shareSum?['Баланс']:[])],...exportRows(p)];
+  const p=personAt(i),rows=[['Дата','Запись','Сумма'],...exportRows(p)];
   const xml=rows.map(row=>'<Row>'+row.map(c=>'<Cell><Data ss:Type="String">'+escapeHtml(c)+'</Data></Cell>').join('')+'</Row>').join('');
   downloadFile('SimpleDebt-'+p.name+'.xml','application/xml','<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="История"><Table>'+xml+'</Table></Worksheet></Workbook>');
 };

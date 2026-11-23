@@ -69,8 +69,10 @@ class DebtStatementJourneyTest {
         monitor.addIntentCallback(callback)
         val prefs = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
         val rateKey = "debts_quantity_for_app_rate_dialog_show"
+        val legacyBalanceKey = "sum_in_share_text"
         val previousRateThreshold = prefs.all[rateKey] as? Int
-        prefs.edit().putInt(rateKey, Int.MAX_VALUE).commit()
+        val previousBalanceSetting = prefs.all[legacyBalanceKey] as? Boolean
+        prefs.edit().putInt(rateKey, Int.MAX_VALUE).putBoolean(legacyBalanceKey, true).commit()
         try {
             val earlyNote = "Earlier receipt"
             val early = add(250, 1, earlyNote)
@@ -116,7 +118,9 @@ class DebtStatementJourneyTest {
                 assertFalse(withEarly.contains(line(R.string.statement_borrowed, "500 RUB")))
                 assertTrue(open.contains(line(R.string.statement_remaining, "10 000 RUB")))
                 assertFalse(open.contains(line(R.string.statement_borrowed, "500 RUB")))
+                assertFalse(open.contains("Original loan"))
                 assertFalse(open.contains("First payment"))
+                assertFalse(open.contains("3 600 RUB"))
                 tap(R.id.includeSettled)
                 onView(withId(R.id.statementScroll)).perform(swipeUp()).check { view, error ->
                     if (error != null) throw error
@@ -203,6 +207,7 @@ class DebtStatementJourneyTest {
         } finally {
             prefs.edit().apply {
                 if (previousRateThreshold == null) remove(rateKey) else putInt(rateKey, previousRateThreshold)
+                if (previousBalanceSetting == null) remove(legacyBalanceKey) else putBoolean(legacyBalanceKey, previousBalanceSetting)
             }.commit()
             monitor.removeIntentCallback(callback)
             dao.deleteDebtsByHumanId(person.id)

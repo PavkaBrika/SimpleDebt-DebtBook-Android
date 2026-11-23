@@ -21,21 +21,14 @@ fun formatPersonDebtStatement(
     history: PersonDebtHistory,
     filter: Filter,
     order: Pair<DebtOrderAttribute, Boolean>,
-    includeRunningTotals: Boolean,
     includeSettled: Boolean = false,
     includeEarlyEntries: Boolean = false
 ): String = buildString {
     val locale = ConfigurationCompat.getLocales(resources.configuration)[0] ?: java.util.Locale.getDefault()
     fun money(value: BigDecimal) = "${MoneyDisplay.formatExact(value, currency, locale)} $currency"
     fun signed(value: BigDecimal) = if (value.signum() > 0) "+${money(value)}" else money(value)
-    var runningTotal = BigDecimal.ZERO
-    fun appendEntry(row: DebtDomain, label: String, includeNote: Boolean = includeRunningTotals) {
+    fun appendEntry(row: DebtDomain, label: String) {
         append(LedgerDate.display(row.date, locale)).append(" · ").append(label)
-        if (includeNote) row.info?.takeIf { it.isNotBlank() }?.let { append('\n').append(it) }
-        if (includeRunningTotals) {
-            runningTotal += row.effectiveSum
-            append('\n').append(resources.getString(R.string.statement_subtotal, signed(runningTotal)))
-        }
     }
 
     appendLine(resources.getString(R.string.statement_title))
@@ -61,21 +54,17 @@ fun formatPersonDebtStatement(
         if (index > 0) append("\n\n")
         val loan = history.loan(row.id)
         if (loan == null) {
-            appendEntry(row, resources.getString(R.string.statement_entry, signed(row.sum)), includeNote = true)
+            appendEntry(row, resources.getString(R.string.statement_entry, signed(row.sum)))
+            row.info?.takeIf { it.isNotBlank() }?.let { append('\n').append(it) }
             continue
         }
         val lent = row.sum.signum() > 0
         val principal = if (lent) R.string.statement_lent else R.string.statement_borrowed
         appendEntry(row, resources.getString(principal, money(row.sum.abs())))
         for (payment in loan.repayments) {
-            if (!includeRunningTotals && !payment.cancelled) continue
-            val label = when {
-                payment.cancelled -> R.string.statement_cancelled
-                lent -> R.string.statement_from_you
-                else -> R.string.statement_from_me
-            }
+            if (!payment.cancelled) continue
             append('\n')
-            appendEntry(payment, resources.getString(label, money(payment.sum.abs())))
+            appendEntry(payment, resources.getString(R.string.statement_cancelled, money(payment.sum.abs())))
         }
         append('\n').append(resources.getString(R.string.statement_repaid, money(row.sum.abs() - loan.remaining)))
         append('\n').append(resources.getString(R.string.statement_remaining, money(loan.remaining)))

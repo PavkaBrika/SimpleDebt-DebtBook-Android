@@ -44,7 +44,6 @@
     <string name="clear_currency_search">Очистить поиск</string>
     <string name="no_matching_currencies">Валюты не найдены</string>
     <string name="default_currencies_hint">Эта валюта будет выбрана по умолчанию при добавлении новых долгов</string>
-    <string name="more_detailed_share_text">Баланс в тексте истории</string>
     <string name="app_theme">Оформление</string>
     <string name="rate_app">Оценить приложение</string>
     <string name="write_email_to_developer">Написать разработчикам</string>

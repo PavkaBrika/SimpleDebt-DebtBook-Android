@@ -11,12 +11,9 @@
     <string name="statement_entry">Entry · %1$s</string>
     <string name="statement_lent">I lent you %1$s</string>
     <string name="statement_borrowed">You lent me %1$s</string>
-    <string name="statement_from_you">You repaid me %1$s</string>
-    <string name="statement_from_me">I repaid you %1$s</string>
     <string name="statement_cancelled">Cancelled repayment — %1$s</string>
     <string name="statement_repaid">Repaid — %1$s</string>
     <string name="statement_remaining">Remaining — %1$s</string>
-    <string name="statement_subtotal">Running total of entries shown · %1$s</string>
     <string name="statement_positive_entries">Transactions (loans from me and entries ≥ 0):</string>
     <string name="statement_negative_entries">Transactions (loans from you and entries ≤ 0):</string>
     <string name="statement_include_settled">Include repaid loans</string>

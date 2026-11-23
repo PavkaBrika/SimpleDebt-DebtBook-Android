@@ -11,12 +11,9 @@
     <string name="statement_entry">Запись · %1$s</string>
     <string name="statement_lent">Мой заём — %1$s</string>
     <string name="statement_borrowed">Ваш заём — %1$s</string>
-    <string name="statement_from_you">Возврат от вас — %1$s</string>
-    <string name="statement_from_me">Возврат от меня — %1$s</string>
     <string name="statement_cancelled">Отменённый возврат — %1$s</string>
     <string name="statement_repaid">Возвращено — %1$s</string>
     <string name="statement_remaining">Остаток — %1$s</string>
-    <string name="statement_subtotal">Сумма показанных движений по эту строку — %1$s</string>
     <string name="statement_positive_entries">Операции (мои займы и записи ≥ 0):</string>
     <string name="statement_negative_entries">Операции (ваши займы и записи ≤ 0):</string>
     <string name="statement_include_settled">Включить погашенные долги</string>

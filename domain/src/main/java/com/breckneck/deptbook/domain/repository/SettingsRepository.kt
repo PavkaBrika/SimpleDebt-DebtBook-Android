@@ -10,10 +10,6 @@ interface SettingsRepository {
 
     fun getDefaultCurrency(): String
 
-    fun setAddSumInShareText(addSumInShareText: Boolean)
-
-    fun getAddSumInShareText(): Boolean
-
     fun setAppIsRated(isRated: Boolean)
 
     fun getAppIsRated(): Boolean

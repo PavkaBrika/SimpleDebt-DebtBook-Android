@@ -12,7 +12,7 @@ const automaticCurrency=(()=>{
   const euroRegions='AD AT BE BG CY DE EE ES FI FR GR HR IE IT LT LU LV MC ME MT NL PT SI SK SM VA XK'.split(' ');
   return currencies[region]||(euroRegions.includes(region)?'EUR':'USD');
 })();
-function defaultPrefs(){return {defaultCur:null,shareSum:false,theme:'Светлая',delay:delays[0]};}
+function defaultPrefs(){return {defaultCur:null,theme:'Светлая',delay:delays[0]};}
 function defaultCurrency(){return prefs.defaultCur??automaticCurrency;}
 let prefs=defaultPrefs(), demoPin='',biometric=false,driveSigned=false,cloudCopies=[],previousCopy=null;
 function resetDemo(){
@@ -51,7 +51,7 @@ function validSnapshot(s) {
   try{
     if(s?.format!=='SimpleDebt-design-2'||!positive(s.serial)||!s.preferences)return false;
     const p=s.preferences;
-    if((p.defaultCur!==null&&!cur(p.defaultCur))||typeof p.shareSum!=='boolean'||!themeChoices.includes(p.theme)||!delays.includes(p.delay))return false;
+    if((p.defaultCur!==null&&!cur(p.defaultCur))||!themeChoices.includes(p.theme)||!delays.includes(p.delay))return false;
     if(!rows(s.people,p=>string(p.name)&&cur(p.cur)&&num(p.art)&&p.art>=0&&rows(p.loans,l=>num(l.principal)&&l.principal!==0&&string(l.note)&&date(l.date)&&optionalDate(l.due)&&string(l.reminder)&&(!l.reminder||(/^([01]\d|2[0-3]):[0-5]\d$/.test(l.reminder)&&l.due))&&rows(l.returns,r=>positive(r.amount)&&date(r.date)&&typeof r.cancelled==='boolean')&&remaining(l)>=0)))return false;
     if(!rows(s.finance.categories,c=>string(c.name)&&directions.includes(c.dir)&&string(c.emoji)&&/^#[0-9a-f]{6}$/i.test(c.color)))return false;
     const cats=new Set(s.finance.categories.map(c=>c.id));
@@ -62,7 +62,7 @@ function validSnapshot(s) {
     return groups.every(group=>group.every(item=>item.id<s.serial));
   }catch{return false;}
 }
-flowViews.settings=f=>layout(heading('Настройки')+titleRow('Приложение')+'<div class="group">'+rowAction('pref','Валюта по умолчанию','defaultCur',defaultCurrency())+rowAction('pref','Оформление','theme',prefs.theme)+rowAction('pref-share','Баланс в тексте истории','',prefs.shareSum?'Вкл.':'Выкл.')+'</div>'+titleRow('Данные и защита')+'<div class="group">'+rowAction('backup-open','Резервная копия','','Файл / Drive')+rowAction('security-open','Защита входа','',demoPin?'PIN включён':'Выключена')+'</div>'+titleRow('О приложении')+'<div class="group">'+['Оценить приложение','Написать разработчику','Поддержать проект','Политика конфиденциальности'].map(v=>rowAction('external-preview',v,v)).join('')+'<div class="setting"><span>Версия Android-приложения</span><span>4.6.4</span></div></div>',
+flowViews.settings=f=>layout(heading('Настройки')+titleRow('Приложение')+'<div class="group">'+rowAction('pref','Валюта по умолчанию','defaultCur',defaultCurrency())+rowAction('pref','Оформление','theme',prefs.theme)+'</div>'+titleRow('Данные и защита')+'<div class="group">'+rowAction('backup-open','Резервная копия','','Файл / Drive')+rowAction('security-open','Защита входа','',demoPin?'PIN включён':'Выключена')+'</div>'+titleRow('О приложении')+'<div class="group">'+['Оценить приложение','Написать разработчику','Поддержать проект','Политика конфиденциальности'].map(v=>rowAction('external-preview',v,v)).join('')+'<div class="setting"><span>Версия Android-приложения</span><span>4.6.4</span></div></div>',
   {navigation:nav('settings')});
 flowActions.pref=(i,key,b)=>{
   const labels={defaultCur:'Валюта по умолчанию',theme:'Оформление',delay:'Блокировать после выхода'};
@@ -78,7 +78,6 @@ flowActions.pref=(i,key,b)=>{
     changed(i,'Настройка сохранена');
   },'Применить',{choice:key==='defaultCur'?defaultCurrency():prefs[key]});
 };
-flowActions['pref-share']=i=>{prefs.shareSum=!prefs.shareSum;changed(i,'Настройка сохранена');};
 flowActions['external-preview']=(i,v,b)=>{
   if(v==='Оценить приложение')return rateDialog(i,b);
   const descriptions={'Оценить приложение':'Android открывает страницу приложения в магазине.','Написать разработчику':'Android открывает почтовое приложение с адресом разработчика и версией в теме письма.','Поддержать проект':'Android открывает страницу поддержки проекта в браузере.','Политика конфиденциальности':'Android открывает политику приложения.'};
