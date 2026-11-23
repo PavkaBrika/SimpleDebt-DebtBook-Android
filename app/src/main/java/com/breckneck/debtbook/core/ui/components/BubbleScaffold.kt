@@ -22,6 +22,7 @@ internal fun BubbleScaffold(
     tabs: (@Composable () -> Unit)? = null,
     snackbarHost: @Composable () -> Unit = {},
     scrollBehindBarsWithIme: Boolean = false,
+    bottomBarScrim: Boolean = true,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val colors = bubbleColors()
@@ -41,10 +42,16 @@ internal fun BubbleScaffold(
                 if (tabs != null) {
                     Column(Modifier.padding(start = start, end = end)) { bottomAction() }
                 }
-                Column(
-                    Modifier.fillMaxWidth().background(
+                val scrim = if (bottomBarScrim) {
+                    Modifier.background(
                         Brush.verticalGradient(listOf(colors.background.copy(alpha = 0f), colors.background.copy(alpha = .9f))),
-                    ).padding(start = start, end = end, bottom = hostInsets.calculateBottomPadding()),
+                    )
+                } else {
+                    Modifier
+                }
+                Column(
+                    Modifier.fillMaxWidth().then(scrim)
+                        .padding(start = start, end = end, bottom = hostInsets.calculateBottomPadding()),
                 ) {
                     if (tabs == null) bottomAction() else tabs()
                 }

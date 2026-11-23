@@ -379,6 +379,33 @@ class FinanceFlowTest {
         focus(str(R.string.finance_edit_entry))
     }
 
+    @Test fun incomeFormScrollsBehindSaveAndShowsTheLastControl() {
+        repeat(24) { index ->
+            dao.insertFinanceCategory(FinanceCategoryData(
+                0, "Income category ${index + 1}", FinanceCategoryStateData.INCOME, "#DBEDCD", 0x1F4DA,
+            ))
+        }
+        act(R.string.finance_add_income)
+        val save = node(hasText(str(R.string.finance_save_entry)) and hasClickAction()).assertIsDisplayed()
+        val footer = save.fetchSemanticsNode().boundsInWindow
+        val form = node(hasScrollAction() and hasAnyDescendant(hasText(str(R.string.finance_entry_date))))
+        val viewport = form.fetchSemanticsNode().boundsInWindow
+        assertTrue(viewport.bottom > footer.bottom)
+
+        val category = node(hasText("Income category 12")).performScrollTo()
+        val distance = category.fetchSemanticsNode().boundsInWindow.center.y - footer.center.y
+        form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+        val row = category.fetchSemanticsNode().boundsInWindow
+        assertTrue("A category should pass behind the save button", footer.center.y in row.top..row.bottom)
+        assertEquals(footer, save.fetchSemanticsNode().boundsInWindow)
+        capture("form-under-save")
+
+        form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, viewport.height * 3) }
+        val last = node(hasText(str(R.string.create_new_category)) and hasClickAction()).assertIsDisplayed()
+        assertTrue(last.fetchSemanticsNode().boundsInWindow.bottom <= footer.top)
+        capture("form-end")
+    }
+
     @Test fun keyboardLeavesSaveActionVisibleOnTheForm() {
         direction(R.string.expenses)
         act(R.string.finance_add_expense)
@@ -395,9 +422,14 @@ class FinanceFlowTest {
                 .getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom
         }
         assertTrue(save.fetchSemanticsNode().boundsInWindow.bottom <= keyboardTop + 1)
+        val comment = node(hasText(str(R.string.comment)) and hasSetTextAction()).performScrollTo()
+        comment.performClick().performTextReplacement(note)
+        comment.assertIsFocused().assertIsDisplayed()
+        assertTrue(comment.fetchSemanticsNode().boundsInWindow.bottom <= save.fetchSemanticsNode().boundsInWindow.top)
         capture("keyboard")
         back()
         awaitText("12,34")
+        awaitText(note)
     }
 
     @Test fun monthBoundaryUsesTheSelectedDayInTheForm() {
