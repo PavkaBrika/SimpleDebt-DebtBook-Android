@@ -4,6 +4,8 @@
     <string name="finance_categories">Categories</string>
     <string name="finance_category_shares">Shares</string>
     <string name="finance_collapse_shares">Collapse category shares</string>
+    <string name="finance_pick_sector">Select a segment</string>
+    <string name="finance_next_sector">Next segment</string>
     <string name="finance_previous">Previous period</string>
     <string name="finance_next">Next period</string>
     <string name="finance_current_period">Back to current period</string>

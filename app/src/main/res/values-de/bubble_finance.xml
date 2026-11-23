@@ -4,6 +4,8 @@
     <string name="finance_categories">Kategorien</string>
     <string name="finance_category_shares">Anteile</string>
     <string name="finance_collapse_shares">Kategorieanteile einklappen</string>
+    <string name="finance_pick_sector">Segment wählen</string>
+    <string name="finance_next_sector">Nächstes Segment</string>
     <string name="finance_previous">Vorheriger Zeitraum</string>
     <string name="finance_next">Nächster Zeitraum</string>
     <string name="finance_current_period">Zum aktuellen Zeitraum</string>

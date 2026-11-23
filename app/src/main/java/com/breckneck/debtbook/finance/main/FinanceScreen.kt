@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
@@ -22,8 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -43,9 +40,6 @@ import com.breckneck.deptbook.domain.util.FinanceInterval
 import com.breckneck.deptbook.domain.util.LedgerDate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-
-private val FinanceCardCorner = 28.dp
-private val CategoryInset = 20.dp
 
 @Composable
 internal fun FinanceScreen(
@@ -249,7 +243,6 @@ private fun FinancePage(
         ) {
             item(key = "balance") {
                 val progress = expansion.value
-                val bottomCorner = FinanceCardCorner * (1f - progress)
                 key(state.currency) {
                     BubbleBalanceCard(
                         stringResource(if (expenses) R.string.expenses else R.string.revenues),
@@ -258,10 +251,6 @@ private fun FinancePage(
                         onCurrencyClick = onCurrencyClick,
                         balanceValue = amount,
                         palette = palette,
-                        shape = RoundedCornerShape(
-                            topStart = FinanceCardCorner, topEnd = FinanceCardCorner,
-                            bottomStart = bottomCorner, bottomEnd = bottomCorner,
-                        ),
                         artwork = {
                             FinanceSummaryChart(
                                 totals,
@@ -286,34 +275,15 @@ private fun FinancePage(
                 }
             }
             if (!pinAddAction) {
-                item(key = "add-operation") {
-                    val progress = expansion.value
-                    addAction(
-                        Modifier.fillMaxWidth().background(palette.container.copy(alpha = progress))
-                            .padding(start = CategoryInset * progress, end = CategoryInset * progress, top = 8.dp),
-                    )
-                }
+                item(key = "add-operation") { addAction(Modifier.fillMaxWidth().padding(top = 8.dp)) }
             }
             item(key = "categories") {
-                val progress = expansion.value
-                BubbleSectionTitle(
-                    stringResource(R.string.finance_categories),
-                    Modifier.background(palette.container.copy(alpha = progress)).padding(
-                        start = CategoryInset * progress, end = CategoryInset * progress, top = 16.dp, bottom = 8.dp,
-                    ),
-                    color = lerp(colors.ink, palette.content, progress),
-                ) {
-                    Text(stringResource(state.period.interval.labelResource), color = lerp(colors.muted, palette.muted, progress))
+                BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(stringResource(state.period.interval.labelResource), color = colors.muted)
                 }
             }
             if (state.failed) item(key = "retry") {
-                val progress = expansion.value
-                Box(
-                    Modifier.fillMaxWidth().background(palette.container.copy(alpha = progress))
-                        .padding(horizontal = CategoryInset * progress),
-                ) {
-                    BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) }
-                }
+                BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) }
             }
             when {
                 state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
@@ -327,33 +297,22 @@ private fun FinancePage(
                 }
                 else -> itemsIndexed(totals.categories, key = { _, row -> row.category.id }) { index, row ->
                     val progress = expansion.value
-                    val last = index == totals.categories.lastIndex
-                    val shape = if (last) RoundedCornerShape(bottomStart = FinanceCardCorner, bottomEnd = FinanceCardCorner) else RectangleShape
                     val placement = if (progress == 0f || progress == 1f) {
                         Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
                     } else Modifier
-                    Box(
-                        placement.fillMaxWidth()
-                            .background(palette.container.copy(alpha = progress), shape)
-                            .padding(
-                                start = CategoryInset * progress, end = CategoryInset * progress,
-                                bottom = if (last) CategoryInset * progress else 0.dp,
-                            ),
-                    ) {
-                        BubbleGroupedRow(index, totals.categories.size) {
-                            BubbleListRow(
-                                Modifier.clickable { onCategory(row.category) }.padding(12.dp),
-                                leading = { CategoryBadge(row.category) },
-                                trailing = {
-                                    key(state.currency) {
-                                        AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
-                                    }
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
-                                },
-                            ) {
-                                Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
-                                Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
-                            }
+                    BubbleGroupedRow(index, totals.categories.size, placement) {
+                        BubbleListRow(
+                            Modifier.clickable { onCategory(row.category) }.padding(12.dp),
+                            leading = { CategoryBadge(row.category) },
+                            trailing = {
+                                key(state.currency) {
+                                    AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
+                                }
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
+                            },
+                        ) {
+                            Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

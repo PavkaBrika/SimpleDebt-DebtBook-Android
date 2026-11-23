@@ -28,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -69,13 +68,12 @@ internal fun BubbleBalanceCard(
     showCoins: Boolean = false,
     balanceValue: java.math.BigDecimal? = null,
     palette: BubbleBalancePalette = bubbleBalancePalette(),
-    shape: Shape = MaterialTheme.shapes.extraLarge,
     artwork: (@Composable (Modifier) -> Unit)? = null,
     artworkExpansion: Float = 0f,
     footer: (@Composable (compact: Boolean) -> Unit)? = null,
 ) {
     val spacing = MaterialTheme.spacing
-    Surface(modifier, shape = shape, color = palette.container, contentColor = palette.content) {
+    Surface(modifier, shape = MaterialTheme.shapes.extraLarge, color = palette.container, contentColor = palette.content) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(spacing.space20)) {
             val largeText = LocalDensity.current.fontScale >= 1.3f || maxWidth < 260.dp
             val drawCoins = showCoins && !largeText && artwork == null

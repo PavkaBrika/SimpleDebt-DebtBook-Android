@@ -147,17 +147,20 @@ class FinanceFlowTest {
         total("90")
         awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
         val incomeCategory = hasText("Income today") and hasText(context.getString(R.string.finance_share_of_total, 67))
-        node(incomeCategory).assertIsDisplayed()
+        val categoryLeft = node(incomeCategory).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.left
         instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("income-page")
         val shares = node(hasText(str(R.string.finance_category_shares)) and hasClickAction())
         val collapsedWidth = shares.fetchSemanticsNode().boundsInRoot.width
         shares.performClick()
         assertTrue(shares.fetchSemanticsNode().boundsInRoot.width > collapsedWidth)
+        shares.performTouchInput { click(Offset(width * .92f, center.y)) }
+        node(hasText(str(R.string.finance_category_shares)) and hasText("Income today") and hasClickAction()).assertIsDisplayed()
         instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("shares-expanded")
         summaryList().performScrollToIndex(2)
         val expandedCategory = node(incomeCategory).assertIsDisplayed()
+        assertEquals(categoryLeft, expandedCategory.fetchSemanticsNode().boundsInRoot.left, 1f)
         val addIncome = node(hasText(str(R.string.finance_add_income)) and hasClickAction())
         assertTrue(expandedCategory.fetchSemanticsNode().boundsInRoot.center.y < addIncome.fetchSemanticsNode().boundsInRoot.top)
         instrumentation.uiAutomation.waitForIdle(260, 4000)

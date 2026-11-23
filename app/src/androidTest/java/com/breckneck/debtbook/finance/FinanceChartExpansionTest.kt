@@ -2,19 +2,25 @@ package com.breckneck.debtbook.finance
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
@@ -27,6 +33,7 @@ import com.breckneck.debtbook.finance.main.FinanceSummaryChart
 import com.breckneck.debtbook.finance.main.FinanceTotals
 import com.breckneck.deptbook.domain.model.FinanceCategory
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
+import java.text.NumberFormat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -99,5 +106,38 @@ class FinanceChartExpansionTest {
         } finally {
             compose.mainClock.autoAdvance = true
         }
+    }
+
+    @Test fun tapInspectsTheSectorAndNextCanReachANarrowSector() {
+        fun row(id: Int, name: String, amount: Int) = CategoryTotal(
+            FinanceCategory(id, name, FinanceCategoryState.INCOME, "#C5E1A5", 0x1F4B5),
+            amount.toBigDecimal(),
+            amount,
+        )
+        val totals = FinanceTotals(listOf(row(1, "Salary", 66), row(2, "Gifts", 33), row(3, "Interest", 1)), 100.toBigDecimal())
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val shares = hasText(context.getString(R.string.finance_category_shares)) and hasClickAction()
+        val chart = compose.onNode(shares)
+
+        compose.setContent {
+            DebtBookTheme {
+                FinanceSummaryChart(
+                    totals, bubbleBalancePalette(), expanded = true, expansion = 1f,
+                    onToggle = {}, modifier = Modifier.size(164.dp),
+                )
+            }
+        }
+
+        compose.onNode(shares and hasText(context.getString(R.string.finance_pick_sector))).assertIsDisplayed()
+        fun assertSector(name: String, share: Double) {
+            compose.onNode(shares and hasText(name) and hasText(NumberFormat.getPercentInstance().format(share)))
+                .assertIsDisplayed()
+        }
+        chart.performTouchInput { click(Offset(width * .92f, center.y)) }
+        assertSector("Salary", .66)
+        chart.performTouchInput { click(Offset(width * .08f, center.y)) }
+        assertSector("Gifts", .33)
+        compose.onNodeWithContentDescription(context.getString(R.string.finance_next_sector)).performClick()
+        assertSector("Interest", .01)
     }
 }
