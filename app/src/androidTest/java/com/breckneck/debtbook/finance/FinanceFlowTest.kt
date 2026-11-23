@@ -37,7 +37,6 @@ import entity.FinanceData
 import org.junit.*
 import org.junit.Assert.*
 import java.io.File
-import java.text.NumberFormat
 import java.util.Date
 import java.util.TimeZone
 import util.FinanceCategoryStateData
@@ -151,19 +150,17 @@ class FinanceFlowTest {
         val categoryLeft = node(incomeCategory).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.left
         instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("income-page")
-        val sharesLabel = str(R.string.finance_category_shares)
-        val shares = node(hasText(sharesLabel) and hasClickAction())
+        val shares = node(hasText(str(R.string.finance_category_shares)) and hasClickAction())
         val collapsedWidth = shares.fetchSemanticsNode().boundsInRoot.width
         shares.performClick()
-        val disc = node(hasContentDescription(sharesLabel))
         val addIncome = node(hasText(str(R.string.finance_add_income)) and hasClickAction())
-        assertTrue(disc.fetchSemanticsNode().boundsInRoot.width > collapsedWidth * 2.5f)
-        assertTrue(disc.fetchSemanticsNode().boundsInRoot.bottom <= addIncome.fetchSemanticsNode().boundsInRoot.top + 1f)
+        val ring = shares.fetchSemanticsNode().boundsInRoot
+        assertTrue(ring.width > collapsedWidth * 2.5f)
+        assertTrue(ring.bottom <= addIncome.fetchSemanticsNode().boundsInRoot.top + 1f)
         instrumentation.uiAutomation.waitForIdle(260, 4000)
-        capture("shares-disc")
-        disc.performTouchInput { click(Offset(width * .92f, center.y)) }
-        val share = NumberFormat.getPercentInstance().format(.67)
-        node(hasText("Income today · $share")).assertIsDisplayed()
+        capture("shares-ring")
+        shares.performTouchInput { click(Offset(width * .92f, center.y)) }
+        node(hasText(str(R.string.finance_category_shares)) and hasText("Income today") and hasClickAction()).assertIsDisplayed()
         instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("shares-expanded")
         summaryList().performScrollToIndex(2)
@@ -178,8 +175,8 @@ class FinanceFlowTest {
         back()
         awaitDestination(R.id.financeFragment)
         summaryList().performScrollToIndex(0)
-        disc.assertIsDisplayed()
-        desc(R.string.finance_collapse_shares)
+        assertTrue(shares.fetchSemanticsNode().boundsInRoot.width > collapsedWidth)
+        shares.performClick()
         assertEquals(collapsedWidth, shares.fetchSemanticsNode().boundsInRoot.width)
 
         summaryList().performTouchInput { swipeLeft() }

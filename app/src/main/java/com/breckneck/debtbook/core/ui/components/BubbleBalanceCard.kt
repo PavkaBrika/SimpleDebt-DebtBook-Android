@@ -153,7 +153,7 @@ private fun BalanceCardArtwork(
         val width = headingPlaceable.width
         val headingHeight = headingPlaceable.height
         val collapsed = minOf(collapsedWidth.roundToPx(), headingHeight)
-        val expanded = minOf(width, 236.dp.roundToPx())
+        val expanded = minOf(width, 248.dp.roundToPx())
         val gap = 12.dp.roundToPx()
         fun interpolate(from: Int, to: Int) = (from + (to - from) * expansion).roundToInt()
 
