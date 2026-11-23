@@ -62,8 +62,4 @@ object DeviceCurrency {
     private fun forCountry(country: String): Currency? =
         runCatching { Currency.getInstance(Locale.Builder().setRegion(country).build()) }.getOrNull()
             ?.takeIf { it.defaultFractionDigits >= 0 }
-
-    val currencies: List<Currency> by lazy {
-        Locale.getISOCountries().mapNotNull(::forCountry).distinct().sortedBy { it.currencyCode }
-    }
 }
