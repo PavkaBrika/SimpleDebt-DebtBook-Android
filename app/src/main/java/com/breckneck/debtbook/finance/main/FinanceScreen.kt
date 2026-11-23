@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -95,7 +96,13 @@ private fun FinanceContent(
         hostInsets = hostInsets,
         topBar = {
             Column(
-                Modifier.fillMaxWidth().background(colors.background)
+                Modifier.fillMaxWidth().background(
+                    Brush.verticalGradient(
+                        0f to colors.background.copy(alpha = .94f),
+                        .6f to colors.background.copy(alpha = .86f),
+                        1f to colors.background.copy(alpha = .54f),
+                    ),
+                )
                     .padding(
                         start = hostInsets.calculateStartPadding(layoutDirection) + 16.dp,
                         end = hostInsets.calculateEndPadding(layoutDirection) + 16.dp,
@@ -139,17 +146,13 @@ private fun FinanceContent(
     ) { padding ->
         HorizontalPager(
             state = pager,
-            modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
+            modifier = Modifier.fillMaxSize(),
         ) { page ->
             FinancePage(
                 state = state,
                 direction = directions[page],
                 listState = listStates[page],
-                padding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = padding.calculateBottomPadding(),
-                ),
+                padding = padding,
                 stepPeriod = stepPeriod,
                 onPeriodClick = { choosingPeriod = true },
                 onCurrencyClick = onCurrencyClick,
@@ -182,7 +185,7 @@ private fun FinancePage(
     val totals = state.totalsFor(direction)
     val amount = totals.total.takeIf { state.hasTotals }
     val expenses = direction == FinanceCategoryState.EXPENSE
-    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
+    LazyColumn(Modifier.fillMaxSize().consumeWindowInsets(padding), state = listState, contentPadding = padding) {
         item(key = "balance") {
             key(state.currency) {
                 BubbleBalanceCard(

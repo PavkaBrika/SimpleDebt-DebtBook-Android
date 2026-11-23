@@ -147,9 +147,19 @@ class FinanceFlowTest {
         node(hasText(LedgerDate.display(today)) and hasClickAction()).assertIsDisplayed()
         repeat(8) { desc(R.string.finance_previous) }
         total("16")
-        summaryList().performScrollToNode(hasText("Earlier expense 15"))
+        val list = summaryList()
+        val todayAction = node(hasText(str(R.string.finance_today)) and hasClickAction())
+        val pinnedBounds = todayAction.fetchSemanticsNode().boundsInRoot
+        list.performScrollToIndex(5)
+        val row = node(hasText("Earlier expense 3"))
+        val distance = row.fetchSemanticsNode().boundsInRoot.center.y - pinnedBounds.center.y
+        list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+        val scrolledBounds = row.fetchSemanticsNode().boundsInRoot
+        assertTrue(pinnedBounds.center.y in scrolledBounds.top..scrolledBounds.bottom)
+        assertEquals(pinnedBounds, todayAction.fetchSemanticsNode().boundsInRoot)
+        list.performScrollToNode(hasText("Earlier expense 15"))
         capture("today-action")
-        node(hasText(str(R.string.finance_today)) and hasClickAction()).assertIsDisplayed().performClick()
+        todayAction.assertIsDisplayed().performClick()
         awaitText(LedgerDate.display(today))
         total("45")
     }
