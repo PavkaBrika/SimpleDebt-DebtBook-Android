@@ -176,14 +176,19 @@ class PinLockDelayDeviceTest {
         prefs.edit().putBoolean("pin_code_is_enabled", false).commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             openProtection()
+            scenario.onActivity { assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) }
             action(R.string.enable_pin).performClick()
             scenario.onActivity { assertTrue(it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) }
             enter("2468")
             enter("2468")
+            action(R.string.change_pin_code).assertIsDisplayed()
+            scenario.onActivity { assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) }
             action(R.string.change_pin_code).performClick()
+            scenario.onActivity { assertTrue(it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) }
             enter("2468")
             enter("5678")
             action(R.string.disable_pin).performClick()
+            scenario.onActivity { assertTrue(it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) }
             enter("5678")
             action(R.string.enable_pin).assertIsDisplayed()
             assertFalse(prefs.getBoolean("pin_code_is_enabled", true))
@@ -208,7 +213,10 @@ class PinLockDelayDeviceTest {
             compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
             action(R.string.change_pin_code).assertIsDisplayed()
 
-            scenario.onActivity { assertEquals(R.id.appSecurityFragment, it.navController.currentDestination?.id) }
+            scenario.onActivity {
+                assertEquals(R.id.appSecurityFragment, it.navController.currentDestination?.id)
+                assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE)
+            }
             assertTrue(AuthSession.isUnlocked)
             assertEquals("1234", PinCodeStore(context).read(""))
             compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()

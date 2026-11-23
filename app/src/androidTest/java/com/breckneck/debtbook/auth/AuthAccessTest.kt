@@ -3,6 +3,7 @@ package com.breckneck.debtbook.auth
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -73,7 +74,8 @@ class AuthAccessTest {
     }
 
     @Test fun longPressDoesNotDisablePinAndValidPinStillUnlocks() {
-        ActivityScenario.launch(AuthorizationActivity::class.java).use {
+        ActivityScenario.launch(AuthorizationActivity::class.java).use { scenario ->
+            scenario.onActivity { assertTrue(it.window.attributes.flags and FLAG_SECURE != 0) }
             compose.onNodeWithContentDescription(context.getString(R.string.app_icon))
                 .performTouchInput { longClick() }
             compose.onNodeWithText(context.getString(R.string.enter_pin)).assertExists()
@@ -81,6 +83,12 @@ class AuthAccessTest {
             assertFalse(AuthSession.isUnlocked)
             "1234".forEach { digit -> compose.onNodeWithText(digit.toString()).performClick() }
             compose.waitUntil(5_000) { AuthSession.isUnlocked }
+            compose.onNodeWithText(context.getString(R.string.settings)).assertIsDisplayed()
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                val main = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<MainActivity>().single()
+                assertEquals(0, main.window.attributes.flags and FLAG_SECURE)
+            }
         }
     }
 

@@ -3,7 +3,7 @@ package com.breckneck.debtbook.auth
 import android.app.KeyguardManager
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
+import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -48,7 +48,6 @@ class PinRecoveryActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableBubbleEdgeToEdge()
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (!getPinEnabled.execute()) { finish(); return }
         // Re-create the callback on configuration changes so AndroidX can reconnect it.
         prompt = BiometricPrompt(this, object : BiometricPrompt.AuthenticationCallback() {
@@ -63,6 +62,11 @@ class PinRecoveryActivity : AppCompatActivity() {
         })
         setContent {
             val state by vm.state.collectAsState()
+            val enteringPin = state.step == Step.NEW_PIN || state.step == Step.CONFIRM_PIN
+            SideEffect {
+                if (enteringPin) window.addFlags(FLAG_SECURE)
+                else if (state.step != Step.FINISHED) window.clearFlags(FLAG_SECURE)
+            }
             LaunchedEffect(state.step) {
                 if (state.step == Step.FINISHED && !completed) {
                     completed = true
@@ -72,7 +76,7 @@ class PinRecoveryActivity : AppCompatActivity() {
                 }
             }
             DebtBookTheme {
-                if (state.step == Step.NEW_PIN || state.step == Step.CONFIRM_PIN) {
+                if (enteringPin) {
                     RecoveryPinScreen(
                         state = state,
                         onDigit = { vm.enterDigit(it, PinCodeStore(this@PinRecoveryActivity)::save) },
