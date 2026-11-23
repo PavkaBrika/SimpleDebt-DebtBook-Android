@@ -96,10 +96,15 @@ class GoalsFlowTest {
     }
 
     private fun launchGoalsFromLauncher() {
+        launchFromLauncher()
+        tab(R.string.goals, R.id.goalsFragment)
+    }
+
+    private fun launchFromLauncher() {
+        val previousActivity = onMain { it }
         val launchIntent = checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
         context.startActivity(launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK))
-        awaitDestination(R.id.mainFragment, timeoutMillis = 45_000)
-        tab(R.string.goals, R.id.goalsFragment)
+        compose.waitUntil(45_000) { onMain { it !== previousActivity } == true }
     }
 
     @After fun cleanup() {
@@ -372,6 +377,23 @@ class GoalsFlowTest {
         compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
         awaitDestination(R.id.goalsFragment)
         goalsTab.assertIsSelected().assertIsDisplayed()
+    }
+
+    @Test fun launcherRestoresLastTabAfterTaskIsCleared() {
+        for ((title, destination) in listOf(
+            R.string.finances to R.id.financeFragment,
+            R.string.goals to R.id.goalsFragment,
+            R.string.debts to R.id.mainFragment,
+        )) {
+            tab(title, destination)
+            launchFromLauncher()
+            awaitDestination(destination)
+
+            tab(R.string.settings, R.id.settingsFragment)
+            launchFromLauncher()
+            awaitDestination(destination)
+            compose.onNode(hasText(context.getString(title)) and isSelectable()).assertIsSelected()
+        }
     }
 
     @Test fun goalFormsScrollUnderFixedControlsAndKeepInputAboveTheKeyboard() {
@@ -670,7 +692,11 @@ class GoalsFlowTest {
         assertEquals(movements, dao.getGoalDepositsByGoalId(goal.id).size)
     }
     private fun tab(title: Int, destination: Int) {
-        compose.onNode(hasText(context.getString(title)) and isSelectable()).performClick()
+        val tab = hasText(context.getString(title)) and isSelectable()
+        compose.waitUntil(45_000) {
+            compose.onAllNodes(tab).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
+        compose.onNode(tab).performClick()
         awaitDestination(destination)
         compose.onNode(hasText(context.getString(title)) and isSelected()).assertIsDisplayed()
     }

@@ -75,6 +75,7 @@ class AuthorizationActivity : AppCompatActivity() {
             setResult(RESULT_OK, Intent().putExtra("PINCodeState", vm.pinCodeAction.value.name))
         } else {
             startActivity(Intent(this, MainActivity::class.java).apply {
+                action = MainActivity.ACTION_OPEN_FROM_LAUNCHER
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             })
         }

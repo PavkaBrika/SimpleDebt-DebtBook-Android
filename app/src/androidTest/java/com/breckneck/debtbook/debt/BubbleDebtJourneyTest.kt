@@ -60,6 +60,11 @@ class BubbleDebtJourneyTest {
         }
         SystemClock.sleep(650)
         context.startActivity(requireNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        val debtsTab = hasText(context.getString(R.string.debts)) and isSelectable()
+        compose.waitUntil(30_000) {
+            compose.onAllNodes(debtsTab).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
+        compose.onNode(debtsTab).performClick()
         compose.awaitTag("addHumanButton")
         inst.runOnMainSync {
             main = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()

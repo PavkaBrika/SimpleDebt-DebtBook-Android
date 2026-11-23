@@ -335,8 +335,11 @@ class CompletedGoalJourneyTest {
     private fun openGoals(name: String) {
         val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
         context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK))
-        awaitDestination(R.id.mainFragment)
-        compose.onNode(hasText(str(R.string.goals)) and isSelectable()).performClick()
+        val goalsTab = hasText(str(R.string.goals)) and isSelectable()
+        compose.waitUntil(30_000) {
+            compose.onAllNodes(goalsTab).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
+        compose.onNode(goalsTab).performClick()
         awaitDestination(R.id.goalsFragment)
         waitText(name)
     }
