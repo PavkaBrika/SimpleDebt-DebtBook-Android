@@ -15,6 +15,8 @@ import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.common.launchOnLifecycleStarted
 import com.breckneck.debtbook.core.bubbleScreen
+import com.breckneck.debtbook.core.currency.onCurrencySelected
+import com.breckneck.debtbook.core.currency.openCurrencyPicker
 import com.breckneck.debtbook.goal.create.screen.CreateGoalsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -47,12 +49,13 @@ class CreateGoalsFragment : Fragment() {
     ): View {
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         return bubbleScreen(R.id.createGoalComposeView) { insets ->
-            CreateGoalsScreen(vm = vm, hostInsets = insets)
+            CreateGoalsScreen(vm = vm, hostInsets = insets) { openCurrencyPicker(R.id.createGoalsFragment, it) }
         }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        onCurrencySelected(R.id.createGoalsFragment) { vm.onAction(CreateGoalsAction.CurrencySelected(it)) }
 
         launchOnLifecycleStarted {
             vm.container.sideEffectFlow.collect { effect ->

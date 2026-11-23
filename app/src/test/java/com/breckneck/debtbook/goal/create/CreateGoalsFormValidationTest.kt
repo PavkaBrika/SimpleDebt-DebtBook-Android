@@ -112,7 +112,7 @@ class CreateGoalsFormValidationTest {
                 Locale.setDefault(locale)
                 val goal = Goal(id = 7, name = "Trip", sum = "12345.67".toBigDecimal().stripTrailingZeros(), savedSum = "1234.56".toBigDecimal().stripTrailingZeros(),
                     currency = "€", creationDate = Date(), goalDate = null, photoPath = null)
-                val ui = goal.toCreateGoalUi("EUR €")
+                val ui = goal.toCreateGoalUi()
                 val (sum, sumError) = CreateGoalsFormValidation.validateSum(ui.sum)
                 val (saved, savedError) = CreateGoalsFormValidation.validateSavedSum(ui.savedSum, sum)
                 assertEquals(goal.sum, sum!!)

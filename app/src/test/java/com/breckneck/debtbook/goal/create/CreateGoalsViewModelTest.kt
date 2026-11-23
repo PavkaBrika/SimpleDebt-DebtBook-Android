@@ -2,10 +2,8 @@ package com.breckneck.debtbook.goal.create
 
 import android.content.ContentResolver
 import android.content.Context
-import android.content.res.Resources
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.SavedStateHandle
-import com.breckneck.debtbook.R
 import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.debtbook.goal.create.model.NameError
 import com.breckneck.debtbook.goal.create.model.SumError
@@ -35,24 +33,18 @@ class CreateGoalsViewModelTest {
 
     private fun mockContext(): Context {
         val context = mock(Context::class.java)
-        val resources = mock(Resources::class.java)
-        `when`(context.resources).thenReturn(resources)
-        `when`(resources.getStringArray(R.array.currencies)).thenReturn(arrayOf("US Dollar $"))
         `when`(context.contentResolver).thenReturn(mock(ContentResolver::class.java))
         return context
     }
 
     private fun baseReadyState(): CreateGoalsState =
         CreateGoalsState.initial().copy(
-            currencyNames = listOf("US Dollar $"),
             goal = CreateGoalUi(
                 name = "Trip",
                 sum = "100",
                 savedSum = "10",
                 currency = "$",
-                currencyDisplayName = "US Dollar $",
             ),
-            selectedCurrencyIndex = 0,
         )
 
     private fun viewModel(

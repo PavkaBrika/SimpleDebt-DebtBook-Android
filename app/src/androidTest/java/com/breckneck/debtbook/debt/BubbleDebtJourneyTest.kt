@@ -48,7 +48,7 @@ class BubbleDebtJourneyTest {
 
     @Before fun launch() {
         val dark = InstrumentationRegistry.getArguments().getString("theme") == "dark"
-        prefs.edit().putString("app_theme", context.getString(if (dark) R.string.dark_theme else R.string.light_theme))
+        prefs.edit().putString("app_theme", if (dark) "DARK" else "LIGHT")
             .putBoolean("ads_disabled", true).putString("default_currency", "RUB")
             .putBoolean("pin_code_is_enabled", false).putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         for ((id, name, amount) in listOf(Triple(anna, "Анна", 12400), Triple(other, "Борис", 5900), Triple(euro, "Claire", 810))) {
@@ -106,6 +106,47 @@ class BubbleDebtJourneyTest {
         image.recycle()
     }
     private fun dueRemaining(amount: String) = context.getString(R.string.debt_remaining, amount, "RUB")
+
+    @Test fun currencyScreenFiltersDebtsAndPreservesTheNewDebtDraft() {
+        balance("+18 300")
+        compose.onNode(hasText("RUB") and hasClickAction()).performClick()
+        awaitDestination(R.id.currencyPickerFragment)
+        awaitCurrencyScreen()
+        text(context.getString(R.string.rub)).assertIsSelected()
+        text(context.getString(R.string.usd)).assertDoesNotExist()
+        text(context.getString(R.string.eur)).performClick()
+        awaitDestination(R.id.mainFragment)
+        compose.awaitTag("peopleList").performScrollToNode(hasText("Claire"))
+        text("Claire").assertIsDisplayed()
+        text("Анна").assertDoesNotExist()
+
+        compose.awaitTag("addHumanButton").performClick()
+        awaitDestination(R.id.newDebtFragment)
+        compose.awaitTag("debtSumEditText").performTextReplacement("123")
+        compose.awaitTag("humanNameEditText").performTextReplacement("Draft")
+        val currencyButton = compose.onNodeWithContentDescription(context.getString(R.string.select_currency))
+        currencyButton.performScrollTo().performClick()
+        awaitDestination(R.id.currencyPickerFragment)
+        awaitCurrencyScreen()
+        pressBack()
+        awaitDestination(R.id.newDebtFragment)
+        compose.awaitTag("humanNameEditText").assertTextContains("Draft")
+        compose.awaitTag("debtSumEditText").assertTextContains("123")
+        currencyButton.performScrollTo().performClick()
+        awaitDestination(R.id.currencyPickerFragment)
+        awaitCurrencyScreen()
+        text(context.getString(R.string.eur)).performClick()
+        awaitDestination(R.id.newDebtFragment)
+        compose.awaitTag("humanNameEditText").assertTextContains("Draft")
+        compose.awaitTag("debtSumEditText").assertTextContains("123")
+        compose.onNode(hasText("EUR") and hasClickAction()).assertIsDisplayed()
+        assertEquals("RUB", prefs.getString("default_currency", null))
+    }
+
+    private fun awaitCurrencyScreen() {
+        val title = hasText(context.getString(R.string.select_currency))
+        compose.waitUntil(8000) { compose.onAllNodes(title).fetchSemanticsNodes(false).isNotEmpty() }
+    }
 
     @Test fun earliestDeadlineUsesIndividualOpenLoansAcrossFilters() {
         val yesterday = com.breckneck.debtbook.debt.reminders.testDay(-1)

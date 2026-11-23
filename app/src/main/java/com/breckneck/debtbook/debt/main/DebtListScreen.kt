@@ -15,7 +15,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,7 +67,7 @@ internal fun dueLabel(day: String, open: Boolean, today: String): String = when 
 
 @Composable
 internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: DebtFragment.OnButtonClickListener,
-    sort: () -> Unit, rename: (HumanDomain) -> Unit) {
+    sort: () -> Unit, rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
     val colors = bubbleColors()
     val today = localDay()
     val currency by vm.currency.observeAsState("")
@@ -77,12 +76,10 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
     val people by vm.resultedHumanList.observeAsState(emptyList())
     val sums by vm.mainSums.observeAsState(BigDecimal.ZERO to BigDecimal.ZERO)
     val failed by vm.loadFailed.observeAsState(false)
-    val overviewCurrencies by vm.overviewCurrencies.observeAsState(emptyList())
     val state by vm.screenState.observeAsState()
     val searching by vm.isSearching.observeAsState(false)
     val query by vm.query.collectAsState()
     val filter by vm.humanFilter.observeAsState(Filter.ALL)
-    var picker by rememberSaveable { mutableStateOf(false) }
     val total = sums.first + sums.second
     BubbleScaffold(
         hostInsets = hostInsets,
@@ -108,7 +105,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
             }
             item {
                 BubbleBalanceCard(stringResource(R.string.debt_total), currency, if (failed || state == ScreenState.LOADING) "…" else total.signedMoney(currency),
-                    { picker = true }, showCoins = true, balanceValue = total.takeUnless { failed || state == ScreenState.LOADING }) {
+                    { onCurrencyClick(currency) }, showCoins = true, balanceValue = total.takeUnless { failed || state == ScreenState.LOADING }) {
                     if (!failed && state != ScreenState.LOADING) FlowRow(maxItemsInEachRow = if (it) 1 else 2,
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         for ((label, value) in listOf(R.string.show_positive to sums.first, R.string.show_negative to sums.second.abs())) {
@@ -176,12 +173,5 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 }
             }
         }
-    }
-    if (picker) {
-        val options = (overviewCurrencies + currency).distinct().filter(String::isNotBlank)
-        SettingsPickerBottomSheet(stringResource(R.string.select_currency), options,
-            options.indexOf(currency), {
-                vm.selectCurrency(options[it]); picker = false
-            }, { picker = false })
     }
 }

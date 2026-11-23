@@ -17,10 +17,13 @@ internal fun currencyChoices(
     selected: String,
     regionalCurrency: String,
     locale: Locale,
+    availableCodes: List<String>? = null,
 ): List<CurrencyChoice> {
-    val labels = currencyOptions(common, selected).associateBy(::currencyCode)
-    val regionalLabel = labels[regionalCurrency] ?: currencyLabel(regionalCurrency)
-    val orderedLabels = listOf(regionalLabel) + (labels - regionalCurrency).values
+    val labels = if (availableCodes == null) currencyOptions(common, selected)
+    else availableCodes.distinct().map(::currencyLabel)
+    val labelsByCode = labels.associateBy(::currencyCode)
+    val regionalLabel = labelsByCode[regionalCurrency] ?: if (availableCodes == null) currencyLabel(regionalCurrency) else null
+    val orderedLabels = listOfNotNull(regionalLabel) + (labelsByCode - regionalCurrency).values
     return orderedLabels.map { label ->
         val code = currencyCode(label)
         val region = currencyRegion(code)

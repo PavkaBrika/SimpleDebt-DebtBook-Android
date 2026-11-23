@@ -2,6 +2,7 @@ package com.breckneck.debtbook.debt.create
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
@@ -11,6 +12,8 @@ import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
 import dagger.hilt.android.AndroidEntryPoint
 import com.breckneck.debtbook.core.bubbleScreen
+import com.breckneck.debtbook.core.currency.onCurrencySelected
+import com.breckneck.debtbook.core.currency.openCurrencyPicker
 
 @AndroidEntryPoint
 class CreateDebtFragment : Fragment() {
@@ -28,7 +31,8 @@ class CreateDebtFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         bubbleScreen(R.id.debtDueForm) { insets ->
             val host = requireActivity() as OnButtonClickListener
-            CreateDebtScreen(vm, insets, requireArguments(), host::onBackButtonClick, host::onSetButtonClick) { id, currency, name ->
+            CreateDebtScreen(vm, insets, requireArguments(), host::onBackButtonClick, host::onSetButtonClick,
+                onCurrencyClick = { openCurrencyPicker(R.id.newDebtFragment, it) }) { id, currency, name ->
                 setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true, "currency" to currency))
                 host.onAddDebt()
                 if (findNavController().previousBackStackEntry?.destination?.id == R.id.debtDetailsFragment) {
@@ -36,4 +40,8 @@ class CreateDebtFragment : Fragment() {
                 } else host.DebtDetailsExistHuman(id, currency, name)
             }
         }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        onCurrencySelected(R.id.newDebtFragment) { vm.currency.value = it }
+    }
 }

@@ -10,7 +10,6 @@ data class CreateGoalUi(
     val sum: String = String.empty,
     val savedSum: String = String.empty,
     val currency: String = String.empty,
-    val currencyDisplayName: String = String.empty,
     val goalDate: Date? = null,
     val imageUri: Uri? = null,
     val imagePath: String? = null,

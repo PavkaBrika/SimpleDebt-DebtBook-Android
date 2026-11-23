@@ -8,9 +8,6 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.components.currencyCode
-import com.breckneck.debtbook.core.ui.components.currencyOptions
 import com.breckneck.debtbook.goal.create.mapper.toCreateGoalUi
 import com.breckneck.debtbook.goal.create.mapper.toDomain
 import com.breckneck.deptbook.domain.util.DecimalInput
@@ -48,13 +45,7 @@ class CreateGoalsViewModel @Inject constructor(
         initialState = CreateGoalsState.initial(),
         onCreate = {
             val isEditMode: Boolean = savedStateHandle.get<Boolean>("isEditGoal") ?: false
-            val currency = if (isEditMode) savedStateHandle.get<Goal>("goal")?.currency.orEmpty()
-                else getDefaultCurrency.execute()
-            val names = currencyOptions(context.resources.getStringArray(R.array.currencies).toList(), currency)
-
-            reduce { state.copy(currencyNames = names, isEditMode = isEditMode) }
-
-            if (isEditMode) initEditMode() else initCreateMode(currency)
+            if (isEditMode) initEditMode() else initCreateMode(getDefaultCurrency.execute())
         }
     )
 
@@ -71,9 +62,7 @@ class CreateGoalsViewModel @Inject constructor(
         is CreateGoalsAction.NameChanged -> onNameChanged(action.value)
         is CreateGoalsAction.SumChanged -> onSumChanged(action.value)
         is CreateGoalsAction.SavedSumChanged -> onSavedSumChanged(action.value)
-        CreateGoalsAction.CurrencyClick -> onCurrencyClick()
-        is CreateGoalsAction.CurrencySelected -> onCurrencySelected(action.index)
-        CreateGoalsAction.DismissCurrencySheet -> onDismissCurrencySheet()
+        is CreateGoalsAction.CurrencySelected -> onCurrencySelected(action.code)
         CreateGoalsAction.DateClick -> onDateClick()
         CreateGoalsAction.ClearDate -> intent {
             reduce { state.copy(goal = state.goal.copy(goalDate = null), dateInvalid = false) }
@@ -96,8 +85,8 @@ class CreateGoalsViewModel @Inject constructor(
         originalGoal = goal
         reduce {
             state.copy(
-                goal = goal.toCreateGoalUi(currencyDisplayNameFor(goal.currency)),
-                selectedCurrencyIndex = currencyIndexOf(goal.currency),
+                goal = goal.toCreateGoalUi(),
+                isEditMode = true,
                 isInitialized = true,
             )
         }
@@ -106,11 +95,7 @@ class CreateGoalsViewModel @Inject constructor(
     private fun initCreateMode(defaultCurrency: String) = intent {
         reduce {
             state.copy(
-                goal = state.goal.copy(
-                    currency = defaultCurrency,
-                    currencyDisplayName = currencyDisplayNameFor(defaultCurrency),
-                ),
-                selectedCurrencyIndex = currencyIndexOf(defaultCurrency),
+                goal = state.goal.copy(currency = defaultCurrency),
                 isInitialized = true,
             )
         }
@@ -132,27 +117,8 @@ class CreateGoalsViewModel @Inject constructor(
         }
     }
 
-    private fun onCurrencyClick() = intent {
-        reduce { state.copy(isCurrencySheetVisible = true) }
-    }
-
-    private fun onCurrencySelected(index: Int) = intent {
-        val displayName = state.currencyNames.getOrNull(index) ?: return@intent
-        val symbol = currencyCode(displayName)
-        reduce {
-            state.copy(
-                goal = state.goal.copy(
-                    currency = symbol,
-                    currencyDisplayName = displayName,
-                ),
-                selectedCurrencyIndex = index,
-                isCurrencySheetVisible = false,
-            )
-        }
-    }
-
-    private fun onDismissCurrencySheet() = intent {
-        reduce { state.copy(isCurrencySheetVisible = false) }
+    private fun onCurrencySelected(code: String) = intent {
+        reduce { state.copy(goal = state.goal.copy(currency = code)) }
     }
 
     private fun onDateClick() = intent {
@@ -288,12 +254,5 @@ class CreateGoalsViewModel @Inject constructor(
     }
 
     private class GoalPhotoException(cause: Exception) : IOException(cause)
-
-    private fun currencyDisplayNameFor(currency: String): String =
-        container.stateFlow.value.currencyNames.firstOrNull { currencyCode(it) == currency } ?: currency
-
-    private fun currencyIndexOf(currency: String): Int =
-        container.stateFlow.value.currencyNames.indexOfFirst { currencyCode(it) == currency }
-            .coerceAtLeast(0)
 
 }

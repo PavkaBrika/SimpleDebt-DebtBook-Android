@@ -8,13 +8,12 @@ import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.deptbook.domain.model.Goal
 import java.util.Calendar
 
-fun Goal.toCreateGoalUi(currencyDisplayName: String): CreateGoalUi =
+fun Goal.toCreateGoalUi(): CreateGoalUi =
     CreateGoalUi(
         name = name,
         sum = DecimalInput.format(sum, currency = currency),
         savedSum = if (savedSum.signum() != 0) DecimalInput.format(savedSum, currency = currency) else String.empty,
         currency = currency,
-        currencyDisplayName = currencyDisplayName,
         goalDate = presentationGoalDate,
         imagePath = photoPath,
     )

@@ -10,6 +10,8 @@ import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.bubbleScreen
+import com.breckneck.debtbook.core.currency.onCurrencySelected
+import com.breckneck.debtbook.core.currency.openCurrencyPicker
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.*
 import com.breckneck.deptbook.domain.util.Filter
@@ -43,12 +45,19 @@ class DebtFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         bubbleScreen(R.id.humansLayout) { insets ->
-            DebtListScreen(vm, insets, requireActivity() as OnButtonClickListener, ::showHumanSortDialog) {
-                openChangeDebtNameDialog(it)
-            }
+            DebtListScreen(
+                vm, insets, requireActivity() as OnButtonClickListener,
+                sort = ::showHumanSortDialog,
+                rename = ::openChangeDebtNameDialog,
+                onCurrencyClick = { currency ->
+                    val available = (vm.overviewCurrencies.value.orEmpty() + currency).filter(String::isNotBlank)
+                    openCurrencyPicker(R.id.mainFragment, currency, available)
+                },
+            )
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        onCurrencySelected(R.id.mainFragment, vm::selectCurrency)
         setFragmentResultListener("mainFragmentKey") { _, result ->
             result.getString("currency")?.let(vm::selectCurrency)
             vm.setListStateLoading()

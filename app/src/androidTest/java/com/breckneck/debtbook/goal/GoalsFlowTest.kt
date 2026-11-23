@@ -23,6 +23,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -86,8 +87,8 @@ class GoalsFlowTest {
 
     @Before fun launch() {
         oldPrefs = prefs.all
-        val theme = if (InstrumentationRegistry.getArguments().getString("bubbleTheme") == "dark") R.string.dark_theme else R.string.light_theme
-        prefs.edit().putString("app_theme", context.getString(theme)).putString("default_currency", "RUB")
+        val theme = if (InstrumentationRegistry.getArguments().getString("bubbleTheme") == "dark") "DARK" else "LIGHT"
+        prefs.edit().putString("app_theme", theme).putString("default_currency", "RUB")
             .putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true)
             .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         cleanGoals()
@@ -444,7 +445,15 @@ class GoalsFlowTest {
         compose.waitUntil(10000) { !keyboardVisible() }
         val yen = context.getString(R.string.jpy)
         compose.onNodeWithText("RUB").performScrollTo().performClick()
-        compose.onNodeWithText(yen).performScrollTo().performClick()
+        awaitDestination(R.id.currencyPickerFragment)
+        val search = hasContentDescription(context.getString(R.string.search_currency))
+        compose.waitUntil(8000) { compose.onAllNodes(search).fetchSemanticsNodes(false).isNotEmpty() }
+        compose.onNode(search).performClick()
+        compose.waitUntil(8000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes(false).isNotEmpty() }
+        compose.onNode(hasSetTextAction()).performTextReplacement("JPY")
+        awaitGoal(yen)
+        compose.onNodeWithText(yen).performClick()
+        awaitDestination(R.id.createGoalsFragment)
         compose.waitUntil(10000) {
             compose.onAllNodesWithText(context.getString(R.string.select_currency)).fetchSemanticsNodes().isEmpty()
         }

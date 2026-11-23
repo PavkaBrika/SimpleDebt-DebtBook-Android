@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,9 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -40,10 +41,11 @@ import com.breckneck.deptbook.domain.util.LedgerDate
 
 @Composable
 internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues, args: Bundle, back: () -> Unit, feedback: () -> Unit,
-    saved: (Int, String, String) -> Unit) {
+    onCurrencyClick: (String) -> Unit, saved: (Int, String, String) -> Unit) {
     val context = LocalContext.current
     val colors = bubbleColors()
     val haptic = LocalHapticFeedback.current
+    val focus = LocalFocusManager.current
     val personId = args.getInt("idHuman", -1)
     val debtId = args.getInt("idDebt", -1)
     val previous = args.getString("sum")?.toBigDecimalOrNull()
@@ -52,7 +54,6 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
     val name = rememberTextFieldState(args.getString("name").orEmpty())
     val note = rememberTextFieldState(args.getString("info").orEmpty())
     var positive by rememberSaveable { mutableStateOf((previous?.signum() ?: 1) >= 0) }
-    var picker by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableIntStateOf(0) }
     val busy by vm.isSaving.observeAsState(false)
     val failed by vm.saveError.observeAsState(false)
@@ -132,9 +133,12 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
                     Modifier.testTag("lockedAmount")) }
             } else BubbleAmountField(amount, currency, { error = 0 }, Modifier.testTag("debtSumEditText"), acceptEdits = !busy) {
                 if (personId > 0) Text(currency)
-                else BubbleOutlinedButton({ picker = true }, enabled = !busy) {
+                else BubbleOutlinedButton({
+                    focus.clearFocus()
+                    onCurrencyClick(currency)
+                }, enabled = !busy) {
                     Text(currency)
-                    Icon(Icons.Outlined.ExpandMore, stringResource(R.string.select_currency), Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.select_currency), Modifier.size(16.dp))
                 }
             }
             BubbleGroup {
@@ -160,10 +164,5 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
             BubbleSectionTitle(stringResource(R.string.debt_return_section))
             BubbleGroup { DebtDueFields(vm) }
         }
-    }
-    if (picker) {
-        val options = currencyOptions(stringArrayResource(R.array.currencies).toList(), currency)
-        SettingsPickerBottomSheet(stringResource(R.string.select_currency), options, options.indexOfFirst { currencyCode(it) == currency },
-            { vm.currency.value = currencyCode(options[it]); picker = false }, { picker = false })
     }
 }

@@ -19,11 +19,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.CallReceived
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.PieChartOutline
@@ -69,7 +69,7 @@ import com.breckneck.debtbook.core.ui.components.BubbleGroup
 import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.BubbleTextFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
-import com.breckneck.debtbook.core.ui.components.SettingsPickerBottomSheet
+import com.breckneck.debtbook.core.ui.components.currencyLabel
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.create.CreateGoalsAction
@@ -84,9 +84,9 @@ import java.util.Date
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
-internal fun CreateGoalsScreen(vm: CreateGoalsViewModel, hostInsets: PaddingValues) {
+internal fun CreateGoalsScreen(vm: CreateGoalsViewModel, hostInsets: PaddingValues, onCurrencyClick: (String) -> Unit) {
     val state by vm.collectAsState()
-    CreateGoalsContent(state, vm::onAction, hostInsets)
+    CreateGoalsContent(state, vm::onAction, hostInsets, onCurrencyClick)
 }
 
 @Composable
@@ -94,6 +94,7 @@ internal fun CreateGoalsContent(
     state: CreateGoalsState,
     onAction: (CreateGoalsAction) -> Unit,
     hostInsets: PaddingValues = PaddingValues(0.dp),
+    onCurrencyClick: (String) -> Unit = {},
 ) {
     val colors = bubbleColors()
     val goal = state.goal
@@ -196,12 +197,16 @@ internal fun CreateGoalsContent(
                     onChange = { onAction(CreateGoalsAction.SavedSumChanged(it)) },
                 )
                 HorizontalDivider(color = colors.border)
-                val currencyDescription = stringResource(R.string.a11y_currency_picker, goal.currencyDisplayName)
+                val currencyDescription = stringResource(R.string.a11y_currency_picker, currencyLabel(goal.currency))
                 BubbleFieldRow(
                     Icons.Outlined.PieChartOutline, stringResource(R.string.goal_currency),
-                    Modifier.clickable(enabled = enabled, role = Role.Button) { openPicker(CreateGoalsAction.CurrencyClick) }
+                    Modifier.clickable(enabled = enabled, role = Role.Button) {
+                        focus.clearFocus()
+                        keyboard?.hide()
+                        onCurrencyClick(goal.currency)
+                    }
                         .semantics { contentDescription = currencyDescription },
-                    trailing = { Icon(Icons.Outlined.ExpandMore, null, Modifier.size(18.dp)) },
+                    trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(18.dp)) },
                 ) { Text(goal.currency) }
                 HorizontalDivider(color = colors.border)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -246,15 +251,6 @@ internal fun CreateGoalsContent(
                 }
             }
         }
-    }
-    if (state.isCurrencySheetVisible) {
-        SettingsPickerBottomSheet(
-            title = stringResource(R.string.select_currency),
-            options = state.currencyNames,
-            selectedIndex = state.selectedCurrencyIndex,
-            onItemSelected = { onAction(CreateGoalsAction.CurrencySelected(it)) },
-            onDismiss = { onAction(CreateGoalsAction.DismissCurrencySheet) },
-        )
     }
     if (state.isDatePickerVisible) {
         GoalDatePickerDialog(
@@ -301,7 +297,7 @@ private fun CreateGoalsPreview() {
     DebtBookTheme {
         CreateGoalsContent(
             CreateGoalsState.initial().copy(
-                goal = CreateGoalUi(currency = "RUB", currencyDisplayName = "RUB"),
+                goal = CreateGoalUi(currency = "RUB"),
                 isInitialized = true,
             ),
             onAction = {},

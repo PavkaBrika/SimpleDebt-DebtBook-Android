@@ -7,9 +7,7 @@ sealed interface CreateGoalsAction {
     data class NameChanged(val value: String) : CreateGoalsAction
     data class SumChanged(val value: String) : CreateGoalsAction
     data class SavedSumChanged(val value: String) : CreateGoalsAction
-    data object CurrencyClick : CreateGoalsAction
-    data class CurrencySelected(val index: Int) : CreateGoalsAction
-    data object DismissCurrencySheet : CreateGoalsAction
+    data class CurrencySelected(val code: String) : CreateGoalsAction
     data object ClearDate : CreateGoalsAction
     data object DateClick : CreateGoalsAction
     data object DismissDatePicker : CreateGoalsAction

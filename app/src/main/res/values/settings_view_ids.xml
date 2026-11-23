@@ -4,5 +4,6 @@
     <item type="id" name="appSecurityComposeView" />
     <item type="id" name="pinManagementComposeView" />
     <item type="id" name="defaultCurrencyComposeView" />
+    <item type="id" name="currencyPickerComposeView" />
     <item type="id" name="appearanceComposeView" />
 </resources>
