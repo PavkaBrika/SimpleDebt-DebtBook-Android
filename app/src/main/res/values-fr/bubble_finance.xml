@@ -4,7 +4,6 @@
     <string name="finance_categories">Catégories</string>
     <string name="finance_category_shares">Parts</string>
     <string name="finance_collapse_shares">Réduire les parts par catégorie</string>
-    <string name="finance_pick_sector">Choisir un secteur</string>
     <string name="finance_next_sector">Secteur suivant</string>
     <string name="finance_previous">Période précédente</string>
     <string name="finance_next">Période suivante</string>

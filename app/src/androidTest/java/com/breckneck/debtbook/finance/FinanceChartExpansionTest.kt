@@ -14,6 +14,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -43,14 +44,17 @@ import org.junit.Test
 class FinanceChartExpansionTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun ringMovesAndGrowsWhileTheCardExpandsThenCollapses() {
+    @Test fun ringMovesAndGrowsIntoADiscThenCollapses() {
         val open = mutableStateOf(false)
         val amount = 60.toBigDecimal()
         val category = FinanceCategory(name = "Salary", state = FinanceCategoryState.INCOME, color = "#C5E1A5", image = 0x1F4B5)
         val totals = FinanceTotals(listOf(CategoryTotal(category, amount, 100)), amount)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val label = hasText(context.getString(R.string.finance_category_shares))
+        val sharesText = context.getString(R.string.finance_category_shares)
+        val label = hasText(sharesText)
         val shares = compose.onNode(label and hasClickAction())
+        val chart = compose.onNode((label and hasClickAction()) or hasContentDescription(sharesText))
+        val collapse = compose.onNodeWithContentDescription(context.getString(R.string.finance_collapse_shares))
         val card = compose.onNodeWithTag("balance-card")
 
         compose.setContent {
@@ -82,20 +86,21 @@ class FinanceChartExpansionTest {
         try {
             shares.performClick()
             compose.mainClock.advanceTimeBy(144)
-            val openingRing = shares.fetchSemanticsNode().boundsInRoot
+            val openingRing = chart.fetchSemanticsNode().boundsInRoot
             val openingHeight = card.fetchSemanticsNode().boundsInRoot.height
             compose.mainClock.advanceTimeBy(500)
-            val openRing = shares.fetchSemanticsNode().boundsInRoot
+            val openRing = chart.fetchSemanticsNode().boundsInRoot
             val openHeight = card.fetchSemanticsNode().boundsInRoot.height
 
             assertTrue(openingRing.top > closedRing.top && openingRing.top < openRing.top)
             assertTrue(openingRing.width > closedRing.width && openingRing.width < openRing.width)
+            assertTrue(openRing.width > closedRing.width * 2.5f)
             assertTrue(openRing.left < openingRing.left && openingRing.left < closedRing.left)
             assertTrue(openingHeight > closedHeight && openingHeight < openHeight)
 
-            shares.performClick()
+            collapse.performClick()
             compose.mainClock.advanceTimeBy(144)
-            val closingRing = shares.fetchSemanticsNode().boundsInRoot
+            val closingRing = chart.fetchSemanticsNode().boundsInRoot
             val closingHeight = card.fetchSemanticsNode().boundsInRoot.height
             assertTrue(closingRing.top > closedRing.top && closingRing.top < openRing.top)
             assertTrue(closingRing.width > closedRing.width && closingRing.width < openRing.width)
@@ -116,21 +121,20 @@ class FinanceChartExpansionTest {
         )
         val totals = FinanceTotals(listOf(row(1, "Salary", 66), row(2, "Gifts", 33), row(3, "Interest", 1)), 100.toBigDecimal())
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val shares = hasText(context.getString(R.string.finance_category_shares)) and hasClickAction()
-        val chart = compose.onNode(shares)
+        val chart = compose.onNodeWithContentDescription(context.getString(R.string.finance_category_shares))
 
         compose.setContent {
             DebtBookTheme {
                 FinanceSummaryChart(
                     totals, bubbleBalancePalette(), expanded = true, expansion = 1f,
-                    onToggle = {}, modifier = Modifier.size(164.dp),
+                    onToggle = {}, modifier = Modifier.size(236.dp),
                 )
             }
         }
 
-        compose.onNode(shares and hasText(context.getString(R.string.finance_pick_sector))).assertIsDisplayed()
+        chart.assertIsDisplayed()
         fun assertSector(name: String, share: Double) {
-            compose.onNode(shares and hasText(name) and hasText(NumberFormat.getPercentInstance().format(share)))
+            compose.onNode(hasText("$name · ${NumberFormat.getPercentInstance().format(share)}"))
                 .assertIsDisplayed()
         }
         chart.performTouchInput { click(Offset(width * .92f, center.y)) }

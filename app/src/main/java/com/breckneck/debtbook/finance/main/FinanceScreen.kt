@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
@@ -19,8 +21,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -28,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
@@ -39,6 +44,7 @@ import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.breckneck.deptbook.domain.util.FinanceInterval
 import com.breckneck.deptbook.domain.util.LedgerDate
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -200,6 +206,9 @@ private fun FinancePage(
     val hasCategories = totals.categories.isNotEmpty()
     val sharesExpanded = sharesOpen && hasCategories
     val expansion = animateFloatAsState(if (sharesExpanded) 1f else 0f, tween(460), label = "Category shares")
+    val chartRequester = remember { BringIntoViewRequester() }
+    var chartSize by remember { mutableStateOf(IntSize.Zero) }
+    var revealChart by remember { mutableStateOf(false) }
     LaunchedEffect(state.hasTotals, hasCategories) {
         if (state.hasTotals && !hasCategories) sharesOpen = false
     }
@@ -236,6 +245,19 @@ private fun FinancePage(
         } else {
             padding
         }
+        val chartBottomInset = with(LocalDensity.current) { listPadding.calculateBottomPadding().toPx() }
+        LaunchedEffect(sharesExpanded, revealChart) {
+            if (sharesExpanded && revealChart) {
+                snapshotFlow { expansion.value }.first { it == 1f }
+                withFrameNanos {}
+                if (chartSize != IntSize.Zero) {
+                    chartRequester.bringIntoView(
+                        Rect(0f, 0f, chartSize.width.toFloat(), chartSize.height + chartBottomInset),
+                    )
+                }
+                revealChart = false
+            }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().consumeWindowInsets(listPadding),
             state = listState,
@@ -257,8 +279,11 @@ private fun FinancePage(
                                 palette,
                                 expanded = sharesExpanded,
                                 expansion = progress,
-                                onToggle = if (hasCategories) ({ sharesOpen = !sharesOpen }) else null,
-                                modifier = it,
+                                onToggle = if (hasCategories) ({
+                                    sharesOpen = !sharesOpen
+                                    revealChart = sharesOpen
+                                }) else null,
+                                modifier = it.bringIntoViewRequester(chartRequester).onSizeChanged { chartSize = it },
                             )
                         },
                         artworkExpansion = progress,
