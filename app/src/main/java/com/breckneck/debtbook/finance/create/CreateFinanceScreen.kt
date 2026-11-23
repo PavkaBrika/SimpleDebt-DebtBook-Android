@@ -53,7 +53,10 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
     val focus = LocalFocusManager.current
     val amount = rememberTextFieldState(vm.amount)
     val comment = rememberTextFieldState(vm.comment)
-    val title = if (vm.editing) R.string.finance_edit_entry else if (direction == FinanceCategoryState.EXPENSE)
+    val expense = direction == FinanceCategoryState.EXPENSE
+    val accentContainer = if (expense) colors.dangerContainer else colors.mint
+    val accentContent = if (expense) colors.danger else colors.onMint
+    val title = if (vm.editing) R.string.finance_edit_entry else if (expense)
         R.string.finance_new_expense else R.string.finance_new_income
 
     BubbleScaffold(
@@ -69,18 +72,30 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
                     Text(stringResource(R.string.save_failed_retry), Modifier.padding(12.dp), color = colors.danger)
                 }
             }
-            BubbleButton({ attempted = true; focus.clearFocus(); vm.save() },
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), enabled = enabled) {
+            BubbleButton(
+                { attempted = true; focus.clearFocus(); vm.save() },
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                enabled = enabled,
+                colors = financeActionColors(direction),
+            ) {
                 Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.finance_save_entry), Modifier.padding(start = 8.dp))
             }
         },
     ) { padding ->
         FinanceFormScroll(padding) {
-            if (!vm.editing) FinanceDirection(direction) { if (enabled) vm.changeDirection(it) }
+            if (!vm.editing) FinanceDirection(direction, enabled = enabled, select = vm::changeDirection)
             val amountError = if (attempted && (amount.text.isEmpty() || vm.parsedAmount() == null))
                 stringResource(R.string.repayment_invalid) else null
-            BubbleAmountField(amount, vm.currency, vm::changeAmount, acceptEdits = enabled, errorMessage = amountError)
+            BubbleAmountField(
+                amount,
+                vm.currency,
+                vm::changeAmount,
+                acceptEdits = enabled,
+                errorMessage = amountError,
+                containerColor = accentContainer,
+                contentColor = accentContent,
+            )
             if (amountError != null) Text(amountError, color = colors.danger)
 
             BubbleGroup {
@@ -103,7 +118,11 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
                             } },
                             { Text(category.localizedName()) }, enabled = enabled, shape = CircleShape,
-                            colors = FilterChipDefaults.filterChipColors(containerColor = colors.paper, selectedContainerColor = colors.mint),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = colors.paper,
+                                selectedContainerColor = accentContainer,
+                                selectedLabelColor = accentContent,
+                            ),
                             leadingIcon = { CategoryBadge(category, Modifier.size(23.dp)) })
                     }
                     AssistChip({ focus.clearFocus(); host.onAddCategoryButtonClick(direction) },

@@ -148,8 +148,14 @@ class FinanceFlowTest {
         total("45")
 
         act(LedgerDate.display(today))
-        act(R.string.select_interval)
+        for (option in listOf(R.string.day, R.string.week, R.string.month, R.string.year_full, R.string.finance_date_range)) {
+            node(hasText(str(option)) and hasClickAction()).assertIsDisplayed()
+        }
+        node(hasText(str(R.string.day)) and isSelected()).assertIsDisplayed()
+        capture("inline-interval-day")
         act(R.string.week)
+        node(hasText(str(R.string.week)) and isSelected()).assertIsDisplayed()
+        capture("inline-interval-week")
         val week = FinancePeriod(FinanceInterval.WEEK, today)
         val previousWeek = week.shifted(-1)
         act(R.string.finance_choose_week)
@@ -202,12 +208,23 @@ class FinanceFlowTest {
         val pager = SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)
         val expense = hasText(str(R.string.finance_add_expense)) and hasClickAction()
         val income = hasText(str(R.string.finance_add_income)) and hasClickAction()
+        val incomeTab = hasText(str(R.string.revenues)) and hasClickAction()
+        val expenseTab = hasText(str(R.string.expenses)) and hasClickAction()
         node(income and hasAnyAncestor(pager)).performClick()
         awaitText(str(R.string.finance_new_income))
+        val incomeBounds = node(incomeTab).assertIsSelected().fetchSemanticsNode().boundsInRoot
+        val expenseBounds = node(expenseTab).assertIsNotSelected().fetchSemanticsNode().boundsInRoot
+        assertTrue(incomeBounds.left < expenseBounds.left)
+        capture("income-form-accent")
+        node(expenseTab).performClick()
+        awaitText(str(R.string.finance_new_expense))
+        node(expenseTab).assertIsSelected()
+        capture("expense-form-accent")
         back()
         summaryList().performTouchInput { swipeLeft() }
         node(expense and hasAnyAncestor(pager)).performClick()
         awaitText(str(R.string.finance_new_expense))
+        node(expenseTab).assertIsSelected()
     }
 
     @Test fun customDateRangeIncludesBothEndsAndStepsByItsLength() {
@@ -223,8 +240,8 @@ class FinanceFlowTest {
         act(R.string.debts)
         act(R.string.finances)
         act(LedgerDate.display(LedgerDate.today()))
-        act(R.string.select_interval)
         act(R.string.finance_date_range)
+        node(hasText(str(R.string.finance_date_range)) and isSelected()).assertIsDisplayed()
         act(R.string.finance_range_start)
         chooseCalendarDay("2026-02-04")
         act(R.string.finance_range_end)
@@ -441,8 +458,9 @@ class FinanceFlowTest {
         chooseCalendarDay(january)
         act(R.string.finance_apply_period)
         act(LedgerDate.display(january))
-        act(R.string.select_interval)
         act(R.string.month)
+        node(hasText(str(R.string.month)) and isSelected()).assertIsDisplayed()
+        node(hasText(str(R.string.finance_period_month_day)) and hasClickAction()).assertIsDisplayed()
         act(R.string.finance_apply_period)
         desc(R.string.finance_next)
         total("0")

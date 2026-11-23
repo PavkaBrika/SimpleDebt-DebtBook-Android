@@ -105,7 +105,6 @@
     <string name="you_must_select_image">Вы должны выбрать изображение!</string>
     <string name="there_are_no_revenues_yet_click_the_button_below_to_add">Доходов пока нет.\nНажмите на кнопку ниже, чтобы добавить.</string>
     <string name="there_are_no_expenses_yet_click_the_button_below_to_add">Расходов пока нет.\nНажмите на кнопку ниже, чтобы добавить.</string>
-    <string name="select_interval">Выберите интервал</string>
     <string name="health">Здоровье</string>
     <string name="entertainment">Развлечения</string>
     <string name="home">Дом</string>

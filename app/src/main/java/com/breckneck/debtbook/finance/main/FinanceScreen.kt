@@ -76,7 +76,7 @@ private fun FinanceContent(
     hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val colors = bubbleColors()
-    val directions = remember { listOf(FinanceCategoryState.INCOME, FinanceCategoryState.EXPENSE) }
+    val directions = financeDirections
     val pager = key(directions) {
         rememberPagerState(directions.indexOf(state.direction)) { directions.size }
     }
@@ -138,7 +138,7 @@ private fun FinanceContent(
                     FinanceOverview(state)
                 }
                 Spacer(Modifier.height(8.dp))
-                FinanceDirection(selected, directions) { direction ->
+                FinanceDirection(selected) { direction ->
                     tabAnimation?.cancel()
                     tabAnimation = scope.launch { pager.animateScrollToPage(directions.indexOf(direction)) }
                 }

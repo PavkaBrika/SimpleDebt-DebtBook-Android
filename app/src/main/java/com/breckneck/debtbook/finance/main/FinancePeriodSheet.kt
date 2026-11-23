@@ -2,23 +2,30 @@ package com.breckneck.debtbook.finance.main
 
 import android.content.Context
 import android.text.format.DateUtils
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +40,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -64,7 +73,6 @@ internal fun FinancePeriodSheet(period: FinancePeriod, onApply: (FinancePeriod) 
     var rangeEnd by rememberSaveable { mutableStateOf(period.days().endInclusive) }
     var dateField by rememberSaveable { mutableStateOf<DateField?>(null) }
     var choosingWeek by rememberSaveable { mutableStateOf(false) }
-    var choosingInterval by remember { mutableStateOf(false) }
     val draft = if (interval == FinanceInterval.DATE_RANGE) {
         if (rangeStart <= rangeEnd) FinancePeriod(interval, rangeStart, rangeEnd) else null
     } else {
@@ -73,27 +81,8 @@ internal fun FinancePeriodSheet(period: FinancePeriod, onApply: (FinancePeriod) 
 
     BubbleBottomSheet(onDismiss) { active, close ->
         BubbleSheetHeader(stringResource(R.string.finance_period), close, enabled = active)
+        IntervalOptions(interval, active) { interval = it }
         BubbleGroup {
-            Box {
-                BubbleFieldRow(
-                    Icons.Outlined.DateRange,
-                    stringResource(R.string.select_interval),
-                    Modifier.clickable(enabled = active, role = Role.Button) { choosingInterval = true },
-                    trailing = { Icon(Icons.Outlined.ExpandMore, null) },
-                ) { Text(stringResource(interval.labelResource)) }
-                DropdownMenu(choosingInterval, { choosingInterval = false }) {
-                    FinanceInterval.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(option.labelResource)) },
-                            onClick = {
-                                interval = option
-                                choosingInterval = false
-                            },
-                        )
-                    }
-                }
-            }
-            HorizontalDivider(color = colors.border)
             when (interval) {
                 FinanceInterval.DATE_RANGE -> {
                     PeriodField(R.string.finance_range_start, LedgerDate.display(rangeStart), active) {
@@ -150,6 +139,60 @@ internal fun FinancePeriodSheet(period: FinancePeriod, onApply: (FinancePeriod) 
             if (weekStart != currentWeek.start) day = weekStart
             choosingWeek = false
         }, onDismiss = { choosingWeek = false })
+    }
+}
+
+@Composable
+private fun IntervalOptions(selected: FinanceInterval, enabled: Boolean, onSelect: (FinanceInterval) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FinanceInterval.entries.filter { it != FinanceInterval.DATE_RANGE }.chunked(2).forEach { options ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                options.forEach { option ->
+                    IntervalOption(option, option == selected, enabled, Modifier.weight(1f)) { onSelect(option) }
+                }
+            }
+        }
+        val range = FinanceInterval.DATE_RANGE
+        IntervalOption(range, range == selected, enabled, Modifier.fillMaxWidth()) { onSelect(range) }
+    }
+}
+
+@Composable
+private fun IntervalOption(
+    interval: FinanceInterval,
+    selected: Boolean,
+    enabled: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val colors = bubbleColors()
+    val shape = RoundedCornerShape(16.dp)
+    val container by animateColorAsState(if (selected) colors.mint else colors.paper, tween(180), label = "Interval fill")
+    val outline by animateColorAsState(
+        if (selected) colors.onMint.copy(alpha = .48f) else colors.border,
+        tween(180),
+        label = "Interval outline",
+    )
+    val checkAlpha by animateFloatAsState(if (selected) 1f else 0f, tween(180), label = "Interval check")
+    val ink = if (selected) colors.onMint else colors.ink
+    Row(
+        modifier.clip(shape)
+            .background(container)
+            .border(1.dp, outline, shape)
+            .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (interval == FinanceInterval.DATE_RANGE) {
+            Icon(Icons.Outlined.DateRange, null, Modifier.size(18.dp), tint = ink)
+        }
+        Text(stringResource(interval.labelResource), Modifier.weight(1f), color = ink, style = MaterialTheme.typography.titleSmall)
+        Icon(Icons.Filled.Check, null, Modifier.size(18.dp).alpha(checkAlpha), tint = colors.onMint)
     }
 }
 

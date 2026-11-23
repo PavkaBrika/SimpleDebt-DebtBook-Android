@@ -105,7 +105,6 @@
     <string name="you_must_select_image">Sie müssen ein Bild auswählen!</string>
     <string name="there_are_no_revenues_yet_click_the_button_below_to_add">Es sind noch keine Einnahmen vorhanden.\nKlicken Sie auf die Schaltfläche unten, um hinzuzufügen.</string>
     <string name="there_are_no_expenses_yet_click_the_button_below_to_add">Es sind noch keine Ausgaben vorhanden.\nKlicken Sie auf die Schaltfläche unten, um hinzuzufügen.</string>
-    <string name="select_interval">Intervall wählen</string>
     <string name="health">Gesundheit</string>
     <string name="entertainment">Unterhaltung</string>
     <string name="home">Startseite</string>
