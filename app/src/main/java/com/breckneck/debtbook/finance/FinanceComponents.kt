@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.finance
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.theme.LocalDebtBookDarkTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.finance.util.GetFinanceCategoryNameInLocalLanguage
 import com.breckneck.deptbook.domain.model.FinanceCategory
@@ -33,15 +35,30 @@ import java.math.BigDecimal
 import java.util.Currency
 
 @Composable
+internal fun financeActionColors(direction: FinanceCategoryState): ButtonColors {
+    val colors = bubbleColors()
+    if (direction == FinanceCategoryState.INCOME) {
+        return ButtonDefaults.buttonColors(containerColor = colors.action, contentColor = colors.onAction)
+    }
+    return if (LocalDebtBookDarkTheme.current) {
+        ButtonDefaults.buttonColors(containerColor = Color(0xFFF1AD99), contentColor = Color(0xFF3F2020))
+    } else {
+        ButtonDefaults.buttonColors(containerColor = Color(0xFF783B39), contentColor = Color(0xFFFFF4EB))
+    }
+}
+
+@Composable
 internal fun FinanceDirection(selected: FinanceCategoryState, select: (FinanceCategoryState) -> Unit) {
     val colors = bubbleColors()
     val haptic = LocalHapticFeedback.current
+    val action = financeActionColors(selected)
+    val tabColor by animateColorAsState(action.containerColor, tween(200), label = "Direction color")
     val directions = listOf(FinanceCategoryState.EXPENSE, FinanceCategoryState.INCOME)
     BoxWithConstraints(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp)) {
         val width = maxWidth / directions.size
         val offset by animateDpAsState(width * directions.indexOf(selected), tween(200), label = "Direction")
         Box(Modifier.matchParentSize()) {
-            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.roundToPx(), 0) }.width(width).fillMaxHeight().background(colors.action, CircleShape))
+            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.roundToPx(), 0) }.width(width).fillMaxHeight().background(tabColor, CircleShape))
         }
         Row(Modifier.fillMaxWidth().selectableGroup()) {
             for (direction in directions) {
@@ -55,7 +72,7 @@ internal fun FinanceDirection(selected: FinanceCategoryState, select: (FinanceCa
                     }
                     .heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
                     Text(stringResource(if (direction == FinanceCategoryState.EXPENSE) R.string.expenses else R.string.revenues),
-                        color = if (active) colors.onAction else colors.ink, style = MaterialTheme.typography.titleSmall)
+                        color = if (active) action.contentColor else colors.ink, style = MaterialTheme.typography.titleSmall)
                 }
             }
         }

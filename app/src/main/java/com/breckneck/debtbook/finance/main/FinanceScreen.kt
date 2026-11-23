@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -128,17 +129,6 @@ private fun FinanceContent(
                 }
             }
         },
-        bottomAction = {
-            val direction = directions[pager.settledPage]
-            BubbleButton(
-                onClick = { onAdd(direction) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                val label = if (direction == FinanceCategoryState.EXPENSE) R.string.finance_add_expense else R.string.finance_add_income
-                Text(stringResource(label), Modifier.padding(start = 8.dp))
-            }
-        },
         tabs = { BubbleBottomBar(R.id.financeFragment, onTab) },
     ) { padding ->
         HorizontalPager(
@@ -154,6 +144,7 @@ private fun FinanceContent(
                 onPeriodClick = { choosingPeriod = true },
                 onCurrencyClick = onCurrencyClick,
                 onCategory = onCategory,
+                onAdd = { onAdd(directions[page]) },
                 retry = retry,
             )
         }
@@ -176,74 +167,111 @@ private fun FinancePage(
     onPeriodClick: () -> Unit,
     onCurrencyClick: () -> Unit,
     onCategory: (FinanceCategory) -> Unit,
+    onAdd: () -> Unit,
     retry: () -> Unit,
 ) {
     val colors = bubbleColors()
     val totals = state.totalsFor(direction)
     val amount = totals.total.takeIf { state.hasTotals }
     val expenses = direction == FinanceCategoryState.EXPENSE
-    LazyColumn(Modifier.fillMaxSize().consumeWindowInsets(padding), state = listState, contentPadding = padding) {
-        item(key = "balance") {
-            key(state.currency) {
-                BubbleBalanceCard(
-                    stringResource(if (expenses) R.string.expenses else R.string.revenues),
-                    state.currency,
-                    amount?.financeMoney(state.currency) ?: "…",
-                    onCurrencyClick = onCurrencyClick,
-                    balanceValue = amount,
+    val palette = financeBalancePalette(direction)
+    val layout = LocalLayoutDirection.current
+    val start = padding.calculateStartPadding(layout)
+    val end = padding.calculateEndPadding(layout)
+    val belowAction = (padding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
+        bottomBar = {
+            Box(Modifier.padding(start = start, end = end, bottom = belowAction)) {
+                BubbleButton(
+                    onClick = onAdd,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    colors = financeActionColors(direction),
                 ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        val arrowColors = IconButtonDefaults.iconButtonColors(
-                            containerColor = colors.heroBorder,
-                            contentColor = colors.onHero,
-                        )
-                        IconButton({ stepPeriod(-1) }, colors = arrowColors) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
-                        }
-                        TextButton(onPeriodClick, Modifier.weight(1f)) {
-                            Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = colors.onHero)
-                            Spacer(Modifier.width(5.dp))
-                            Text(state.period.label(), color = colors.onHero, textAlign = TextAlign.Center)
-                        }
-                        IconButton({ stepPeriod(1) }, colors = arrowColors) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
+                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                    val label = if (expenses) R.string.finance_add_expense else R.string.finance_add_income
+                    Text(stringResource(label), Modifier.padding(start = 8.dp))
+                }
+            }
+        },
+    ) { bars ->
+        val listPadding = PaddingValues(
+            start = start,
+            top = padding.calculateTopPadding(),
+            end = end,
+            bottom = bars.calculateBottomPadding() + 16.dp,
+        )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().consumeWindowInsets(listPadding),
+            state = listState,
+            contentPadding = listPadding,
+        ) {
+            item(key = "balance") {
+                key(state.currency) {
+                    BubbleBalanceCard(
+                        stringResource(if (expenses) R.string.expenses else R.string.revenues),
+                        state.currency,
+                        amount?.financeMoney(state.currency) ?: "…",
+                        onCurrencyClick = onCurrencyClick,
+                        balanceValue = amount,
+                        palette = palette,
+                        balanceEndContent = { compact -> FinanceSummaryArtwork(direction, compact, palette) },
+                    ) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            val arrowColors = IconButtonDefaults.iconButtonColors(
+                                containerColor = palette.border,
+                                contentColor = palette.content,
+                            )
+                            IconButton({ stepPeriod(-1) }, colors = arrowColors) {
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
+                            }
+                            TextButton(onPeriodClick, Modifier.weight(1f)) {
+                                Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = palette.content)
+                                Spacer(Modifier.width(5.dp))
+                                Text(state.period.label(), color = palette.content, textAlign = TextAlign.Center)
+                            }
+                            IconButton({ stepPeriod(1) }, colors = arrowColors) {
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
+                            }
                         }
                     }
                 }
             }
-        }
-        item(key = "categories") {
-            BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) {
-                Text(stringResource(state.period.interval.labelResource), color = colors.muted)
+            item(key = "categories") {
+                BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) {
+                    Text(stringResource(state.period.interval.labelResource), color = colors.muted)
+                }
             }
-        }
-        if (state.failed) item(key = "retry") {
-            BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) }
-        }
-        when {
-            state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            state.hasTotals && totals.categories.isEmpty() -> item {
-                Text(
-                    stringResource(R.string.finance_empty_period),
-                    Modifier.fillMaxWidth().padding(22.dp),
-                    textAlign = TextAlign.Center,
-                    color = colors.muted,
-                )
+            if (state.failed) item(key = "retry") {
+                BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) }
             }
-            else -> itemsIndexed(totals.categories, key = { _, row -> row.category.id }) { index, row ->
-                BubbleGroupedRow(index, totals.categories.size, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
-                    BubbleListRow(
-                        Modifier.clickable { onCategory(row.category) }.padding(12.dp),
-                        leading = { CategoryBadge(row.category) },
-                        trailing = {
-                            key(state.currency) {
-                                AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
-                            }
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
-                        },
-                    ) {
-                        Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
+            when {
+                state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                state.hasTotals && totals.categories.isEmpty() -> item {
+                    Text(
+                        stringResource(R.string.finance_empty_period),
+                        Modifier.fillMaxWidth().padding(22.dp),
+                        textAlign = TextAlign.Center,
+                        color = colors.muted,
+                    )
+                }
+                else -> itemsIndexed(totals.categories, key = { _, row -> row.category.id }) { index, row ->
+                    BubbleGroupedRow(index, totals.categories.size, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+                        BubbleListRow(
+                            Modifier.clickable { onCategory(row.category) }.padding(12.dp),
+                            leading = { CategoryBadge(row.category) },
+                            trailing = {
+                                key(state.currency) {
+                                    AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
+                                }
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
+                            },
+                        ) {
+                            Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }

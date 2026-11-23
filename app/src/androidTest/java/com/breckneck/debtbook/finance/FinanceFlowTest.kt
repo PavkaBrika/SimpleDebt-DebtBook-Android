@@ -126,9 +126,11 @@ class FinanceFlowTest {
         act(R.string.debts)
         act(R.string.finances)
         total("45")
+        capture("expense-page")
         summaryList().performTouchInput { swipeLeft() }
         node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
         total("90")
+        capture("income-page")
         act(R.string.expenses)
         total("45")
         summaryList().performTouchInput { swipeLeft() }
@@ -168,6 +170,18 @@ class FinanceFlowTest {
         todayAction.assertIsDisplayed().performClick()
         awaitText(LedgerDate.display(today))
         total("45")
+    }
+
+    @Test fun addButtonsBelongToThePageAndOpenItsOperation() {
+        val pager = SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)
+        val expense = hasText(str(R.string.finance_add_expense)) and hasClickAction()
+        val income = hasText(str(R.string.finance_add_income)) and hasClickAction()
+        node(expense and hasAnyAncestor(pager)).performClick()
+        awaitText(str(R.string.finance_new_expense))
+        back()
+        summaryList().performTouchInput { swipeLeft() }
+        node(income and hasAnyAncestor(pager)).performClick()
+        awaitText(str(R.string.finance_new_income))
     }
 
     @Test fun customDateRangeIncludesBothEndsAndStepsByItsLength() {

@@ -38,6 +38,19 @@ import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.core.ui.theme.spacing
 
+internal data class BubbleBalancePalette(
+    val container: Color,
+    val content: Color,
+    val muted: Color,
+    val border: Color,
+)
+
+@Composable
+internal fun bubbleBalancePalette(): BubbleBalancePalette {
+    val colors = bubbleColors()
+    return BubbleBalancePalette(colors.hero, colors.onHero, colors.heroMuted, colors.heroBorder)
+}
+
 /** A single-currency summary. Formatting, aggregation and currency selection belong to its caller. */
 @Composable
 internal fun BubbleBalanceCard(
@@ -48,16 +61,17 @@ internal fun BubbleBalanceCard(
     modifier: Modifier = Modifier,
     showCoins: Boolean = false,
     balanceValue: java.math.BigDecimal? = null,
+    palette: BubbleBalancePalette = bubbleBalancePalette(),
+    balanceEndContent: (@Composable (compact: Boolean) -> Unit)? = null,
     footer: (@Composable (compact: Boolean) -> Unit)? = null,
 ) {
-    val colors = bubbleColors()
     val spacing = MaterialTheme.spacing
-    Surface(modifier, shape = MaterialTheme.shapes.extraLarge, color = colors.hero, contentColor = colors.onHero) {
+    Surface(modifier, shape = MaterialTheme.shapes.extraLarge, color = palette.container, contentColor = palette.content) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(spacing.space20)) {
             val largeText = LocalDensity.current.fontScale >= 1.3f || maxWidth < 260.dp
             val drawCoins = showCoins && !largeText
             if (drawCoins) {
-                CoinStack(colors.hero, Modifier.align(Alignment.TopEnd).size(78.dp, 69.dp))
+                CoinStack(palette.container, Modifier.align(Alignment.TopEnd).size(78.dp, 69.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(spacing.space8)) {
                 Row(
@@ -65,14 +79,14 @@ internal fun BubbleBalanceCard(
                     horizontalArrangement = Arrangement.spacedBy(spacing.space8),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(title, Modifier.weight(1f, fill = false), color = colors.heroMuted, style = MaterialTheme.typography.labelLarge)
+                    Text(title, Modifier.weight(1f, fill = false), color = palette.muted, style = MaterialTheme.typography.labelLarge)
                     Box(
                         Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onCurrencyClick)
                             .height(48.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Row(
-                            Modifier.border(1.dp, colors.heroBorder, CircleShape).padding(horizontal = 9.dp, vertical = 5.dp),
+                            Modifier.border(1.dp, palette.border, CircleShape).padding(horizontal = 9.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(currency, style = MaterialTheme.typography.labelMedium)
@@ -84,11 +98,18 @@ internal fun BubbleBalanceCard(
                     fontSize = if (largeText) 36.sp else 42.sp, lineHeight = if (largeText) 40.sp else 47.sp,
                     fontFeatureSettings = "tnum", letterSpacing = (-1.2).sp, fontWeight = FontWeight.SemiBold,
                 )
-                val balanceModifier = Modifier.padding(end = if (drawCoins) 70.dp else 0.dp)
-                if (balanceValue == null) Text(balance, balanceModifier, style = balanceStyle)
-                else AnimatedAmount(balanceValue, balance, balanceModifier, balanceStyle)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(spacing.space8),
+                ) {
+                    val balanceModifier = if (balanceEndContent != null) Modifier.weight(1f)
+                        else Modifier.padding(end = if (drawCoins) 70.dp else 0.dp)
+                    if (balanceValue == null) Text(balance, balanceModifier, style = balanceStyle)
+                    else AnimatedAmount(balanceValue, balance, balanceModifier, balanceStyle)
+                    balanceEndContent?.invoke(largeText)
+                }
                 if (footer != null) {
-                    HorizontalDivider(color = colors.heroBorder)
+                    HorizontalDivider(color = palette.border)
                     footer(largeText)
                 }
             }
