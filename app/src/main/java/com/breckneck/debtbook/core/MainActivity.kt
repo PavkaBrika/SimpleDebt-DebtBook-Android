@@ -50,6 +50,7 @@ import com.breckneck.debtbook.finance.main.FinanceFragment
 import com.breckneck.debtbook.goal.create.CreateGoalsFragment
 import com.breckneck.debtbook.goal.details.GoalDetailsFragment
 import com.breckneck.debtbook.goal.main.GoalsFragment
+import com.breckneck.debtbook.settings.main.AppTheme
 import com.breckneck.debtbook.settings.main.SettingsFragment
 import com.breckneck.debtbook.settings.rating.AppRatingSheet
 import com.breckneck.debtbook.settings.rating.appReviewIntent
@@ -128,12 +129,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
         vm.getAppTheme()
         vm.appTheme.observe(this) { theme ->
-            if (theme.equals(getString(R.string.dark_theme)))
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-            else if (theme.equals(getString(R.string.light_theme)))
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-            else if (theme.equals(getString(R.string.system_theme)))
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            AppCompatDelegate.setDefaultNightMode(AppTheme.fromPreference(theme).nightMode)
         }
 
         if (!BuildConfig.DEBUG && vm.adsDisabled.value != true) {

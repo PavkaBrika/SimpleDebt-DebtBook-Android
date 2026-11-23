@@ -12,6 +12,8 @@
 app/src/main/java/com/breckneck/debtbook/settings/
 ├── main/
 │   ├── SettingsFragment.kt            # Экран настроек
+│   ├── AppearanceFragment.kt          # Системная, светлая и тёмная темы
+│   ├── DefaultCurrencyFragment.kt     # Каталог валют с поиском
 │   └── SettingsViewModel.kt           # VM настроек
 ├── security/
 │   ├── AppSecurityFragment.kt        # Навигация защиты входа и системная биометрия
@@ -25,13 +27,6 @@ app/src/main/java/com/breckneck/debtbook/settings/
     └── SynchronizationViewModel.kt    # VM синхронизации
 ```
 
-> `SettingsAdapter` (radio-style пикер) перемещён в `core/adapter/SettingsAdapter.kt` — переиспользуется несколькими фичами.
-
-### Layouts
-- `fragment_settings.xml` — экран настроек
-- `dialog_setting.xml` — диалог выбора значения настройки
-- `item_setting.xml` — элемент настройки (radio button)
-
 ---
 
 ## SettingsViewModel
@@ -39,35 +34,32 @@ app/src/main/java/com/breckneck/debtbook/settings/
 VM экрана настроек.
 
 ### Зависимости
-- `Get/SetFirstMainCurrency` — основная валюта 1
-- `Get/SetSecondMainCurrency` — основная валюта 2
 - `Get/SetDefaultCurrency` — валюта по умолчанию для новых долгов
 - `Get/SetAddSumInShareText` — включать ли сумму в текст при шаринге
 - `Get/SetAppTheme` — тема (светлая/тёмная/системная)
-- `GetIsAuthorized` — авторизован ли для Google Drive
-- `GetUserData` — данные пользователя (имя, email)
 - `Get/SetIsFingerprintAuthEnabled` — включение биометрии
 - `Get/SetPinLockDelay` — интервал повторного запроса PIN после ухода в фон
 
 ### State
 | Поле | Тип | Описание |
 |------|-----|---------|
-| `firstMainCurrency` | `LiveData<String>` | Валюта 1 |
-| `secondMainCurrency` | `LiveData<String>` | Валюта 2 |
 | `defaultCurrency` | `LiveData<String>` | Валюта по умолчанию |
 | `addSumInShareText` | `LiveData<Boolean>` | Сумма в тексте шаринга |
 | `appTheme` | `LiveData<String>` | Текущая тема |
-| `isAuthorized` | `LiveData<Boolean>` | Авторизация Google |
-| `userName` / `emailAddress` | `LiveData<String>` | Данные пользователя |
 | `isFingerprintAuthEnabled` | `LiveData<Boolean>` | Биометрия |
 | `pinLockDelay` | `LiveData<PinLockDelay>` | Сразу / 30 секунд / 1 минута / 5 минут |
-| `isSynchronizationAvailable` | `LiveData<Boolean>` | Доступна ли синхронизация |
 
 ### Ключевая логика
 - Все настройки загружаются при init
 - Изменение настройки мгновенно сохраняется через соответствующий use case
-- Диалог настроек: универсальный `dialog_setting.xml` с `SettingsAdapter` (radio-кнопки)
-- Тема применяется через `AppCompatDelegate.setDefaultNightMode()` в Fragment
+
+### Валюта по умолчанию и оформление
+
+- «Валюта по умолчанию» открывает экран поиска. Поиск работает по коду, названию валюты и названию страны, чей флаг виден в строке. Строки показывают флаг и трёхбуквенный код. Общие валюты используют флаг ЕС или одной из стран, где они используются.
+- Каталог содержит 155 действующих денежных кодов ISO 4217 по состоянию на 17 сентября 2026 года. В списке также оставлен BGN из прежнего списка приложения. Если на устройстве уже выбрана другая историческая валюта, она доступна до смены настройки. Когда регион для сохранённого кода неизвестен, отображается значок глобуса. [Реестр ISO 4217](https://www.six-group.com/en/products-services/financial-information/market-reference-data/data-standards.html)
+- Выбор валюты сохраняет код и возвращает в настройки. Кнопка «Назад» закрывает экран без записи. После пересоздания экрана поисковый запрос сохраняется. Новые долги и цели читают установленный код через существующий use case.
+- «Оформление» открывает экран с тремя вариантами. Выбор сразу применяет тему и оставляет экран открытым. Новые значения сохраняются как `SYSTEM`, `LIGHT` и `DARK`. `MainActivity` поддерживает прежние локализованные значения при чтении.
+- Листы оценки, защиты и резервной копии используют палитру Bubble. Общее окно Compose-листов рисует цвет поверхности под системной навигацией. На Android 6 и 7 в светлом листе остаётся затемнение для контраста белых системных кнопок.
 
 ### Защита входа
 

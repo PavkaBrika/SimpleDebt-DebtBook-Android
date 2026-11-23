@@ -6,11 +6,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -30,14 +29,13 @@ internal fun SettingsScreen(
     main: MainViewModel,
     host: SettingsFragment.OnButtonClickListener,
     onAppSecurity: () -> Unit,
-    onTheme: (String) -> Unit,
+    onDefaultCurrency: () -> Unit,
+    onAppearance: () -> Unit,
     onExternal: (Int) -> Unit,
 ) {
     val colors = bubbleColors()
-    var sheet by rememberSaveable { mutableIntStateOf(0) }
-    val themes = listOf(R.string.system_theme, R.string.light_theme, R.string.dark_theme).map { stringResource(it) }
     val defaultCurrency by vm.defaultCurrency.observeAsState("")
-    val theme by vm.appTheme.observeAsState("")
+    val theme by main.appTheme.observeAsState()
     val share by vm.addSumInShareText.observeAsState(false)
     val locked by main.isPINCodeEnabled.observeAsState(false)
 
@@ -51,11 +49,9 @@ internal fun SettingsScreen(
                 style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             BubbleSectionTitle(stringResource(R.string.application))
             BubbleGroup {
-                SettingsRow(stringResource(R.string.default_currency), value = defaultCurrency) {
-                    sheet = R.string.default_currency
-                }
+                SettingsRow(stringResource(R.string.default_currency), value = currencyLabel(defaultCurrency), onClick = onDefaultCurrency)
                 HorizontalDivider(color = colors.border)
-                SettingsRow(stringResource(R.string.app_theme), value = theme.ifEmpty { themes.first() }) { sheet = R.string.app_theme }
+                SettingsRow(stringResource(R.string.app_theme), value = stringResource(AppTheme.fromPreference(theme).label), onClick = onAppearance)
                 HorizontalDivider(color = colors.border)
                 SettingsRow(stringResource(R.string.more_detailed_share_text),
                     checked = share) { vm.setSumInShareText(!share) }
@@ -80,30 +76,6 @@ internal fun SettingsScreen(
                 HorizontalDivider(color = colors.border)
                 SettingsRow(stringResource(R.string.app_version), value = BuildConfig.VERSION_NAME)
             }
-        }
-    }
-
-    when (sheet) {
-        0 -> Unit
-        else -> {
-            val options = when (sheet) {
-                R.string.app_theme -> themes
-                else -> currencyOptions(stringArrayResource(R.array.currencies).toList(), defaultCurrency)
-            }
-            val selected = when (sheet) {
-                R.string.app_theme -> themes.indexOf(theme).coerceAtLeast(0)
-                else -> options.indexOfFirst { currencyCode(it) == defaultCurrency }
-            }
-            SettingsPickerBottomSheet(stringResource(sheet), options, selected, onItemSelected = { index ->
-                val setting = sheet
-                sheet = 0
-                host.onTickVibration()
-                val value = options[index]
-                when (setting) {
-                    R.string.app_theme -> onTheme(value)
-                    R.string.default_currency -> vm.setDefaultCurrency(currencyCode(value))
-                }
-            }, onDismiss = { sheet = 0 })
         }
     }
 }

@@ -47,6 +47,20 @@
             app:exitAnim="@animator/goal_fade_out"
             app:popEnterAnim="@animator/goal_fade_in"
             app:popExitAnim="@animator/goal_pop_exit" />
+        <action
+            android:id="@+id/action_settingsFragment_to_defaultCurrencyFragment"
+            app:destination="@id/defaultCurrencyFragment"
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
+        <action
+            android:id="@+id/action_settingsFragment_to_appearanceFragment"
+            app:destination="@id/appearanceFragment"
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
     </fragment>
     <fragment
         android:id="@+id/newDebtFragment"
@@ -121,6 +135,14 @@
             app:argType="string"
             app:nullable="true" />
     </fragment>
+    <fragment
+        android:id="@+id/defaultCurrencyFragment"
+        android:name="com.breckneck.debtbook.settings.main.DefaultCurrencyFragment"
+        android:label="@string/default_currency" />
+    <fragment
+        android:id="@+id/appearanceFragment"
+        android:name="com.breckneck.debtbook.settings.main.AppearanceFragment"
+        android:label="@string/app_theme" />
     <fragment
         android:id="@+id/appSecurityFragment"
         android:name="com.breckneck.debtbook.settings.security.AppSecurityFragment"

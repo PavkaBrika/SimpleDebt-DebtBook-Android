@@ -38,6 +38,9 @@
     <string name="continue_b">Continue</string>
     <string name="app_already_rated_hint">Sorry, app is already rated</string>
     <string name="default_currency">Default currency</string>
+    <string name="search_currency">Search currencies</string>
+    <string name="clear_currency_search">Clear search</string>
+    <string name="no_matching_currencies">No matching currencies</string>
     <string name="default_currencies_hint">This currency will be selected by default when adding new debts</string>
     <string name="more_detailed_share_text">Balance in shared history</string>
     <string name="app_theme">Appearance</string>

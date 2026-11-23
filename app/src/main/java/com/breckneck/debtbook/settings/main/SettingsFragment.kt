@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.IdRes
 import androidx.compose.material3.Surface
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import androidx.fragment.app.Fragment
@@ -51,20 +52,18 @@ class SettingsFragment : Fragment() {
         return bubbleScreen(R.id.settingsComposeView) { insets ->
             Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
                 SettingsScreen(vm, insets, main, host,
-                    onAppSecurity = {
-                        val nav = findNavController()
-                        if (nav.currentDestination?.id == R.id.settingsFragment) {
-                            nav.navigate(R.id.action_settingsFragment_to_appSecurityFragment)
-                        }
-                    },
-                    onTheme = { theme ->
-                        vm.setAppTheme(theme)
-                        main.getAppTheme()
-                    },
+                    onAppSecurity = { openSettingsPage(R.id.action_settingsFragment_to_appSecurityFragment) },
+                    onDefaultCurrency = { openSettingsPage(R.id.action_settingsFragment_to_defaultCurrencyFragment) },
+                    onAppearance = { openSettingsPage(R.id.action_settingsFragment_to_appearanceFragment) },
                     onExternal = ::openExternal,
                 )
             }
         }
+    }
+
+    private fun openSettingsPage(@IdRes action: Int) {
+        val nav = findNavController()
+        if (nav.currentDestination?.id == R.id.settingsFragment) nav.navigate(action)
     }
 
     private fun openExternal(action: Int) {

@@ -2,19 +2,13 @@ package com.breckneck.debtbook.settings.security
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,10 +16,8 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LiveData
 import com.breckneck.debtbook.R
@@ -35,6 +27,7 @@ import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
+import com.breckneck.debtbook.settings.SettingsChoiceRow
 import com.breckneck.debtbook.settings.SettingsRow
 import com.breckneck.debtbook.settings.main.SettingsViewModel
 import com.breckneck.deptbook.domain.util.PINCodeAction
@@ -92,24 +85,10 @@ internal fun AppSecurityScreen(
             BubbleGroup(Modifier.selectableGroup()) {
                 delays.forEachIndexed { index, label ->
                     if (index > 0) HorizontalDivider(color = colors.border)
-                    val selected = index == delay.ordinal
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .selectable(selected, enabled = enabled, role = Role.RadioButton) {
-                                vm.setPinLockDelay(PinLockDelay.entries[index])
-                                onTick()
-                                close()
-                            }
-                            .heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                        RadioButton(
-                            selected = selected,
-                            onClick = null,
-                            enabled = enabled,
-                            colors = RadioButtonDefaults.colors(selectedColor = colors.action, unselectedColor = colors.muted),
-                        )
+                    SettingsChoiceRow(label, selected = index == delay.ordinal, enabled = enabled) {
+                        vm.setPinLockDelay(PinLockDelay.entries[index])
+                        onTick()
+                        close()
                     }
                 }
             }
