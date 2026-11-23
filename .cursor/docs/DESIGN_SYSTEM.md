@@ -107,6 +107,9 @@ ModalBottomSheet(
 - Check compact screens with a large font, both themes, and the keyboard open where relevant. In hybrid layouts, include space for the final elevated card to draw its shadow inside the Compose host.
 
 ### Lists & data scan
+- Make lists and other scrollable screen content edge-to-edge. The scrollable area extends behind the app top bar, the system status bar, and the system navigation bar.
+- Put the system insets and space occupied by fixed app bars inside the scrollable content. In Compose, use `contentPadding` for lazy lists and inner padding for `verticalScroll` content. In a `RecyclerView`, use content padding with `clipToPadding="false"`.
+- Keep fixed controls inside the safe area and maintain contrast for system icons. Check that content visibly moves behind the bars and that the first and last items can each be brought fully into view and interacted with.
 - Use `LazyColumn` with clear scanable rows. Group related metadata, such as the operation date and due date, so it can wrap independently of the main value.
 - Provide:
   - LOADING skeleton (`ShimmerListPlaceholder`)
