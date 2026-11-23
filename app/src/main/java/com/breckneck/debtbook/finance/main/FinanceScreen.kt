@@ -217,7 +217,7 @@ private fun FinancePage(
                         onCurrencyClick = onCurrencyClick,
                         balanceValue = amount,
                         palette = palette,
-                        balanceEndContent = { compact -> FinanceSummaryArtwork(direction, compact, palette) },
+                        artwork = { FinanceSummaryArtwork(direction, palette, it) },
                     ) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             val arrowColors = IconButtonDefaults.iconButtonColors(

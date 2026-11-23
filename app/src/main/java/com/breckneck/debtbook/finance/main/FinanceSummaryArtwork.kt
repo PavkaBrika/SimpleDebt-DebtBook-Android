@@ -1,18 +1,16 @@
 package com.breckneck.debtbook.finance.main
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.drawscope.translate
 import com.breckneck.debtbook.core.ui.components.BubbleBalancePalette
 import com.breckneck.debtbook.core.ui.components.bubbleBalancePalette
+import com.breckneck.debtbook.core.ui.components.drawBubbleCoinStack
 import com.breckneck.debtbook.core.ui.theme.LocalDebtBookDarkTheme
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 
@@ -30,27 +28,29 @@ internal fun financeBalancePalette(direction: FinanceCategoryState): BubbleBalan
     }
 
 @Composable
-internal fun FinanceSummaryArtwork(direction: FinanceCategoryState, compact: Boolean, palette: BubbleBalancePalette) {
+internal fun FinanceSummaryArtwork(
+    direction: FinanceCategoryState,
+    palette: BubbleBalancePalette,
+    modifier: Modifier = Modifier,
+) {
     val outgoing = direction == FinanceCategoryState.EXPENSE
-    val mark = if (outgoing) Color(0xFFFFBB9F) else Color(0xFFBFE49C)
-    Canvas(Modifier.size(if (compact) 42.dp else 56.dp)) {
-        scale(size.width / 56f, size.height / 56f, Offset.Zero) {
-            drawCircle(mark.copy(alpha = .12f), radius = 27f, center = Offset(28f, 28f))
-            for (y in listOf(36f, 31f, 26f)) {
-                val rim = Offset(7f, y)
-                val coin = Size(28f, 11f)
-                drawOval(palette.container, rim, coin)
-                drawOval(mark, rim, coin, style = Stroke(1.5f))
+    val ink = if (outgoing) Color(0xFFFFBB9F) else Color(0xFFB6D98D)
+    Canvas(modifier) {
+        val ratio = minOf(size.width / 94f, size.height / 106f)
+        translate((size.width - 94f * ratio) / 2f, (size.height - 106f * ratio) / 2f) {
+            scale(ratio, ratio, Offset.Zero) {
+                translate(top = 30f) {
+                    drawBubbleCoinStack(palette.container, ink)
+                }
+                val near = Offset(55f, 36f)
+                val far = Offset(85f, 9f)
+                val tip = if (outgoing) far else near
+                val tail = if (outgoing) near else far
+                val side = if (outgoing) 13f else -13f
+                drawLine(ink, tail, tip, strokeWidth = 2f, cap = StrokeCap.Round)
+                drawLine(ink, tip, tip + Offset(-side, 0f), strokeWidth = 2f, cap = StrokeCap.Round)
+                drawLine(ink, tip, tip + Offset(0f, side), strokeWidth = 2f, cap = StrokeCap.Round)
             }
-            drawOval(mark.copy(alpha = .65f), Offset(12f, 29f), Size(18f, 5f), style = Stroke(1f))
-            val near = Offset(33f, 23f)
-            val far = Offset(49f, 7f)
-            val tip = if (outgoing) far else near
-            val tail = if (outgoing) near else far
-            val side = if (outgoing) 8f else -8f
-            drawLine(mark, tail, tip, strokeWidth = 2.8f, cap = StrokeCap.Round)
-            drawLine(mark, tip, tip + Offset(-side, 0f), strokeWidth = 2.8f, cap = StrokeCap.Round)
-            drawLine(mark, tip, tip + Offset(0f, side), strokeWidth = 2.8f, cap = StrokeCap.Round)
         }
     }
 }
