@@ -1,15 +1,14 @@
 package com.breckneck.debtbook.finance.main
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -21,8 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,137 +33,275 @@ import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.finance.*
 import com.breckneck.deptbook.domain.model.FinanceCategory
-import com.breckneck.deptbook.domain.util.*
+import com.breckneck.deptbook.domain.util.FinanceCategoryState
+import com.breckneck.deptbook.domain.util.FinanceInterval
+import com.breckneck.deptbook.domain.util.LedgerDate
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-internal fun FinanceScreen(vm: FinanceViewModel, hostInsets: PaddingValues, host: FinanceFragment.OnButtonClickListener) {
+internal fun FinanceScreen(
+    vm: FinanceViewModel,
+    hostInsets: PaddingValues,
+    host: FinanceFragment.OnButtonClickListener,
+    onCurrencyClick: (String) -> Unit,
+) {
     val state by vm.summary.collectAsState()
-    FinanceContent(state, vm::setPeriod, vm::setCurrency, vm::setDirection,
+    FinanceContent(
+        state = state,
+        setPeriod = vm::setPeriod,
+        stepPeriod = vm::stepPeriod,
+        onCurrencyClick = { onCurrencyClick(state.currency) },
+        saveDirection = vm::setDirection,
         onCategory = { host.onFinanceCategoryClick(it.name, it.id, it.state, state.currency, state.period.day) },
-        onAdd = { host.onAddFinanceButtonClick(state.direction, state.period.day, state.currency) },
-        retry = vm::refresh, onTab = host::onTabSelected, hostInsets = hostInsets)
+        onAdd = { host.onAddFinanceButtonClick(it, state.period.day, state.currency) },
+        retry = vm::refresh,
+        onTab = host::onTabSelected,
+        hostInsets = hostInsets,
+    )
 }
 
 @Composable
-private fun FinanceContent(state: FinanceSummary, setPeriod: (FinancePeriod) -> Unit, setCurrency: (String) -> Unit,
-    selectDirection: (FinanceCategoryState) -> Unit, onCategory: (FinanceCategory) -> Unit,
-    onAdd: () -> Unit, retry: () -> Unit, onTab: (Int) -> Unit, hostInsets: PaddingValues = PaddingValues(0.dp)) {
+private fun FinanceContent(
+    state: FinanceSummary,
+    setPeriod: (FinancePeriod) -> Unit,
+    stepPeriod: (Int) -> Unit,
+    onCurrencyClick: () -> Unit,
+    saveDirection: (FinanceCategoryState) -> Unit,
+    onCategory: (FinanceCategory) -> Unit,
+    onAdd: (FinanceCategoryState) -> Unit,
+    retry: () -> Unit,
+    onTab: (Int) -> Unit,
+    hostInsets: PaddingValues = PaddingValues(0.dp),
+) {
     val colors = bubbleColors()
-    val expenses = state.direction == FinanceCategoryState.EXPENSE
-    val direction = stringResource(if (expenses) R.string.expenses else R.string.revenues)
-    val intervals = listOf(R.string.day, R.string.week, R.string.month, R.string.year_full).map { stringResource(it) }
-    var picker by rememberSaveable { mutableIntStateOf(0) }
-    val slideDistance = with(androidx.compose.ui.platform.LocalDensity.current) { 12.dp.roundToPx() }
-    val period = state.period
+    val directions = FinanceCategoryState.entries
+    val pager = rememberPagerState(state.direction.ordinal) { directions.size }
+    val selected = directions[pager.targetPage]
+    val listStates = listOf(rememberLazyListState(), rememberLazyListState())
+    val scope = rememberCoroutineScope()
+    var tabAnimation by remember { mutableStateOf<Job?>(null) }
+    var choosingPeriod by rememberSaveable { mutableStateOf(false) }
+    val today = LedgerDate.today()
+    val layoutDirection = LocalLayoutDirection.current
+
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.collect { saveDirection(directions[it]) }
+    }
+
     BubbleScaffold(
         hostInsets = hostInsets,
+        topBar = {
+            Column(
+                Modifier.fillMaxWidth().background(colors.background)
+                    .padding(
+                        start = hostInsets.calculateStartPadding(layoutDirection) + 16.dp,
+                        end = hostInsets.calculateEndPadding(layoutDirection) + 16.dp,
+                        top = hostInsets.calculateTopPadding() + 8.dp,
+                        bottom = 4.dp,
+                    ),
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.finances),
+                        Modifier.weight(1f).padding(vertical = 4.dp),
+                        color = colors.ink,
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    if (state.period.day != today) {
+                        TextButton(onClick = {
+                            setPeriod(state.period.copy(day = today))
+                            listStates[pager.currentPage].requestScrollToItem(0)
+                        }) { Text(stringResource(R.string.finance_today)) }
+                    }
+                }
+                FinanceDirection(selected) { direction ->
+                    tabAnimation?.cancel()
+                    tabAnimation = scope.launch { pager.animateScrollToPage(direction.ordinal) }
+                }
+            }
+        },
         bottomAction = {
-            BubbleButton(onAdd, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+            val direction = directions[pager.settledPage]
+            BubbleButton(
+                onClick = { onAdd(direction) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
                 Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                Text(stringResource(if (expenses) R.string.finance_add_expense else R.string.finance_add_income), Modifier.padding(start = 8.dp))
+                val label = if (direction == FinanceCategoryState.EXPENSE) R.string.finance_add_expense else R.string.finance_add_income
+                Text(stringResource(label), Modifier.padding(start = 8.dp))
             }
         },
         tabs = { BubbleBottomBar(R.id.financeFragment, onTab) },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding,
-            verticalArrangement = Arrangement.Top) {
-            item {
-                Text(stringResource(R.string.finances), color = colors.ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            }
-            item { Box(Modifier.padding(vertical = 8.dp)) { FinanceDirection(state.direction, selectDirection) } }
-            item {
-                BubbleBalanceCard(direction, state.currency,
-                    if (state.loading || state.failed) "…" else state.total.financeMoney(state.currency),
-                    onCurrencyClick = { picker = R.string.select_currency }, balanceValue = state.total.takeUnless { state.loading || state.failed }) {
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
+        ) { page ->
+            FinancePage(
+                state = state,
+                direction = directions[page],
+                listState = listStates[page],
+                padding = PaddingValues(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    bottom = padding.calculateBottomPadding(),
+                ),
+                stepPeriod = stepPeriod,
+                onPeriodClick = { choosingPeriod = true },
+                onCurrencyClick = onCurrencyClick,
+                onCategory = onCategory,
+                retry = retry,
+            )
+        }
+    }
+    if (choosingPeriod) {
+        PeriodSheet(state.period, onApply = {
+            setPeriod(it)
+            choosingPeriod = false
+        }, onDismiss = { choosingPeriod = false })
+    }
+}
+
+@Composable
+private fun FinancePage(
+    state: FinanceSummary,
+    direction: FinanceCategoryState,
+    listState: LazyListState,
+    padding: PaddingValues,
+    stepPeriod: (Int) -> Unit,
+    onPeriodClick: () -> Unit,
+    onCurrencyClick: () -> Unit,
+    onCategory: (FinanceCategory) -> Unit,
+    retry: () -> Unit,
+) {
+    val colors = bubbleColors()
+    val totals = state.totalsFor(direction)
+    val amount = totals.total.takeIf { state.hasTotals }
+    val expenses = direction == FinanceCategoryState.EXPENSE
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
+        item(key = "balance") {
+            key(state.currency) {
+                BubbleBalanceCard(
+                    stringResource(if (expenses) R.string.expenses else R.string.revenues),
+                    state.currency,
+                    amount?.financeMoney(state.currency) ?: "…",
+                    onCurrencyClick = onCurrencyClick,
+                    balanceValue = amount,
+                ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton({ setPeriod(period.copy(day = period.step(-1))) },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = colors.heroBorder, contentColor = colors.onHero)) {
+                        val arrowColors = IconButtonDefaults.iconButtonColors(
+                            containerColor = colors.heroBorder,
+                            contentColor = colors.onHero,
+                        )
+                        IconButton({ stepPeriod(-1) }, colors = arrowColors) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
                         }
-                        TextButton({ picker = R.string.select_interval }, Modifier.weight(1f)) {
+                        TextButton(onPeriodClick, Modifier.weight(1f)) {
                             Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = colors.onHero)
                             Spacer(Modifier.width(5.dp))
-                            AnimatedContent(period, transitionSpec = {
-                                val sign = if (targetState.day < initialState.day) -1 else 1
-                                (slideInHorizontally(tween(180)) { sign * slideDistance } + fadeIn(tween(180))) togetherWith fadeOut(tween(100))
-                            }, label = "Period") { Text(it.label(), color = colors.onHero) }
+                            Text(state.period.label(), color = colors.onHero, textAlign = TextAlign.Center)
                         }
-                        IconButton({ setPeriod(period.copy(day = period.step(1))) },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = colors.heroBorder, contentColor = colors.onHero)) {
+                        IconButton({ stepPeriod(1) }, colors = arrowColors) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
                         }
                     }
                 }
             }
-            item {
-                BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) { Text(intervals[period.interval.ordinal], color = colors.muted) }
+        }
+        item(key = "categories") {
+            BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) {
+                Text(stringResource(state.period.interval.labelResource), color = colors.muted)
             }
-            when {
-                state.failed -> item { BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) } }
-                state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                state.categories.isEmpty() -> item { Text(stringResource(R.string.finance_empty_period), Modifier.fillMaxWidth().padding(22.dp),
-                    textAlign = TextAlign.Center, color = colors.muted) }
-                else -> itemsIndexed(state.categories, key = { _, row -> row.category.id }) { index, row ->
-                    BubbleGroupedRow(index, state.categories.size, Modifier.animateItem(fadeInSpec = tween(260))) {
-                        BubbleListRow(Modifier.clickable { onCategory(row.category) }.padding(12.dp),
-                            leading = { CategoryBadge(row.category) },
-                            trailing = {
+        }
+        if (state.failed) item(key = "retry") {
+            BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) }
+        }
+        when {
+            state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            state.hasTotals && totals.categories.isEmpty() -> item {
+                Text(
+                    stringResource(R.string.finance_empty_period),
+                    Modifier.fillMaxWidth().padding(22.dp),
+                    textAlign = TextAlign.Center,
+                    color = colors.muted,
+                )
+            }
+            else -> itemsIndexed(totals.categories, key = { _, row -> row.category.id }) { index, row ->
+                BubbleGroupedRow(index, totals.categories.size, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+                    BubbleListRow(
+                        Modifier.clickable { onCategory(row.category) }.padding(12.dp),
+                        leading = { CategoryBadge(row.category) },
+                        trailing = {
+                            key(state.currency) {
                                 AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
-                            }) {
-                            Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
-                        }
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
+                        },
+                    ) {
+                        Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
-            if (period.day != LedgerDate.today()) item {
-                BubbleOutlinedButton({ setPeriod(period.copy(day = LedgerDate.today())) }) { Text(stringResource(R.string.finance_today)) }
-            }
-        }
-    }
-    when (picker) {
-        R.string.select_interval -> PeriodSheet(period, intervals, onApply = { setPeriod(it); picker = 0 }, onDismiss = { picker = 0 })
-        R.string.select_currency -> {
-            val options = currencyOptions(stringArrayResource(R.array.currencies).toList(), state.currency)
-            SettingsPickerBottomSheet(stringResource(picker), options,
-                options.indexOfFirst { currencyCode(it) == state.currency },
-                onItemSelected = { setCurrency(currencyCode(options[it])); picker = 0 }, onDismiss = { picker = 0 })
         }
     }
 }
 
 @Composable
-private fun PeriodSheet(period: FinancePeriod, intervals: List<String>, onApply: (FinancePeriod) -> Unit, onDismiss: () -> Unit) {
+private fun PeriodSheet(period: FinancePeriod, onApply: (FinancePeriod) -> Unit, onDismiss: () -> Unit) {
     var interval by rememberSaveable { mutableStateOf(period.interval) }
     var day by rememberSaveable { mutableStateOf(period.day) }
     var calendar by rememberSaveable { mutableStateOf(false) }
     var choices by remember { mutableStateOf(false) }
+    val draft = FinancePeriod(interval, day)
+    val dateLabel = when (interval) {
+        FinanceInterval.DAY -> R.string.finance_period_day
+        FinanceInterval.WEEK -> R.string.finance_period_week_day
+        FinanceInterval.MONTH -> R.string.finance_period_month_day
+        FinanceInterval.YEAR -> R.string.finance_period_year_day
+    }
     BubbleBottomSheet(onDismiss) { active, close ->
         BubbleSheetHeader(stringResource(R.string.finance_period), close, enabled = active)
         BubbleGroup {
             Box {
-                BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.select_interval), Modifier.clickable { choices = true },
-                    trailing = { Icon(Icons.Outlined.ExpandMore, null) }) { Text(intervals[interval.ordinal]) }
+                BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.select_interval), Modifier.clickable(enabled = active, role = Role.Button) { choices = true },
+                    trailing = { Icon(Icons.Outlined.ExpandMore, null) }) { Text(stringResource(interval.labelResource)) }
                 DropdownMenu(choices, { choices = false }) {
-                    intervals.forEachIndexed { index, label ->
-                        DropdownMenuItem({ Text(label) }, { interval = FinanceInterval.entries[index]; choices = false })
+                    FinanceInterval.entries.forEach { option ->
+                        DropdownMenuItem({ Text(stringResource(option.labelResource)) }, { interval = option; choices = false })
                     }
                 }
             }
             HorizontalDivider(color = bubbleColors().border)
-            BubbleFieldRow(Icons.Outlined.DateRange, stringResource(R.string.finance_period_day), Modifier.clickable { calendar = true }) {
+            BubbleFieldRow(Icons.Outlined.DateRange, stringResource(dateLabel), Modifier.clickable(enabled = active, role = Role.Button) { calendar = true }) {
                 Text(LedgerDate.display(day))
             }
         }
-        BubbleButton({ onApply(FinancePeriod(interval, day)) }, Modifier.fillMaxWidth(), enabled = active) {
+        if (interval != FinanceInterval.DAY) {
+            Text(
+                stringResource(R.string.finance_period_preview, draft.label()),
+                color = bubbleColors().muted,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        BubbleButton({ onApply(draft) }, Modifier.fillMaxWidth(), enabled = active) {
             Text(stringResource(R.string.finance_apply_period))
         }
     }
     if (calendar) FinanceDatePicker(day, onSelect = { day = it; calendar = false }, onDismiss = { calendar = false })
 }
+
+private val FinanceInterval.labelResource: Int
+    get() = when (this) {
+        FinanceInterval.DAY -> R.string.day
+        FinanceInterval.WEEK -> R.string.week
+        FinanceInterval.MONTH -> R.string.month
+        FinanceInterval.YEAR -> R.string.year_full
+    }
 
 private fun FinancePeriod.label(): String = when (interval) {
     FinanceInterval.DAY -> LedgerDate.display(day)
@@ -175,6 +313,11 @@ private fun FinancePeriod.label(): String = when (interval) {
 @Preview
 @Composable
 private fun FinancePreview() {
-    DebtBookTheme { FinanceContent(FinanceSummary("RUB", FinanceCategoryState.EXPENSE,
-        FinancePeriod(FinanceInterval.DAY, LedgerDate.today()), loading = false), {}, {}, {}, {}, {}, {}, {}) }
+    val period = FinancePeriod(FinanceInterval.DAY, LedgerDate.today())
+    DebtBookTheme {
+        FinanceContent(
+            FinanceSummary("RUB", FinanceCategoryState.EXPENSE, period, summarizeFinances(emptyList(), "RUB", period)),
+            {}, {}, {}, {}, {}, {}, {}, {},
+        )
+    }
 }

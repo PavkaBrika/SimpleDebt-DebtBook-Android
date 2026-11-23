@@ -4,7 +4,7 @@
     <string name="finance_categories">Kategorien</string>
     <string name="finance_previous">Vorheriger Zeitraum</string>
     <string name="finance_next">Nächster Zeitraum</string>
-    <string name="finance_today">Zum heutigen Tag</string>
+    <string name="finance_today">Heute</string>
     <string name="finance_empty_period">Keine Buchungen in diesem Zeitraum.</string>
     <string name="finance_new_expense">Neue Ausgabe</string>
     <string name="finance_new_income">Neue Einnahme</string>
@@ -22,7 +22,11 @@
     <string name="finance_share_of_total">%1$d%% der Summe</string>
     <string name="finance_icon_set">Symbolgruppe</string>
     <string name="finance_period">Zeitraum</string>
-    <string name="finance_period_day">Datum im Zeitraum</string>
+    <string name="finance_period_day">Datum</string>
+    <string name="finance_period_week_day">Ein Datum in der Woche</string>
+    <string name="finance_period_month_day">Ein Datum im Monat</string>
+    <string name="finance_period_year_day">Ein Datum im Jahr</string>
+    <string name="finance_period_preview">Ausgewählter Zeitraum: %1$s</string>
     <string name="finance_apply_period">Anzeigen</string>
     <string name="finance_entry_date">Buchungsdatum</string>
 </resources>

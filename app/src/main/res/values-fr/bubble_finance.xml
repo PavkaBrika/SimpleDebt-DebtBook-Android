@@ -4,7 +4,7 @@
     <string name="finance_categories">Catégories</string>
     <string name="finance_previous">Période précédente</string>
     <string name="finance_next">Période suivante</string>
-    <string name="finance_today">Revenir à aujourd’hui</string>
+    <string name="finance_today">Aujourd’hui</string>
     <string name="finance_empty_period">Aucune opération pour cette période.</string>
     <string name="finance_new_expense">Nouvelle dépense</string>
     <string name="finance_new_income">Nouveau revenu</string>
@@ -22,7 +22,11 @@
     <string name="finance_share_of_total">%1$d%% du total</string>
     <string name="finance_icon_set">Groupe d’icônes</string>
     <string name="finance_period">Période</string>
-    <string name="finance_period_day">Date de la période</string>
+    <string name="finance_period_day">Date</string>
+    <string name="finance_period_week_day">Une date de la semaine</string>
+    <string name="finance_period_month_day">Une date du mois</string>
+    <string name="finance_period_year_day">Une date de l’année</string>
+    <string name="finance_period_preview">Période à afficher : %1$s</string>
     <string name="finance_apply_period">Afficher</string>
     <string name="finance_entry_date">Date de l’opération</string>
 </resources>

@@ -46,9 +46,27 @@ class FinanceCurrencyTest {
                     vm = ViewModelProvider(fragment)[FinanceViewModel::class.java]
                     vm.setCurrency("EUR")
                 }
-                await { vm.summary.value.total.compareTo("10.01".toBigDecimal()) == 0 }
-                scenario.onActivity { vm.setCurrency("USD"); vm.setCurrency("EUR"); vm.setCurrency("USD") }
-                await { vm.summary.value.total.compareTo("20.02".toBigDecimal()) == 0 }
+                await { vm.summary.value.totalsFor(FinanceCategoryState.EXPENSE).total.compareTo("10.01".toBigDecimal()) == 0 }
+                scenario.onActivity {
+                    val loaded = vm.summary.value
+                    vm.stepPeriod(-1)
+                    vm.setDirection(FinanceCategoryState.INCOME)
+                    val duringChange = vm.summary.value
+                    assertFalse(duringChange.loading)
+                    val expenses = duringChange.totalsFor(FinanceCategoryState.EXPENSE)
+                    if (duringChange.period == loaded.period) {
+                        assertEquals(loaded.totalsFor(FinanceCategoryState.EXPENSE), expenses)
+                    } else {
+                        assertEquals(loaded.period.step(-1), duringChange.period.day)
+                        assertTrue(expenses.categories.isEmpty())
+                        assertEquals(0, expenses.total.signum())
+                    }
+                    vm.stepPeriod(1)
+                    vm.setCurrency("USD")
+                    vm.setCurrency("EUR")
+                    vm.setCurrency("USD")
+                }
+                await { vm.summary.value.totalsFor(FinanceCategoryState.EXPENSE).total.compareTo("20.02".toBigDecimal()) == 0 }
                 assertEquals(listOf("EUR", "USD"), repo.getAllAppData().financeList.sortedBy { it.id }.map { it.currency })
             }
         } finally {

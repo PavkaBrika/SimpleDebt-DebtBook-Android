@@ -18,10 +18,9 @@ class FinancePeriodTest {
         val entries = listOf("2024-01-01", "2024-01-31", "2024-02-01").mapIndexed { index, day ->
             Finance(index + 1, "0.015".toBigDecimal(), Date(), "", 4, "RUB", day)
         }.toMutableList()
-        val summary = FinanceSummary("RUB", category.state, month)
         val data = listOf(FinanceCategoryWithFinances(category, financeList = entries))
         repeat(2) {
-            val result = summary.withEntries(data)
+            val result = summarizeFinances(data, "RUB", month).getValue(category.state)
             assertEquals(0, result.total.compareTo("0.030".toBigDecimal()))
             assertEquals(100, result.categories.single().percent)
         }

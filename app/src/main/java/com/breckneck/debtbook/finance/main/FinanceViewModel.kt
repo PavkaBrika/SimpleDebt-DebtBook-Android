@@ -57,29 +57,43 @@ internal data class FinancePeriod(val interval: FinanceInterval, val day: String
 
 internal data class CategoryTotal(val category: FinanceCategory, val amount: BigDecimal, val percent: Int = 0)
 
+internal data class FinanceTotals(
+    val categories: List<CategoryTotal> = emptyList(),
+    val total: BigDecimal = BigDecimal.ZERO,
+)
+
 internal data class FinanceSummary(
     val currency: String,
     val direction: FinanceCategoryState,
     val period: FinancePeriod,
-    val categories: List<CategoryTotal> = emptyList(),
-    val total: BigDecimal = BigDecimal.ZERO,
-    val loading: Boolean = true,
+    private val totals: Map<FinanceCategoryState, FinanceTotals> = emptyMap(),
     val failed: Boolean = false,
 ) {
-    fun withEntries(data: List<FinanceCategoryWithFinances>): FinanceSummary {
-        val days = period.days()
-        val rows = data.filter { it.financeCategory.state == direction }.mapNotNull { group ->
-            val entries = group.financeList.filter {
-                it.currency == currency && (it.calendarDay ?: LedgerDate.fromDate(it.date)) in days
-            }
-            if (entries.isEmpty()) null else CategoryTotal(group.financeCategory, entries.sumOf { it.sum })
-        }.sortedByDescending { it.amount }
+    fun totalsFor(direction: FinanceCategoryState): FinanceTotals = totals[direction] ?: FinanceTotals()
+    val hasTotals: Boolean get() = totals.isNotEmpty()
+    val loading: Boolean get() = !hasTotals && !failed
+}
+
+internal fun summarizeFinances(
+    data: List<FinanceCategoryWithFinances>,
+    currency: String,
+    period: FinancePeriod,
+): Map<FinanceCategoryState, FinanceTotals> {
+    val days = period.days()
+    val byDirection = data.mapNotNull { group ->
+        val entries = group.financeList.filter {
+            it.currency == currency && (it.calendarDay ?: LedgerDate.fromDate(it.date)) in days
+        }
+        entries.takeIf { it.isNotEmpty() }?.let { CategoryTotal(group.financeCategory, it.sumOf { entry -> entry.sum }) }
+    }.groupBy { it.category.state }
+    return FinanceCategoryState.entries.associateWith { direction ->
+        val rows = byDirection[direction].orEmpty().sortedByDescending { it.amount }
         val total = rows.sumOf { it.amount }
-        return copy(total = total, loading = false, failed = false, categories = rows.map {
-            val percent = if (total.signum() == 0) 0 else it.amount.movePointRight(2)
+        FinanceTotals(rows.map { row ->
+            val percent = if (total.signum() == 0) 0 else row.amount.movePointRight(2)
                 .divide(total, 0, RoundingMode.HALF_UP).toInt()
-            it.copy(percent = percent)
-        })
+            row.copy(percent = percent)
+        }, total)
     }
 }
 
@@ -96,41 +110,66 @@ class FinanceViewModel @Inject constructor(
         FinancePeriod(saved["interval"] ?: FinanceInterval.DAY, saved["day"] ?: LedgerDate.today()),
     ))
     internal val summary = current.asStateFlow()
+    private var requestedPeriod = current.value.period
+    private var requestedCurrency = current.value.currency
+    private var entries: List<FinanceCategoryWithFinances>? = null
     private var load: Job? = null
+    private var calculation: Job? = null
 
     fun setCurrency(currency: String) {
         saveCurrency.execute(currency)
-        refresh(current.value.copy(currency = currency, loading = true))
+        requestedCurrency = currency
+        updateSummaries()
     }
 
     internal fun setDirection(direction: FinanceCategoryState) {
         saved["direction"] = direction
-        refresh(current.value.copy(direction = direction, loading = true))
+        current.value = current.value.copy(direction = direction)
     }
 
     internal fun setPeriod(period: FinancePeriod) {
         saved["interval"] = period.interval
         saved["day"] = period.day
-        refresh(current.value.copy(period = period, loading = true))
+        requestedPeriod = period
+        updateSummaries()
+    }
+
+    internal fun stepPeriod(count: Int) {
+        setPeriod(requestedPeriod.copy(day = requestedPeriod.step(count)))
     }
 
     fun refresh() {
         val currency = getCurrency.execute(getDefaultCurrency::execute)
-        val selection = current.value
-        refresh(selection.copy(currency = currency, loading = selection.loading || currency != selection.currency))
-    }
-
-    private fun refresh(selection: FinanceSummary) {
+        if (currency != requestedCurrency) {
+            requestedCurrency = currency
+            updateSummaries()
+        }
         load?.cancel()
-        current.value = selection.copy(failed = false)
         load = viewModelScope.launch {
             try {
-                current.value = withContext(Dispatchers.IO) { selection.withEntries(getEntries.execute()) }
+                entries = withContext(Dispatchers.IO) { getEntries.execute() }
+                current.value = current.value.copy(failed = false)
+                updateSummaries()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                current.value = selection.copy(loading = false, failed = true)
+                current.value = current.value.copy(failed = true)
             }
+        }
+    }
+
+    private fun updateSummaries() {
+        calculation?.cancel()
+        val period = requestedPeriod
+        val currency = requestedCurrency
+        val data = entries
+        if (data == null) {
+            current.value = current.value.copy(period = period, currency = currency)
+            return
+        }
+        calculation = viewModelScope.launch {
+            val totals = withContext(Dispatchers.Default) { summarizeFinances(data, currency, period) }
+            current.value = current.value.copy(period = period, currency = currency, totals = totals)
         }
     }
 }

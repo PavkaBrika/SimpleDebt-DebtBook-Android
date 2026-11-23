@@ -4,7 +4,7 @@
     <string name="finance_categories">Категории</string>
     <string name="finance_previous">Предыдущий период</string>
     <string name="finance_next">Следующий период</string>
-    <string name="finance_today">К текущей дате</string>
+    <string name="finance_today">Сегодня</string>
     <string name="finance_empty_period">За этот период записей нет.</string>
     <string name="finance_new_expense">Новый расход</string>
     <string name="finance_new_income">Новый доход</string>
@@ -22,7 +22,11 @@
     <string name="finance_share_of_total">%1$d%% от суммы</string>
     <string name="finance_icon_set">Набор значков</string>
     <string name="finance_period">Период</string>
-    <string name="finance_period_day">Дата в периоде</string>
+    <string name="finance_period_day">Дата</string>
+    <string name="finance_period_week_day">Любая дата этой недели</string>
+    <string name="finance_period_month_day">Любая дата этого месяца</string>
+    <string name="finance_period_year_day">Любая дата этого года</string>
+    <string name="finance_period_preview">Будет показано: %1$s</string>
     <string name="finance_apply_period">Показать</string>
     <string name="finance_entry_date">Дата операции</string>
 </resources>

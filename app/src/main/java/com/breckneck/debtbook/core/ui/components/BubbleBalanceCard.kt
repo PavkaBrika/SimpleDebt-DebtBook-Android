@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -76,7 +76,7 @@ internal fun BubbleBalanceCard(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(currency, style = MaterialTheme.typography.labelMedium)
-                            Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp))
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-    # Finance Feature (app module)
+# Finance Feature (app module)
 
 ## Назначение
 
@@ -15,7 +15,8 @@ app/src/main/java/com/breckneck/debtbook/finance/
 │   │   └── UsedFinanceCategoryAdapter.kt    # Выбор категории при создании записи
 │   ├── customview/
 │   │   └── FinanceProgressBar.kt            # Кастомный прогресс-бар (% от общей суммы)
-│   ├── FinanceFragment.kt                   # Основной экран финансов
+│   ├── FinanceFragment.kt                   # Фрагмент сводки
+│   ├── FinanceScreen.kt                     # Сводка и выбор периода
 │   └── FinanceViewModel.kt                  # VM основного экрана
 ├── create/
 │   ├── adapter/
@@ -42,7 +43,6 @@ app/src/main/java/com/breckneck/debtbook/finance/
 ```
 
 ### Layouts
-- `fragment_finance.xml` — основной экран (переключатель + интервал + RecyclerView)
 - `fragment_create_finance.xml` — форма записи
 - `fragment_create_finance_category.xml` — форма категории
 - `fragment_finance_details.xml` — история по категории
@@ -55,41 +55,18 @@ app/src/main/java/com/breckneck/debtbook/finance/
 
 ---
 
-## FinanceViewModel
+## Сводка финансов
 
-Основной VM экрана финансов.
+- Расходы и доходы открываются нажатием на вкладку или горизонтальным свайпом. У каждой вкладки своя позиция списка. Смена вкладки сохраняет валюту и календарный период. Кнопка добавления открывает форму для направления выбранной вкладки.
+- Стрелки в карточке сдвигают период на день, неделю, месяц или год. Нажатие на дату открывает настройки периода. Для недели, месяца и года можно выбрать любую входящую в них дату. До нажатия «Показать» виден будущий диапазон, месяц или год. Неделя начинается в понедельник.
+- «Сегодня» в закреплённой шапке возвращает текущую вкладку к сводке на сегодняшнюю дату с тем же интервалом. До возврата действие доступно и при прокрутке категорий.
+- Валюта открывает общий экран с поиском. Выбор применяется к финансам и сохраняется в их настройке. Возврат без выбора сохраняет текущие фильтры.
 
-### Зависимости
-- `GetFinanceCurrency` / `SetFinanceCurrency` — валюта финансов
-- `GetAllCategoriesWithFinances` — все категории с вложенными записями
+### FinanceViewModel
 
-### State
-| Поле | Тип | Описание |
-|------|-----|---------|
-| `categoriesWithFinancesList` | `LiveData<List<FinanceCategoryWithFinances>>` | Отфильтрованные категории + записи |
-| `financeCategoryState` | `LiveData<FinanceCategoryState>` | EXPENSE / INCOME |
-| `financeInterval` | `LiveData<FinanceInterval>` | DAY / WEEK / MONTH / YEAR |
-| `financeIntervalString` | `LiveData<String>` | Строковое представление интервала |
-| `financeIntervalUnix` | `LiveData<Pair<Long, Long>>` | Границы интервала в millis |
-| `overallSum` | `LiveData<Double>` | Сумма за интервал |
-| `currency` | `LiveData<String>` | Текущая валюта |
-| `financeListState` | `LiveData<ListState>` | LOADING / EMPTY / SUCCESS |
+`FinanceSummary` содержит валюту, период и суммы с категориями для обеих вкладок. `GetAllCategoriesWithFinances` перечитывает записи при открытии, возврате и повторе после ошибки. Смена периода или валюты пересчитывает обе сводки по последним полученным записям. Новый период, итог и список публикуются вместе. При повторном чтении предыдущая сводка остаётся доступной.
 
-### Ключевая логика
-- **Интервальная навигация**: `getNextFinanceInterval()` / `getPastFinanceInterval()` — сдвиг интервала вперёд/назад
-- **Фильтрация категорий**: по `FinanceCategoryState` (расходы/доходы) + по временному интервалу
-- **Процент по категории**: `categoryPercentage = (categorySum * 100) / overallSum`
-- **Сортировка**: категории сортируются по `categoryPercentage`
-- Загрузка через `viewModelScope.launch` + `withContext(Dispatchers.IO)` + фильтрация в IO-потоке
-
-### Действия
-| Метод | Что делает |
-|-------|-----------|
-| `onChangeFinanceCategoryState()` | Переключение EXPENSE ↔ INCOME |
-| `setInterval(interval)` | Смена интервала (DAY/WEEK/MONTH/YEAR) |
-| `getNextFinanceInterval()` | Следующий период |
-| `getPastFinanceInterval()` | Предыдущий период |
-| `setCurrency(currency)` | Смена валюты |
+Суммы считаются в `BigDecimal`. Доли категорий округляются до целого процента, а категории сортируются по сумме. Для записей без сохранённого календарного дня применяется дата из прежнего формата. Направление и период восстанавливаются через `SavedStateHandle`.
 
 ---
 

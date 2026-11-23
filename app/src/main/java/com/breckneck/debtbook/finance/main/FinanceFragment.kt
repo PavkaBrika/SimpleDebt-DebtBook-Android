@@ -2,10 +2,14 @@ package com.breckneck.debtbook.finance.main
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.bubbleScreen
+import com.breckneck.debtbook.core.currency.onCurrencySelected
+import com.breckneck.debtbook.core.currency.openCurrencyPicker
 import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -20,10 +24,14 @@ class FinanceFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        bubbleScreen(com.breckneck.debtbook.R.id.financeSummaryView) { insets ->
+        bubbleScreen(R.id.financeSummaryView) { insets ->
             val host = requireActivity() as OnButtonClickListener
-            FinanceScreen(vm, insets, host)
+            FinanceScreen(vm, insets, host) { openCurrencyPicker(R.id.financeFragment, it) }
         }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        onCurrencySelected(R.id.financeFragment, vm::setCurrency)
+    }
 
     override fun onResume() {
         super.onResume()

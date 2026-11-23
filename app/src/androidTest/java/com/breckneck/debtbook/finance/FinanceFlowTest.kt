@@ -13,6 +13,7 @@ import android.view.View
 import androidx.compose.ui.node.RootForTest
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getAllSemanticsNodes
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -22,14 +23,20 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.finance.main.FinancePeriod
 import com.breckneck.debtbook.settings.edgeSwipe
 import com.breckneck.debtbook.settings.requirePredictiveGestures
 import com.breckneck.deptbook.domain.util.LedgerDate
+import com.breckneck.deptbook.domain.util.FinanceInterval
 import database.AppDataBase
+import entity.FinanceCategoryData
+import entity.FinanceData
 import org.junit.*
 import org.junit.Assert.*
 import java.io.File
+import java.util.Date
 import java.util.TimeZone
+import util.FinanceCategoryStateData
 
 class FinanceFlowTest {
     @get:Rule val compose = createEmptyComposeRule()
@@ -44,9 +51,9 @@ class FinanceFlowTest {
     private val originalEntries = dao.getAllFinances().map { it.id }
 
     @Before fun openFinance() {
-        val theme = if (InstrumentationRegistry.getArguments().getString("theme") == "dark") R.string.dark_theme else R.string.light_theme
+        val theme = if (InstrumentationRegistry.getArguments().getString("theme") == "dark") "DARK" else "LIGHT"
         prefs.edit().putBoolean("ads_disabled", true).putBoolean("pin_code_is_enabled", false)
-            .putString("app_theme", str(theme)).putString("finance_currency", "USD")
+            .putString("app_theme", theme).putString("finance_currency", "USD")
             .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         context.startActivity(context.packageManager.getLaunchIntentForPackage(context.packageName)!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK))
         act(R.string.finances)
@@ -106,6 +113,66 @@ class FinanceFlowTest {
         total("0")
     }
 
+    @Test fun swipeBetweenSummariesAndReturnToTodayFromTheCategoryList() {
+        val today = LedgerDate.today()
+        val previous = FinancePeriod(FinanceInterval.DAY, today).step(-8)
+        fun entry(name: String, direction: FinanceCategoryStateData, day: String, amount: Int) {
+            val category = dao.insertFinanceCategory(FinanceCategoryData(0, name, direction, "#C5E1A5", 0x1F4DA)).toInt()
+            dao.insertFinance(FinanceData(0, amount.toBigDecimal(), Date(), null, category, "RUB", day))
+        }
+        entry("Expense today", FinanceCategoryStateData.EXPENSE, today, 45)
+        entry("Income today", FinanceCategoryStateData.INCOME, today, 90)
+        repeat(16) { entry("Earlier expense $it", FinanceCategoryStateData.EXPENSE, previous, 1) }
+        act(R.string.debts)
+        act(R.string.finances)
+        total("45")
+        summaryList().performTouchInput { swipeLeft() }
+        node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
+        total("90")
+        act(R.string.expenses)
+        total("45")
+        summaryList().performTouchInput { swipeLeft() }
+        total("90")
+        summaryList().performTouchInput { swipeRight() }
+        total("45")
+
+        act(LedgerDate.display(today))
+        act(R.string.select_interval)
+        act(R.string.week)
+        val week = FinancePeriod(FinanceInterval.WEEK, today).days()
+        val range = "${LedgerDate.display(week.start)} – ${LedgerDate.display(week.endInclusive)}"
+        node(hasText(context.getString(R.string.finance_period_preview, range))).assertIsDisplayed()
+        capture("period-preview")
+        back()
+        node(hasText(LedgerDate.display(today)) and hasClickAction()).assertIsDisplayed()
+        repeat(8) { desc(R.string.finance_previous) }
+        total("16")
+        summaryList().performScrollToNode(hasText("Earlier expense 15"))
+        capture("today-action")
+        node(hasText(str(R.string.finance_today)) and hasClickAction()).assertIsDisplayed().performClick()
+        awaitText(LedgerDate.display(today))
+        total("45")
+    }
+
+    @Test fun cancellingCurrencySelectionKeepsTheFinanceFilters() {
+        val yesterday = FinancePeriod(FinanceInterval.DAY, LedgerDate.today()).step(-1)
+        desc(R.string.finance_previous)
+        direction(R.string.revenues)
+        act("RUB")
+        awaitDestination(R.id.currencyPickerFragment)
+        desc(R.string.back)
+        awaitDestination(R.id.financeFragment)
+        node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
+        node(hasText(LedgerDate.display(yesterday)) and hasClickAction()).assertIsDisplayed()
+        node(hasText("RUB") and hasClickAction()).assertIsDisplayed()
+
+        val defaultCurrency = prefs.getString("default_currency", null)
+        currency("RUB", R.string.eur)
+        node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
+        node(hasText(LedgerDate.display(yesterday)) and hasClickAction()).assertIsDisplayed()
+        assertEquals(defaultCurrency, prefs.getString("default_currency", null))
+    }
+
     @Test fun outsidePeriodHistoryAndCrossCurrencyCategoryDeletion() {
         // Use a private category so confirming deletion can never remove a built-in category.
         val categoryId = dao.insertFinanceCategory(entity.FinanceCategoryData(0, books,
@@ -123,7 +190,6 @@ class FinanceFlowTest {
         input(R.string.comment, "Yesterday")
         act(R.string.finance_save_entry)
         total("2")
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(str(R.string.finance_today)))
         act(R.string.finance_today)
         total("3")
         act(books)
@@ -355,7 +421,7 @@ class FinanceFlowTest {
         node(hasText(text) and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
     }
-    private fun desc(id: Int) = compose.onNodeWithContentDescription(str(id)).performClick()
+    private fun desc(id: Int) = node(hasContentDescription(str(id))).performClick()
     private fun direction(id: Int) = act(id)
     private fun input(label: Int, value: String) {
         node(hasSetTextAction() and hasText(str(label))).performScrollTo().performTextReplacement(value)
@@ -363,14 +429,23 @@ class FinanceFlowTest {
     private fun pencil() = node(hasContentDescription(str(R.string.finance_edit_entry), substring = true)).performClick()
     private fun currency(from: String, to: Int) {
         act(from)
+        awaitDestination(R.id.currencyPickerFragment)
+        desc(R.string.search_currency)
+        node(hasSetTextAction()).performTextReplacement(str(to).substringAfterLast(' '))
         act(to)
+        awaitDestination(R.id.financeFragment)
         awaitText(str(to).substringAfterLast(' '))
     }
+    private fun awaitDestination(id: Int) {
+        compose.waitUntil(8000) { activity { it.navController.currentDestination?.id == id } }
+    }
+    private fun summaryList() = node(verticalList)
     private fun total(amount: String, currency: String = "RUB") {
-        val lists = compose.onAllNodes(hasScrollToIndexAction())
+        val lists = compose.onAllNodes(verticalList)
         if (lists.fetchSemanticsNodes().size == 1) lists[0].performScrollToIndex(0)
         awaitText(amount.toBigDecimal().financeMoney(currency))
     }
+    private val verticalList = hasScrollToIndexAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)
     private fun back() {
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         compose.waitForIdle()
