@@ -1,10 +1,13 @@
 package com.breckneck.debtbook.finance.main
 
+import android.content.Context
+import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
@@ -30,9 +33,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleBottomSheet
 import com.breckneck.debtbook.core.ui.components.BubbleButton
@@ -46,6 +51,7 @@ import com.breckneck.deptbook.domain.util.FinanceInterval
 import com.breckneck.deptbook.domain.util.LedgerDate
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 private enum class DateField { ANCHOR, START, END }
 
@@ -158,6 +164,8 @@ private fun PeriodField(label: Int, value: String, enabled: Boolean, onClick: ()
 
 @Composable
 private fun WeekPicker(day: String, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
+    val colors = bubbleColors()
+    val context = LocalContext.current
     var monthDay by rememberSaveable { mutableStateOf(FinancePeriod(FinanceInterval.MONTH, day).days().start) }
     var choosingMonth by rememberSaveable { mutableStateOf(false) }
     val month = FinancePeriod(FinanceInterval.MONTH, monthDay)
@@ -171,6 +179,10 @@ private fun WeekPicker(day: String, onSelect: (String) -> Unit, onDismiss: () ->
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.padding(horizontal = 12.dp),
+        containerColor = colors.paper,
+        titleContentColor = colors.ink,
+        textContentColor = colors.ink,
         title = { Text(stringResource(R.string.finance_choose_week)) },
         text = {
             Column {
@@ -187,7 +199,7 @@ private fun WeekPicker(day: String, onSelect: (String) -> Unit, onDismiss: () ->
                 }
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).selectableGroup()) {
                     weeks.forEach { week ->
-                        SettingsChoiceRow(week.dateLabel(), selected = day in week) { onSelect(week.start) }
+                        SettingsChoiceRow(week.weekPickerLabel(context), selected = day in week) { onSelect(week.start) }
                     }
                 }
             }
@@ -215,10 +227,18 @@ internal fun FinancePeriod.label(): String = when (interval) {
     FinanceInterval.DAY -> LedgerDate.display(day)
     FinanceInterval.WEEK, FinanceInterval.DATE_RANGE -> days().dateLabel()
     FinanceInterval.MONTH, FinanceInterval.YEAR ->
-        SimpleDateFormat(if (interval == FinanceInterval.MONTH) "MMMM yyyy" else "yyyy", Locale.getDefault())
+        SimpleDateFormat(if (interval == FinanceInterval.MONTH) "LLLL yyyy" else "yyyy", Locale.getDefault())
             .format(requireNotNull(LedgerDate.localDate(day)))
 }
 
 private fun ClosedRange<String>.dateLabel(): String =
     if (start == endInclusive) LedgerDate.display(start)
     else "${LedgerDate.display(start)} – ${LedgerDate.display(endInclusive)}"
+
+internal fun ClosedRange<String>.weekPickerLabel(context: Context): String = DateUtils.formatDateRange(
+    context,
+    LedgerDate.pickerMillis(start),
+    // An interval ending at midnight can display the preceding day.
+    LedgerDate.pickerMillis(endInclusive) + TimeUnit.HOURS.toMillis(12),
+    DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_YEAR or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_UTC,
+)

@@ -24,6 +24,7 @@ import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.finance.main.FinancePeriod
+import com.breckneck.debtbook.finance.main.weekPickerLabel
 import com.breckneck.debtbook.settings.edgeSwipe
 import com.breckneck.debtbook.settings.requirePredictiveGestures
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -146,7 +147,7 @@ class FinanceFlowTest {
         act(R.string.finance_choose_week)
         val month = FinancePeriod(FinanceInterval.MONTH, today).days()
         if (previousWeek.days().endInclusive < month.start) desc(R.string.finance_previous_month)
-        val weekOption = node(hasText(periodLabel(previousWeek)) and hasClickAction()).performScrollTo()
+        val weekOption = node(hasText(previousWeek.days().weekPickerLabel(context)) and hasClickAction()).performScrollTo()
         instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("week-picker")
         weekOption.performClick()
