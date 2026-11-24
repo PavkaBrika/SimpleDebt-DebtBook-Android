@@ -242,10 +242,10 @@ class AuthAccessTest {
                 compose.awaitTag("setFinanceButton").performClick()
                 compose.awaitTag("personHistory")
                 assertNotNull(person()?.photo)
-                compose.onNodeWithText(manage).performClick()
+                compose.onNodeWithContentDescription(manage).performClick()
                 compose.onNodeWithText(remove).performClick()
                 compose.waitUntil(5_000) { person()?.photo == null }
-                compose.onNodeWithText(manage).performClick()
+                compose.onNodeWithContentDescription(manage).performClick()
                 compose.onNodeWithText(choose).performClick()
                 selectFixturePhoto()
                 compose.waitUntil(12_000) { person()?.photo != null }

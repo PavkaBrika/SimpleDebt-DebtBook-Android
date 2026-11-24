@@ -91,7 +91,7 @@ class DebtStatementJourneyTest {
             ActivityScenario.launch(MainActivity::class.java).use { screen ->
                 compose.onNodeWithText("USD").performClick()
                 compose.onNodeWithText("RUB", substring = true).performClick()
-                compose.onNodeWithTag("peopleList").performScrollToNode(hasText(name))
+                compose.awaitTag("peopleList").performScrollToNode(hasText(name))
                 compose.onNodeWithText(name).performClick()
                 compose.awaitTag("openDebtsTab").assertIsSelected()
                 tap(R.id.earlyEntriesTab)
@@ -156,9 +156,9 @@ class DebtStatementJourneyTest {
                 compose.awaitTag("settledDebtsTab").assertIsSelected()
                 assertTrue(sent.isEmpty())
 
-                tap(R.id.sortButton)
-                onView(withId(R.id.showNegativeRadioButton)).inRoot(isDialog()).perform(scrollTo(), click())
-                onView(withId(R.id.confirmButton)).inRoot(isDialog()).perform(scrollTo(), click())
+                val negative = hasTestTag("historyFilter-NEGATIVE")
+                compose.awaitTag("personHistory").performScrollToNode(negative)
+                compose.onNode(negative).performClick()
                 preview()
                 onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isNotChecked()))
                 onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(withEffectiveVisibility(Visibility.GONE)))

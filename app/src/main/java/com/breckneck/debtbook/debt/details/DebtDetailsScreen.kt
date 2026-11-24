@@ -6,13 +6,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.AddAPhoto
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.HideImage
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.SouthWest
@@ -27,6 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
+import com.breckneck.debtbook.debt.DebtFilterChip
+import com.breckneck.debtbook.debt.DebtOrderSheet
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.debt.encodePersonPhoto
 import com.breckneck.debtbook.debt.rememberDebtPhotoPicker
@@ -44,13 +51,25 @@ import com.breckneck.debtbook.debt.main.signedMoney
 import com.breckneck.debtbook.debt.reminders.formatMinute
 import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.util.DebtOrderAttribute
+import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.util.MoneyDisplay
 import java.math.BigDecimal
+import kotlinx.coroutines.delay
+
+private val historyOrders = listOf(
+    (DebtOrderAttribute.Date to true) to R.string.debt_order_date_newest,
+    (DebtOrderAttribute.Date to false) to R.string.debt_order_date_oldest,
+    (DebtOrderAttribute.CreationDate to true) to R.string.debt_order_created_newest,
+    (DebtOrderAttribute.CreationDate to false) to R.string.debt_order_created_oldest,
+    (DebtOrderAttribute.Sum to false) to R.string.debt_order_amount_highest,
+    (DebtOrderAttribute.Sum to true) to R.string.debt_order_amount_lowest,
+)
 
 @Composable
 internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, host: DebtDetailsFragment.OnButtonClickListener,
-    sort: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit, onDue: (Int) -> Unit, onUndo: (Int) -> Unit) {
+    delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit, onDue: (Int) -> Unit, onUndo: (Int) -> Unit) {
     val today = localDay()
     val name by vm.humanName.observeAsState("")
     val photo by vm.humanPhoto.observeAsState()
@@ -69,7 +88,18 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
     val section by vm.section.observeAsState(DebtSection.OPEN)
     val adjustment by vm.openingAdjustment.observeAsState(BigDecimal.ZERO)
     val ready = !busy && state in listOf(DebtDetailsState.SUCCESS, DebtDetailsState.EMPTY)
-    var manage by rememberSaveable { mutableStateOf(false) }
+    val refreshFailed by vm.refreshFailed.observeAsState(false)
+    val order by vm.debtOrder.observeAsState()
+    val filter by vm.debtFilter.observeAsState(Filter.ALL)
+    var sortOpen by rememberSaveable { mutableStateOf(false) }
+    var showLoading by remember { mutableStateOf(false) }
+    LaunchedEffect(state) {
+        showLoading = false
+        if (state == DebtDetailsState.LOADING) {
+            delay(200)
+            showLoading = true
+        }
+    }
     var renaming by rememberSaveable { mutableStateOf(false) }
     val colors = bubbleColors()
     BubbleScaffold(
@@ -77,96 +107,110 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
         modifier = Modifier.semantics { testTagsAsResourceId = true },
         topBar = {
             BubbleTopBar(name, host::onBackButtonClick, hostInsets,
-                leadingTitle = { vm.humanId?.let { PersonAvatar(it, photo, size = 28.dp) } }) { size ->
-                if (section != DebtSection.SETTLED) BubbleIconButton({ vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
-                    Modifier.testTag("addDebtButton"), enabled = ready, diameter = size) {
-                    Icon(Icons.Outlined.Add, stringResource(R.string.newdebt))
+                leadingTitle = {
+                    vm.humanId?.let {
+                        if (sum == null) Spacer(Modifier.size(28.dp))
+                        else PersonAvatar(it, photo, size = 28.dp)
+                    }
+                }) { size ->
+                BubbleActionsMenu(stringResource(R.string.debt_manage), size, enabled = ready) { dismiss ->
+                    BubbleActionItem(stringResource(R.string.person_rename), Icons.Outlined.Edit,
+                        { dismiss(); renaming = true })
+                    BubbleActionItem(
+                        stringResource(if (photo == null) R.string.debt_choose_photo else R.string.debt_replace_photo),
+                        Icons.Outlined.AddAPhoto, { dismiss(); photoPicker() },
+                    )
+                    if (photo != null) BubbleActionItem(stringResource(R.string.debt_remove_photo), Icons.Outlined.HideImage,
+                        { dismiss(); vm.updatePhoto { null } })
+                    BubbleActionItem(stringResource(R.string.person_delete_action), Icons.Outlined.DeleteOutline,
+                        { dismiss(); delete() }, destructive = true)
                 }
             }
         },
+        bottomAction = {
+            if (sum != null) BubbleButton(
+                { vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("addDebtButton"),
+                enabled = ready,
+            ) {
+                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                Text(stringResource(R.string.newdebt), Modifier.padding(start = 8.dp))
+            }
+        },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().testTag("personHistory"), contentPadding = padding,
-            verticalArrangement = Arrangement.Top) {
-            item {
-                Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.mint, contentColor = colors.onMint) {
-                    Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                        val label = when (sum?.signum()) {
-                            1 -> R.string.show_positive
-                            -1 -> R.string.show_negative
-                            else -> R.string.debt_person_balance
-                        }
-                        Text("${stringResource(label)} · $currency", style = MaterialTheme.typography.labelLarge)
-                        sum?.let { AnimatedAmount(it.abs(), it.abs().financeMoney(currency), style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold)) }
-                        if (adjustment.signum() != 0) {
-                            val amount = MoneyDisplay.formatExact(adjustment, currency)
-                            Text(stringResource(R.string.opening_adjustment, if (adjustment.signum() > 0) "+$amount" else amount, currency),
-                                style = MaterialTheme.typography.bodySmall)
+        LazyColumn(Modifier.fillMaxSize().testTag("personHistory"), contentPadding = padding) {
+            sum?.let { balance ->
+                item(key = "personBalance") {
+                    Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.mint, contentColor = colors.onMint) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            val label = when (balance.signum()) {
+                                1 -> R.string.show_positive
+                                -1 -> R.string.show_negative
+                                else -> R.string.debt_person_balance
+                            }
+                            Text("${stringResource(label)} · $currency", style = MaterialTheme.typography.labelLarge)
+                            AnimatedAmount(balance.abs(), balance.abs().financeMoney(currency), style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold))
+                            if (adjustment.signum() != 0) {
+                                val amount = MoneyDisplay.formatExact(adjustment, currency)
+                                Text(stringResource(R.string.opening_adjustment, if (adjustment.signum() > 0) "+$amount" else amount, currency),
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }
-            }
-            item {
-                FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box {
-                        BubbleOutlinedButton({ manage = true }, enabled = ready) {
-                            Icon(Icons.Outlined.MoreHoriz, null, Modifier.size(16.dp))
-                            Text(stringResource(R.string.debt_manage), Modifier.padding(start = 4.dp))
-                        }
-                        DropdownMenu(manage, { manage = false }) {
-                            DropdownMenuItem({ Text(stringResource(R.string.person_rename)) }, { manage = false; renaming = true })
-                            DropdownMenuItem(
-                                { Text(stringResource(if (photo == null) R.string.debt_choose_photo else R.string.debt_replace_photo)) },
-                                {
-                                    manage = false
-                                    photoPicker()
-                                },
-                            )
-                            if (photo != null) {
-                                DropdownMenuItem({ Text(stringResource(R.string.debt_remove_photo)) }, {
-                                    manage = false
-                                    vm.updatePhoto { null }
-                                })
-                            }
-                            DropdownMenuItem({ Text(stringResource(R.string.person_delete_action)) }, { manage = false; delete() })
-                        }
-                    }
-                    BubbleOutlinedButton(share, Modifier.testTag("shareHumanButton"), enabled = ready && !vm.history.value.isNullOrEmpty()) {
+                item(key = "personActions") {
+                    BubbleOutlinedButton(share, Modifier.padding(top = 8.dp).testTag("shareHumanButton"),
+                        enabled = ready && !vm.history.value.isNullOrEmpty()) {
                         Icon(Icons.Outlined.NorthEast, null, Modifier.size(16.dp))
                         Text(stringResource(R.string.debt_share_short), Modifier.padding(start = 4.dp))
                     }
                 }
-            }
-            item {
-                FlowRow(Modifier.fillMaxWidth().selectableGroup().padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                    for (tab in DebtSection.entries) {
-                        if (tab == DebtSection.EARLY && loans?.earlyEntries.isNullOrEmpty()) continue
-                        val (label, tag) = when (tab) {
-                            DebtSection.OPEN -> R.string.open_debts to "openDebtsTab"
-                            DebtSection.SETTLED -> R.string.settled_debts to "settledDebtsTab"
-                            DebtSection.EARLY -> R.string.early_entries to "earlyEntriesTab"
+                item(key = "debtSections") {
+                    FlowRow(
+                        Modifier.fillMaxWidth().selectableGroup().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        for (tab in DebtSection.entries) {
+                            if (tab == DebtSection.EARLY && loans?.earlyEntries.isNullOrEmpty()) continue
+                            val (label, tag) = when (tab) {
+                                DebtSection.OPEN -> R.string.open_debts to "openDebtsTab"
+                                DebtSection.SETTLED -> R.string.settled_debts to "settledDebtsTab"
+                                DebtSection.EARLY -> R.string.early_entries to "earlyEntriesTab"
+                            }
+                            DebtFilterChip(stringResource(label), section == tab, { vm.selectDebtSection(tab) },
+                                Modifier.testTag(tag).semantics {
+                                    role = Role.Tab
+                                    selected = section == tab
+                                }, enabled = ready)
                         }
-                        val selected = section == tab
-                        Box(Modifier.testTag(tag).selectable(selected, role = Role.Tab) { vm.selectDebtSection(tab) }
-                            .heightIn(min = 48.dp), contentAlignment = Alignment.CenterStart) {
-                            Text(stringResource(label), color = if (selected) colors.ink else colors.muted,
-                                style = if (selected) MaterialTheme.typography.titleLarge else MaterialTheme.typography.labelMedium,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                    }
+                }
+                item(key = "historyControls") {
+                    BubbleSectionTitle(stringResource(R.string.history), Modifier.padding(top = 6.dp)) {
+                        BubbleOutlinedButton({ sortOpen = true }, Modifier.testTag("sortButton"), enabled = !busy && order != null) {
+                            Icon(Icons.Outlined.Tune, null, Modifier.size(16.dp))
+                            Text(stringResource(R.string.order_by))
+                        }
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
+                            Filter.NEGATIVE to R.string.show_negative)) {
+                            DebtFilterChip(stringResource(label), filter == choice, {
+                                order?.let { vm.onSetDebtSort(choice, it) }
+                            }, Modifier.testTag("historyFilter-${choice.name}"), enabled = ready)
                         }
                     }
                 }
             }
-            item {
-                BubbleSectionTitle(stringResource(R.string.history), Modifier.padding(top = 12.dp, bottom = 6.dp)) {
-                    BubbleOutlinedButton(sort, Modifier.testTag("sortButton"), enabled = !busy && vm.debtOrder.value != null) {
-                        Icon(Icons.Outlined.Tune, null, Modifier.size(16.dp))
-                        Text(stringResource(R.string.filter))
-                    }
-                }
+            if (refreshFailed) item(key = "historyRefreshError") {
+                Text(stringResource(R.string.debt_history_refresh_failed), color = colors.danger)
+                BubbleOutlinedButton(vm::retry) { Text(stringResource(R.string.history_retry)) }
             }
             when (state) {
                 DebtDetailsState.ERROR -> item { BubbleOutlinedButton(vm::retry) { Text(stringResource(R.string.history_retry)) } }
-                DebtDetailsState.LOADING, null -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                DebtDetailsState.LOADING, null -> if (showLoading) item {
+                    LinearProgressIndicator(Modifier.fillMaxWidth().testTag("personHistoryLoading"))
+                }
                 DebtDetailsState.EMPTY -> item {
                     val message = when (section) {
                         DebtSection.OPEN -> R.string.no_open_debts
@@ -187,6 +231,12 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                     }
                 }
             }
+        }
+    }
+    if (sortOpen) order?.let { current ->
+        DebtOrderSheet(stringResource(R.string.debt_history_order), current, historyOrders, { sortOpen = false }) { choice, rememberChoice ->
+            vm.onSetDebtSort(filter, choice)
+            if (rememberChoice) vm.saveDebtOrder(choice)
         }
     }
     if (renaming) {

@@ -11,6 +11,14 @@
     <string name="debt_today">Échéance aujourd’hui</string>
     <string name="debt_overdue">En retard · %1$s</string>
     <string name="debt_empty_currency">Aucune personne correspondante</string>
+    <string name="debt_history_order">Ordre de l’historique</string>
+    <string name="debt_order_date_newest">Date d’écriture · récentes d’abord</string>
+    <string name="debt_order_date_oldest">Date d’écriture · anciennes d’abord</string>
+    <string name="debt_order_created_newest">Création · récentes d’abord</string>
+    <string name="debt_order_created_oldest">Création · anciennes d’abord</string>
+    <string name="debt_order_amount_highest">Montant · décroissant</string>
+    <string name="debt_order_amount_lowest">Montant · croissant</string>
+    <string name="debt_history_refresh_failed">Impossible d’actualiser l’historique</string>
     <string name="debt_amount_required">Saisissez un montant</string>
     <string name="debt_name_required">Saisissez un nom</string>
     <string name="debt_save_failed">Impossible d’enregistrer la dette</string>

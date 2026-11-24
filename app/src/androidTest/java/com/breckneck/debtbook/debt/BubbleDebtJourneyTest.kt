@@ -241,6 +241,59 @@ class BubbleDebtJourneyTest {
         assertEquals(2, dao.getAllDebtsById(anna).size)
     }
 
+    @Test fun personActionsAndHistoryFiltersStayAvailableAcrossNewDebt() {
+        val borrowed = anna + 100
+        val settled = anna + 101
+        dao.saveDebt(Debt(borrowed, (-40).toBigDecimal(), anna, "Borrowed", today, recordedAsLoan = true))
+        dao.saveDebt(Debt(settled, 50.toBigDecimal(), anna, "Settled", today, recordedAsLoan = true))
+        dao.saveDebt(Debt(0, (-50).toBigDecimal(), anna, null, today, repaymentOfId = settled, operationId = "details-polish-payment"))
+        person()
+        fun control(tag: String): SemanticsNodeInteraction {
+            compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
+            return compose.onNodeWithTag(tag)
+        }
+        val add = compose.awaitTag("addDebtButton").assertIsDisplayed()
+        val manage = compose.onNodeWithContentDescription(context.getString(R.string.debt_manage)).assertIsDisplayed()
+        assertTrue(add.fetchSemanticsNode().boundsInWindow.top > manage.fetchSemanticsNode().boundsInWindow.bottom)
+        manage.performClick()
+        text(context.getString(R.string.person_rename)).assertIsDisplayed()
+        text(context.getString(R.string.debt_choose_photo)).assertIsDisplayed()
+        text(context.getString(R.string.person_delete_action)).assertIsDisplayed()
+        pressBack()
+
+        control("settledDebtsTab").performClick().assertIsSelected()
+        compose.record(settled).assertTextContains("Settled")
+        add.performClick()
+        awaitDestination(R.id.newDebtFragment)
+        pressBack()
+        awaitDestination(R.id.debtDetailsFragment)
+        control("settledDebtsTab").assertIsSelected()
+        compose.record(settled).assertTextContains("Settled")
+        compose.onNodeWithTag("personHistoryLoading").assertDoesNotExist()
+
+        control("openDebtsTab").performClick().assertIsSelected()
+        control("historyFilter-NEGATIVE").performClick()
+        compose.record(borrowed).assertTextContains("Borrowed")
+        compose.onNodeWithTag("record-$anna").assertDoesNotExist()
+        control("sortButton").performClick()
+        text(context.getString(R.string.debt_history_order)).assertIsDisplayed()
+        val choice = text(context.getString(R.string.debt_order_amount_lowest)).performScrollTo()
+        choice.performClick()
+        text(context.getString(R.string.debt_history_order)).assertDoesNotExist()
+        control("sortButton").performClick()
+        text(context.getString(R.string.debt_order_amount_lowest)).performScrollTo().assertIsSelected()
+        pressBack()
+
+        add.performClick()
+        compose.awaitTag("debtSumEditText").performTextReplacement("25")
+        compose.awaitTag("setFinanceButton").performClick()
+        awaitDestination(R.id.debtDetailsFragment)
+        val newId = dao.getAllDebtsById(anna).single { it.sum.compareTo(25.toBigDecimal()) == 0 }.id
+        control("openDebtsTab").assertIsSelected()
+        compose.record(newId).assertExists()
+        assertEquals(0, dao.getHumanSumDebt(anna).compareTo(12385.toBigDecimal()))
+    }
+
     @Test fun debtFormScrollDrawsBehindTheSaveButtonWhileTheKeyboardIsOpen() {
         compose.awaitTag("addHumanButton").performClick()
         val amount = compose.awaitTag("debtSumEditText").performClick()
@@ -459,9 +512,7 @@ class BubbleDebtJourneyTest {
         balance(MoneyDisplay.formatExact(opening, "RUB"))
         assertEquals(0, dao.getAllDebtsById(anna).single { it.repaymentOfId == anna }.sum.compareTo(-principal))
         fun manage(action: Int) {
-            val button = context.getString(R.string.debt_manage)
-            compose.awaitTag("personHistory").performScrollToNode(hasText(button))
-            text(button).performClick()
+            compose.onNodeWithContentDescription(context.getString(R.string.debt_manage)).performClick()
             text(context.getString(action)).performClick()
         }
         manage(R.string.person_rename)

@@ -167,6 +167,47 @@ class DebtDetailsViewModelTest {
         assertEquals(listOf(record), model.resultedDebtList.value)
     }
 
+    @Test fun `refresh keeps cached rows until the new balance and records arrive`() {
+        val model = vm()
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        model.onResume()
+        verify(debts).execute(7)
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val added = record.copy(id = 10, sum = "5".toBigDecimal())
+        whenever(people.getHuman(7)).thenReturn(person.copy(sumDebt = record.sum + added.sum))
+        doAnswer {
+            started.countDown()
+            assertTrue(release.await(5, TimeUnit.SECONDS))
+            listOf(record, added)
+        }.whenever(debts).execute(7)
+        model.onResume()
+        try {
+            assertTrue(started.await(5, TimeUnit.SECONDS))
+            assertEquals(DebtDetailsState.SUCCESS, model.screenState.value)
+            assertEquals(listOf(record), model.visibleDebtRows.value)
+            assertEquals(record.sum, model.overallSum.value)
+        } finally {
+            release.countDown()
+        }
+        model.visibleDebtRows.await { it == listOf(record, added) }
+        assertEquals(record.sum + added.sum, model.overallSum.value)
+    }
+
+    @Test fun `new debt opens the matching history after a successful reload`() {
+        val model = vm()
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        model.selectDebtSection(DebtSection.SETTLED)
+        model.onSetDebtSort(Filter.NEGATIVE, DebtOrderAttribute.CreationDate to false)
+        model.showAddedDebt(positive = true)
+        assertEquals(DebtSection.SETTLED, model.section.value)
+        assertEquals(Filter.NEGATIVE, model.debtFilter.value)
+        model.retry()
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(DebtSection.OPEN, model.section.value)
+        assertEquals(Filter.ALL, model.debtFilter.value)
+    }
+
     @Test fun `unknown legacy date remains visible and can switch to creation order`() {
         whenever(getOrder.execute()).thenReturn(DebtOrderAttribute.Date to false)
         whenever(debts.execute(7)).thenReturn(listOf(record.copy(date = "unknown date"), record.copy(id = 10)))

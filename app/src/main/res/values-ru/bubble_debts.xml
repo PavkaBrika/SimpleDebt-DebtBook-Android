@@ -11,6 +11,14 @@
     <string name="debt_today">Срок сегодня</string>
     <string name="debt_overdue">Просрочен · %1$s</string>
     <string name="debt_empty_currency">Нет подходящих записей</string>
+    <string name="debt_history_order">Порядок истории</string>
+    <string name="debt_order_date_newest">Дата записи · сначала новые</string>
+    <string name="debt_order_date_oldest">Дата записи · сначала старые</string>
+    <string name="debt_order_created_newest">Дата создания · сначала новые</string>
+    <string name="debt_order_created_oldest">Дата создания · сначала старые</string>
+    <string name="debt_order_amount_highest">Сумма · сначала большие</string>
+    <string name="debt_order_amount_lowest">Сумма · сначала меньшие</string>
+    <string name="debt_history_refresh_failed">Не удалось обновить историю</string>
     <string name="debt_amount_required">Введите сумму</string>
     <string name="debt_name_required">Введите имя</string>
     <string name="debt_save_failed">Не удалось сохранить долг</string>

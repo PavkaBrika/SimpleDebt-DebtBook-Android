@@ -62,6 +62,9 @@ class DebtDetailsViewModel @Inject constructor(
     val screenState: LiveData<DebtDetailsState>
         get() = _screenState
     private var loadJob: Job? = null
+    private var hasResumed = false
+    private val _refreshFailed = MutableLiveData(false)
+    val refreshFailed: LiveData<Boolean> = _refreshFailed
 
     private val _initialDebtList = MutableLiveData<List<DebtDomain>>()
     val history: LiveData<List<DebtDomain>> get() = _initialDebtList
@@ -85,7 +88,7 @@ class DebtDetailsViewModel @Inject constructor(
         get() = _humanName
     private val _humanPhoto = MutableLiveData<String?>()
     internal val humanPhoto: LiveData<String?> get() = _humanPhoto
-    private var photoRevision = 0
+    private var personRevision = 0
     private var _humanCurrency = savedStateHandle.get<String>("currency")
     val humanCurrency: String?
         get() = _humanCurrency
@@ -101,9 +104,6 @@ class DebtDetailsViewModel @Inject constructor(
     val debtDeleted: LiveData<Unit>
         get() = _debtDeleted
 
-    private val _isSortDialogShown by lazy { MutableLiveData<Boolean>() }
-    val isSortDialogShown: LiveData<Boolean>
-        get() = _isSortDialogShown
     private val _isHumanDeleteDialogShown by lazy { MutableLiveData<Boolean>() }
     val isHumanDeleteDialogShown: LiveData<Boolean>
         get() = _isHumanDeleteDialogShown
@@ -147,6 +147,10 @@ class DebtDetailsViewModel @Inject constructor(
         savedStateHandle["debtSection"] = section
         _section.value = section
         if (_screenState.value == DebtDetailsState.SUCCESS || _screenState.value == DebtDetailsState.EMPTY) updateVisibleRows()
+    }
+
+    internal fun showAddedDebt(positive: Boolean) {
+        savedStateHandle["addedDebtDirection"] = if (positive) Filter.POSITIVE.name else Filter.NEGATIVE.name
     }
 
     fun openRepayment(debt: DebtDomain) {
@@ -217,11 +221,16 @@ class DebtDetailsViewModel @Inject constructor(
         retry()
     }
 
-    /** One load owns the spinner and publishes the history and its total together. */
+    internal fun onResume() {
+        if (hasResumed && loadJob?.isActive != true) retry()
+        hasResumed = true
+    }
+
     fun retry() {
-        if ((_screenState.value == DebtDetailsState.LOADING && loadJob?.isActive == true) || _isDeleting.value == true) return
-        val photoRevisionAtLoad = photoRevision
-        _screenState.value = DebtDetailsState.LOADING
+        if (_isDeleting.value == true) return
+        loadJob?.cancel()
+        val personRevisionAtLoad = personRevision
+        if (_initialDebtList.value == null) _screenState.value = DebtDetailsState.LOADING
         loadJob = viewModelScope.launch {
             try {
                 if (_debtOrder.value == null) {
@@ -248,7 +257,15 @@ class DebtDetailsViewModel @Inject constructor(
                     }
                     Triple(rows, balance, PersonDebtHistory.from(rows))
                 }
+                _humanCurrency = person.currency
                 _loans.value = personLoans
+                savedStateHandle.remove<String>("addedDebtDirection")?.let { direction ->
+                    savedStateHandle["debtSection"] = DebtSection.OPEN
+                    if (_debtFilter.value?.name != direction) {
+                        _debtFilter.value = Filter.ALL
+                        savedStateHandle["historyFilter"] = Filter.ALL.name
+                    }
+                }
                 val requested = savedStateHandle.get<DebtSection>("debtSection")
                     ?: DebtSection.SETTLED.takeIf { savedStateHandle.get<Boolean>("showSettledDebts") == true }
                 _section.value = when {
@@ -260,9 +277,10 @@ class DebtDetailsViewModel @Inject constructor(
                 _initialDebtList.value = debts
                 _overallSum.value = person.sumDebt
                 _openingAdjustment.value = person.openingAdjustment
-                _humanName.value = person.name
-                if (photoRevisionAtLoad == photoRevision) _humanPhoto.value = person.photo
-                _humanCurrency = person.currency
+                if (personRevisionAtLoad == personRevision) {
+                    _humanName.value = person.name
+                    _humanPhoto.value = person.photo
+                }
                 val request = savedStateHandle.get<String>("repaymentRequestId")
                 if (request != null && debts.any { it.operationId == request }) closeRepayment()
                 repaymentDebtId.value?.let { selected ->
@@ -276,10 +294,12 @@ class DebtDetailsViewModel @Inject constructor(
                     }
                 }
                 applySort()
+                _refreshFailed.value = false
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                _screenState.value = DebtDetailsState.ERROR
+                if (_initialDebtList.value == null) _screenState.value = DebtDetailsState.ERROR
+                else _refreshFailed.value = true
             }
         }
     }
@@ -342,6 +362,7 @@ class DebtDetailsViewModel @Inject constructor(
                 withContext(Dispatchers.IO) { transaction.run {
                     people.updateHuman(requireNotNull(people.getHuman(id)).copy(name = name.trim()))
                 } }
+                personRevision++
                 _humanName.value = name.trim()
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -364,7 +385,7 @@ class DebtDetailsViewModel @Inject constructor(
                 withContext(Dispatchers.IO) { transaction.run {
                     people.updateHuman(requireNotNull(people.getHuman(id)).copy(photo = photo))
                 } }
-                photoRevision++
+                personRevision++
                 _humanPhoto.value = photo
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -443,14 +464,6 @@ class DebtDetailsViewModel @Inject constructor(
 
     fun onShareDialogClose() {
         _isShareDialogShown.value = false
-    }
-
-    fun onSortDialogOpen() {
-        _isSortDialogShown.value = true
-    }
-
-    fun onOrderDialogClose() {
-        _isSortDialogShown.value = false
     }
 
     fun onSetDebtSort(filter: Filter, order: Pair<DebtOrderAttribute, Boolean>) {

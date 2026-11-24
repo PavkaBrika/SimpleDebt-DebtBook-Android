@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues, args: Bundle, back: () -> Unit, feedback: () -> Unit,
-    onContactClick: () -> Unit, onCurrencyClick: (String) -> Unit, saved: (Int, String, String) -> Unit) {
+    onContactClick: () -> Unit, onCurrencyClick: (String) -> Unit, saved: (Int, String, String, Boolean) -> Unit) {
     val context = LocalContext.current
     val colors = bubbleColors()
     val focus = LocalFocusManager.current
@@ -76,7 +76,7 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
     val saveInk by animateColorAsState(directionColors.contentColor, tween(200), label = "Save debt color")
     val amountContainer by animateColorAsState(if (positive) colors.mint else colors.dangerContainer, tween(200), label = "Debt amount background")
     val amountInk by animateColorAsState(if (positive) colors.onMint else colors.danger, tween(200), label = "Debt amount color")
-    LaunchedEffect(savedOwner) { savedOwner?.let { saved(it.id, it.currency, it.name) } }
+    LaunchedEffect(savedOwner) { savedOwner?.let { saved(it.id, it.currency, it.name, positive) } }
 
     BubbleScaffold(
         hostInsets = hostInsets,

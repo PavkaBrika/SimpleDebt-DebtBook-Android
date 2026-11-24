@@ -11,6 +11,14 @@
     <string name="debt_today">Due today</string>
     <string name="debt_overdue">Overdue · %1$s</string>
     <string name="debt_empty_currency">No matching people</string>
+    <string name="debt_history_order">History order</string>
+    <string name="debt_order_date_newest">Entry date · newest first</string>
+    <string name="debt_order_date_oldest">Entry date · oldest first</string>
+    <string name="debt_order_created_newest">Created · newest first</string>
+    <string name="debt_order_created_oldest">Created · oldest first</string>
+    <string name="debt_order_amount_highest">Amount · highest first</string>
+    <string name="debt_order_amount_lowest">Amount · lowest first</string>
+    <string name="debt_history_refresh_failed">Could not refresh history</string>
     <string name="debt_amount_required">Enter an amount</string>
     <string name="debt_name_required">Enter a name</string>
     <string name="debt_save_failed">Could not save the debt</string>

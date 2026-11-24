@@ -11,6 +11,14 @@
     <string name="debt_today">Heute fällig</string>
     <string name="debt_overdue">Überfällig · %1$s</string>
     <string name="debt_empty_currency">Keine passenden Einträge</string>
+    <string name="debt_history_order">Reihenfolge des Verlaufs</string>
+    <string name="debt_order_date_newest">Buchungsdatum · neueste zuerst</string>
+    <string name="debt_order_date_oldest">Buchungsdatum · älteste zuerst</string>
+    <string name="debt_order_created_newest">Erstelldatum · neueste zuerst</string>
+    <string name="debt_order_created_oldest">Erstelldatum · älteste zuerst</string>
+    <string name="debt_order_amount_highest">Betrag · höchste zuerst</string>
+    <string name="debt_order_amount_lowest">Betrag · niedrigste zuerst</string>
+    <string name="debt_history_refresh_failed">Verlauf konnte nicht aktualisiert werden</string>
     <string name="debt_amount_required">Geben Sie einen Betrag ein</string>
     <string name="debt_name_required">Geben Sie einen Namen ein</string>
     <string name="debt_save_failed">Die Schuld konnte nicht gespeichert werden</string>

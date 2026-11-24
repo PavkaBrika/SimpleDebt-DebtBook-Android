@@ -23,6 +23,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.core.currency.onCurrencySelected
 import com.breckneck.debtbook.core.currency.openCurrencyPicker
+import com.breckneck.debtbook.debt.details.DEBT_DETAILS_RESULT
 
 @AndroidEntryPoint
 class CreateDebtFragment : Fragment() {
@@ -75,10 +76,12 @@ class CreateDebtFragment : Fragment() {
             val host = requireActivity() as OnButtonClickListener
             CreateDebtScreen(vm, insets, requireArguments(), host::onBackButtonClick, host::onSetButtonClick,
                 onContactClick = ::openContactPicker,
-                onCurrencyClick = { openCurrencyPicker(R.id.newDebtFragment, it) }) { id, currency, name ->
+                onCurrencyClick = { openCurrencyPicker(R.id.newDebtFragment, it) }) { id, currency, name, positive ->
                 setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true, "currency" to currency))
                 host.onAddDebt()
                 if (findNavController().previousBackStackEntry?.destination?.id == R.id.debtDetailsFragment) {
+                    setFragmentResult(DEBT_DETAILS_RESULT, bundleOf("newDebt" to (requireArguments().getInt("idDebt", -1) <= 0),
+                        "positive" to positive))
                     findNavController().popBackStack()
                 } else host.DebtDetailsExistHuman(id, currency, name)
             }

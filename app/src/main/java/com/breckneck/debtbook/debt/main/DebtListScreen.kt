@@ -2,7 +2,6 @@ package com.breckneck.debtbook.debt.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
+import com.breckneck.debtbook.debt.DebtFilterChip
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.HumanDomain
@@ -173,11 +173,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
                         Filter.NEGATIVE to R.string.show_negative)) {
-                        FilterChip(filter == choice, { order?.let { vm.onSetHumanSort(choice, it) } },
-                            { Text(stringResource(label)) }, shape = CircleShape,
-                            colors = FilterChipDefaults.filterChipColors(containerColor = colors.paper, labelColor = colors.muted,
-                                selectedContainerColor = colors.mint, selectedLabelColor = colors.onMint),
-                            border = BorderStroke(1.dp, if (filter == choice) colors.mint else colors.border))
+                        DebtFilterChip(stringResource(label), filter == choice, { order?.let { vm.onSetHumanSort(choice, it) } })
                     }
                 }
             }
