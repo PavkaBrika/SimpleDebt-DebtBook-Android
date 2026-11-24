@@ -72,7 +72,9 @@ class DebtStatementJourneyTest {
         val legacyBalanceKey = "sum_in_share_text"
         val previousRateThreshold = prefs.all[rateKey] as? Int
         val previousBalanceSetting = prefs.all[legacyBalanceKey] as? Boolean
-        prefs.edit().putInt(rateKey, Int.MAX_VALUE).putBoolean(legacyBalanceKey, true).commit()
+        val currencyKey = "default_currency"
+        val previousCurrency = prefs.all[currencyKey] as? String
+        prefs.edit().putInt(rateKey, Int.MAX_VALUE).putBoolean(legacyBalanceKey, true).putString(currencyKey, "RUB").commit()
         try {
             val earlyNote = "Earlier receipt"
             val early = add(250, 1, earlyNote)
@@ -89,8 +91,6 @@ class DebtStatementJourneyTest {
             }
 
             ActivityScenario.launch(MainActivity::class.java).use { screen ->
-                compose.onNodeWithText("USD").performClick()
-                compose.onNodeWithText("RUB", substring = true).performClick()
                 compose.awaitTag("peopleList").performScrollToNode(hasText(name))
                 compose.onNodeWithText(name).performClick()
                 compose.awaitTag("openDebtsTab").assertIsSelected()
@@ -208,6 +208,7 @@ class DebtStatementJourneyTest {
             prefs.edit().apply {
                 if (previousRateThreshold == null) remove(rateKey) else putInt(rateKey, previousRateThreshold)
                 if (previousBalanceSetting == null) remove(legacyBalanceKey) else putBoolean(legacyBalanceKey, previousBalanceSetting)
+                if (previousCurrency == null) remove(currencyKey) else putString(currencyKey, previousCurrency)
             }.commit()
             monitor.removeIntentCallback(callback)
             dao.deleteDebtsByHumanId(person.id)

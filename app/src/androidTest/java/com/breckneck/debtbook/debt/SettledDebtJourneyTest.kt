@@ -21,6 +21,7 @@ import com.breckneck.debtbook.debt.details.DebtDetailsViewModel
 import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.debtbook.debt.reminders.enterDebtDate
+import com.breckneck.debtbook.debt.reminders.clickDebtFormAction
 import com.breckneck.debtbook.debt.reminders.openDueCalendarInForm
 import com.breckneck.debtbook.debt.reminders.screenString
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -124,7 +125,7 @@ class SettledDebtJourneyTest {
         compose.openDueCalendarInForm()
         compose.enterDebtDate(screen, com.breckneck.debtbook.debt.reminders.testDay(10))
         compose.onNodeWithTag("dueSaveButton").performClick()
-        compose.onNodeWithTag("createDebtReminder").performScrollTo().performClick()
+        compose.clickDebtFormAction("createDebtReminder")
         tap(R.id.setFinanceButton)
         await { dao.getAllHuman().any { it.name == name } && records().size == 1 }
         awaitRows(issued().id)

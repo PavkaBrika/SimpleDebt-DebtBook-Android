@@ -75,7 +75,8 @@ svg { display:block; flex-shrink:0 }
   display:flex; flex-direction:column;
   background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 90%,transparent));
 }
-.screen-top .icon-button,.screen-top .goal-actions,.screen-dock button,.screen-dock .nav { pointer-events:auto }
+.panel[data-route=new] .screen-bottom-fade { background:none }
+.screen-top .icon-button,.screen-top .context-actions,.screen-dock button,.screen-dock .nav { pointer-events:auto }
 .apphead { display:flex; align-items:center; justify-content:space-between; padding:4px 0 9px; min-height:57px; gap:6px }
 .apphead h2,h1,h2,h3,p { margin:0 }.apphead h2 { font-size:clamp(30px,9cqw,37px); line-height:1.15; font-weight:650; letter-spacing:-1.7px }
 .apphead.debt-home-header { padding-inline:16px; background:var(--bg) }
@@ -231,12 +232,15 @@ svg { display:block; flex-shrink:0 }
   .segment-moving::before { animation:segment-slide 200ms cubic-bezier(.2,.8,.2,1) }
   .segment-moving button.active { animation:select-ink 65ms step-end }
   .segment-moving button:not(.active) { animation:deselect-ink 65ms step-end }
+  .debt-direction-moving::before { animation:debt-segment-slide 200ms cubic-bezier(.2,.8,.2,1) }
+  .debt-direction-moving button.active,.debt-direction-moving button:not(.active) { animation:none }
   .row-arrival { animation:row-arrival 260ms cubic-bezier(.2,.8,.2,1) }
   .row-arrival.completed-goal .completed-open > svg:first-child path,
   .row-arrival.goal-achieved svg path,
   .row-arrival.tag.ok svg path { stroke-dasharray:26; animation:draw-check 320ms ease-out }
 }
 @keyframes segment-slide { from { transform:translateX(var(--previous-x)) } }
+@keyframes debt-segment-slide { from { transform:translateX(var(--previous-x)); background-color:var(--previous-fill) } }
 @keyframes select-ink { from { color:var(--soft) } }
 @keyframes deselect-ink { from { color:var(--on-cta) } }
 @keyframes row-arrival { from { opacity:.25; transform:translateY(7px) } }
@@ -264,11 +268,11 @@ svg { display:block; flex-shrink:0 }
 .detailhead-pill .icon-button {width:var(--bubble-height);height:var(--bubble-height)}
 .detailhead-pill h2 {line-height:1.375rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .detailhead-pill .detail-title {justify-self:center;max-width:100%;height:var(--bubble-height);padding:0 14px;border-radius:99px;border:1px solid var(--edge);background:color-mix(in srgb,var(--paper) 88%,transparent)}
-.goal-actions {position:relative}
-.goal-actions summary {cursor:pointer;list-style:none}
-.goal-actions summary::-webkit-details-marker {display:none}
-.goal-menu {position:absolute;right:0;top:100%;z-index:1;width:max-content;max-width:72cqw;padding:4px;background:var(--paper);border:1px solid var(--edge);border-radius:18px;box-shadow:0 5px 16px #10231720}
-.goal-menu .menu-action {display:flex;align-items:center;gap:10px;text-align:left;width:100%;min-height:48px;padding:8px 12px}
+.context-actions {position:relative}
+.context-actions summary {cursor:pointer;list-style:none}
+.context-actions summary::-webkit-details-marker {display:none}
+.context-menu {position:absolute;right:0;top:100%;z-index:1;width:max-content;max-width:72cqw;padding:4px;background:var(--paper);border:1px solid var(--edge);border-radius:18px;box-shadow:0 5px 16px #10231720}
+.context-menu .menu-action {display:flex;align-items:center;gap:10px;text-align:left;width:100%;min-height:48px;padding:8px 12px}
 .btn.withdrawal,.sheet.withdrawal .amount-field,.timeline-row.withdrawal .event-icon {background:var(--coral-tint);color:var(--coral)}
 .timeline-row.withdrawal .money,.sheet.withdrawal .amount-line input::placeholder {color:var(--coral)}
 .sheet.withdrawal .btn,.sheet .btn.destructive {background:var(--coral);color:var(--paper)}

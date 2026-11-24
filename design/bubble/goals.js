@@ -19,10 +19,13 @@ function goalBalance(g, overview=false) {
 function goalDeleteButton(g) {
   return `<button type="button" class="icon-button goal-delete danger" data-act="goal-delete" data-value="${g.id}" aria-label="Удалить цель „${escapeHtml(g.name)}“">${icon('trash',22)}</button>`;
 }
+function contextActionMenu(description,items,extraClass='') {
+  return '<details class="context-actions '+extraClass+'"><summary class="icon-button" aria-label="'+escapeHtml(description)+'">'+icon('more')+'</summary><div class="context-menu">'+items+'</div></details>';
+}
 function goalMenu(g) {
-  return '<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью '+escapeHtml(g.name)+'">'+icon('more')+'</summary><div class="goal-menu">'
-    +button('goal-edit','Редактировать цель',g.id,'menu-action','edit')
-    +button('goal-delete','Удалить цель',g.id,'menu-action danger','trash')+'</div></details>';
+  return contextActionMenu('Действия с целью '+g.name,
+    button('goal-edit','Редактировать цель',g.id,'menu-action','edit')+
+    button('goal-delete','Удалить цель',g.id,'menu-action danger','trash'),'goal-actions');
 }
 function goalListItem(g) {
   const total=saved(g);

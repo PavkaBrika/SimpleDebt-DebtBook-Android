@@ -40,9 +40,12 @@ internal fun ComposeTestRule.enterDebtDate(scenario: ActivityScenario<MainActivi
 }
 
 internal fun ComposeTestRule.openDueCalendarInForm() {
-    revealDebtFormAction("createDebtDue").performClick()
+    clickDebtFormAction("createDebtDue")
     awaitTag("dueDatePicker").assertExists()
 }
+
+internal fun ComposeTestRule.clickDebtFormAction(tag: String): SemanticsNodeInteraction =
+    revealDebtFormAction(tag).performSemanticsAction(SemanticsActions.OnClick)
 
 internal fun ComposeTestRule.revealDebtFormAction(tag: String): SemanticsNodeInteraction {
     val action = awaitTag(tag).performScrollTo()

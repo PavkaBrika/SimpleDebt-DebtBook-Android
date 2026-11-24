@@ -10,49 +10,61 @@ function sortPeople(list,order) {
   else if(order==='lowest') list.sort((a,b)=>balance(a)-balance(b));
   else list.sort((a,b)=>order==='oldest'?a.id-b.id:b.id-a.id);
 }
-function orderedHistory(entries,p,f) {
-  const sign=f.historyOrder.endsWith('↑')?1:-1;
-  return entries.filter(e=>{
-    const l=p.loans.find(l=>l.id===(e.loan||e.id));
-    return f.historyFilter==='Все'||(l.principal>0)===(f.historyFilter==='Мне должны');
-  }).sort((a,b)=>{
-    if(f.historyOrder.startsWith('Сумма'))return sign*(a.cents-b.cents||a.id-b.id);
-    if(f.historyOrder.startsWith('Дата создания'))return sign*(a.id-b.id);
+const historyOrders = {
+  dateNewest:'Дата записи · сначала новые',
+  dateOldest:'Дата записи · сначала старые',
+  createdNewest:'Дата создания · сначала новые',
+  createdOldest:'Дата создания · сначала старые',
+  amountHighest:'Сумма · сначала большие',
+  amountLowest:'Сумма · сначала меньшие',
+};
+function orderedLoans(p,f) {
+  const ascending=f.historyOrder.endsWith('Oldest')||f.historyOrder.endsWith('Lowest');
+  const sign=ascending?1:-1;
+  return p.loans.filter(l=>(remaining(l)>0)===(f.personSection==='open')&&
+    (f.historyFilter==='all'||(l.principal>0)===(f.historyFilter==='positive'))).sort((a,b)=>{
+    if(f.historyOrder.startsWith('amount'))return sign*(a.principal-b.principal||a.id-b.id);
+    if(f.historyOrder.startsWith('created'))return sign*(a.id-b.id);
     return sign*(a.date.localeCompare(b.date)||a.id-b.id);
   });
 }
-flowActions['people-sort']=(i,v,b)=>{
-  const f=frames[i];
-  showDialog(i,'Порядок людей',()=>{
+function showDebtOrder(i,title,choices,current,select,trigger) {
+  showDialog(i,title,()=>{
     const remember='<div class="group"><label class="setting order-choice">Запомнить выбор<input type="checkbox" data-field="sheet.rememberOrder"></label></div>';
-    const choices=Object.entries(peopleOrders).map(([order,label])=>
-      `<button class="setting order-choice" role="radio" aria-checked="${order===f.peopleOrder}" data-act="choose-people-order" data-value="${order}">${label}<span class="order-indicator" aria-hidden="true"></span></button>`
+    const rows=Object.entries(choices).map(([order,label])=>
+      `<button class="setting order-choice" role="radio" aria-checked="${order===current}" data-act="${select}" data-value="${order}">${label}<span class="order-indicator" aria-hidden="true"></span></button>`
     ).join('');
-    return remember+'<div class="group" role="radiogroup" aria-label="Порядок людей">'+choices+'</div>';
-  },b);
-};
-flowActions['choose-people-order']=(i,order)=>{
+    return remember+'<div class="group" role="radiogroup" aria-label="'+title+'">'+rows+'</div>';
+  },trigger);
+}
+flowActions['people-sort']=(i,v,b)=>showDebtOrder(i,'Порядок людей',peopleOrders,frames[i].peopleOrder,'choose-people-order',b);
+flowActions['history-sort']=(i,v,b)=>showDebtOrder(i,'Порядок истории',historyOrders,frames[i].historyOrder,'choose-history-order',b);
+function chooseDebtOrder(i,field,order) {
   const f=frames[i];
-  f.peopleOrder=order;
-  if(f.sheet.rememberOrder){prefs.peopleOrder=order;persistDemo();}
+  f[field]=order;
+  if(f.sheet.rememberOrder){prefs[field]=order;persistDemo();}
   closeSheet(i);
-};
-flowActions['history-sort']=(i,v,b)=>{
-  const f=frames[i];showDialog(i,'Фильтр истории',s=>'<div class="group">'+field('settings','Направление долга',picker('sheet.filter',['Все','Мне должны','Я должен'],s.filter,'Направление долга'))+field('history','Порядок',picker('sheet.order',['Дата операции ↓','Дата операции ↑','Дата создания ↓','Дата создания ↑','Сумма ↓','Сумма ↑'],s.order,'Порядок'))+'</div>',b,(_,s)=>{f.historyOrder=s.order;f.historyFilter=s.filter;closeSheet(i);},'Применить',{order:f.historyOrder,filter:f.historyFilter});
-};
+}
+flowActions['choose-people-order']=(i,order)=>chooseDebtOrder(i,'peopleOrder',order);
+flowActions['choose-history-order']=(i,order)=>chooseDebtOrder(i,'historyOrder',order);
+flowActions['history-section']=(i,value)=>{frames[i].personSection=value;render(i,true);};
+flowActions['history-direction']=(i,value)=>{frames[i].historyFilter=value;render(i,true);};
 function personAt(i){return people.find(p=>p.id===frames[i].personId);}
-flowActions['person-menu']=(i,v,b)=>{
-  const p=personAt(i);
-  showDialog(i,p.name,()=>'<div class="group">'+rowAction('person-rename','Изменить имя')+
-    '<label class="setting person-photo-action"><strong>'+(p.photo?'Заменить фото':'Выбрать фото')+'</strong><input type="file" accept="image/*" data-file="person-photo"></label>'+
-    (p.photo?rowAction('person-photo-clear','Убрать фото'):'')+rowAction('person-delete','Удалить человека')+'</div>',b);
-};
+function personMenu(p) {
+  return contextActionMenu('Управление карточкой',
+    button('person-rename','Изменить имя','','menu-action','edit')+
+    '<label class="menu-action person-photo-action">'+icon('user',18)+(p.photo?'Заменить фото':'Выбрать фото')+
+      '<input type="file" accept="image/*" data-file="person-photo"></label>'+
+    (p.photo?button('person-photo-clear','Убрать фото','','menu-action','close'):'')+
+    button('person-delete','Удалить человека','','menu-action danger','trash'));
+}
 async function selectPersonPhoto(i,file) {
-  const p=personAt(i),sheet=frames[i].sheet;
+  const p=personAt(i),f=frames[i];
+  const isCurrent=()=>f.route==='person'&&f.personId===p.id&&people.includes(p);
   try {
     const photo=await readDemoPhoto(file,192);
-    if(frames[i].sheet===sheet&&people.includes(p)){p.photo=photo;changed(i,'Фото сохранено');}
-  } catch {if(frames[i].sheet===sheet)fail(i,'Не удалось прочитать фото. Выберите другое изображение.');}
+    if(isCurrent()){p.photo=photo;changed(i,'Фото сохранено');}
+  } catch {if(isCurrent())toast(i,'Не удалось прочитать фото. Выберите другое изображение.');}
 }
 flowActions['person-photo-clear']=i=>{delete personAt(i).photo;changed(i,'Фото убрано');};
 flowActions['person-rename']=(i,v,b)=>{
