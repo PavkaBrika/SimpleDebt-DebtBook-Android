@@ -18,6 +18,7 @@ import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
+import com.breckneck.deptbook.domain.util.ScreenState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -126,7 +127,10 @@ class DebtViewModelTest {
         })
         val published = LinkedBlockingQueue<DebtListBalance>()
         val observer = Observer<DebtListBalance> { published.add(it) }
+        val loaded = CountDownLatch(1)
+        val stateObserver = Observer<ScreenState> { if (it == ScreenState.SUCCESS) loaded.countDown() }
         vm.balance.observeForever(observer)
+        vm.screenState.observeForever(stateObserver)
         try {
             val firstRead = requireNotNull(reads.poll(5, TimeUnit.SECONDS))
             val lender = HumanDomain(1, "Anna", 400.toBigDecimal(), "RUB")
@@ -134,16 +138,20 @@ class DebtViewModelTest {
             whenever(getAllHumansUseCase.execute()).thenReturn(listOf(lender, borrower))
             vm.onStartSearch()
             assertNull(vm.balance.value)
+            assertEquals(ScreenState.LOADING, vm.screenState.value)
+            vm.onStopSearch()
             firstRead.countDown()
             val first = requireNotNull(published.poll(5, TimeUnit.SECONDS))
             assertEquals("RUB", first.currency)
             assertEquals(400.toBigDecimal(), first.receivable)
             assertEquals((-100).toBigDecimal(), first.payable)
             assertEquals(300.toBigDecimal(), first.total)
+            assertTrue(loaded.await(5, TimeUnit.SECONDS))
 
             vm.setListStateLoading()
             val refresh = requireNotNull(reads.poll(5, TimeUnit.SECONDS))
             assertEquals(first, vm.balance.value)
+            assertEquals(ScreenState.SUCCESS, vm.screenState.value)
             assertNull(published.poll())
             whenever(getAllHumansUseCase.execute()).thenReturn(listOf(lender.copy(sumDebt = 500.toBigDecimal()), borrower))
             refresh.countDown()
@@ -151,6 +159,7 @@ class DebtViewModelTest {
             assertEquals(400.toBigDecimal(), updated.total)
         } finally {
             vm.balance.removeObserver(observer)
+            vm.screenState.removeObserver(stateObserver)
         }
     }
 

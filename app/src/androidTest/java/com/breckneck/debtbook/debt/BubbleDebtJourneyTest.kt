@@ -71,7 +71,8 @@ class BubbleDebtJourneyTest {
         if (::main.isInitialized) onActivity { it.finish() }
         for (id in listOf(anna, other, euro)) { dao.deleteDebtsByHumanId(id); dao.deleteHumanById(id) }
         prefs.edit().apply {
-            for (key in listOf("app_theme", "ads_disabled", "default_currency", "pin_code_is_enabled", "debts_quantity_for_app_rate_dialog_show")) {
+            for (key in listOf("app_theme", "ads_disabled", "default_currency", "pin_code_is_enabled",
+                "debts_quantity_for_app_rate_dialog_show", "human_order_attribute", "human_order_by_increase")) {
                 when (val value = old[key]) {
                     is Boolean -> putBoolean(key, value)
                     is String -> putString(key, value)
@@ -174,7 +175,86 @@ class BubbleDebtJourneyTest {
         compose.onNodeWithContentDescription(context.getString(R.string.find_person)).performClick()
         compose.onNode(hasSetTextAction()).performTextReplacement("Бор")
         compose.waitUntil(8000) { compose.onAllNodesWithTag("person-$anna").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithTag("debtBalance").assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.clear_currency_search)).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.close_currency_search)).performClick()
         balance("+12 400")
+    }
+
+    @Test fun orderSheetAppliesEachChoiceAndCanRememberIt() {
+        balance("+18 300")
+        val list = compose.awaitTag("peopleList")
+        val orderButton = compose.onNodeWithTag("filterHumanButton")
+        val sheetTitle = text(context.getString(R.string.people_order_title))
+        val older = compose.onNodeWithTag("person-$anna")
+        val newer = compose.onNodeWithTag("person-$other")
+        val rememberChoice = text(context.getString(R.string.remember_choice))
+        val originalOrder = prefs.all.filterKeys { it.startsWith("human_order_") }
+        for ((label, annaFirst) in listOf(
+            R.string.people_order_newest to false,
+            R.string.people_order_oldest to true,
+            R.string.people_order_lowest_balance to false,
+            R.string.people_order_highest_balance to true,
+        )) {
+            list.performScrollToIndex(0)
+            orderButton.performClick()
+            sheetTitle.assertIsDisplayed()
+            if (label == R.string.people_order_highest_balance) rememberChoice.performClick()
+            text(context.getString(label)).performClick()
+            compose.waitUntil(8000) {
+                compose.onAllNodesWithText(context.getString(R.string.people_order_title)).fetchSemanticsNodes(false).isEmpty()
+            }
+            list.performScrollToIndex(3)
+            assertEquals(annaFirst, older.fetchSemanticsNode().boundsInWindow.top < newer.fetchSemanticsNode().boundsInWindow.top)
+            if (label != R.string.people_order_highest_balance) {
+                assertEquals(originalOrder, prefs.all.filterKeys { it.startsWith("human_order_") })
+            }
+        }
+        assertEquals(false, prefs.all["human_order_by_increase"])
+        list.performScrollToIndex(0)
+        orderButton.performClick()
+        text(context.getString(R.string.people_order_highest_balance)).assertIsSelected()
+        capture("people-order")
+        pressBack()
+        sheetTitle.assertDoesNotExist()
+    }
+
+    @Test fun searchReplacesTheHeaderAndRestoresTheBalanceOnBack() {
+        balance("+18 300")
+        val search = compose.onNodeWithContentDescription(context.getString(R.string.find_person))
+        val searchCenter = search.fetchSemanticsNode().boundsInWindow.center
+        val balanceCard = compose.onNodeWithTag("debtBalance")
+        val originalHeight = balanceCard.fetchSemanticsNode().boundsInWindow.height
+        search.performClick()
+        val field = compose.onNode(hasContentDescription(context.getString(R.string.find_person)) and hasSetTextAction())
+        field.assertIsFocused()
+        val close = compose.onNodeWithContentDescription(context.getString(R.string.close_currency_search))
+        val closeCenter = close.fetchSemanticsNode().boundsInWindow.center
+        assertEquals(searchCenter.x, closeCenter.x, 1f)
+        assertEquals(searchCenter.y, closeCenter.y, 1f)
+        balanceCard.assertDoesNotExist()
+
+        field.performTextReplacement("бОр")
+        compose.waitUntil(8000) { compose.onAllNodesWithTag("person-$anna").fetchSemanticsNodes(false).isEmpty() }
+        text("Борис").assertIsDisplayed()
+        capture("people-search")
+
+        fun imeVisible(): Boolean {
+            var visible = false
+            onActivity {
+                visible = ViewCompat.getRootWindowInsets(it.window.decorView)
+                    ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            }
+            return visible
+        }
+        compose.waitUntil(8000, ::imeVisible)
+        pressBack()
+        compose.waitUntil(8000) { !imeVisible() }
+        field.assertTextContains("бОр")
+        pressBack()
+        search.assertIsDisplayed()
+        assertEquals(originalHeight, balanceCard.fetchSemanticsNode().boundsInWindow.height, 1f)
+        balance("+18 300")
     }
 
     @Test fun annaRepaymentAndUndoUpdateWholeCurrency() {
@@ -205,8 +285,11 @@ class BubbleDebtJourneyTest {
         capture("undone")
         pressBack()
         balance("+18 300")
-        text("RUB").performClick()
-        compose.onNodeWithText("EUR", substring = true).performClick()
+        compose.awaitTag("peopleList").performScrollToIndex(0)
+        compose.onNode(hasText("RUB") and hasClickAction()).performClick()
+        awaitDestination(R.id.currencyPickerFragment)
+        awaitCurrencyScreen()
+        text(context.getString(R.string.eur)).performClick()
         compose.awaitTag("peopleList").performScrollToNode(hasText("Claire"))
         compose.onNodeWithTag("person-$euro").assertTextContains("Claire")
         compose.onNodeWithTag("person-$anna").assertDoesNotExist()
