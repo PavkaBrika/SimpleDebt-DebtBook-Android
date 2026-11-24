@@ -32,6 +32,8 @@ class DataBaseDebtStorageImpl(context: Context): DebtStorage {
         db.appDao().removeDebt(debt)
     }
 
+    override fun restoreRepayment(id: Int, humanId: Int): Boolean = db.appDao().restoreRepayment(id, humanId)
+
     override fun editDebt(debt: Debt, due: DebtDueChange?) {
         db.appDao().reviseDebt(debt, due)
     }

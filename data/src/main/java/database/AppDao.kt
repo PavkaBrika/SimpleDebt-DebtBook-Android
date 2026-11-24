@@ -6,6 +6,7 @@ import com.breckneck.deptbook.domain.util.RepaymentPolicy
 import com.breckneck.deptbook.domain.util.MoneyPolicy
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.model.DebtDueChange
+import com.breckneck.deptbook.domain.usecase.Debt.RepaymentExceedsRemaining
 import java.util.UUID
 import androidx.room.*
 import entity.Debt
@@ -72,29 +73,24 @@ interface AppDao {
     fun saveDebt(debt: Debt) {
         DebtReminderPolicy.validate(debt.toDomain())
         val history = getAllDebts()
-        if (debt.repaymentOfId != null) {
+        val repaidLoan = debt.repaymentOfId?.let { originalId ->
             val previous = history.firstOrNull { it.operationId == debt.operationId }
             if (previous != null) {
                 require(previous.repaymentOfId == debt.repaymentOfId && previous.idHuman == debt.idHuman && previous.sum.compareTo(debt.sum) == 0) { "Repayment request reused" }
                 return // Includes cancelled requests: retry must never resurrect a repayment.
             }
             require(!debt.cancelled && debt.id == 0) { "Invalid new repayment" }
-            val original = requireNotNull(history.firstOrNull { it.id == debt.repaymentOfId }) { "Missing original debt" }
+            val original = requireNotNull(history.firstOrNull { it.id == originalId }) { "Missing original debt" }
             val remaining = RepaymentPolicy.remaining(original.toDomain(), history.map { it.toDomain() })
             val currency = requireNotNull(getHuman(original.idHuman)).currency
             require(debt.sum.abs().compareTo(remaining) == 0 || MoneyPolicy.parse(debt.sum.abs().toPlainString(), currency) != null) { "Invalid repayment precision" }
+            original to (remaining - debt.sum.abs())
         }
         // A synthetic unused ID allows validation before Room assigns the real primary key.
         val candidate = debt.toDomain().copy(id = if (debt.id == 0) Int.MIN_VALUE else debt.id)
         RepaymentPolicy.validate(history.map { it.toDomain() } + candidate)
         insertDebt(debt)
-        debt.repaymentOfId?.let { originalId ->
-            val rows = getAllDebts().map { it.toDomain() }
-            val original = getAllDebts().first { it.id == originalId }
-            if (RepaymentPolicy.remaining(original.toDomain(), rows).signum() == 0) {
-                updateDebt(original.copy(reminderMinute = null, reminderToken = null, reminderDelivered = false))
-            }
-        }
+        repaidLoan?.let { (original, remaining) -> clearReminderIfSettled(original, remaining) }
         addSum(debt.idHuman, BigDecimal.ZERO)
     }
 
@@ -138,6 +134,28 @@ interface AppDao {
             deleteDebt(previous)
         }
         addSum(previous.idHuman, BigDecimal.ZERO)
+    }
+
+    @Transaction
+    fun restoreRepayment(id: Int, humanId: Int): Boolean {
+        val history = getAllDebtsById(humanId)
+        val repayment = requireNotNull(history.firstOrNull { it.id == id && it.repaymentOfId != null })
+        if (!repayment.cancelled) return false
+        val original = requireNotNull(history.firstOrNull { it.id == repayment.repaymentOfId && it.repaymentOfId == null })
+        val remaining = RepaymentPolicy.remaining(original.toDomain(), history.map { it.toDomain() })
+        val amount = repayment.sum.abs()
+        if (amount > remaining) throw RepaymentExceedsRemaining(remaining)
+        updateDebt(repayment.copy(cancelled = false))
+        val newRemaining = remaining - amount
+        clearReminderIfSettled(original, newRemaining)
+        addSum(humanId, BigDecimal.ZERO)
+        return newRemaining.signum() == 0
+    }
+
+    private fun clearReminderIfSettled(original: Debt, remaining: BigDecimal) {
+        if (remaining.signum() == 0 && (original.reminderToken != null || original.reminderMinute != null || original.reminderDelivered)) {
+            updateDebt(original.copy(reminderMinute = null, reminderToken = null, reminderDelivered = false))
+        }
     }
 
     @Transaction

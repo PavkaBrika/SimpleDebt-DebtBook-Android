@@ -15,6 +15,8 @@ interface DebtRepository {
 
     fun deleteDebt(debtDomain: DebtDomain)
 
+    fun restoreRepayment(id: Int, humanId: Int): Boolean
+
     fun editDebt(debtDomain: DebtDomain, due: DebtDueChange? = null)
 
     fun deleteDebtsByHumanId(id: Int)

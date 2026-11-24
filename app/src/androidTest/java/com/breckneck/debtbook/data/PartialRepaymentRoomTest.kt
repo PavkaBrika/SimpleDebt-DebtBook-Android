@@ -136,6 +136,44 @@ class PartialRepaymentRoomTest {
             assertAmount("0", dao.getHumanSumDebt(1))
         }
     }
+
+    @Test fun restoringUsesTheOriginalPaymentAndRejectsAnExcessWithoutChangingTheBalance() {
+        for (sign in listOf(1, -1)) {
+            Room.inMemoryDatabaseBuilder(context, AppDataBase::class.java).build().use { db ->
+                val dao = db.appDao()
+                dao.insertHuman(Human(1, "Person", BigDecimal.ZERO, "EUR"))
+                dao.saveDebt(Debt(1, (100 * sign).toBigDecimal(), 1, null, "2026-11-16"))
+                dao.saveDebt(repayment((-60 * sign).toString()))
+                val first = dao.getAllDebts().single { it.repaymentOfId != null }
+                dao.removeDebt(first)
+                dao.saveDebt(repayment((-50 * sign).toString(), "request-000000002"))
+                val second = dao.getAllDebts().single { it.operationId == "request-000000002" }
+                rejected { dao.restoreRepayment(first.id, 2) }
+                rejected { dao.restoreRepayment(first.id, 1) }
+                assertTrue(dao.getAllDebts().single { it.id == first.id }.cancelled)
+                assertAmount((50 * sign).toString(), dao.getHumanSumDebt(1))
+
+                dao.removeDebt(second)
+                dao.saveDebt(repayment((-40 * sign).toString(), "request-000000003"))
+                val alarm = "1234567890-original-alarm"
+                dao.setDebtDueDate(1, "2099-11-16", 540, alarm, System.currentTimeMillis())
+                db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_restore BEFORE UPDATE ON Human BEGIN SELECT RAISE(ABORT, 'test restore failure'); END")
+                try { dao.restoreRepayment(first.id, 1); fail("restore should roll back") }
+                catch (_: android.database.sqlite.SQLiteException) { }
+                assertTrue(dao.getAllDebts().single { it.id == first.id }.cancelled)
+                assertEquals(alarm, dao.getAllDebts().single { it.id == 1 }.reminderToken)
+                assertAmount((60 * sign).toString(), dao.getHumanSumDebt(1))
+                db.openHelper.writableDatabase.execSQL("DROP TRIGGER fail_restore")
+
+                assertTrue(dao.restoreRepayment(first.id, 1))
+                assertFalse(dao.restoreRepayment(first.id, 1))
+                assertEquals(first, dao.getAllDebts().single { it.id == first.id })
+                assertEquals(4, dao.getAllDebts().size)
+                assertNull(dao.getAllDebts().single { it.id == 1 }.reminderToken)
+                assertAmount("0", dao.getHumanSumDebt(1))
+            }
+        }
+    }
 }
 
 private fun <T> AppDataBase.use(block: (AppDataBase) -> T): T = try { block(this) } finally { close() }
