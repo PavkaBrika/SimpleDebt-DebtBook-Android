@@ -127,15 +127,38 @@ function home(f) {
   const balances=people.filter(p=>p.cur===f.cur).map(balance);
   const plus=balances.reduce((s,v)=>s+Math.max(0,v),0),minus=balances.reduce((s,v)=>s+Math.max(0,-v),0);
   const chips=[['all','Все'],['positive','Мне должны'],['negative','Я должен']];
-  const html=heading('Долги',iconButton('search',f.search?'Закрыть поиск':'Найти человека',f.search?'close':'search'))+
-    balanceCard('Общий баланс',
+  const searchLabel=f.query?'Очистить поиск':'Закрыть поиск';
+  const topBar=`<div class="apphead debt-home-header">${f.search
+    ? `<div class="people-search"><input type="text" inputmode="search" data-bind="query" aria-label="Найти человека" placeholder="Найти человека" value="${escapeHtml(f.query)}">${iconButton('search-clear-or-close',searchLabel,'close')}</div>`
+    : '<h2>Долги</h2>'+iconButton('search','Найти человека','search')
+  }</div>`;
+  const summary=f.search?'':balanceCard('Общий баланс',
       '<select data-bind="cur" aria-label="Валюта обзора">'+options([...new Set([defaultCurrency(),...people.map(p=>p.cur)])],f.cur)+'</select>',
       motionAmount('net',plus-minus,f.cur,true),
-      '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+motionAmount('credit',plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+motionAmount('debit',minus,f.cur)+'</strong></div></div>',coinArt())+
-    '<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
-    (f.search?'<input class="search-field" data-bind="query" aria-label="Имя человека" placeholder="Найти по имени" value="'+escapeHtml(f.query)+'">':'')+
+      '<div class="summary-grid"><div><span class="legend">'+icon('take',15)+'Мне должны</span><strong>'+motionAmount('credit',plus,f.cur)+'</strong></div><div><span class="legend">'+icon('give',15)+'Я должен</span><strong>'+motionAmount('debit',minus,f.cur)+'</strong></div></div>',coinArt());
+  const html=summary+'<div class="section-title"><h3>Люди</h3>'+button('people-sort','Порядок','','chip','settings')+'</div>'+'<div class="tabs">'+chips.map(([id,label])=>'<button class="chip '+(f.filter===id?'active':'')+'" data-act="filter" data-value="'+id+'" aria-pressed="'+(f.filter===id)+'">'+label+'</button>').join('')+'</div>'+
     '<div class="people">'+peopleList(f)+'</div>';
-  return layout(html,{action:primary('new','Новый долг','plus'),navigation:nav('home')});
+  return layout(html,{topBar,action:f.search?'':primary('new','Новый долг','plus'),navigation:f.search?'':nav('home')});
+}
+function setPeopleSearch(i,open) {
+  const f=frames[i],panel=sections[i];
+  if(open)f.homeScrollBeforeSearch=panel.querySelector('.scroll').scrollTop;
+  f.search=open;
+  f.query='';
+  render(i);
+  if(open)panel.querySelector('[data-bind=query]').focus({preventScroll:true});
+  else {
+    panel.querySelector('.scroll').scrollTop=f.homeScrollBeforeSearch;
+    restoreActionFocus(panel,'search');
+  }
+}
+function updatePeopleSearch(i,value) {
+  const f=frames[i],panel=sections[i];
+  f.query=value;
+  panel.querySelector('.people').innerHTML=peopleList(f);
+  const button=panel.querySelector('[data-act=search-clear-or-close]');
+  button.title=value?'Очистить поиск':'Закрыть поиск';
+  button.setAttribute('aria-label',button.title);
 }
 function layout(body,{action='',navigation='',topBar=''}={}) {
   const cta=action?'<div class="sticky-action">'+action+'</div>':'';
@@ -430,7 +453,15 @@ board.addEventListener('click',event=>{
       }
       return;
     }
-    case 'search':f.search=!f.search;f.query='';render(i,true);if(f.search)target.querySelector('[data-bind=query]').focus();return;
+    case 'search':return setPeopleSearch(i,true);
+    case 'search-clear-or-close':{
+      if(!f.query)return setPeopleSearch(i,false);
+      const input=target.querySelector('[data-bind=query]');
+      input.value='';
+      updatePeopleSearch(i,'');
+      input.focus({preventScroll:true});
+      return;
+    }
     case 'filter':f.filter=value;render(i,true);return;
     case 'person':f.personId=Number(value);setRoute(f,'person','forward');break;
     case 'back':if(f.trail.length)return pop(i);setRoute(f,f.route==='new'?f.back:'home','back');break;
@@ -478,7 +509,7 @@ function bind(event) {
   const key=el.dataset.bind;if(!key)return;
   const i=Number(el.closest('.panel').dataset.index),f=frames[i];
   if(key==='beforeScreen'||key==='cur') {if(event.type==='change'){f[key]=el.value;render(i,true);}return;}
-  if(key==='query'){f.query=el.value;sections[i].querySelector('.people').innerHTML=peopleList(f);return;}
+  if(key==='query')return updatePeopleSearch(i,el.value);
   const [scope,prop]=key.split('.'),obj=scope==='s'?f.sheet:f.d;
   if(!obj)return;
   obj[prop]=el.type==='checkbox'?el.checked:el.value;
@@ -500,7 +531,8 @@ document.addEventListener('keydown',event=>{
   if(menu && event.key==='Escape'){
     event.preventDefault();menu.open=false;menu.querySelector('summary').focus();return;
   }
-  if(f.sheet && event.key==='Escape'){event.preventDefault();closeSheet(i);}
+  if(f.sheet && event.key==='Escape'){event.preventDefault();closeSheet(i);return;}
+  if(f.route==='home' && f.search && event.key==='Escape'){event.preventDefault();setPeopleSearch(i,false);return;}
   if(f.sheet && event.key==='Tab'){
     const all=[...section.querySelectorAll('.sheet button,.sheet input,.sheet select')].filter(el=>!el.disabled);
     const first=all[0],last=all[all.length-1];

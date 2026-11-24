@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -7,7 +8,6 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SouthWest
@@ -18,11 +18,15 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
@@ -79,28 +83,52 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
     val filter by vm.humanFilter.observeAsState(Filter.ALL)
     val order = vm.humanOrder.observeAsState().value
     val orderOpen by vm.isSortDialogOpened.observeAsState(false)
+    val peopleScroll = rememberLazyListState()
+    val searchScroll = rememberLazyListState()
+    val focus = LocalFocusManager.current
+
+    fun closeSearch() {
+        focus.clearFocus()
+        vm.onStopSearch()
+    }
+
+    BackHandler(enabled = searching, onBack = ::closeSearch)
+
     BubbleScaffold(
         hostInsets = hostInsets,
         modifier = Modifier.semantics { testTagsAsResourceId = true },
-        bottomAction = {
-            BubbleButton(host::onAddButtonClick, Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("addHumanButton")) {
-                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-                Text(stringResource(R.string.newdebt), Modifier.padding(start = 8.dp))
-            }
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        topBar = {
+            DebtListHeader(
+                hostInsets = hostInsets,
+                searching = searching,
+                query = query,
+                onStartSearch = {
+                    searchScroll.requestScrollToItem(0)
+                    vm.onStartSearch()
+                },
+                onQueryChange = {
+                    vm.setSearchQuery(it)
+                    searchScroll.requestScrollToItem(0)
+                },
+                onCloseSearch = ::closeSearch,
+            )
         },
-        tabs = { BubbleBottomBar(R.id.mainFragment, host::onTabSelected) },
-    ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().testTag("peopleList"), contentPadding = padding,
-            verticalArrangement = Arrangement.Top) {
-            item {
-                Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.debts), Modifier.weight(1f), color = colors.ink,
-                        style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                    BubbleIconButton({ if (searching) vm.onStopSearch() else vm.onStartSearch() }) {
-                        Icon(if (searching) Icons.Outlined.Close else Icons.Outlined.Search, stringResource(if (searching) R.string.cancel else R.string.find_person))
-                    }
+        bottomAction = {
+            if (!searching) {
+                BubbleButton(host::onAddButtonClick, Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("addHumanButton")) {
+                    Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                    Text(stringResource(R.string.newdebt), Modifier.padding(start = 8.dp))
                 }
             }
+        },
+        tabs = if (searching) null else { { BubbleBottomBar(R.id.mainFragment, host::onTabSelected) } },
+    ) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().testTag("peopleList"),
+            state = if (searching) searchScroll else peopleScroll,
+            contentPadding = padding,
+        ) {
             if (balance == null) {
                 item {
                     if (failed) DebtListRetry(vm::setListStateLoading)
@@ -109,7 +137,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 return@LazyColumn
             }
             val currency = balance.currency
-            item {
+            if (!searching) item(key = "balance") {
                 BubbleBalanceCard(stringResource(R.string.debt_total), currency, balance.total.signedMoney(currency),
                     { onCurrencyClick(currency) }, modifier = Modifier.testTag("debtBalance"),
                     showCoins = true, balanceValue = balance.total) {
@@ -128,7 +156,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     }
                 }
             }
-            item {
+            item(key = "peopleHeader") {
                 BubbleSectionTitle(stringResource(R.string.debt_people), Modifier.padding(top = 12.dp)) {
                     Row(Modifier.clip(CircleShape).combinedClickable(onClick = vm::onHumanSortDialogOpen,
                         onLongClick = host::onFilterButtonLongClick).testTag("filterHumanButton")
@@ -141,7 +169,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     }
                 }
             }
-            item {
+            item(key = "peopleFilters") {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
                         Filter.NEGATIVE to R.string.show_negative)) {
@@ -152,10 +180,6 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                             border = BorderStroke(1.dp, if (filter == choice) colors.mint else colors.border))
                     }
                 }
-            }
-            if (searching) item {
-                OutlinedTextField(query, vm::setSearchQuery, Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    label = { Text(stringResource(R.string.find_person)) }, singleLine = true)
             }
             if (failed) item { DebtListRetry(vm::setListStateLoading) }
             if (people.isEmpty() && !failed) item {
@@ -185,6 +209,56 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
             vm.onSetHumanSort(filter, choice)
             if (rememberChoice) vm.saveHumanOrder(choice)
             host.onTickVibration()
+        }
+    }
+}
+
+@Composable
+private fun DebtListHeader(
+    hostInsets: PaddingValues,
+    searching: Boolean,
+    query: String,
+    onStartSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onCloseSearch: () -> Unit,
+) {
+    val colors = bubbleColors()
+    val direction = LocalLayoutDirection.current
+    val title = stringResource(R.string.debts)
+    val titleStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
+    val titleHeight = rememberTextMeasurer().measure(title, style = titleStyle, maxLines = 1).size.height
+    val headerHeight = with(LocalDensity.current) { maxOf(48.dp, titleHeight.toDp()) }
+
+    Row(
+        Modifier.fillMaxWidth().background(colors.background)
+            .padding(
+                start = hostInsets.calculateStartPadding(direction) + 16.dp,
+                end = hostInsets.calculateEndPadding(direction) + 16.dp,
+                top = hostInsets.calculateTopPadding() + 16.dp,
+                bottom = 8.dp,
+            ).height(headerHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (searching) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = CircleShape,
+                color = colors.headerBubble,
+                border = BorderStroke(1.dp, colors.border),
+            ) {
+                BubbleSearchField(
+                    label = stringResource(R.string.find_person),
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    onClearOrClose = { if (query.isEmpty()) onCloseSearch() else onQueryChange("") },
+                    modifier = Modifier.padding(start = 14.dp),
+                )
+            }
+        } else {
+            Text(title, Modifier.weight(1f), color = colors.ink, style = titleStyle, maxLines = 1)
+            BubbleIconButton(onClick = onStartSearch) {
+                Icon(Icons.Outlined.Search, stringResource(R.string.find_person))
+            }
         }
     }
 }
