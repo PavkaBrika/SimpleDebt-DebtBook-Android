@@ -1,8 +1,14 @@
 'use strict';
+const peopleOrders = {
+  newest:'Сначала новые',
+  oldest:'Сначала старые',
+  highest:'Сначала с большим балансом',
+  lowest:'Сначала с меньшим балансом',
+};
 function sortPeople(list,order) {
-  if(order==='Исходный порядок')return;
-  const sign=order.endsWith('↑')?1:-1;
-  list.sort((a,b)=>sign*(order.startsWith('Сумма')?balance(a)-balance(b):a.id-b.id));
+  if(order==='highest') list.sort((a,b)=>balance(b)-balance(a));
+  else if(order==='lowest') list.sort((a,b)=>balance(a)-balance(b));
+  else list.sort((a,b)=>order==='oldest'?a.id-b.id:b.id-a.id);
 }
 function orderedHistory(entries,p,f) {
   const sign=f.historyOrder.endsWith('↑')?1:-1;
@@ -16,7 +22,20 @@ function orderedHistory(entries,p,f) {
   });
 }
 flowActions['people-sort']=(i,v,b)=>{
-  const f=frames[i];showDialog(i,'Порядок людей',s=>field('settings','Сортировка',picker('sheet.order',['Исходный порядок','Дата создания ↓','Дата создания ↑','Сумма ↓','Сумма ↑'],s.order,'Порядок людей')),b,(_,s)=>{f.peopleOrder=s.order;closeSheet(i);},'Применить',{order:f.peopleOrder});
+  const f=frames[i];
+  showDialog(i,'Порядок людей',()=>{
+    const remember='<div class="group"><label class="setting order-choice">Запомнить выбор<input type="checkbox" data-field="sheet.rememberOrder"></label></div>';
+    const choices=Object.entries(peopleOrders).map(([order,label])=>
+      `<button class="setting order-choice" role="radio" aria-checked="${order===f.peopleOrder}" data-act="choose-people-order" data-value="${order}">${label}<span class="order-indicator" aria-hidden="true"></span></button>`
+    ).join('');
+    return remember+'<div class="group" role="radiogroup" aria-label="Порядок людей">'+choices+'</div>';
+  },b);
+};
+flowActions['choose-people-order']=(i,order)=>{
+  const f=frames[i];
+  f.peopleOrder=order;
+  if(f.sheet.rememberOrder){prefs.peopleOrder=order;persistDemo();}
+  closeSheet(i);
 };
 flowActions['history-sort']=(i,v,b)=>{
   const f=frames[i];showDialog(i,'Фильтр истории',s=>'<div class="group">'+field('settings','Направление долга',picker('sheet.filter',['Все','Мне должны','Я должен'],s.filter,'Направление долга'))+field('history','Порядок',picker('sheet.order',['Дата операции ↓','Дата операции ↑','Дата создания ↓','Дата создания ↑','Сумма ↓','Сумма ↑'],s.order,'Порядок'))+'</div>',b,(_,s)=>{f.historyOrder=s.order;f.historyFilter=s.filter;closeSheet(i);},'Применить',{order:f.historyOrder,filter:f.historyFilter});

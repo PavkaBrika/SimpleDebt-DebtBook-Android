@@ -84,7 +84,7 @@ class DebtViewModel @Inject constructor(
     val humanOrder: LiveData<Pair<HumanOrderAttribute, Boolean>>
         get() = _humanOrder
 
-    private val _isSortDialogOpened = MutableLiveData<Boolean>()
+    private val _isSortDialogOpened = saved.getLiveData("listOrderOpen", false)
     val isSortDialogOpened: LiveData<Boolean>
         get() = _isSortDialogOpened
     private val _isChangeDebtNameDialogOpened = MutableLiveData<Boolean>()

@@ -1,6 +1,11 @@
 <resources>
     <string name="debt_total">Solde total</string>
     <string name="debt_people">Personnes</string>
+    <string name="people_order_title">Ordre des personnes</string>
+    <string name="people_order_newest">Les plus récentes en premier</string>
+    <string name="people_order_oldest">Les plus anciennes en premier</string>
+    <string name="people_order_highest_balance">Solde le plus élevé en premier</string>
+    <string name="people_order_lowest_balance">Solde le plus bas en premier</string>
     <string name="find_person">Chercher une personne</string>
     <string name="debt_no_due">Sans échéance</string>
     <string name="debt_today">Échéance aujourd’hui</string>

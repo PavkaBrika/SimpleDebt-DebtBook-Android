@@ -163,6 +163,11 @@ svg { display:block; flex-shrink:0 }
 .overlay.leaving { pointer-events:none }
 .sheet { background:var(--bg); color:var(--ink); padding:22px 16px 20px; border-radius:28px 28px 0 0; box-shadow:0 -8px 26px #10231717; max-height:91%; overflow:auto }
 .sheet .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px }.sheet .eyebrow { margin:9px 0 }.sheet .btn { margin-top:12px }.sheet .amount-field { margin:12px 0 7px }.sheet .icon-button { width:42px;height:42px }
+.sheet .order-choice { justify-content:space-between; gap:12px; width:100%; min-height:50px; text-align:start; cursor:pointer }
+.sheet .order-choice input { width:18px; height:18px; margin:0; flex:none; accent-color:var(--forest) }
+.order-choice .order-indicator { display:grid; place-items:center; width:18px; height:18px; flex:none; border:1.5px solid var(--soft); border-radius:50% }
+.order-choice[aria-checked=true] .order-indicator { border-color:var(--forest) }
+.order-choice[aria-checked=true] .order-indicator::after { content:''; width:8px; height:8px; background:var(--forest); border-radius:50% }
 .search-field { width:100%; height:46px; border:1px solid var(--edge); border-radius:18px; padding:0 14px; background:var(--paper); color:var(--ink); margin:3px 0 }
 .empty { padding:22px; font-size:15px; color:var(--soft); text-align:center; line-height:1.4 }
 .art { width:88px;height:80px;pointer-events:none }.gesture,.status,.nav,.sticky-action { flex-shrink:0 }

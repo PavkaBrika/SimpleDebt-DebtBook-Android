@@ -66,7 +66,7 @@ internal fun dueLabel(day: String, open: Boolean, today: String): String = when 
 
 @Composable
 internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: DebtFragment.OnButtonClickListener,
-    sort: () -> Unit, rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
+    rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
     val colors = bubbleColors()
     val today = localDay()
     val balance = vm.balance.observeAsState().value
@@ -77,6 +77,8 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
     val searching by vm.isSearching.observeAsState(false)
     val query by vm.query.collectAsState()
     val filter by vm.humanFilter.observeAsState(Filter.ALL)
+    val order = vm.humanOrder.observeAsState().value
+    val orderOpen by vm.isSortDialogOpened.observeAsState(false)
     BubbleScaffold(
         hostInsets = hostInsets,
         modifier = Modifier.semantics { testTagsAsResourceId = true },
@@ -128,7 +130,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
             }
             item {
                 BubbleSectionTitle(stringResource(R.string.debt_people), Modifier.padding(top = 12.dp)) {
-                    Row(Modifier.clip(CircleShape).combinedClickable(onClick = sort,
+                    Row(Modifier.clip(CircleShape).combinedClickable(onClick = vm::onHumanSortDialogOpen,
                         onLongClick = host::onFilterButtonLongClick).testTag("filterHumanButton")
                         .heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                         Row(Modifier.background(colors.paper, CircleShape).border(1.dp, colors.border, CircleShape)
@@ -143,7 +145,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
                         Filter.NEGATIVE to R.string.show_negative)) {
-                        FilterChip(filter == choice, { vm.humanOrder.value?.let { vm.onSetHumanSort(choice, it) } },
+                        FilterChip(filter == choice, { order?.let { vm.onSetHumanSort(choice, it) } },
                             { Text(stringResource(label)) }, shape = CircleShape,
                             colors = FilterChipDefaults.filterChipColors(containerColor = colors.paper, labelColor = colors.muted,
                                 selectedContainerColor = colors.mint, selectedLabelColor = colors.onMint),
@@ -176,6 +178,13 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     }
                 }
             }
+        }
+    }
+    if (orderOpen && order != null) {
+        DebtPeopleOrderSheet(order, onDismiss = vm::onHumanSortDialogClose) { choice, rememberChoice ->
+            vm.onSetHumanSort(filter, choice)
+            if (rememberChoice) vm.saveHumanOrder(choice)
+            host.onTickVibration()
         }
     }
 }

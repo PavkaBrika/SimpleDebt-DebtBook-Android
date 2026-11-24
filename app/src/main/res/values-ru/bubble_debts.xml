@@ -1,6 +1,11 @@
 <resources>
     <string name="debt_total">Общий баланс</string>
     <string name="debt_people">Люди</string>
+    <string name="people_order_title">Порядок людей</string>
+    <string name="people_order_newest">Сначала новые</string>
+    <string name="people_order_oldest">Сначала старые</string>
+    <string name="people_order_highest_balance">Сначала с большим балансом</string>
+    <string name="people_order_lowest_balance">Сначала с меньшим балансом</string>
     <string name="find_person">Найти человека</string>
     <string name="debt_no_due">Без срока</string>
     <string name="debt_today">Срок сегодня</string>

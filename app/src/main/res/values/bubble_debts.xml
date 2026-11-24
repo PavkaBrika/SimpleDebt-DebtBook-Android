@@ -1,6 +1,11 @@
 <resources>
     <string name="debt_total">Total balance</string>
     <string name="debt_people">People</string>
+    <string name="people_order_title">People order</string>
+    <string name="people_order_newest">Newest first</string>
+    <string name="people_order_oldest">Oldest first</string>
+    <string name="people_order_highest_balance">Highest balance first</string>
+    <string name="people_order_lowest_balance">Lowest balance first</string>
     <string name="find_person">Find a person</string>
     <string name="debt_no_due">No due date</string>
     <string name="debt_today">Due today</string>
