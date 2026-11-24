@@ -16,7 +16,11 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.ui.onNavDestinationSelected
 import com.breckneck.debtbook.auth.ActivityAuthGate
+import com.breckneck.debtbook.auth.DebtSystemPicker
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.*
 import android.util.Log
 import android.view.Menu
@@ -228,12 +232,24 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         authGate.onPostResume()
     }
 
-    internal fun beginDebtContactPicker() = authGate.beginContactPicker()
-    internal fun completeDebtContactPicker(contactRead: Boolean) = authGate.completeContactPicker(contactRead)
+    internal fun prepareDebtPickerIntent(picker: DebtSystemPicker, intent: Intent): Intent {
+        val handler = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo
+        val systemFlags = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+        if (handler != null && handler.exported && handler.packageName != "android" &&
+            handler.applicationInfo.flags and systemFlags != 0
+        ) {
+            authGate.beginSystemPicker(picker)
+            return intent.setComponent(ComponentName(handler.packageName, handler.name))
+        }
+        return intent
+    }
+
+    internal fun completeDebtPicker(picker: DebtSystemPicker, selectionRead: Boolean) =
+        authGate.completeSystemPicker(picker, selectionRead)
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        authGate.cancelContactPicker()
+        authGate.cancelSystemPicker()
         setIntent(intent)
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) openReminderWhenUnlocked()
     }
@@ -340,7 +356,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onDestroy() {
-        authGate.cancelContactPicker()
+        authGate.cancelSystemPicker()
         bannerAd?.destroy()
         interstitialAdLoader?.cancelLoading()
         interstitialAdLoader = null

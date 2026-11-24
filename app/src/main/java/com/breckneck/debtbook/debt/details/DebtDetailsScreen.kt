@@ -1,7 +1,6 @@
 package com.breckneck.debtbook.debt.details
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,6 +37,7 @@ import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.debt.encodePersonPhoto
+import com.breckneck.debtbook.debt.rememberDebtPhotoPicker
 import com.breckneck.debtbook.debt.main.dueLabel
 import com.breckneck.debtbook.debt.main.localDay
 import com.breckneck.debtbook.debt.main.signedMoney
@@ -55,8 +55,10 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
     val name by vm.humanName.observeAsState("")
     val photo by vm.humanPhoto.observeAsState()
     val context = LocalContext.current.applicationContext
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) vm.updatePhoto { encodePersonPhoto(context, uri) }
+    val photoPicker = rememberDebtPhotoPicker(
+        onFailure = { Toast.makeText(context, R.string.debt_photo_failed, Toast.LENGTH_SHORT).show() },
+    ) { uri ->
+        vm.updatePhoto { encodePersonPhoto(context, uri) }
     }
     val currency = vm.humanCurrency.orEmpty()
     val sum by vm.overallSum.observeAsState()
@@ -116,7 +118,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                                 { Text(stringResource(if (photo == null) R.string.debt_choose_photo else R.string.debt_replace_photo)) },
                                 {
                                     manage = false
-                                    photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    photoPicker()
                                 },
                             )
                             if (photo != null) {

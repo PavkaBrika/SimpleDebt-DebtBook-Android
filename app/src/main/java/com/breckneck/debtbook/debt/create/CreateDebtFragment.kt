@@ -2,10 +2,7 @@ package com.breckneck.debtbook.debt.create
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.ContentResolver
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.ContactsContract.Contacts
@@ -20,6 +17,7 @@ import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.auth.DebtSystemPicker
 import com.breckneck.debtbook.core.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import com.breckneck.debtbook.core.bubbleScreen
@@ -31,7 +29,10 @@ class CreateDebtFragment : Fragment() {
     private val vm by viewModels<CreateDebtViewModel>()
     private val contactContract = ActivityResultContracts.PickContact()
     private val pickContact = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val uri = result.data?.data?.takeIf { result.resultCode == Activity.RESULT_OK }
+        val uri = result.data?.data?.takeIf {
+            result.resultCode == Activity.RESULT_OK && it.scheme == ContentResolver.SCHEME_CONTENT &&
+                it.authority == ContactsContract.AUTHORITY
+        }
         val name = try {
             uri?.let {
                 requireContext().contentResolver.query(it, arrayOf(Contacts.DISPLAY_NAME), null, null, null)
@@ -43,26 +44,19 @@ class CreateDebtFragment : Fragment() {
         } catch (_: IllegalArgumentException) {
             null
         }
-        (activity as? MainActivity)?.completeDebtContactPicker(
-            !name.isNullOrBlank() && uri?.scheme == ContentResolver.SCHEME_CONTENT && uri.host == ContactsContract.AUTHORITY,
-        )
+        (activity as? MainActivity)?.completeDebtPicker(DebtSystemPicker.CONTACT, !name.isNullOrBlank())
         if (!name.isNullOrBlank()) vm.pickedContact.value = name
     }
 
     private fun openContactPicker() {
         val host = requireActivity() as MainActivity
-        val intent = contactContract.createIntent(host, null)
-        val handler = host.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo
-        if (handler != null && handler.packageName != "android" &&
-            handler.applicationInfo.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-        ) {
-            intent.component = ComponentName(handler.packageName, handler.name)
-            host.beginDebtContactPicker()
-        }
         try {
-            pickContact.launch(intent)
+            pickContact.launch(host.prepareDebtPickerIntent(DebtSystemPicker.CONTACT, contactContract.createIntent(host, null)))
         } catch (_: ActivityNotFoundException) {
-            host.completeDebtContactPicker(false)
+            host.completeDebtPicker(DebtSystemPicker.CONTACT, false)
+            Toast.makeText(host, R.string.no_permission, Toast.LENGTH_SHORT).show()
+        } catch (_: SecurityException) {
+            host.completeDebtPicker(DebtSystemPicker.CONTACT, false)
             Toast.makeText(host, R.string.no_permission, Toast.LENGTH_SHORT).show()
         }
     }

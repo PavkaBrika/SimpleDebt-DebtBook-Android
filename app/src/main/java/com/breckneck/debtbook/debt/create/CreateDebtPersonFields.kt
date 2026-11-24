@@ -1,9 +1,5 @@
 package com.breckneck.debtbook.debt.create
 
-import android.content.ActivityNotFoundException
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -43,6 +39,7 @@ import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.debt.encodePersonPhoto
+import com.breckneck.debtbook.debt.rememberDebtPhotoPicker
 import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.HumanDomain
 
@@ -99,8 +96,8 @@ internal fun CreateDebtPersonFields(
         }
     }
     val canAddPhoto = selectedId == null && matches.none { it.currency == currency && it.name.trim().equals(query, ignoreCase = true) }
-    val choosePhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) vm.setPhoto { encodePersonPhoto(context, uri) }
+    val choosePhoto = rememberDebtPhotoPicker(onFailure = { vm.photoError.value = true }) { uri ->
+        vm.setPhoto { encodePersonPhoto(context, uri) }
     }
     AnimatedContent(
         targetState = selectedId != null,
@@ -159,11 +156,7 @@ internal fun CreateDebtPersonFields(
                         BubbleListRow(
                             Modifier.clickable(enabled = !saving && !loadingPhoto, role = Role.Button) {
                                 focus.clearFocus()
-                                try {
-                                    choosePhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                } catch (_: ActivityNotFoundException) {
-                                    vm.photoError.value = true
-                                }
+                                choosePhoto()
                             }.testTag("pickDebtPhoto").heightIn(min = 52.dp).padding(start = 14.dp, end = 8.dp),
                             leading = {
                                 if (photo != null) PersonAvatar(1, photo, 34.dp)

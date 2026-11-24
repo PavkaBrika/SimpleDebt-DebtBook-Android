@@ -10,10 +10,12 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
@@ -28,6 +30,7 @@ import com.breckneck.debtbook.auth.util.CryptoManager
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.debt.awaitTag
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
+import database.AppDataBase
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -207,6 +210,85 @@ class AuthAccessTest {
             compose.awaitTag("debtSumEditText").assertTextContains("42")
             compose.onNodeWithText(context.getString(R.string.enter_pin)).assertDoesNotExist()
             assertTrue(AuthSession.isUnlocked)
+        }
+    }
+
+    @Test fun choosingSystemPhotoReturnsToUnlockedDraftAndPerson() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        assumeTrue("Seed a photo on a disposable emulator", InstrumentationRegistry.getArguments().getString("debtPhotoFixture") == "true")
+        val dao = AppDataBase(context).appDao()
+        val name = "Photo-PIN-${System.nanoTime().toString(36)}"
+        fun person() = dao.getAllHuman().firstOrNull { it.name == name }
+        val choose = context.getString(R.string.debt_choose_photo)
+        val replace = context.getString(R.string.debt_replace_photo)
+        val remove = context.getString(R.string.debt_remove_photo)
+        val manage = context.getString(R.string.debt_manage)
+
+        try {
+            instrumentation.runOnMainSync { AuthSession.unlock() }
+            ActivityScenario.launch(MainActivity::class.java).use {
+                compose.awaitTag("addHumanButton").performClick()
+                compose.awaitTag("debtSumEditText").performTextReplacement("42")
+                compose.awaitTag("humanNameEditText").performTextReplacement(name)
+                compose.awaitTag("pickDebtPhoto").performScrollTo().performClick()
+                selectFixturePhoto()
+                compose.waitUntil(12_000) { compose.onAllNodesWithText(replace).fetchSemanticsNodes(false).isNotEmpty() }
+                compose.awaitTag("humanNameEditText").assertTextContains(name)
+                compose.awaitTag("debtSumEditText").assertTextContains("42")
+                compose.onNodeWithText(context.getString(R.string.enter_pin)).assertDoesNotExist()
+                assertTrue(AuthSession.isUnlocked)
+
+                compose.awaitTag("setFinanceButton").performClick()
+                compose.awaitTag("personHistory")
+                assertNotNull(person()?.photo)
+                compose.onNodeWithText(manage).performClick()
+                compose.onNodeWithText(remove).performClick()
+                compose.waitUntil(5_000) { person()?.photo == null }
+                compose.onNodeWithText(manage).performClick()
+                compose.onNodeWithText(choose).performClick()
+                selectFixturePhoto()
+                compose.waitUntil(12_000) { person()?.photo != null }
+                compose.awaitTag("personHistory").assertIsDisplayed()
+                compose.onNodeWithText(context.getString(R.string.enter_pin)).assertDoesNotExist()
+                assertTrue(AuthSession.isUnlocked)
+            }
+        } finally {
+            person()?.let {
+                dao.deleteDebtsByHumanId(it.id)
+                dao.deleteHumanById(it.id)
+            }
+        }
+    }
+
+    private fun selectFixturePhoto() {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        automation.serviceInfo = automation.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        fun nodes(root: AccessibilityNodeInfo): Sequence<AccessibilityNodeInfo> = sequence {
+            yield(root)
+            for (index in 0 until root.childCount) root.getChild(index)?.let { yieldAll(nodes(it)) }
+        }
+        fun pickerNodes() = (listOfNotNull(automation.rootInActiveWindow) + automation.windows.mapNotNull { it.root })
+            .asSequence().filter { it.packageName != context.packageName }.flatMap(::nodes)
+        fun findThumbnail() = pickerNodes().firstOrNull {
+            it.viewIdResourceName == "com.android.documentsui:id/icon_thumb" ||
+                it.contentDescription?.startsWith("Photo taken on") == true
+        }
+        fun tap(node: AccessibilityNodeInfo) {
+            val bounds = Rect().also(node::getBoundsInScreen)
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(
+                automation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}"),
+            ).use { it.readBytes() }
+        }
+        compose.waitUntil(12_000) { findThumbnail() != null }
+        automation.waitForIdle(350, 5_000)
+        val thumbnail = requireNotNull(findThumbnail())
+        tap(thumbnail)
+        if (thumbnail.packageName == "com.google.android.photopicker") {
+            fun done() = pickerNodes().firstOrNull { it.text?.toString() == "Done" }
+            compose.waitUntil(5_000) { done() != null }
+            tap(requireNotNull(done()))
         }
     }
 }
