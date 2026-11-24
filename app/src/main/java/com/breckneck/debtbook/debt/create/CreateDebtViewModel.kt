@@ -43,6 +43,10 @@ class CreateDebtViewModel @Inject constructor(
 
     val isSaving = MutableLiveData(false)
     val saveError = MutableLiveData(false)
+    internal val draftPhoto = savedState.getLiveData<String?>("draftPersonPhoto", null)
+    internal val loadingPhoto = MutableLiveData(false)
+    internal val photoError = MutableLiveData(false)
+    internal val pickedContact = MutableLiveData<String?>()
     internal val savedOwner = MutableLiveData<SavedDebtOwner>()
     internal val needsPersonChoice = MutableLiveData(false)
     private val _availablePeople = MutableLiveData<List<HumanDomain>>(emptyList())
@@ -71,6 +75,23 @@ class CreateDebtViewModel @Inject constructor(
         savedState["draftPersonId"] = id
         needsPersonChoice.value = false
     }
+
+    internal fun setPhoto(readPhoto: suspend () -> String?) {
+        if (isSaving.value == true || loadingPhoto.value == true) return
+        loadingPhoto.value = true
+        photoError.value = false
+        viewModelScope.launch {
+            try {
+                savedState["draftPersonPhoto"] = readPhoto()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                photoError.value = true
+            } finally {
+                loadingPhoto.value = false
+            }
+        }
+    }
     private val initialDueDay = savedState.get<String>("dueDayOnEdit")?.let(LedgerDate::canonical)
     private val initialRemind = savedState.get<Boolean>("remindOnEdit") == true
     val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", initialDueDay)
@@ -97,8 +118,9 @@ class CreateDebtViewModel @Inject constructor(
 
     fun saveDebt(humanId: Int, debtId: Int, name: String, sum: BigDecimal,
                  date: String, info: String) {
-        if (isSaving.value == true || savedOwner.value != null) return
+        if (isSaving.value == true || loadingPhoto.value == true || savedOwner.value != null) return
         val draftCurrency = requireNotNull(currency.value)
+        val photo = draftPhoto.value
         val selectedDay = dueDay.value
         val reminderEnabled = remind.value == true
         val selectedMinute = minute.value.takeIf { reminderEnabled }
@@ -109,7 +131,7 @@ class CreateDebtViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val owner = withContext(Dispatchers.IO) { transaction.run {
-                    val owner = resolveOwner(humanId, name.trim(), draftCurrency)
+                    val owner = resolveOwner(humanId, name.trim(), draftCurrency, photo)
                     val id = owner.id
                     if (debtId > 0) {
                         val previous = requireNotNull(getDebts.execute(id).firstOrNull { it.id == debtId })
@@ -136,7 +158,7 @@ class CreateDebtViewModel @Inject constructor(
         }
     }
 
-    private fun resolveOwner(id: Int, name: String, currency: String): SavedDebtOwner {
+    private fun resolveOwner(id: Int, name: String, currency: String, photo: String?): SavedDebtOwner {
         val existing = if (id > 0) {
             requireNotNull(people.getHuman(id))
         } else {
@@ -146,7 +168,7 @@ class CreateDebtViewModel @Inject constructor(
         }
         if (existing != null) return SavedDebtOwner(existing.id, existing.name, existing.currency)
         require(name.isNotBlank())
-        setHuman.execute(name, BigDecimal.ZERO, currency)
+        setHuman.execute(name, BigDecimal.ZERO, currency, photo)
         return SavedDebtOwner(getLastHumanId.exectute(), name, currency)
     }
 

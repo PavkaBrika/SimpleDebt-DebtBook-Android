@@ -32,8 +32,10 @@
     <string name="debt_change_person">Change person</string>
     <string name="debt_choose_matching_person">Choose the person from the matching cards.</string>
     <string name="debt_contacts_short">Contacts</string>
-    <string name="debt_existing_people">Existing people</string>
+    <string name="debt_existing_people">Add debt to an existing person</string>
     <string name="debt_choose_photo">Choose photo</string>
     <string name="debt_replace_photo">Replace photo</string>
     <string name="debt_remove_photo">Remove photo</string>
+    <string name="debt_selected_person">Person selected</string>
+    <string name="debt_photo_failed">Could not load the photo.</string>
 </resources>

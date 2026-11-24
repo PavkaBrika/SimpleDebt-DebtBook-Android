@@ -32,8 +32,10 @@
     <string name="debt_change_person">Changer de personne</string>
     <string name="debt_choose_matching_person">Choisissez la personne parmi les fiches correspondantes.</string>
     <string name="debt_contacts_short">Contacts</string>
-    <string name="debt_existing_people">Personnes existantes</string>
+    <string name="debt_existing_people">Ajouter la dette à une personne existante</string>
     <string name="debt_choose_photo">Choisir une photo</string>
     <string name="debt_replace_photo">Remplacer la photo</string>
     <string name="debt_remove_photo">Retirer la photo</string>
+    <string name="debt_selected_person">Personne sélectionnée</string>
+    <string name="debt_photo_failed">Impossible de charger la photo.</string>
 </resources>

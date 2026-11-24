@@ -223,8 +223,17 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         openReminderWhenUnlocked()
     }
 
+    override fun onPostResume() {
+        super.onPostResume()
+        authGate.onPostResume()
+    }
+
+    internal fun beginDebtContactPicker() = authGate.beginContactPicker()
+    internal fun completeDebtContactPicker(contactRead: Boolean) = authGate.completeContactPicker(contactRead)
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        authGate.cancelContactPicker()
         setIntent(intent)
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) openReminderWhenUnlocked()
     }
@@ -331,6 +340,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onDestroy() {
+        authGate.cancelContactPicker()
         bannerAd?.destroy()
         interstitialAdLoader?.cancelLoading()
         interstitialAdLoader = null

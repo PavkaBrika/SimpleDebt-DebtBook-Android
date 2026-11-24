@@ -1,15 +1,26 @@
 package com.breckneck.debtbook.debt.create
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
+import android.content.ContentResolver
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.ContactsContract
+import android.provider.ContactsContract.Contacts
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.core.currency.onCurrencySelected
@@ -18,6 +29,43 @@ import com.breckneck.debtbook.core.currency.openCurrencyPicker
 @AndroidEntryPoint
 class CreateDebtFragment : Fragment() {
     private val vm by viewModels<CreateDebtViewModel>()
+    private val contactContract = ActivityResultContracts.PickContact()
+    private val pickContact = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val uri = result.data?.data?.takeIf { result.resultCode == Activity.RESULT_OK }
+        val name = try {
+            uri?.let {
+                requireContext().contentResolver.query(it, arrayOf(Contacts.DISPLAY_NAME), null, null, null)
+                    ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+            }
+        } catch (_: SecurityException) {
+            Toast.makeText(requireContext(), R.string.no_permission, Toast.LENGTH_SHORT).show()
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+        (activity as? MainActivity)?.completeDebtContactPicker(
+            !name.isNullOrBlank() && uri?.scheme == ContentResolver.SCHEME_CONTENT && uri.host == ContactsContract.AUTHORITY,
+        )
+        if (!name.isNullOrBlank()) vm.pickedContact.value = name
+    }
+
+    private fun openContactPicker() {
+        val host = requireActivity() as MainActivity
+        val intent = contactContract.createIntent(host, null)
+        val handler = host.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo
+        if (handler != null && handler.packageName != "android" &&
+            handler.applicationInfo.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        ) {
+            intent.component = ComponentName(handler.packageName, handler.name)
+            host.beginDebtContactPicker()
+        }
+        try {
+            pickContact.launch(intent)
+        } catch (_: ActivityNotFoundException) {
+            host.completeDebtContactPicker(false)
+            Toast.makeText(host, R.string.no_permission, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     interface OnButtonClickListener{
         fun DebtDetailsNewHuman(idHuman: Int, currency: String, name: String)
@@ -32,6 +80,7 @@ class CreateDebtFragment : Fragment() {
         bubbleScreen(R.id.debtDueForm) { insets ->
             val host = requireActivity() as OnButtonClickListener
             CreateDebtScreen(vm, insets, requireArguments(), host::onBackButtonClick, host::onSetButtonClick,
+                onContactClick = ::openContactPicker,
                 onCurrencyClick = { openCurrencyPicker(R.id.newDebtFragment, it) }) { id, currency, name ->
                 setFragmentResult("mainFragmentKey", bundleOf("isListModified" to true, "currency" to currency))
                 host.onAddDebt()

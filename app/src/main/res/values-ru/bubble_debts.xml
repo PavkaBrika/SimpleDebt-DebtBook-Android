@@ -32,8 +32,10 @@
     <string name="debt_change_person">Изменить выбор человека</string>
     <string name="debt_choose_matching_person">Выберите нужного человека из совпадений.</string>
     <string name="debt_contacts_short">Контакты</string>
-    <string name="debt_existing_people">Люди из списка</string>
+    <string name="debt_existing_people">Добавить долг к существующему человеку</string>
     <string name="debt_choose_photo">Выбрать фото</string>
     <string name="debt_replace_photo">Заменить фото</string>
     <string name="debt_remove_photo">Убрать фото</string>
+    <string name="debt_selected_person">Человек выбран</string>
+    <string name="debt_photo_failed">Не удалось загрузить фото.</string>
 </resources>

@@ -1,11 +1,17 @@
 package com.breckneck.debtbook.auth
 
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
+import android.os.PowerManager
 import android.os.SystemClock
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 /** Keeps the current navigation/form state behind the lock, including after process death. */
 class ActivityAuthGate(
@@ -14,6 +20,12 @@ class ActivityAuthGate(
     private val lockDelayMillis: () -> Long,
 ) {
     private var awaitingAuthentication = false
+    private var contactPickerOpenedAt: Long? = null
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            cancelContactPicker()
+        }
+    }
     private val launcher = activity.registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -34,7 +46,43 @@ class ActivityAuthGate(
     fun onStart() {
         if (canAccess()) AuthSession.onForeground()
         updateVisibility()
-        if (!canAccess() && !awaitingAuthentication) {
+        // The result is delivered before onPostResume. Keep the window hidden until then.
+        if (contactPickerOpenedAt == null) requestAuthentication()
+    }
+
+    internal fun beginContactPicker() {
+        if (contactPickerOpenedAt != null || !pinEnabled() || !canAccess()) return
+        ContextCompat.registerReceiver(activity, screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED)
+        contactPickerOpenedAt = SystemClock.elapsedRealtime()
+    }
+
+    internal fun completeContactPicker(contactRead: Boolean) {
+        val elapsed = contactPickerOpenedAt?.let { SystemClock.elapsedRealtime() - it }
+        cancelContactPicker()
+        if (contactRead && elapsed != null && elapsed in 0 until CONTACT_PICKER_WINDOW_MILLIS &&
+            activity.getSystemService(PowerManager::class.java)?.isInteractive == true &&
+            activity.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == false
+        ) {
+            // Resume only the authenticated session that launched this in-process request.
+            AuthSession.unlock()
+            updateVisibility()
+        }
+    }
+
+    internal fun cancelContactPicker() {
+        if (contactPickerOpenedAt == null) return
+        contactPickerOpenedAt = null
+        activity.unregisterReceiver(screenOffReceiver)
+    }
+
+    internal fun onPostResume() {
+        cancelContactPicker()
+        requestAuthentication()
+    }
+
+    private fun requestAuthentication() {
+        if (!activity.isFinishing && !canAccess() && !awaitingAuthentication) {
             awaitingAuthentication = true
             launcher.launch(Intent(activity, AuthorizationActivity::class.java))
         }
@@ -66,5 +114,6 @@ class ActivityAuthGate(
 
     private companion object {
         const val AWAITING_AUTH = "awaitingPinAuthentication"
+        const val CONTACT_PICKER_WINDOW_MILLIS = 5 * 60 * 1000L
     }
 }
