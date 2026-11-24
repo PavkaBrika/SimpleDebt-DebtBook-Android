@@ -49,8 +49,9 @@ internal fun CreateDebtPersonFields(
     fixedPerson: Boolean,
     name: TextFieldState,
     selectedPerson: HumanDomain?,
+    nameMissing: Boolean,
+    nameRequester: BringIntoViewRequester,
     onContactClick: () -> Unit,
-    onEdit: () -> Unit,
 ) {
     val colors = bubbleColors()
     val focus = LocalFocusManager.current
@@ -64,14 +65,12 @@ internal fun CreateDebtPersonFields(
     val photoError by vm.photoError.observeAsState(false)
     val needsChoice by vm.needsPersonChoice.observeAsState(false)
     val pickedContact by vm.pickedContact.observeAsState()
-    val nameRequester = remember { BringIntoViewRequester() }
 
     LaunchedEffect(pickedContact) {
         pickedContact?.let {
             vm.selectPerson(null)
             name.setTextAndPlaceCursorAtEnd(it)
             vm.pickedContact.value = null
-            onEdit()
             nameRequester.bringIntoView()
         }
     }
@@ -101,7 +100,7 @@ internal fun CreateDebtPersonFields(
     }
     AnimatedContent(
         targetState = selectedId != null,
-        modifier = Modifier.fillMaxWidth().bringIntoViewRequester(nameRequester),
+        modifier = Modifier.fillMaxWidth(),
         transitionSpec = { (fadeIn(tween(190)) togetherWith fadeOut(tween(140))).using(SizeTransform()) },
         label = "Debt person selection",
     ) { selected ->
@@ -120,8 +119,12 @@ internal fun CreateDebtPersonFields(
                 BubbleTextFieldRow(
                     Icons.Outlined.Person, stringResource(R.string.person_name), name,
                     stringResource(R.string.debt_name_hint), !saving,
-                    stringResource(R.string.debt_choose_matching_person).takeIf { needsChoice },
-                    { true }, { onEdit(); vm.selectPerson(null) }, Modifier.testTag("humanNameEditText"),
+                    when {
+                        nameMissing -> stringResource(R.string.debt_name_required)
+                        needsChoice -> stringResource(R.string.debt_choose_matching_person)
+                        else -> null
+                    },
+                    { true }, { vm.selectPerson(null) }, Modifier.testTag("humanNameEditText").bringIntoViewRequester(nameRequester),
                     trailing = {
                         TextButton(
                             onClick = { focus.clearFocus(); onContactClick() },
@@ -146,7 +149,6 @@ internal fun CreateDebtPersonFields(
                             name.setTextAndPlaceCursorAtEnd(person.name)
                             vm.selectPerson(person.id)
                             focus.clearFocus()
-                            onEdit()
                         }
                     }
                 }
@@ -179,7 +181,9 @@ internal fun CreateDebtPersonFields(
                         if (loadingPhoto) LinearProgressIndicator(Modifier.fillMaxWidth())
                         if (photoError) Text(
                             stringResource(R.string.debt_photo_failed),
-                            Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = colors.danger,
+                            Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                .semantics { liveRegion = LiveRegionMode.Polite },
+                            color = colors.danger,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }

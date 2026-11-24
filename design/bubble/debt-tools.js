@@ -131,13 +131,13 @@ function debtDraftPhoto(d) {
   const photo=d.photo?'<img class="motif person-photo" alt="" src="'+escapeHtml(d.photo)+'">':icon('user',17);
   return '<div class="debt-draft-photo"><label class="setting person-photo-action">'+photo+'<strong>'+
     (d.photo?'Заменить фото':'Выбрать фото')+'</strong><input type="file" accept="image/*" data-file="debt-draft-photo"></label>'+
-    (d.photo?iconButton('clear-debt-draft-photo','Убрать фото','close'):'')+'</div>';
+    (d.photo?iconButton('clear-debt-draft-photo','Убрать фото','close'):'')+'</div>'+
+    (d.photoError?'<p class="debt-field-error" role="alert">Не удалось загрузить фото.</p>':'');
 }
 function updateDebtPersonOptions(i) {
   const d=frames[i].d,panel=sections[i];
   const suggestions=panel.querySelector('[data-debt-person-suggestions]');
   if(!suggestions)return;
-  panel.querySelector('[data-debt-person-error]').hidden=!d.personError;
   const from=suggestions.getBoundingClientRect().height;
   suggestions.getAnimations().forEach(animation=>animation.cancel());
   suggestions.innerHTML=debtPersonSuggestions(d);
@@ -151,8 +151,8 @@ async function selectDebtDraftPhoto(i,file) {
   const f=frames[i],d=f.d;
   try {
     const photo=await readDemoPhoto(file,192);
-    if(f.route==='new'&&f.d===d&&!d.personId){d.photo=photo;f.error='';render(i,true);}
-  } catch {if(f.route==='new'&&f.d===d)fail(i,'Не удалось загрузить фото.');}
+    if(f.route==='new'&&f.d===d&&!d.personId){d.photo=photo;d.photoError=false;render(i,true);}
+  } catch {if(f.route==='new'&&f.d===d){d.photoError=true;render(i,true);}}
 }
 flowActions['clear-debt-draft-photo']=i=>{frames[i].d.photo='';render(i,true);};
 flowActions['select-debt-person']=async(i,v)=>{

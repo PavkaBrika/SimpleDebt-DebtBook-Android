@@ -85,6 +85,6 @@ class CreateDebtFragment : Fragment() {
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        onCurrencySelected(R.id.newDebtFragment) { vm.currency.value = it }
+        onCurrencySelected(R.id.newDebtFragment, vm::selectCurrency)
     }
 }

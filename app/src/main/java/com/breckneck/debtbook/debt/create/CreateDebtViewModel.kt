@@ -76,6 +76,12 @@ class CreateDebtViewModel @Inject constructor(
         needsPersonChoice.value = false
     }
 
+    internal fun selectCurrency(value: String) {
+        if (currency.value == value) return
+        currency.value = value
+        needsPersonChoice.value = false
+    }
+
     internal fun setPhoto(readPhoto: suspend () -> String?) {
         if (isSaving.value == true || loadingPhoto.value == true) return
         loadingPhoto.value = true

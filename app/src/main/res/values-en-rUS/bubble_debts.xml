@@ -11,6 +11,9 @@
     <string name="debt_today">Due today</string>
     <string name="debt_overdue">Overdue · %1$s</string>
     <string name="debt_empty_currency">No matching people</string>
+    <string name="debt_amount_required">Enter an amount</string>
+    <string name="debt_name_required">Enter a name</string>
+    <string name="debt_save_failed">Could not save the debt</string>
     <string name="debt_save">Save debt</string>
     <string name="debt_deadline">Due date</string>
     <string name="debt_clear_date">Clear due date</string>

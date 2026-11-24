@@ -11,6 +11,9 @@
     <string name="debt_today">Échéance aujourd’hui</string>
     <string name="debt_overdue">En retard · %1$s</string>
     <string name="debt_empty_currency">Aucune personne correspondante</string>
+    <string name="debt_amount_required">Saisissez un montant</string>
+    <string name="debt_name_required">Saisissez un nom</string>
+    <string name="debt_save_failed">Impossible d’enregistrer la dette</string>
     <string name="debt_save">Enregistrer la dette</string>
     <string name="debt_deadline">Échéance</string>
     <string name="debt_clear_date">Effacer l’échéance</string>

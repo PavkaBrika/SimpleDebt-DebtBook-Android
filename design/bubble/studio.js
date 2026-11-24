@@ -206,23 +206,26 @@ function amountField(bind,value,cur,choose=true) {
   const currency=choose?'<select class="currency" aria-label="Валюта долга" data-bind="d.cur">'+options(Object.keys(currencySigns),cur)+'</select>':'<strong>'+cur+'</strong>';
   return amountFieldLayout('<input inputmode="decimal" data-bind="'+bind+'" aria-label="Сумма" placeholder="0" value="'+escapeHtml(value)+'">', currency);
 }
+function debtErrorSlot(key) {
+  return '<p class="debt-field-error" data-debt-field-error="'+key+'" role="alert" hidden></p>';
+}
 function scheduleFields(obj,prefix,outstanding=true) {
-  return '<div class="group">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+
-    '<label class="field"><span class="field-icon">'+icon('bell',17)+'</span><span class="field-body">Напомнить мне</span><input data-bind="'+prefix+'remind" type="checkbox" '+(obj.remind?'checked':'')+' '+(!obj.due||!outstanding?'disabled':'')+'></label>'+
-    (obj.remind?field('bell','Время в день срока',input(prefix+'time',obj.time,'','time')):'')+'</div>'+permissionPrompt(obj,prefix);
+  const inlineError=prefix==='d.'?debtErrorSlot:()=>'';
+  return '<div class="group">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+inlineError('due')+
+    '<label class="field"><span class="field-icon">'+icon('bell',17)+'</span><span class="field-body">Напомнить мне</span><input data-bind="'+prefix+'remind" type="checkbox" '+(obj.remind?'checked':'')+' '+(!obj.due||!outstanding?'disabled':'')+'></label>'+inlineError('remind')+
+    (obj.remind?field('bell','Время в день срока',input(prefix+'time',obj.time,'','time'))+inlineError('time'):'')+'</div>'+permissionPrompt(obj,prefix);
 }
 function newDebt(f) {
   const d=f.d;
   const owner=people.find(p=>p.id===(d.fixed||d.personId));
   const action=d.fixed?'':owner?iconButton('clear-debt-person','Изменить выбор человека','close'):button('contacts','Контакты','','debt-contact-action');
   const personField=field('user',owner&&!d.fixed?'Человек выбран':'Человек',input('d.name',owner?.name||d.name,'Имя или название','text',owner?'readonly':'maxlength="80"'),action);
-  const error='<p class="debt-person-error" data-debt-person-error role="alert"'+(d.personError?'':' hidden')+'>Выберите нужного человека из совпадений.</p>';
-  const suggestions=owner?'':error+'<div class="debt-person-suggestions" data-debt-person-suggestions>'+debtPersonSuggestions(d)+'</div>'+
+  const suggestions=owner?'':debtErrorSlot('name')+'<div class="debt-person-suggestions" data-debt-person-suggestions>'+debtPersonSuggestions(d)+'</div>'+
     '<div data-draft-person-photo>'+debtDraftPhoto(d)+'</div>';
   const negative=d.dir<0?' debt-negative':'';
   return layout('<div class="segment'+negative+'">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
-    '<div class="debt-amount'+negative+'">'+amountField('d.sum',d.sum,owner?.cur||d.cur,!owner)+'</div><div class="group">'+personField+suggestions+
-    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+'</div>'+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
+    '<div class="debt-amount'+negative+'">'+amountField('d.sum',d.sum,owner?.cur||d.cur,!owner)+debtErrorSlot('sum')+'</div><div class="group">'+personField+suggestions+
+    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+debtErrorSlot('date')+'</div>'+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
     {action:button('save','Сохранить долг','','btn'+negative,'check'),topBar:backbar(d.editId?'Редактировать долг':screenNames.new)});
 }
 function findLoan(f,id) { return people.find(p=>p.id===f.personId).loans.find(l=>l.id===id); }
@@ -297,6 +300,7 @@ function render(i,keepScroll=false,committed=false) {
   const listState=listStateControl(f);
   const html=listState&&f.listState&&f.listState!=='Данные'?reviewList(f):f.route==='home'?home(f):f.route==='person'?person(f):f.route==='new'?newDebt(f):flowViews[f.route](f);
   target.innerHTML='<div class="panel-heading">'+(screenNames[f.route]||flowNames[f.route])+listState+'</div><div class="phone">'+html+(f.sheet?sheet(f):'')+'</div>';
+  if(f.route==='new')updateDebtErrors(i);
   for(const bar of target.querySelectorAll(screenBars)){
     updateScreenInset(bar);
     screenBarObserver.observe(bar);
@@ -423,22 +427,61 @@ function confirmSheet(i) {
   f.sheet=null;f.error='';refreshData(i,message);
   if(s.kind==='repay' && remaining(l)===0) playHaptic('confirm');
 }
+function debtFormValidation(d) {
+  const owner=people.find(p=>p.id===(d.fixed||d.personId));
+  const n=readMoney(d.sum,owner?.cur||d.cur,true);
+  const errors={};
+  if(!d.sum.trim())errors.sum='Введите сумму.';
+  else if(n===null)errors.sum='Введите допустимую сумму для этой валюты.';
+  else if(n===0)errors.sum='Долг не может быть равен нулю.';
+  if(!owner&&!d.name.trim())errors.name='Введите имя.';
+  else if(!owner&&d.personError)errors.name='Выберите нужного человека из совпадений.';
+  if(!d.date)errors.date='Выберите дату записи.';
+  else if(d.date>TODAY)errors.date='Дата записи не может быть в будущем.';
+  if(d.due&&d.date&&d.due<d.date)errors.due='Срок возврата не может быть раньше даты записи.';
+  if(d.askNotify)errors.remind='Выберите, разрешать ли уведомления.';
+  else if(d.remind&&!d.time)errors.time='Укажите время напоминания.';
+  else if(d.remind&&d.due+'T'+d.time<=TODAY+'T09:41')errors.time='Выберите будущее время или выключите напоминание.';
+  return {n,errors,owner};
+}
+function updateDebtErrors(i) {
+  const d=frames[i].d, panel=sections[i];
+  const errors=d.validating?debtFormValidation(d).errors:{};
+  for(const message of panel.querySelectorAll('[data-debt-field-error]')) {
+    const key=message.dataset.debtFieldError, text=errors[key]||'';
+    const control=panel.querySelector('[data-bind="d.'+key+'"]');
+    message.id='debt-field-error-'+i+'-'+key;
+    message.hidden=!text;
+    if(message.textContent!==text)message.textContent=text;
+    if(text) {
+      control.setAttribute('aria-invalid','true');
+      control.setAttribute('aria-describedby',message.id);
+    } else {
+      control.removeAttribute('aria-invalid');
+      control.removeAttribute('aria-describedby');
+    }
+  }
+}
 function saveDebt(i) {
   const f=frames[i],d=f.d,name=d.name.trim();
-  let p=people.find(p=>p.id===(d.fixed||d.personId));
-  if(!p) {
+  d.validating=true;
+  const validation=debtFormValidation(d);
+  const {n}=validation;
+  let p=validation.owner;
+  if(!p&&Object.keys(validation.errors).length===0) {
     const matches=exactDebtPeople(d);
-    if(matches.length>1){
+    if(matches.length>1) {
       d.personError=true;
-      render(i,true);
-      sections[i].querySelector('[data-debt-person-error]').scrollIntoView({block:'center'});
-      return;
-    }
-    p=matches[0];
+      validation.errors.name='Выберите нужного человека из совпадений.';
+    } else p=matches[0];
   }
-  const n=readMoney(d.sum,p?.cur||d.cur);
-  if(!n||!name||!d.date) return fail(i,'Введите имя, положительную сумму и дату записи.');
-  const issue=validSchedule(d);if(issue)return fail(i,issue);
+  const first=Object.keys(validation.errors)[0];
+  if(first) {
+    updateDebtPersonOptions(i);
+    updateDebtErrors(i);
+    sections[i].querySelector('[data-debt-field-error="'+first+'"]').scrollIntoView({block:'center'});
+    return;
+  }
   if(d.editId)return updateEditedDebt(i,n);
   if(!p){p={id:serial++,name,art:people.length,cur:d.cur,photo:d.photo||undefined,loans:[]};people.unshift(p);}
   p.loans.unshift({id:serial++,principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:'',returns:[]});
@@ -545,6 +588,7 @@ function bind(event) {
       f.d.name=el.value;
       f.d.personError=false;
       updateDebtPersonOptions(i);
+      updateDebtErrors(i);
     }
     return;
   }
@@ -554,11 +598,13 @@ function bind(event) {
   if(!obj.due)obj.remind=false;
   if(prop==='remind'||prop==='due')obj.askNotify=!!obj.remind&&notificationAccess!=='granted';
   if(event.type==='change'&&['due','remind','cur'].includes(prop)){
+    if(key==='d.cur')obj.personError=false;
     render(i,true);
     if(key==='d.remind'&&obj.remind)sections[i].querySelector('[data-bind="d.time"]')?.scrollIntoView({
       block:'center',behavior:reducedMotion.matches?'instant':'smooth'
     });
   }
+  if(scope==='d')updateDebtErrors(i);
   if(key==='s.sum')updateRemaining(i);
 }
 board.addEventListener('input',bind);board.addEventListener('change',bind);

@@ -25,6 +25,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -150,7 +153,9 @@ internal fun DebtDueFields(vm: CreateDebtViewModel, revealTimeRow: suspend () ->
                 ) { Text(formatMinute(minute)) }
                 if (vm.hasPastReminder()) Text(
                     stringResource(R.string.debt_future_time),
-                    Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = colors.danger,
+                    Modifier.padding(horizontal = 14.dp, vertical = 6.dp).testTag("debtReminderTimeError")
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                    color = colors.danger,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

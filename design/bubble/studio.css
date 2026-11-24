@@ -127,7 +127,8 @@ svg { display:block; flex-shrink:0 }
 .debt-person-choices { margin:0 10px 10px; border:1px solid var(--edge); border-radius:18px; background:var(--mint); color:var(--mint-ink); overflow:hidden }
 .debt-person-choices.choice-error { border-color:var(--coral); background:var(--coral-tint); color:var(--coral) }
 .debt-person-hint { padding:10px 13px 6px; font-size:13px; font-weight:650 }
-.debt-person-error { padding:0 14px 8px 58px; color:var(--coral); font-size:13px }
+.debt-field-error { padding:0 14px 8px 58px; color:var(--coral); font-size:13px }
+.debt-amount .debt-field-error { padding:4px 18px 0 }
 .debt-person-choices .person-row { color:inherit; border-top:1px solid var(--edge); min-height:50px }
 .debt-contact-action { min-height:44px; padding-inline:5px; font-size:13px; color:var(--forest) }
 [data-draft-person-photo]+.field,.debt-draft-photo { border-top:1px solid var(--edge) }

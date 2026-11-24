@@ -11,6 +11,9 @@
     <string name="debt_today">Срок сегодня</string>
     <string name="debt_overdue">Просрочен · %1$s</string>
     <string name="debt_empty_currency">Нет подходящих записей</string>
+    <string name="debt_amount_required">Введите сумму</string>
+    <string name="debt_name_required">Введите имя</string>
+    <string name="debt_save_failed">Не удалось сохранить долг</string>
     <string name="debt_save">Сохранить долг</string>
     <string name="debt_deadline">Срок</string>
     <string name="debt_clear_date">Очистить срок</string>

@@ -11,6 +11,9 @@
     <string name="debt_today">Heute fällig</string>
     <string name="debt_overdue">Überfällig · %1$s</string>
     <string name="debt_empty_currency">Keine passenden Einträge</string>
+    <string name="debt_amount_required">Geben Sie einen Betrag ein</string>
+    <string name="debt_name_required">Geben Sie einen Namen ein</string>
+    <string name="debt_save_failed">Die Schuld konnte nicht gespeichert werden</string>
     <string name="debt_save">Schuld speichern</string>
     <string name="debt_deadline">Fälligkeit</string>
     <string name="debt_clear_date">Fälligkeit entfernen</string>

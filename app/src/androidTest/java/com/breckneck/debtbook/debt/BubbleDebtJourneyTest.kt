@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.SystemClock
 import android.view.View
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.core.view.ViewCompat
@@ -198,6 +199,46 @@ class BubbleDebtJourneyTest {
             dao.deleteDebtsByHumanId(duplicate)
             dao.deleteHumanById(duplicate)
         }
+    }
+
+    @Test fun saveShowsAmountAndNameErrorsBesideTheirFields() {
+        val peopleCount = dao.getAllHuman().size
+        compose.awaitTag("addHumanButton").performClick()
+        val amount = compose.awaitTag("debtSumEditText")
+        val name = compose.awaitTag("humanNameEditText")
+        val save = compose.awaitTag("setFinanceButton")
+        val hint = compose.onNodeWithTag("debtAmountError")
+        val missingAmount = context.getString(R.string.debt_amount_required)
+        val missingName = context.getString(R.string.debt_name_required)
+        val zero = context.getString(R.string.zerodebt)
+        fun fieldError(message: String) = SemanticsMatcher.expectValue(SemanticsProperties.Error, message)
+
+        compose.awaitTag("createDebtDue").performScrollTo()
+        save.performClick()
+        amount.assertIsDisplayed().assert(fieldError(missingAmount))
+        name.assert(fieldError(missingName))
+        hint.assertIsDisplayed().assertTextEquals(missingAmount)
+        assertTrue(hint.fetchSemanticsNode().boundsInWindow.top >= amount.fetchSemanticsNode().boundsInWindow.bottom)
+        assertTrue(hint.fetchSemanticsNode().boundsInWindow.bottom <= name.fetchSemanticsNode().boundsInWindow.top)
+
+        amount.performTextReplacement("0")
+        save.performClick()
+        amount.assert(fieldError(zero))
+        hint.assertTextEquals(zero)
+        capture("inline-amount-zero")
+
+        amount.performTextReplacement("25")
+        save.performClick()
+        hint.assertDoesNotExist()
+        name.assertIsDisplayed().assert(fieldError(missingName))
+        assertEquals(peopleCount, dao.getAllHuman().size)
+
+        name.performTextReplacement("Анна")
+        name.assert(!fieldError(missingName))
+        save.performClick()
+        awaitDestination(R.id.debtDetailsFragment)
+        assertEquals(peopleCount, dao.getAllHuman().size)
+        assertEquals(2, dao.getAllDebtsById(anna).size)
     }
 
     @Test fun earliestDeadlineUsesIndividualOpenLoansAcrossFilters() {
