@@ -66,6 +66,7 @@ internal fun BubbleTextFieldRow(
     onChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = bubbleColors()
     BasicTextField(
@@ -78,7 +79,7 @@ internal fun BubbleTextFieldRow(
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.ink),
         cursorBrush = SolidColor(colors.ink),
         decorator = { editor ->
-            BubbleFieldRow(icon, label) {
+            BubbleFieldRow(icon, label, trailing = trailing) {
                 Box {
                     if (state.text.isEmpty()) Text(placeholder, color = colors.muted)
                     editor()

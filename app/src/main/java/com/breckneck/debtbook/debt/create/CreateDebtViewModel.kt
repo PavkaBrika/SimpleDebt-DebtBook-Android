@@ -7,7 +7,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.DebtDueChange
+import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.repository.DataTransaction
+import com.breckneck.deptbook.domain.repository.HumanRepository
 import com.breckneck.deptbook.domain.usecase.Debt.*
 import com.breckneck.deptbook.domain.usecase.Debt.GetCurrentDateUseCase
 import com.breckneck.deptbook.domain.usecase.Human.*
@@ -22,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+internal data class SavedDebtOwner(val id: Int, val name: String, val currency: String)
+
 @HiltViewModel
 class CreateDebtViewModel @Inject constructor(
     private val getDefaultCurrency: GetDefaultCurrency,
@@ -33,12 +37,40 @@ class CreateDebtViewModel @Inject constructor(
     private val getDebts: GetAllDebtsByIdUseCase,
     private val addSum: AddSumUseCase,
     private val transaction: DataTransaction,
-    private val savedState: SavedStateHandle
+    private val savedState: SavedStateHandle,
+    private val people: HumanRepository,
 ) : ViewModel() {
 
     val isSaving = MutableLiveData(false)
     val saveError = MutableLiveData(false)
-    val savedHumanId = MutableLiveData<Int?>()
+    internal val savedOwner = MutableLiveData<SavedDebtOwner>()
+    internal val needsPersonChoice = MutableLiveData(false)
+    private val _availablePeople = MutableLiveData<List<HumanDomain>>(emptyList())
+    internal val availablePeople: LiveData<List<HumanDomain>> = _availablePeople
+    internal val selectedPersonId = savedState.getLiveData<Int?>("draftPersonId", null)
+
+    init {
+        if ((savedState.get<Int>("idHuman") ?: -1) <= 0) {
+            viewModelScope.launch {
+                reloadPeople()
+            }
+        }
+    }
+
+    private suspend fun reloadPeople() {
+        try {
+            _availablePeople.value = withContext(Dispatchers.IO) { people.getAllHumans() }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.e("CreateDebt", "Could not read people", error)
+        }
+    }
+
+    internal fun selectPerson(id: Int?) {
+        savedState["draftPersonId"] = id
+        needsPersonChoice.value = false
+    }
     private val initialDueDay = savedState.get<String>("dueDayOnEdit")?.let(LedgerDate::canonical)
     private val initialRemind = savedState.get<Boolean>("remindOnEdit") == true
     val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", initialDueDay)
@@ -65,20 +97,20 @@ class CreateDebtViewModel @Inject constructor(
 
     fun saveDebt(humanId: Int, debtId: Int, name: String, sum: BigDecimal,
                  date: String, info: String) {
-        if (isSaving.value == true || savedHumanId.value != null) return
+        if (isSaving.value == true || savedOwner.value != null) return
+        val draftCurrency = requireNotNull(currency.value)
         val selectedDay = dueDay.value
         val reminderEnabled = remind.value == true
         val selectedMinute = minute.value.takeIf { reminderEnabled }
         val due = if (hasDueChange) DebtDueChange(selectedDay, selectedMinute) else null
         isSaving.value = true
         saveError.value = false
+        needsPersonChoice.value = false
         viewModelScope.launch {
             try {
-                val savedId = withContext(Dispatchers.IO) { transaction.run {
-                    val id = if (humanId > 0) humanId else {
-                        setHuman.execute(name, BigDecimal.ZERO, currency.value!!)
-                        getLastHumanId.exectute()
-                    }
+                val owner = withContext(Dispatchers.IO) { transaction.run {
+                    val owner = resolveOwner(humanId, name.trim(), draftCurrency)
+                    val id = owner.id
                     if (debtId > 0) {
                         val previous = requireNotNull(getDebts.execute(id).firstOrNull { it.id == debtId })
                         editDebt.execute(debtId, sum, id, info.ifBlank { null }, date, due)
@@ -87,9 +119,12 @@ class CreateDebtViewModel @Inject constructor(
                         setDebt.execute(sum, id, info.ifBlank { null }, date, selectedDay, selectedMinute)
                         addSum.execute(id, sum)
                     }
-                    id
+                    owner
                 } }
-                savedHumanId.value = savedId
+                savedOwner.value = owner
+            } catch (_: AmbiguousDebtOwner) {
+                needsPersonChoice.value = true
+                reloadPeople()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -100,6 +135,22 @@ class CreateDebtViewModel @Inject constructor(
             }
         }
     }
+
+    private fun resolveOwner(id: Int, name: String, currency: String): SavedDebtOwner {
+        val existing = if (id > 0) {
+            requireNotNull(people.getHuman(id))
+        } else {
+            val matches = people.getAllHumans().filter { it.currency == currency && it.name.trim().equals(name, ignoreCase = true) }
+            if (matches.size > 1) throw AmbiguousDebtOwner()
+            matches.singleOrNull()
+        }
+        if (existing != null) return SavedDebtOwner(existing.id, existing.name, existing.currency)
+        require(name.isNotBlank())
+        setHuman.execute(name, BigDecimal.ZERO, currency)
+        return SavedDebtOwner(getLastHumanId.exectute(), name, currency)
+    }
+
+    private class AmbiguousDebtOwner : IllegalStateException()
 
     val currency = savedState.getLiveData("draftCurrency", savedState.get<String>("currency") ?: getDefaultCurrency.execute())
     val date: LiveData<String> = savedState.getLiveData(

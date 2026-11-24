@@ -149,6 +149,31 @@ class BubbleDebtJourneyTest {
         compose.waitUntil(8000) { compose.onAllNodes(title).fetchSemanticsNodes(false).isNotEmpty() }
     }
 
+    @Test fun newDebtSuggestsAnExistingPersonAndKeepsTheirCurrency() {
+        val peopleCount = dao.getAllHuman().size
+        compose.awaitTag("addHumanButton").performClick()
+        val name = compose.awaitTag("humanNameEditText")
+        val contacts = compose.awaitTag("pickDebtContact").performScrollTo().assertIsDisplayed()
+        assertEquals(
+            name.fetchSemanticsNode().boundsInWindow.center.y,
+            contacts.fetchSemanticsNode().boundsInWindow.center.y,
+            2f,
+        )
+        name.performTextReplacement("clai")
+        compose.awaitTag("debtPerson-$euro").performScrollTo().performClick()
+        text("Claire").assertExists()
+        text("EUR").assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.select_currency)).assertDoesNotExist()
+        compose.awaitTag("directionNegative").performScrollTo().performClick().assertIsSelected()
+        compose.awaitTag("debtSumEditText").performTextReplacement("10")
+        capture("existing-person-form")
+        compose.awaitTag("setFinanceButton").performClick()
+        awaitDestination(R.id.debtDetailsFragment)
+        assertEquals(peopleCount, dao.getAllHuman().size)
+        assertEquals(2, dao.getAllDebtsById(euro).size)
+        assertEquals(0, dao.getHumanSumDebt(euro).compareTo(800.toBigDecimal()))
+    }
+
     @Test fun earliestDeadlineUsesIndividualOpenLoansAcrossFilters() {
         val yesterday = com.breckneck.debtbook.debt.reminders.testDay(-1)
         val before = com.breckneck.debtbook.debt.reminders.testDay(-2)
