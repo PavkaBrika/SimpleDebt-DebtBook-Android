@@ -18,6 +18,7 @@ class App: Application() {
 
         if (!BuildConfig.DEBUG) {
             YandexAds.setUserConsent(false)
+            YandexAds.setAppAdAnalyticsReporting(false)
             activateAppMetrica()
             YandexAds.initialize(this) {
                 Log.i("YandexAds", "Yandex initialized")
