@@ -59,7 +59,7 @@ class SettledDebtJourneyTest {
         val tag = context.resources.getResourceEntryName(id)
         when (id) {
             R.id.openDebtsTab, R.id.settledDebtsTab -> {
-                compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
+                compose.awaitTag("personHistory").performScrollToIndex(0)
                 compose.onNodeWithTag(tag).performClick()
             }
             R.id.shareHumanButton, R.id.addHumanButton, R.id.addDebtButton, R.id.setFinanceButton -> compose.awaitTag(tag).performClick()

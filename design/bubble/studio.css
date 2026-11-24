@@ -308,3 +308,27 @@ svg { display:block; flex-shrink:0 }
 .finance-line{display:flex;align-items:center;padding-right:6px}.finance-line+.finance-line{border-top:1px solid var(--edge)}
 .finance-line .person-row{flex:1;min-width:0;padding-right:2px}.row-edit{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--forest);flex-shrink:0}
 .row-edit:hover,.row-edit:focus-visible{background:var(--mint)}
+
+.detailhead:has(> .person-header-actions) { grid-template-columns:46px minmax(0,1fr) auto }
+.person-header-actions {
+  display:flex; border:1px solid var(--edge); border-radius:99px; background:var(--paper); pointer-events:auto;
+}
+.person-header-actions .icon-button { border:0; background:transparent; width:45px; height:46px }
+.debt-history-tabs { display:grid; grid-template-columns:1fr 1fr; margin:8px 0; border-bottom:1px solid var(--edge) }
+.debt-history-tabs button { min-height:48px; padding:5px; border-bottom:2px solid transparent; color:var(--soft); font-weight:600 }
+.debt-history-tabs [aria-selected=true] { border-bottom-color:var(--forest); color:var(--forest) }
+.debt-history-controls { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-bottom:8px }
+.debt-history-controls .tabs { margin:0 }
+.debt-history-controls .icon-button { flex-shrink:0 }
+.loan-note { margin-top:3px; color:var(--soft); font-size:14px }
+.loan-chevron { min-width:36px; min-height:44px; color:var(--soft); margin:-4px -8px 0 -6px }
+.loan .btn { margin-bottom:4px }
+.repayment-input { display:grid; gap:6px; font-size:14px; font-weight:600 }
+.repayment-input > div {
+  display:flex; align-items:center; gap:12px; min-height:56px; padding:0 14px;
+  border:1px solid var(--soft); border-radius:16px; background:var(--paper);
+}
+.repayment-input > div:focus-within { border-color:var(--forest); box-shadow:inset 0 0 0 1px var(--forest) }
+.repayment-input input { min-width:0; flex:1; min-height:50px; border:0; background:none; color:var(--ink); outline:0 }
+.repayment-input:has([aria-invalid=true]) > div { border-color:var(--coral) }
+.field-current { display:block; overflow-wrap:anywhere; color:var(--ink) }

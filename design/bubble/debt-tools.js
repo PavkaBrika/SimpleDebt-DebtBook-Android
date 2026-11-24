@@ -80,16 +80,21 @@ flowActions['person-delete']=(i,v,b)=>{
 };
 flowActions['loan-actions']=(i,v,b)=>{
   const l=findLoan(frames[i],Number(v));
-  showDialog(i,l.note||'Долг',()=>'<div class="group">'+(remaining(l)?rowAction('repay','Учесть возврат',v):'')+rowAction('due','Срок и напоминание',v)+(l.reminder&&remaining(l)?rowAction('reminder-preview','Предпросмотр уведомления',v):'')+(!l.returns.length?rowAction('loan-edit','Редактировать запись',v)+rowAction('loan-delete','Удалить запись',v):'')+'</div>'+(l.returns.length?'<p class="note">У записи есть связанные возвраты. Их можно отменить в истории.</p>':''),b);
+  showDialog(i,l.principal>0?'Дал в долг':'Взял в долг',()=>'<div class="group">'+
+    (remaining(l)?rowAction('repay','Учесть возврат',v,'','take'):'')+rowAction('due','Срок и напоминание',v,'','date')+
+    (l.reminder&&remaining(l)?rowAction('reminder-preview','Предпросмотр уведомления',v,'','bell'):'')+
+    rowAction('loan-edit','Редактировать запись',v,'','edit')+
+    (!l.returns.length?rowAction('loan-delete','Удалить запись',v,'','trash'):'')+'</div>',b);
 };
 flowActions['loan-edit']=(i,v)=>{
-  const f=frames[i],p=personAt(i),l=findLoan(f,Number(v));if(!l||l.returns.length)return;
-  f.d={...draft(p.cur),fixed:p.id,editId:l.id,dir:Math.sign(l.principal),name:p.name,note:l.note,sum:moneyInput(Math.abs(l.principal)),date:l.date,due:l.due,remind:!!l.reminder,time:l.reminder||'09:00'};
+  const f=frames[i],p=personAt(i),l=findLoan(f,Number(v));if(!l)return;
+  f.d={...draft(p.cur),fixed:p.id,editId:l.id,locked:l.returns.length>0,dir:Math.sign(l.principal),name:p.name,
+    note:l.note,sum:moneyInput(Math.abs(l.principal)),date:l.date,due:l.due,remind:!!l.reminder,time:l.reminder||'09:00'};
   go(i,'new');
 };
 function updateEditedDebt(i,n) {
   const f=frames[i],d=f.d,l=findLoan(f,d.editId);
-  if(!l||l.returns.length)return fail(i,'Исходная запись изменилась. Вернитесь в историю.');
+  if(!l||(l.returns.length&&(l.principal!==n*d.dir||l.date!==d.date)))return fail(i,'Исходная запись изменилась. Вернитесь в историю.');
   Object.assign(l,{principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:''});pop(i,'Запись изменена');
 }
 flowActions['loan-delete']=(i,v,b)=>{
