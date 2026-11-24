@@ -107,7 +107,12 @@ class BubbleDebtJourneyTest {
         File(context.getExternalFilesDir(null), "debt-$name.png").outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         image.recycle()
     }
-    private fun dueRemaining(amount: String) = context.getString(R.string.debt_remaining, amount, "RUB")
+    private fun remainingAmount(id: Int, amount: String, label: Int = R.string.debt_remaining_to_receive) {
+        compose.record(id)
+        val panel = hasAnyAncestor(hasTestTag("loanRemaining-$id"))
+        compose.onNode(panel and hasText(context.getString(label)), useUnmergedTree = true).assertExists()
+        compose.onNode(panel and hasText("$amount\u00a0₽"), useUnmergedTree = true).assertExists()
+    }
 
     @Test fun currencyScreenFiltersDebtsAndPreservesTheNewDebtDraft() {
         balance("+18 300")
@@ -428,7 +433,7 @@ class BubbleDebtJourneyTest {
         balance("+18 300")
         capture("list")
         person()
-        compose.record(anna).assertTextContains(dueRemaining("12 400"))
+        remainingAmount(anna, "12 400")
         text(context.getString(R.string.debt_today)).performClick()
         compose.onNodeWithTag("dueSaveButton").assertExists()
         pressBack()
@@ -438,7 +443,7 @@ class BubbleDebtJourneyTest {
         text(context.getString(R.string.debt_after_repayment, "10 000\u00a0₽")).assertExists()
         compose.onNodeWithTag("repaymentSaveButton").performClick()
         compose.waitUntil(8000) { dao.getAllDebtsById(anna).size == 2 }
-        compose.record(anna).assertTextContains(dueRemaining("10 000"))
+        remainingAmount(anna, "10 000")
         capture("partial")
         pressBack()
         balance("+15 900")
@@ -447,7 +452,7 @@ class BubbleDebtJourneyTest {
         compose.record(payment.id).performClick()
         compose.onNode(hasText(context.getString(R.string.repayment_cancel)) and hasClickAction()).performClick()
         compose.waitUntil(8000) { dao.getAllDebtsById(anna).any { it.cancelled } }
-        compose.record(anna).assertTextContains(dueRemaining("12 400"))
+        remainingAmount(anna, "12 400")
         compose.record(payment.id).assertTextContains(context.getString(R.string.repayment_cancelled))
         capture("undone")
         pressBack()
@@ -464,6 +469,60 @@ class BubbleDebtJourneyTest {
         compose.awaitTag("addHumanButton").performClick()
         compose.awaitTag("setFinanceButton")
         text("RUB").assertIsDisplayed()
+    }
+
+    @Test fun balanceAndLoanColorsFollowTheirOwnDirections() {
+        val dark = InstrumentationRegistry.getArguments().getString("theme") == "dark"
+        val green = if (dark) 0xFF314E39.toInt() else 0xFFDBEDCD.toInt()
+        val red = if (dark) 0xFF4B352F.toInt() else 0xFFF9E5D9.toInt()
+        val neutral = if (dark) 0xFF2C3B30.toInt() else 0xFFE9EDE2.toInt()
+        fun checkFill(tag: String, expected: Int) {
+            val node = compose.onNodeWithTag(tag, useUnmergedTree = true)
+            node.performScrollTo().assertIsDisplayed()
+            val bounds = node.fetchSemanticsNode().boundsInWindow
+            val screen = IntArray(2)
+            val window = IntArray(2)
+            onActivity {
+                it.window.decorView.getLocationOnScreen(screen)
+                it.window.decorView.getLocationInWindow(window)
+            }
+            val x = (bounds.left + bounds.width * .8f).toInt() + screen[0] - window[0]
+            val y = bounds.center.y.toInt() + screen[1] - window[1]
+            // UiAutomation can sample the visible screen on API 23 as well.
+            val screenshot = inst.uiAutomation.takeScreenshot()
+            try {
+                assertEquals(tag, expected, screenshot.getPixel(x, y))
+            } finally {
+                screenshot.recycle()
+            }
+        }
+        fun checkBalance(label: Int, amount: String, expectedColor: Int) {
+            val card = compose.awaitTag("personBalanceCard")
+            card.assertIsDisplayed()
+            val panel = hasAnyAncestor(hasTestTag("personBalanceCard"))
+            compose.onNode(panel and hasText(context.getString(label) + " · RUB"), useUnmergedTree = true).assertExists()
+            compose.onNode(panel and hasText("$amount\u00a0₽"), useUnmergedTree = true).assertExists()
+            checkFill("personBalanceCard", expectedColor)
+        }
+
+        person()
+        checkBalance(R.string.show_positive, "12 400", green)
+        pressBack()
+        val borrowed = anna + 100
+        dao.saveDebt(Debt(borrowed, (-12400).toBigDecimal(), anna, "Borrowed", today, recordedAsLoan = true))
+        person()
+        checkBalance(R.string.debt_person_balance, "0", neutral)
+        pressBack()
+        dao.saveDebt(Debt(borrowed + 1, (-2500).toBigDecimal(), anna, null, today, recordedAsLoan = true))
+        person()
+        checkBalance(R.string.show_negative, "2 500", red)
+        capture("balance-debit")
+        remainingAmount(anna, "12 400")
+        checkFill("loanRemaining-$anna", green)
+        capture("remaining-credit")
+        remainingAmount(borrowed, "12 400", R.string.debt_remaining_to_repay)
+        checkFill("loanRemaining-$borrowed", red)
+        capture("remaining-debit")
     }
 
     @Test fun earlyOnlyCardKeepsItsCommentAndBalanceUntilDeletionIsConfirmed() {
@@ -506,7 +565,7 @@ class BubbleDebtJourneyTest {
         dao.updateHuman(requireNotNull(dao.getHuman(anna)).copy(openingAdjustment = opening, sumDebt = opening + principal))
         person()
         balance(MoneyDisplay.formatExact(opening + principal, "RUB"))
-        compose.record(anna).assertTextContains(dueRemaining(MoneyDisplay.formatExact(principal, "RUB")))
+        remainingAmount(anna, MoneyDisplay.formatExact(principal, "RUB"))
         compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("repay-$anna"))
         compose.onNodeWithTag("repay-$anna").performClick()
         compose.awaitTag("repaymentFullButton").performClick()

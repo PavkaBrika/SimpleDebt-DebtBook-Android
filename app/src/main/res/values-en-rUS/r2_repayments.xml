@@ -5,6 +5,8 @@
     <string name="repayment_cancelled">Repayment cancelled · excluded from balance</string>
     <string name="debt_lent">I lent</string>
     <string name="debt_borrowed">I borrowed</string>
+    <string name="debt_remaining_to_receive">Still to receive</string>
+    <string name="debt_remaining_to_repay">Still to repay</string>
     <string name="debt_remaining">Remaining: %1$s %2$s</string>
     <string name="debt_repaid">Repaid: %1$s %2$s</string>
     <string name="repayment_context">Original debt: %1$s %2$s (%3$s)</string>

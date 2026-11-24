@@ -5,6 +5,8 @@
     <string name="repayment_cancelled">Remboursement annulé · exclu du solde</string>
     <string name="debt_lent">Prêt accordé</string>
     <string name="debt_borrowed">Emprunt reçu</string>
+    <string name="debt_remaining_to_receive">Reste à recevoir</string>
+    <string name="debt_remaining_to_repay">Reste à rembourser</string>
     <string name="debt_remaining">Reste à rembourser : %1$s %2$s</string>
     <string name="debt_repaid">Remboursé : %1$s %2$s</string>
     <string name="repayment_context">Dette initiale : %1$s %2$s (%3$s)</string>

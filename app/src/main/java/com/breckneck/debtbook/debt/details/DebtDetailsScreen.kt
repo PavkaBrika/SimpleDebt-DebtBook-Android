@@ -147,13 +147,18 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
         LazyColumn(Modifier.fillMaxSize().testTag("personHistory"), contentPadding = padding) {
             sum?.let { balance ->
                 item(key = "personBalance") {
-                    Surface(shape = MaterialTheme.shapes.extraLarge, color = colors.mint, contentColor = colors.onMint) {
+                    val (label, container, ink) = when (balance.signum()) {
+                        1 -> Triple(R.string.show_positive, colors.mint, colors.onMint)
+                        -1 -> Triple(R.string.show_negative, colors.dangerContainer, colors.danger)
+                        else -> Triple(R.string.debt_person_balance, colors.fill, colors.ink)
+                    }
+                    Surface(
+                        modifier = Modifier.testTag("personBalanceCard"),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        color = container,
+                        contentColor = ink,
+                    ) {
                         Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                            val label = when (balance.signum()) {
-                                1 -> R.string.show_positive
-                                -1 -> R.string.show_negative
-                                else -> R.string.debt_person_balance
-                            }
                             Text("${stringResource(label)} · $currency", style = MaterialTheme.typography.labelLarge)
                             AnimatedAmount(balance.abs(), balance.abs().financeMoney(currency), style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold))
                             if (adjustment.signum() != 0) {
@@ -290,6 +295,9 @@ private fun LoanCard(row: DebtDomain, rest: BigDecimal, currency: String, today:
     modifier: Modifier, actions: () -> Unit, due: () -> Unit, repay: () -> Unit) {
     val colors = bubbleColors()
     val principal = row.sum.abs()
+    val lent = row.sum.signum() > 0
+    val accent = if (lent) colors.onMint else colors.danger
+    val accentContainer = if (lent) colors.mint else colors.dangerContainer
     val actionLabel = stringResource(R.string.debt_record_actions)
     BubbleGroup(modifier.padding(vertical = 4.dp)) {
         Column(Modifier.fillMaxWidth().clickable(enabled = enabled, role = Role.Button, onClickLabel = actionLabel, onClick = actions)
@@ -298,7 +306,8 @@ private fun LoanCard(row: DebtDomain, rest: BigDecimal, currency: String, today:
                 val badgeWidth = maxWidth * .48f
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(row.historyTitle()), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(row.historyTitle()), color = accent,
+                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         row.info?.takeIf(String::isNotBlank)?.let {
                             Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
                         }
@@ -330,28 +339,38 @@ private fun LoanCard(row: DebtDomain, rest: BigDecimal, currency: String, today:
                 }
             }
             if (principal.signum() > 0) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("loanRemaining-${row.id}"),
+                    shape = MaterialTheme.shapes.large,
+                    color = accentContainer,
+                    contentColor = accent,
+                ) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text(stringResource(if (lent) R.string.debt_remaining_to_receive else R.string.debt_remaining_to_repay),
+                            style = MaterialTheme.typography.labelLarge)
+                        AnimatedAmount(rest, rest.financeMoney(currency),
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold))
+                    }
+                }
                 val paid = principal - rest
                 val target = paid.divide(principal, java.math.MathContext.DECIMAL64).toFloat()
                 var lastProgress by rememberSaveable { mutableFloatStateOf(target) }
                 val progress = rememberAnimatedProgress(target, { lastProgress = it }, initialProgress = lastProgress)
                 AnimatedLinearProgressIndicator(progress, Modifier.fillMaxWidth().testTag("repaymentProgress-${row.id}"),
-                    color = colors.onMint, trackColor = colors.fill)
+                    color = accent, trackColor = colors.fill)
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.debt_repaid, MoneyDisplay.formatExact(paid, currency), currency),
                         style = MaterialTheme.typography.bodySmall, color = colors.muted)
                     Text(stringResource(R.string.debt_out_of, principal.financeMoney(currency)),
                         style = MaterialTheme.typography.bodySmall, color = colors.muted)
                 }
-                AnimatedAmount(rest, stringResource(R.string.debt_remaining, MoneyDisplay.formatExact(rest, currency), currency),
-                    style = MaterialTheme.typography.bodyMedium)
             } else Text(row.sum.signedMoney(currency))
-
         }
         if (rest.signum() > 0) {
             BubbleButton(repay, Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp)
                 .testTag("repay-${row.id}"), enabled = enabled, colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.mint, contentColor = colors.onMint)) {
-                Icon(Icons.Outlined.SouthWest, null, Modifier.size(16.dp))
+                    containerColor = accentContainer, contentColor = accent)) {
+                Icon(if (lent) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast, null, Modifier.size(16.dp))
                 Text(stringResource(R.string.debt_repay), Modifier.padding(start = 6.dp))
             }
         }

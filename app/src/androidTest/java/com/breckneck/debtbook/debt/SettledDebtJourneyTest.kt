@@ -273,7 +273,9 @@ class SettledDebtJourneyTest {
     }
 
     private fun assertRemaining(id: Int, expected: Int) {
-        compose.record(id).assertTextContains(screen.screenString(R.string.debt_remaining).format(amount(expected), "RUB"))
+        compose.record(id)
+        compose.onNode(hasAnyAncestor(hasTestTag("loanRemaining-$id")) and hasText(amount(expected) + "\u00a0₽"),
+            useUnmergedTree = true).assertExists()
     }
 
     private fun checkRow(debt: Debt, title: Int) {

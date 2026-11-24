@@ -173,15 +173,16 @@ function layout(body,{action='',navigation='',topBar=''}={}) {
 function loanCard(l,p) {
   const left=remaining(l), paid=Math.abs(l.principal)-left;
   const tagClass=left===0?'ok':(l.due && l.due<TODAY?'late':'');
-  const direction=l.principal>0?'Дал в долг':'Взял в долг';
-  return '<article class="loan"><div class="loan-top"><div><h4>'+direction+'</h4>'+
+  const lent=l.principal>0;
+  return '<article class="loan '+(lent?'loan-lent':'loan-borrowed')+'"><div class="loan-top"><div><h4>'+(lent?'Дал в долг':'Взял в долг')+'</h4>'+
     (l.note?'<p class="loan-note">'+escapeHtml(l.note)+'</p>':'')+
     '<span class="subtle">'+dateText(l.date)+'</span></div>'+
     '<button class="tag '+tagClass+'" '+(left?'':'data-motion-row="settled-'+l.id+'"')+' data-act="due" data-value="'+l.id+'" aria-label="Срок и напоминание: '+dueLabel(l)+'">'+icon(left?'date':'check',13)+dueLabel(l)+'</button>'+
     '<button class="loan-chevron" data-act="loan-actions" data-value="'+l.id+'" aria-label="Действия с записью">'+icon('chevron',18)+'</button></div>'+
+    (l.reminder?'<p class="subtle">Напомнить в '+l.reminder+'</p>':'')+
+    '<div class="loan-remaining"><span>'+(lent?'Осталось получить':'Осталось вернуть')+'</span><strong>'+motionAmount('left-'+l.id,left,p.cur)+'</strong></div>'+
     progressTrack('paid-'+l.id,100*paid/Math.abs(l.principal))+'<div class="loan-numbers"><span>Возвращено '+motionAmount('paid-'+l.id,paid,p.cur)+'</span><span>из '+amount(Math.abs(l.principal),p.cur)+'</span></div>'+
-    '<p class="subtle">Остаток по записи · <strong>'+motionAmount('left-'+l.id,left,p.cur)+'</strong>'+(l.reminder?' · Напомнить в '+l.reminder:'')+'</p>'+
-    (left?'<button class="btn secondary" data-act="repay" data-value="'+l.id+'">'+icon('take',17)+'Учесть возврат</button>':'')+'</article>';
+    (left?'<button class="btn secondary" data-act="repay" data-value="'+l.id+'">'+icon(lent?'take':'give',17)+'Учесть возврат</button>':'')+'</article>';
 }
 function history(p,f) {
   return orderedLoans(p,f).map(l=>{
@@ -203,7 +204,8 @@ function debtChips(choices,active,action,label) {
 }
 function person(f) {
   const p=people.find(p=>p.id===f.personId),sum=balance(p);
-  return layout('<section class="balance"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+motionAmount('balance',Math.abs(sum),p.cur)+'</div></section>'+
+  const balanceClass=sum<0?' balance-debit':sum===0?' balance-neutral':'';
+  return layout('<section class="balance'+balanceClass+'"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+motionAmount('balance',Math.abs(sum),p.cur)+'</div></section>'+
     '<div class="debt-history-tabs" role="tablist" aria-label="Статус долга">'+[['open','Открытые долги'],['settled','Погашенные долги']].map(([id,label])=>
       '<button role="tab" aria-selected="'+(f.personSection===id)+'" data-act="history-section" data-value="'+id+'">'+label+'</button>').join('')+'</div>'+
     '<div class="debt-history-controls">'+debtChips(debtDirections,f.historyFilter,'history-direction','Направление долга')+
