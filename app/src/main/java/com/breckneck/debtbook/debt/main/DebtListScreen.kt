@@ -33,7 +33,6 @@ import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.LedgerDate
-import com.breckneck.deptbook.domain.util.ScreenState
 import java.math.BigDecimal
 
 internal fun BigDecimal.signedMoney(currency: String) = (if (signum() > 0) "+" else "") + financeMoney(currency)
@@ -70,17 +69,14 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
     sort: () -> Unit, rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
     val colors = bubbleColors()
     val today = localDay()
-    val currency by vm.currency.observeAsState("")
+    val balance = vm.balance.observeAsState().value
     val deadlines by vm.deadlines.observeAsState(emptyMap())
     val settled by vm.settled.observeAsState(emptySet())
     val people by vm.resultedHumanList.observeAsState(emptyList())
-    val sums by vm.mainSums.observeAsState(BigDecimal.ZERO to BigDecimal.ZERO)
     val failed by vm.loadFailed.observeAsState(false)
-    val state by vm.screenState.observeAsState()
     val searching by vm.isSearching.observeAsState(false)
     val query by vm.query.collectAsState()
     val filter by vm.humanFilter.observeAsState(Filter.ALL)
-    val total = sums.first + sums.second
     BubbleScaffold(
         hostInsets = hostInsets,
         modifier = Modifier.semantics { testTagsAsResourceId = true },
@@ -103,12 +99,21 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     }
                 }
             }
+            if (balance == null) {
+                item {
+                    if (failed) DebtListRetry(vm::setListStateLoading)
+                    else LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+                return@LazyColumn
+            }
+            val currency = balance.currency
             item {
-                BubbleBalanceCard(stringResource(R.string.debt_total), currency, if (failed || state == ScreenState.LOADING) "…" else total.signedMoney(currency),
-                    { onCurrencyClick(currency) }, showCoins = true, balanceValue = total.takeUnless { failed || state == ScreenState.LOADING }) {
-                    if (!failed && state != ScreenState.LOADING) FlowRow(maxItemsInEachRow = if (it) 1 else 2,
+                BubbleBalanceCard(stringResource(R.string.debt_total), currency, balance.total.signedMoney(currency),
+                    { onCurrencyClick(currency) }, modifier = Modifier.testTag("debtBalance"),
+                    showCoins = true, balanceValue = balance.total) {
+                    FlowRow(maxItemsInEachRow = if (it) 1 else 2,
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((label, value) in listOf(R.string.show_positive to sums.first, R.string.show_negative to sums.second.abs())) {
+                        for ((label, value) in listOf(R.string.show_positive to balance.receivable, R.string.show_negative to balance.payable.abs())) {
                             Column(Modifier.weight(1f)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(if (label == R.string.show_positive) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast,
@@ -150,9 +155,8 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 OutlinedTextField(query, vm::setSearchQuery, Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     label = { Text(stringResource(R.string.find_person)) }, singleLine = true)
             }
-            if (state == ScreenState.LOADING) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            else if (failed) item { BubbleOutlinedButton(vm::setListStateLoading) { Text(stringResource(R.string.history_retry)) } }
-            else if (people.isEmpty()) item {
+            if (failed) item { DebtListRetry(vm::setListStateLoading) }
+            if (people.isEmpty() && !failed) item {
                 BubbleGroup { Text(stringResource(if (query.isBlank()) R.string.debt_empty_currency else R.string.debt_empty_search),
                     Modifier.fillMaxWidth().padding(22.dp), textAlign = TextAlign.Center, color = colors.muted) }
             }
@@ -174,4 +178,9 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
             }
         }
     }
+}
+
+@Composable
+private fun DebtListRetry(onRetry: () -> Unit) {
+    BubbleOutlinedButton(onRetry) { Text(stringResource(R.string.history_retry)) }
 }

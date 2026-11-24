@@ -6,7 +6,9 @@ import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.Filter
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import com.breckneck.debtbook.debt.main.DebtListBalance
 import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
@@ -23,6 +25,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -52,19 +55,21 @@ class DebtViewModelTest {
         whenever(getDefaultCurrency.execute()).thenReturn("RUB")
         whenever(getAllHumansUseCase.execute()).thenReturn(emptyList())
         whenever(getAllDebts.execute()).thenReturn(emptyList())
-        viewModel = DebtViewModel(
-            saved = androidx.lifecycle.SavedStateHandle(),
-            getAllDebts = getAllDebts,
-            transaction = object : DataTransaction {
-                override fun <T> run(block: () -> T): T = block()
-            },
-            getAllHumansUseCase = getAllHumansUseCase,
-            getDefaultCurrency = getDefaultCurrency,
-            getHumanOrder = getHumanOrder,
-            setHumanOrder = setHumanOrder,
-            updateHuman = updateHuman
-        )
+        viewModel = createViewModel()
     }
+
+    private fun createViewModel(transaction: DataTransaction = object : DataTransaction {
+        override fun <T> run(block: () -> T): T = block()
+    }) = DebtViewModel(
+        saved = androidx.lifecycle.SavedStateHandle(),
+        getAllDebts = getAllDebts,
+        transaction = transaction,
+        getAllHumansUseCase = getAllHumansUseCase,
+        getDefaultCurrency = getDefaultCurrency,
+        getHumanOrder = getHumanOrder,
+        setHumanOrder = setHumanOrder,
+        updateHuman = updateHuman
+    )
 
     @After
     fun tearDown() {
@@ -105,6 +110,47 @@ class DebtViewModelTest {
             assertEquals(setOf(legacy, opposite, adjustmentOnly, mixed), viewModel.resultedHumanList.value!!.toSet())
         } finally {
             viewModel.resultedHumanList.removeObserver(observer)
+        }
+    }
+
+    @Test
+    fun `balance is published after the first read and retained until a refresh completes`() {
+        val reads = LinkedBlockingQueue<CountDownLatch>()
+        val vm = createViewModel(object : DataTransaction {
+            override fun <T> run(block: () -> T): T {
+                val proceed = CountDownLatch(1)
+                reads.add(proceed)
+                check(proceed.await(5, TimeUnit.SECONDS))
+                return block()
+            }
+        })
+        val published = LinkedBlockingQueue<DebtListBalance>()
+        val observer = Observer<DebtListBalance> { published.add(it) }
+        vm.balance.observeForever(observer)
+        try {
+            val firstRead = requireNotNull(reads.poll(5, TimeUnit.SECONDS))
+            val lender = HumanDomain(1, "Anna", 400.toBigDecimal(), "RUB")
+            val borrower = HumanDomain(2, "Paul", (-100).toBigDecimal(), "RUB")
+            whenever(getAllHumansUseCase.execute()).thenReturn(listOf(lender, borrower))
+            vm.onStartSearch()
+            assertNull(vm.balance.value)
+            firstRead.countDown()
+            val first = requireNotNull(published.poll(5, TimeUnit.SECONDS))
+            assertEquals("RUB", first.currency)
+            assertEquals(400.toBigDecimal(), first.receivable)
+            assertEquals((-100).toBigDecimal(), first.payable)
+            assertEquals(300.toBigDecimal(), first.total)
+
+            vm.setListStateLoading()
+            val refresh = requireNotNull(reads.poll(5, TimeUnit.SECONDS))
+            assertEquals(first, vm.balance.value)
+            assertNull(published.poll())
+            whenever(getAllHumansUseCase.execute()).thenReturn(listOf(lender.copy(sumDebt = 500.toBigDecimal()), borrower))
+            refresh.countDown()
+            val updated = requireNotNull(published.poll(5, TimeUnit.SECONDS))
+            assertEquals(400.toBigDecimal(), updated.total)
+        } finally {
+            vm.balance.removeObserver(observer)
         }
     }
 
