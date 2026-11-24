@@ -254,6 +254,9 @@ class BubbleDebtJourneyTest {
         }
         val add = compose.awaitTag("addDebtButton").assertIsDisplayed()
         val manage = compose.onNodeWithContentDescription(context.getString(R.string.debt_manage)).assertIsDisplayed()
+        val share = compose.awaitTag("shareHumanButton").assertIsDisplayed()
+        assertEquals(manage.fetchSemanticsNode().boundsInWindow.center.y, share.fetchSemanticsNode().boundsInWindow.center.y, 2f)
+        assertTrue(share.fetchSemanticsNode().boundsInWindow.center.x < manage.fetchSemanticsNode().boundsInWindow.center.x)
         assertTrue(add.fetchSemanticsNode().boundsInWindow.top > manage.fetchSemanticsNode().boundsInWindow.bottom)
         manage.performClick()
         text(context.getString(R.string.person_rename)).assertIsDisplayed()
@@ -471,7 +474,9 @@ class BubbleDebtJourneyTest {
         dao.updateHuman(requireNotNull(dao.getHuman(euro)).copy(openingAdjustment = opening, sumDebt = opening + entry.sum))
 
         text("RUB").performClick()
-        compose.onNodeWithText("EUR", substring = true).performClick()
+        awaitDestination(R.id.currencyPickerFragment)
+        awaitCurrencyScreen()
+        text(context.getString(R.string.eur)).performClick()
         compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$euro"))
         compose.onNodeWithTag("person-$euro").performClick()
         compose.awaitTag("earlyEntriesTab").assertIsSelected()

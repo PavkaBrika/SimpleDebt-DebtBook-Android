@@ -111,8 +111,10 @@ class DebtDetailsViewModel @Inject constructor(
     val isShareDialogShown: LiveData<Boolean>
         get() = _isShareDialogShown
     val debtActionId = savedStateHandle.getLiveData<Int?>("debtActionId", null)
+    internal val restoreRemaining = MutableLiveData<BigDecimal?>(null)
 
     fun selectDebtAction(id: Int?) {
+        restoreRemaining.value = null
         debtActionId.value = id
     }
 
@@ -448,6 +450,30 @@ class DebtDetailsViewModel @Inject constructor(
 
     fun dismissOperationError() {
         _operationFailed.value = false
+    }
+
+    internal fun restoreRepayment(debtId: Int) {
+        val owner = humanId ?: return
+        if (_isDeleting.value == true) return
+        _isDeleting.value = true
+        restoreRemaining.value = null
+        viewModelScope.launch {
+            try {
+                val settled = withContext(Dispatchers.IO) { recordRepayment.restore(debtId, owner) }
+                if (settled) feedback.tryEmit(RepaymentFeedback.SETTLED)
+                selectDebtAction(null)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (exceeded: RepaymentExceedsRemaining) {
+                restoreRemaining.value = exceeded.remaining
+                feedback.tryEmit(RepaymentFeedback.OVER_LIMIT)
+            } catch (_: Exception) {
+                _operationFailed.value = true
+            } finally {
+                _isDeleting.value = false
+            }
+            retry()
+        }
     }
 
     fun onHumanDeleteDialogOpen() {

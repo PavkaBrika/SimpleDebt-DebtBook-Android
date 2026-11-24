@@ -32,9 +32,10 @@ fun AnimatedLinearProgressIndicator(
 fun rememberAnimatedProgress(
     progress: Float,
     onProgressSettled: ((Float) -> Unit)? = null,
+    initialProgress: Float = progress,
 ): State<Float> {
     val target = progress.coerceIn(0f, 1f)
-    val animated = remember { Animatable(target) }
+    val animated = remember { Animatable(initialProgress.coerceIn(0f, 1f)) }
     val onSettled by rememberUpdatedState(onProgressSettled)
     LaunchedEffect(target) {
         if (animated.value != target) animated.animateTo(target, tween(420))

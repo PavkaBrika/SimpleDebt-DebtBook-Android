@@ -10,8 +10,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedTextField
@@ -33,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
+import com.breckneck.debtbook.core.ui.components.BubbleOutlinedButton
 import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
 import com.breckneck.debtbook.core.ui.components.BubbleValueRow
 import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
-import com.breckneck.debtbook.core.ui.components.DebtBookOutlinedAction
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.debtbook.finance.financeMoney
@@ -64,6 +65,7 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
         RepaymentError.SAVE_FAILED -> stringResource(R.string.repayment_save_failed)
         null -> null
     }
+    val inputError = errorText?.takeUnless { error == RepaymentError.SAVE_FAILED }
 
     DebtBookBottomSheet(
         onDismiss = { if (!busy) vm.closeRepayment() },
@@ -88,37 +90,41 @@ internal fun RepaymentSheet(vm: DebtDetailsViewModel, debt: DebtDomain) {
                     value = amount,
                     onValueChange = vm::changeRepaymentAmount,
                     modifier = Modifier.fillMaxWidth().testTag("repaymentAmountInput")
-                        .semantics { if (errorText != null) error(errorText) },
+                        .semantics { if (inputError != null) error(inputError) },
                     label = { Text(stringResource(R.string.repayment_amount)) },
-                    shape = RoundedCornerShape(24.dp),
-                    suffix = { Text(currency) },
-                    colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = colors.mint, unfocusedContainerColor = colors.mint),
+                    placeholder = { Text("0") },
+                    leadingIcon = { Icon(Icons.Outlined.Edit, null) },
+                    trailingIcon = { Text(currency, Modifier.padding(horizontal = 12.dp)) },
+                    supportingText = inputError?.let { message -> { Text(message) } },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = colors.paper, unfocusedContainerColor = colors.paper,
+                        focusedBorderColor = colors.action, unfocusedBorderColor = colors.muted,
+                    ),
                     enabled = !busy,
                     singleLine = true,
-                    isError = errorText != null,
+                    isError = inputError != null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { if (ready) vm.saveRepayment() })
                 )
                 if (remaining.signum() > 0) {
-                    DebtBookOutlinedAction(
-                        label = stringResource(R.string.repayment_full),
-                        icon = Icons.Outlined.Calculate,
+                    BubbleOutlinedButton(
                         onClick = { vm.changeRepaymentAmount(DecimalInput.format(remaining, currency = currency)) },
                         enabled = ready,
-                        modifier = Modifier.fillMaxWidth().testTag("repaymentFullButton")
-                    )
+                        modifier = Modifier.testTag("repaymentFullButton"),
+                    ) { Text(stringResource(R.string.repayment_full)) }
                 }
                 val entered = DecimalInput.parse(amount, currency, previous = remaining)
                 if (entered != null && entered.signum() > 0 && entered <= remaining) {
                     Text(stringResource(R.string.debt_after_repayment, (remaining - entered).financeMoney(currency)), color = colors.muted)
                 }
             }
-            errorText?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (error == RepaymentError.SAVE_FAILED && errorText != null) {
+                Text(errorText, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             BubbleButton(onClick = vm::saveRepayment, enabled = ready,
                 modifier = Modifier.fillMaxWidth().testTag("repaymentSaveButton")) {
-                Text(stringResource(R.string.save))
+                Text(stringResource(R.string.debt_repay))
             }
         }
     }

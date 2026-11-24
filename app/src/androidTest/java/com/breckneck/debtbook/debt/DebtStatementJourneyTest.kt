@@ -35,7 +35,9 @@ class DebtStatementJourneyTest {
     private val dao = AppDataBase(context).appDao()
     private val name = "Statement " + System.nanoTime().toString(36)
     private fun tap(id: Int) {
-        if (id in listOf(R.id.shareHumanButton, R.id.sortButton, R.id.earlyEntriesTab, R.id.settledDebtsTab)) {
+        if (id == R.id.shareHumanButton) {
+            compose.awaitTag("shareHumanButton").performClick()
+        } else if (id in listOf(R.id.sortButton, R.id.earlyEntriesTab, R.id.settledDebtsTab)) {
             val tag = context.resources.getResourceEntryName(id)
             compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
             compose.onNodeWithTag(tag).performClick()
@@ -140,7 +142,11 @@ class DebtStatementJourneyTest {
                 onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isChecked()))
                 onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isChecked()))
                 assertEquals(all, displayedText())
+                compose.waitUntil(5000) { runCatching {
+                    onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
+                }.isSuccess }
                 tap(R.id.includeEarlyEntries)
+                compose.waitUntil(5000) { !displayedText().contains(earlyNote) }
                 val onlySettledAndOpen = displayedText()
                 assertFalse(onlySettledAndOpen.contains(earlyNote))
                 assertTrue(onlySettledAndOpen.contains(line(R.string.statement_borrowed, "500 RUB")))

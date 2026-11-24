@@ -79,7 +79,9 @@ internal fun CreateDebtPersonFields(
     }
 
     if (fixedPerson) {
-        BubbleValueRow(stringResource(R.string.person_name), name.text.toString())
+        BubbleFieldRow(Icons.Outlined.Person, stringResource(R.string.person_name)) {
+            Text(name.text.toString(), style = MaterialTheme.typography.bodyLarge)
+        }
         return
     }
 

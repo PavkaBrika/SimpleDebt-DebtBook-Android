@@ -15,4 +15,7 @@
     <string name="repayment_closed">Entièrement remboursé</string>
     <string name="repayment_cancel_confirm">Annuler le remboursement de %1$s %2$s ? Le montant sera ajouté au reste dû ; le remboursement restera dans l’historique.</string>
     <string name="repayment_amount">Montant du remboursement</string>
+    <string name="repayment_restore">Rétablir le remboursement</string>
+    <string name="repayment_restore_confirm">Déduire à nouveau %1$s %2$s de la dette ?</string>
+    <string name="repayment_restore_over">Le solde restant est de %1$s %2$s. Le remboursement est trop élevé pour être rétabli.</string>
 </resources>

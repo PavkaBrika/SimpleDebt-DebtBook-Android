@@ -83,7 +83,7 @@ class DebtDetailsFragment : Fragment() {
                 ::showDeleteHumanDialog, { showShareDialog(vm.humanName.value, vm.humanCurrency) },
                 onRecord = { id -> initialSheet = DebtSheet.ACTIONS; vm.selectDebtAction(id) },
                 onDue = { id -> initialSheet = DebtSheet.DUE; vm.selectDebtAction(id) },
-                onUndo = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
+                onRepaymentAction = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
             DebtSheets(initialSheet) { initialSheet = DebtSheet.ACTIONS }
         }
 
@@ -151,6 +151,8 @@ class DebtDetailsFragment : Fragment() {
         val repaymentId by vm.repaymentDebtId.observeAsState()
         val debtId by vm.debtActionId.observeAsState()
         val history by vm.history.observeAsState()
+        val busy by vm.isDeleting.observeAsState(false)
+        val restoreRemaining by vm.restoreRemaining.observeAsState()
         val selected = repaymentId ?: debtId
         val debt = history?.firstOrNull { it.id == selected }
         if (debt != null && repaymentId != null) {
@@ -190,20 +192,26 @@ class DebtDetailsFragment : Fragment() {
                 }
                 DebtSheet.REMOVE -> {
                     val repayment = debt.repaymentOfId != null
-                    val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
-                    ConfirmationBottomSheet(
-                        title = action,
-                        message = if (repayment) listOfNotNull(
-                            "${MoneyDisplay.formatExact(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
-                            debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) },
-                            stringResource(R.string.repayment_cancel_confirm, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
-                        ).joinToString("\n")
-                        else stringResource(if (earlyEntry) R.string.early_entry_delete_question else R.string.debt_delete_question),
-                        confirmText = action,
-                        dismissText = stringResource(R.string.cancel),
-                        onConfirm = { close(); vm.deleteDebt(debt) },
-                        onDismiss = { if (initialSheet == DebtSheet.REMOVE) close() else sheet = DebtSheet.ACTIONS }
-                    )
+                    if (repayment && debt.cancelled) {
+                        RestoreRepaymentSheet(debt, debt.repaymentOfId?.let(vm::originalDebt), currency, busy, restoreRemaining,
+                            onRestore = { vm.restoreRepayment(debt.id) },
+                            onDismiss = { if (initialSheet == DebtSheet.REMOVE) close() else sheet = DebtSheet.ACTIONS })
+                    } else {
+                        val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
+                        ConfirmationBottomSheet(
+                            title = action,
+                            message = if (repayment) listOfNotNull(
+                                "${MoneyDisplay.formatExact(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
+                                debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) },
+                                stringResource(R.string.repayment_cancel_confirm, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
+                            ).joinToString("\n")
+                            else stringResource(if (earlyEntry) R.string.early_entry_delete_question else R.string.debt_delete_question),
+                            confirmText = action,
+                            dismissText = stringResource(R.string.cancel),
+                            onConfirm = { close(); vm.deleteDebt(debt) },
+                            onDismiss = { if (initialSheet == DebtSheet.REMOVE) close() else sheet = DebtSheet.ACTIONS }
+                        )
+                    }
                 }
             }
         }

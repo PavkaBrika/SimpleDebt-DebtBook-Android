@@ -58,11 +58,11 @@ class SettledDebtJourneyTest {
     private fun tap(id: Int) {
         val tag = context.resources.getResourceEntryName(id)
         when (id) {
-            R.id.shareHumanButton, R.id.openDebtsTab, R.id.settledDebtsTab -> {
+            R.id.openDebtsTab, R.id.settledDebtsTab -> {
                 compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
                 compose.onNodeWithTag(tag).performClick()
             }
-            R.id.addHumanButton, R.id.addDebtButton, R.id.setFinanceButton -> compose.awaitTag(tag).performClick()
+            R.id.shareHumanButton, R.id.addHumanButton, R.id.addDebtButton, R.id.setFinanceButton -> compose.awaitTag(tag).performClick()
             R.id.backButton -> compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
             else -> onView(withId(id)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).perform(click())
         }
@@ -186,7 +186,7 @@ class SettledDebtJourneyTest {
         tap(R.id.openDebtsTab)
         awaitRows(lent, owed, first.id, last.id)
         assertRemaining(lent, 600)
-        checkRow(last, R.string.repayment_cancelled)
+        checkRow(records().single { it.id == last.id }, R.string.repayment_cancelled)
         assertNull(issued().reminderMinute)
         assertNull(issued().reminderToken)
         reopenFromPeople(positive = true, negative = true, balance = -400)

@@ -15,4 +15,7 @@
     <string name="repayment_closed">Fully repaid</string>
     <string name="repayment_cancel_confirm">Cancel the repayment of %1$s %2$s? The amount will be added back to the remaining debt; the repayment will stay in history.</string>
     <string name="repayment_amount">Repayment amount</string>
+    <string name="repayment_restore">Restore repayment</string>
+    <string name="repayment_restore_confirm">Count %1$s %2$s toward the debt again?</string>
+    <string name="repayment_restore_over">The remaining debt is %1$s %2$s. This repayment is too large to restore.</string>
 </resources>

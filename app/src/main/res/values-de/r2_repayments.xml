@@ -15,4 +15,7 @@
     <string name="repayment_closed">Vollständig zurückgezahlt</string>
     <string name="repayment_cancel_confirm">Rückzahlung von %1$s %2$s stornieren? Der Betrag wird wieder zum Restbetrag addiert; die Rückzahlung bleibt im Verlauf.</string>
     <string name="repayment_amount">Rückzahlungsbetrag</string>
+    <string name="repayment_restore">Rückzahlung wiederherstellen</string>
+    <string name="repayment_restore_confirm">%1$s %2$s wieder auf die Schuld anrechnen?</string>
+    <string name="repayment_restore_over">Die Restschuld beträgt %1$s %2$s. Die Rückzahlung ist zu hoch und kann nicht wiederhergestellt werden.</string>
 </resources>

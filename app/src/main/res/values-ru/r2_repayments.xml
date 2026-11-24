@@ -15,4 +15,7 @@
     <string name="repayment_closed">Погашено</string>
     <string name="repayment_cancel_confirm">Отменить возврат %1$s %2$s? Сумма снова войдёт в остаток долга, а возврат останется в истории.</string>
     <string name="repayment_amount">Сумма возврата</string>
+    <string name="repayment_restore">Восстановить возврат</string>
+    <string name="repayment_restore_confirm">Снова учесть %1$s %2$s в погашении долга?</string>
+    <string name="repayment_restore_over">Остаток долга — %1$s %2$s. Сумма отменённого возврата больше остатка.</string>
 </resources>
