@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,6 +55,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -62,18 +65,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.components.BubbleBottomSheet
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
 import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.BubbleSectionTitle
+import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
 import com.breckneck.debtbook.core.ui.components.BubbleTextFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleTopBar
-import com.breckneck.debtbook.core.ui.components.SettingsPickerBottomSheet
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.core.ui.theme.spacing
 import com.breckneck.debtbook.finance.create_category.model.emojiGroups
+import com.breckneck.debtbook.settings.SettingsChoiceRow
 import com.breckneck.deptbook.domain.util.categoryColorList
 import org.orbitmvi.orbit.compose.collectAsState
 
@@ -154,7 +159,7 @@ fun CreateFinanceCategoryContent(
             Column(Modifier.padding(horizontal = spacing.space16), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 BubbleSectionTitle(stringResource(R.string.image), Modifier.padding(top = 16.dp))
                 BubbleFieldRow(Icons.Outlined.Flag, stringResource(R.string.finance_icon_set),
-                    Modifier.clickable(enabled = !state.saving) { choosingGroup = true },
+                    Modifier.clickable(enabled = !state.saving, role = Role.Button) { choosingGroup = true },
                     trailing = { Icon(Icons.Outlined.ExpandMore, null) }) { Text(stringResource(emojiGroups[group].labelResId)) }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     emojiGroups[group].emojis.forEach { image ->
@@ -180,9 +185,29 @@ fun CreateFinanceCategoryContent(
             }
         }
     }
-    if (choosingGroup) SettingsPickerBottomSheet(stringResource(R.string.finance_icon_set),
-        emojiGroups.map { stringResource(it.labelResId) }, group, onItemSelected = { group = it; choosingGroup = false },
-        onDismiss = { choosingGroup = false })
+    if (choosingGroup) {
+        var pendingGroup by rememberSaveable { mutableStateOf<Int?>(null) }
+        val colors = bubbleColors()
+        BubbleBottomSheet(
+            onDismiss = {
+                pendingGroup?.let { group = it }
+                choosingGroup = false
+            },
+            hideRequested = pendingGroup != null,
+        ) { enabled, close ->
+            BubbleSheetHeader(stringResource(R.string.finance_icon_set), close, enabled = enabled)
+            BubbleGroup(Modifier.selectableGroup()) {
+                emojiGroups.forEachIndexed { index, option ->
+                    if (index > 0) HorizontalDivider(color = colors.border)
+                    SettingsChoiceRow(
+                        label = stringResource(option.labelResId),
+                        selected = index == (pendingGroup ?: group),
+                        enabled = enabled,
+                    ) { if (pendingGroup == null) pendingGroup = index }
+                }
+            }
+        }
+    }
 }
 
 @Composable

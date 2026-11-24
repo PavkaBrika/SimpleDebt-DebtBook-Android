@@ -188,7 +188,7 @@ DI мигрирован с **Koin 4.x** на **Hilt 2.55** (Фаза 2.1). Вс�
 | Файл | Описание | Используется в |
 |------|----------|----------------|
 | `DebtBookTopBar.kt` | `TopAppBar` с опциональной back-кнопкой, заголовком и слотом для action-иконок | Все экраны |
-| `SettingsPickerBottomSheet.kt` | `ModalBottomSheet` с `LazyColumn` + `RadioButton` для выбора одного значения из списка | NewDebt (валюта), CreateGoals (валюта), Finance (валюта, интервал), Settings (валюта x3, тема) |
+| `BubbleBottomSheet.kt` | Панель с прокручиваемым содержимым и общим заголовком `BubbleSheetHeader` | Финансы (период, набор значков категории, действия с операцией), долги и настройки |
 | `ConfirmationBottomSheet.kt` | `ModalBottomSheet` с заголовком, сообщением и кнопками Да/Нет | DebtDetails, CreateFinance, Synchronization |
 | `ExtraFunctionsBottomSheet.kt` | `ModalBottomSheet` с кнопками Удалить / Изменить / Отмена | DebtDetails, FinanceDetails, GoalDetails |
 | `SortFilterBottomSheet.kt` | `ModalBottomSheet` с двумя секциями RadioGroup (сортировка + фильтр) и чекбоксом "Запомнить выбор" | MainFragment, DebtDetails |
