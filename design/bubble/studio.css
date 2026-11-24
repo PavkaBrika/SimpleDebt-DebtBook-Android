@@ -119,6 +119,12 @@ svg { display:block; flex-shrink:0 }
 .person-row,.timeline-row { display:flex; align-items:center; width:100%; gap:10px; padding:11px 13px; text-align:left; min-height:59px; color:var(--ink) }
 .person-row+.person-row,.timeline-row+.timeline-row,.setting+.setting,.field+.field { border-top:1px solid var(--edge) }
 .motif { width:38px; height:38px; flex-shrink:0; border-radius:50%; overflow:hidden }
+.person-photo { object-fit:cover }
+.person-photo-action { position:relative; min-height:48px; cursor:pointer }
+.person-photo-action:focus-within { outline:2px solid var(--forest); outline-offset:-2px }
+.person-photo-action input { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer }
+.debt-person-suggestions + .field,.debt-person-suggestions:not(:empty) { border-top:1px solid var(--edge) }
+.debt-person-hint { padding:10px 13px 0; color:var(--soft); font-size:12px }
 .person-text,.event-text { flex:1; min-width:0 }.person-text strong,.event-text strong { display:block; font-size:15px; line-height:1.2; font-weight:600; letter-spacing:-.28px; overflow-wrap:anywhere }
 .person-text small,.event-text small,.subtle { display:block; color:var(--soft); font-size:12px; line-height:1.4; margin-top:3px }
 .money { margin-left:auto; font-size:15px; font-weight:650; letter-spacing:-.4px; text-align:right; line-height:1.2; overflow-wrap:anywhere }

@@ -44,6 +44,9 @@ function motif(index) {
   ][index%palettes.length];
   return '<span class="motif">'+svg('<circle cx="24" cy="24" r="24" fill="'+bg+'"/><g fill="'+ink+'">'+fill+'</g>','0 0 48 48')+'</span>';
 }
+function personAvatar(person) {
+  return person.photo?'<img class="motif person-photo" alt="" src="'+escapeHtml(person.photo)+'">':motif(person.art);
+}
 // Parallel contours give the balance its engraved coin motif. The same ellipses fit a Compose Canvas.
 function coinArt() {
   const coins = [[24,56,30],[21,49,30],[19,42,30],[43,32,31],[41,25,31],[39,18,31]];
@@ -120,7 +123,7 @@ function peopleList(f) {
   return pool.length?pool.map(p=>{
     const next=p.loans.filter(l=>remaining(l)>0&&l.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
     const sub=next?dueLabel(next):p.loans.every(l=>remaining(l)===0)?'Расчёт завершён':'Без срока';
-    return '<button class="person-row" data-act="person" data-value="'+p.id+'"><span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small class="'+(next?.due<TODAY?'late':'')+'">'+sub+'</small></span><span class="money '+(balance(p)<0?'neg':'pos')+'">'+motionAmount('person-'+p.id,balance(p),p.cur,true)+'</span></button>';
+    return '<button class="person-row" data-act="person" data-value="'+p.id+'">'+personAvatar(p)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small class="'+(next?.due<TODAY?'late':'')+'">'+sub+'</small></span><span class="money '+(balance(p)<0?'neg':'pos')+'">'+motionAmount('person-'+p.id,balance(p),p.cur,true)+'</span></button>';
   }).join(''):'<p class="empty">'+(f.query?'Никого не нашли. Попробуйте другое имя.':'Здесь пока нет записей для этого фильтра.')+'</p>';
 }
 function home(f) {
@@ -191,10 +194,10 @@ function person(f) {
     (active.length?titleRow('Открытые долги',String(active.length))+active.map(l=>loanCard(l,p)).join(''):'')+
     (settled.length?titleRow('Погашенные долги',String(settled.length))+settled.map(l=>loanCard(l,p)).join(''):'')+
     '<div class="section-title"><h3>История</h3>'+button('history-sort','Фильтр','','chip','settings')+'</div><div class="activity">'+(history(p,f)||empty('Записей нет.'))+'</div>',
-    {topBar:backbar(p.name,{action:iconButton('new','Добавить долг этому человеку','plus'),avatar:motif(p.art)})});
+    {topBar:backbar(p.name,{action:iconButton('new','Добавить долг этому человеку','plus'),avatar:personAvatar(p)})});
 }
-function field(iconName,label,control) {
-  return '<div class="field"><span class="field-icon">'+icon(iconName,17)+'</span><label class="field-body"><span class="label">'+label+'</span>'+control+'</label></div>';
+function field(iconName,label,control,trailing='') {
+  return '<div class="field"><span class="field-icon">'+icon(iconName,17)+'</span><label class="field-body"><span class="label">'+label+'</span>'+control+'</label>'+trailing+'</div>';
 }
 function input(bind,value,placeholder='',type='text',extra='') {
   return '<input type="'+type+'" data-bind="'+bind+'" value="'+escapeHtml(value)+'" placeholder="'+placeholder+'" '+extra+'>';
@@ -210,9 +213,13 @@ function scheduleFields(obj,prefix,outstanding=true) {
 }
 function newDebt(f) {
   const d=f.d;
+  const owner=people.find(p=>p.id===(d.fixed||d.personId));
+  const action=d.fixed?'':owner?iconButton('clear-debt-person','Изменить выбор человека','close'):button('contacts','Контакты','','chip');
+  const personField=field('user','Человек',input('d.name',owner?.name||d.name,'Имя или название','text',owner?'readonly':'maxlength="80"'),action);
+  const suggestions=owner?'':'<div class="debt-person-suggestions" data-debt-person-suggestions>'+debtPersonSuggestions(d)+'</div>';
   return layout('<div class="segment">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
-    amountField('d.sum',d.sum,d.cur,!d.fixed)+'<div class="group">'+field('user','Человек',input('d.name',d.name,'Имя или название','text',d.fixed?'readonly':'maxlength="80"'))+
-    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+'</div>'+(!d.fixed?button('contacts','Выбрать из контактов','','text-action','user'):'')+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
+    amountField('d.sum',d.sum,owner?.cur||d.cur,!owner)+'<div class="group">'+personField+suggestions+
+    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+'</div>'+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
     {action:primary('save','Сохранить долг','check'),topBar:backbar(d.editId?'Редактировать долг':screenNames.new)});
 }
 function findLoan(f,id) { return people.find(p=>p.id===f.personId).loans.find(l=>l.id===id); }
@@ -414,11 +421,17 @@ function confirmSheet(i) {
   if(s.kind==='repay' && remaining(l)===0) playHaptic('confirm');
 }
 function saveDebt(i) {
-  const f=frames[i],d=f.d,n=readMoney(d.sum,d.cur),name=d.name.trim();
+  const f=frames[i],d=f.d,name=d.name.trim();
+  let p=people.find(p=>p.id===(d.fixed||d.personId));
+  if(!p) {
+    const matches=people.filter(p=>p.cur===d.cur&&normalizedPersonName(p.name)===normalizedPersonName(name));
+    if(matches.length>1)return fail(i,'Выберите нужного человека из совпадений.');
+    p=matches[0];
+  }
+  const n=readMoney(d.sum,p?.cur||d.cur);
   if(!n||!name||!d.date) return fail(i,'Введите имя, положительную сумму и дату записи.');
   const issue=validSchedule(d);if(issue)return fail(i,issue);
   if(d.editId)return updateEditedDebt(i,n);
-  let p=d.fixed?people.find(p=>p.id===d.fixed):people.find(p=>p.cur===d.cur&&p.name.toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru'));
   if(!p){p={id:serial++,name,art:people.length,cur:d.cur,loans:[]};people.unshift(p);}
   p.loans.unshift({id:serial++,principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:'',returns:[]});
   f.cur=p.cur;f.personId=p.id;setRoute(f,'person',d.fixed?'back':'replace');refreshData(i,'Долг сохранён');
@@ -505,12 +518,25 @@ function bind(event) {
   }
   if(el.hasAttribute('data-list-state')){if(event.type==='change'){const i=Number(el.closest('.panel').dataset.index);frames[i].listState=el.value;render(i);}return;}
   if(el.dataset.field)return setField(event,el,Number(el.closest('.panel').dataset.index));
-  if(el.dataset.file&&event.type==='change'&&el.files?.length){const i=Number(el.closest('.panel').dataset.index);return el.dataset.file==='goal-photo'?selectPhoto(i,el.files[0]):readBackupFile(i,el.files[0]);}
+  if(el.dataset.file&&event.type==='change'&&el.files?.length){
+    const i=Number(el.closest('.panel').dataset.index),file=el.files[0];
+    if(el.dataset.file==='goal-photo')return selectPhoto(i,file);
+    if(el.dataset.file==='person-photo')return selectPersonPhoto(i,file);
+    return readBackupFile(i,file);
+  }
   const key=el.dataset.bind;if(!key)return;
   const i=Number(el.closest('.panel').dataset.index),f=frames[i];
   if(key==='beforeScreen'||key==='cur') {if(event.type==='change'){f[key]=el.value;render(i,true);}return;}
   if(key==='query'){
     if(event.type==='input')updatePeopleSearch(i,el.value);
+    return;
+  }
+  if(key==='d.name'){
+    if(event.type==='input'){
+      f.d.name=el.value;
+      const suggestions=sections[i].querySelector('[data-debt-person-suggestions]');
+      if(suggestions)suggestions.innerHTML=debtPersonSuggestions(f.d);
+    }
     return;
   }
   const [scope,prop]=key.split('.'),obj=scope==='s'?f.sheet:f.d;

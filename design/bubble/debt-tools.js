@@ -41,7 +41,20 @@ flowActions['history-sort']=(i,v,b)=>{
   const f=frames[i];showDialog(i,'Фильтр истории',s=>'<div class="group">'+field('settings','Направление долга',picker('sheet.filter',['Все','Мне должны','Я должен'],s.filter,'Направление долга'))+field('history','Порядок',picker('sheet.order',['Дата операции ↓','Дата операции ↑','Дата создания ↓','Дата создания ↑','Сумма ↓','Сумма ↑'],s.order,'Порядок'))+'</div>',b,(_,s)=>{f.historyOrder=s.order;f.historyFilter=s.filter;closeSheet(i);},'Применить',{order:f.historyOrder,filter:f.historyFilter});
 };
 function personAt(i){return people.find(p=>p.id===frames[i].personId);}
-flowActions['person-menu']=(i,v,b)=>showDialog(i,personAt(i).name,()=>'<div class="group">'+rowAction('person-rename','Изменить имя')+rowAction('person-delete','Удалить человека')+'</div>',b);
+flowActions['person-menu']=(i,v,b)=>{
+  const p=personAt(i);
+  showDialog(i,p.name,()=>'<div class="group">'+rowAction('person-rename','Изменить имя')+
+    '<label class="setting person-photo-action"><strong>'+(p.photo?'Заменить фото':'Выбрать фото')+'</strong><input type="file" accept="image/*" data-file="person-photo"></label>'+
+    (p.photo?rowAction('person-photo-clear','Убрать фото'):'')+rowAction('person-delete','Удалить человека')+'</div>',b);
+};
+async function selectPersonPhoto(i,file) {
+  const p=personAt(i),sheet=frames[i].sheet;
+  try {
+    const photo=await readDemoPhoto(file,192);
+    if(frames[i].sheet===sheet&&people.includes(p)){p.photo=photo;changed(i,'Фото сохранено');}
+  } catch {if(frames[i].sheet===sheet)fail(i,'Не удалось прочитать фото. Выберите другое изображение.');}
+}
+flowActions['person-photo-clear']=i=>{delete personAt(i).photo;changed(i,'Фото убрано');};
 flowActions['person-rename']=(i,v,b)=>{
   const p=personAt(i);
   showDialog(i,'Изменить имя',s=>field('user','Имя',entry('sheet.name',s.name,'text','maxlength="80"')),b,(_,s)=>{
@@ -95,6 +108,29 @@ flowActions['share-excel']=i=>{
   downloadFile('SimpleDebt-'+p.name+'.xml','application/xml','<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="История"><Table>'+xml+'</Table></Worksheet></Workbook>');
 };
 const demoContacts=['Алексей Миронов','Анна Соколова','Виктория Ли','Елена Ким','Илья Волков','Михаил Орлов'];
+function normalizedPersonName(name) {return name.trim().toLocaleLowerCase('ru');}
+function debtPersonSuggestions(d) {
+  const query=normalizedPersonName(d.name);
+  if(!query)return '';
+  const matching=people.filter(p=>normalizedPersonName(p.name).includes(query));
+  const exact=matching.filter(p=>normalizedPersonName(p.name)===query);
+  const byCurrency=(a,b)=>Number(a.cur!==d.cur)-Number(b.cur!==d.cur);
+  const candidates=exact.sort(byCurrency).concat(matching.filter(p=>!exact.includes(p)).sort((a,b)=>
+    Number(!normalizedPersonName(a.name).startsWith(query))-Number(!normalizedPersonName(b.name).startsWith(query))||byCurrency(a,b)
+  ).slice(0,Math.max(0,5-exact.length)));
+  return candidates.length?'<p class="debt-person-hint">Люди из списка</p>'+candidates.map(p=>
+    '<button class="person-row" data-act="select-debt-person" data-value="'+p.id+'">'+personAvatar(p)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small>'+p.cur+'</small></span><span class="money">'+amount(balance(p),p.cur)+'</span></button>'
+  ).join(''):'';
+}
+flowActions['select-debt-person']=(i,v)=>{
+  const d=frames[i].d,p=people.find(p=>p.id===Number(v));
+  if(p){d.personId=p.id;d.name=p.name;frames[i].error='';render(i,true);}
+};
+flowActions['clear-debt-person']=i=>{
+  frames[i].d.personId=null;
+  render(i,true);
+  sections[i].querySelector('[data-bind="d.name"]').focus({preventScroll:true});
+};
 function contactRows(query) {return demoContacts.filter(n=>n.toLowerCase().includes(query.toLowerCase())).map(n=>rowAction('contact-pick',n,n)).join('')||empty('Совпадений нет.');}
 flowActions.contacts=(i,v,b)=>showDialog(i,'Контакты',s=>'<p class="note">Демонстрационный список контактов</p>'+entry('sheet.query',s.query,'search','class="search-field" aria-label="Найти контакт" placeholder="Найти по имени"')+'<div class="group" data-contacts>'+contactRows(s.query)+'</div>',b,null,'',{query:''});
 flowActions['contact-pick']=(i,v)=>{frames[i].d.name=v;closeSheet(i);};
