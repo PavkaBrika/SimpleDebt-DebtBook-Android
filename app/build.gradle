@@ -26,6 +26,14 @@ def studioSigningValues = [
 ]
 def effectiveReleaseSigning = studioSigningValues.values().every { it != null } ? studioSigningValues : releaseSigningValues
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.isFile()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+def appMetricaApiKey = (providers.environmentVariable('SIMPLEDEBT_APPMETRICA_API_KEY').orNull
+    ?: localProperties.getProperty('appMetricaApiKey', '')).trim()
+
 android {
     namespace "com.breckneck.debtbook"
     compileSdk 36
@@ -34,8 +42,9 @@ android {
         applicationId "com.breckneck.debtbook"
         minSdk 23
         targetSdk 36
-        versionCode 43
-        versionName "4.6.4"
+        versionCode 44
+        versionName "4.6.5"
+        buildConfigField 'String', 'APPMETRICA_API_KEY', '""'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -56,6 +65,7 @@ android {
 
     buildTypes {
         release {
+            buildConfigField 'String', 'APPMETRICA_API_KEY', groovy.json.JsonOutput.toJson(appMetricaApiKey)
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
@@ -89,6 +99,16 @@ android {
     }
 }
 
+def verifyAppMetricaApiKey = tasks.register('verifyAppMetricaApiKey') {
+    group = 'verification'
+    description = 'Require the Debt Book AppMetrica SDK API key for release builds.'
+    doLast {
+        if (!(appMetricaApiKey ==~ /(?i)[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/)) {
+            throw new GradleException('Configure the AppMetrica SDK API key in local.properties or SIMPLEDEBT_APPMETRICA_API_KEY; see docs/release-build.md.')
+        }
+    }
+}
+
 def verifyReleaseSigning = tasks.register('verifyReleaseSigning') {
     group = 'verification'
     description = 'Require an explicitly configured existing release/upload key.'
@@ -105,7 +125,7 @@ def verifyReleaseSigning = tasks.register('verifyReleaseSigning') {
     }
 }
 tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
-    dependsOn verifyReleaseSigning
+    dependsOn verifyReleaseSigning, verifyAppMetricaApiKey
 }
 
 base {
@@ -126,6 +146,11 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+// The ads SDK can also pull in AppMetrica's screenshot event collector.
+configurations.configureEach {
+    exclude group: 'io.appmetrica.analytics', module: 'analytics-screenshot'
 }
 
 dependencies {
@@ -178,6 +203,7 @@ dependencies {
 
     //Yandex Mobile Ads
     implementation 'com.yandex.android:mobileads:8.6.0'
+    implementation 'io.appmetrica.analytics:analytics:8.6.0'
 
     //MVVM
     def lifecycle_version = "2.10.0"

@@ -1,6 +1,6 @@
 # Сборка и подпись SimpleDebt
 
-Пакет — `com.breckneck.debtbook`. В Google Play уже загружена сборка `4.6.4 (42)`. Следующая сборка `4.6.4 (43)` помечает поддержку портретной ориентации как необязательную. Сценарий обновления с магазинной версии описан в [подготовке внутреннего теста](r2.2-play-internal-2026-11-20.md).
+Пакет — `com.breckneck.debtbook`. Сборка `4.6.5 (44)` добавляет AppMetrica для Google Play и RuStore. Сценарий обновления с магазинной версии описан в [подготовке внутреннего теста](r2.2-play-internal-2026-11-20.md).
 
 ## Локальная проверка и CI
 
@@ -15,6 +15,10 @@ JAVA_HOME="$(/usr/libexec/java_home -v 17)" bash ./gradlew :app:assembleDebug :d
 HTML-отчеты — `<module>/build/reports/tests/`, XML — `<module>/build/test-results/`. APK находится в `app/build/outputs/apk/debug/`. Debug использует стандартную отладочную подпись и предназначен для проверки на тестовых устройствах. Установка поверх магазинного приложения требует совпадения сертификата; не удалять пользовательскую установленную версию ради debug APK.
 
 CI выполняет ту же сборку, unit tests и lint на JDK 17. Push охватывает рабочие ветки; pull request не фильтруется по целевой ветке. [Правила GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) описывают различие этих фильтров. CI не подписывает и не публикует release.
+
+## AppMetrica для обоих магазинов
+
+В настройках Debt Book скопируйте **API key (для использования в SDK)**. Для обеих магазинных сборок укажите один ключ в `local.properties` как `appMetricaApiKey` или в среде сборки как `SIMPLEDEBT_APPMETRICA_API_KEY`. Переменная среды имеет приоритет. Gradle проверяет формат SDK API key при сборке release. Debug собирается с пустым ключом и без активации AppMetrica. [Настройки проекта Debt Book](https://appmetrica.yandex.ru/application/edit?type=edit&appId=6392758).
 
 ## Подпись выпуска
 
@@ -38,13 +42,13 @@ bash ./gradlew :app:verifyReleaseSigning
 bash ./gradlew :app:bundleRelease
 ```
 
-`bundleRelease` создаёт `app/build/outputs/bundle/release/SimpleDebtBook-v4.6.4(43)-release.aab`, а `assembleRelease` создаёт одноимённый APK в `app/build/outputs/apk/release/`. Версия и код в имени берутся из `app/build.gradle`. Мастер Android Studio использует те же имена в выбранном каталоге.
+`bundleRelease` создаёт `app/build/outputs/bundle/release/SimpleDebtBook-v4.6.5(44)-release.aab`, а `assembleRelease` создаёт одноимённый APK в `app/build/outputs/apk/release/`. Версия и код в имени берутся из `app/build.gradle`. Мастер Android Studio использует те же имена в выбранном каталоге.
 
-`verifyReleaseSigning` проверяет наличие полного набора параметров и файла и блокирует `androiddebugkey`. Доступность ключа и корректность пароля проверяет Android Gradle Plugin при подписи. В каталоге с AAB проверьте подпись командой `jarsigner -verify 'SimpleDebtBook-v4.6.4(43)-release.aab'`, затем сравните SHA-256 из `keytool -printcert -jarfile 'SimpleDebtBook-v4.6.4(43)-release.aab'` с сертификатом **ключа загрузки** в Play Console. При отсутствии конфигурации сборка release останавливается до упаковки.
+`verifyReleaseSigning` проверяет наличие полного набора параметров и файла и блокирует `androiddebugkey`. Доступность ключа и корректность пароля проверяет Android Gradle Plugin при подписи. В каталоге с AAB проверьте подпись командой `jarsigner -verify 'SimpleDebtBook-v4.6.5(44)-release.aab'`, затем сравните SHA-256 из `keytool -printcert -jarfile 'SimpleDebtBook-v4.6.5(44)-release.aab'` с сертификатом **ключа загрузки** в Play Console. При отсутствии конфигурации сборка release останавливается до упаковки.
 
 ## Условия перед выпуском
 
-1. В Play Console проверить максимальный versionCode среди всех загруженных App Bundle и назначить свободный больший номер.
+1. В Google Play Console и RuStore Консоли проверить максимальный загруженный versionCode и использовать свободный больший номер.
 2. Найти существующий допустимый ключ и сверить SHA-256 сертификата с Console → App integrity (upload certificate для AAB) или сертификатом прежнего APK соответствующего магазина. Не заменять его новым ключом без отдельного процесса магазина.
 3. Собрать подписанный AAB и проверить метаданные/сертификат. Сопоставить исходники с опубликованным артефактом либо явно записать, что сравнение отсутствует.
 4. Завершить матрицу R1a из плана, включая обновление со старой базы, API 35/36, PIN, процесс, backup и UI. Локальные unit tests не заменяют ее.
