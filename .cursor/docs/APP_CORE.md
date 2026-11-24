@@ -61,7 +61,7 @@ app/src/main/java/com/breckneck/debtbook/
 
 ## MainActivity
 
-Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`). `exported=false`; `ActivityAuthGate` скрывает содержимое до проверки PIN, сохраняет текущую навигацию и повторно блокирует доступ после ухода в фон с учётом `GetPinLockDelay`: сразу (по умолчанию), 30 секунд, 1 минута или 5 минут. `AuthSession` хранит начало фона только в памяти и использует монотонное время `SystemClock.elapsedRealtime()`; launcher проверяет тот же интервал. Смена конфигурации не сбрасывает сессию; новый процесс всегда заблокирован независимо от настройки. При включённом PIN и во время его первичной установки действует `FLAG_SECURE`.
+Основная Activity приложения (не launcher — launcher это `AuthorizationActivity`). `exported=false`; `ActivityAuthGate` скрывает содержимое до проверки PIN, сохраняет текущую навигацию и повторно блокирует доступ после ухода в фон с учётом `GetPinLockDelay`: сразу (по умолчанию), 30 секунд, 1 минута или 5 минут. `AuthSession` хранит начало фона только в памяти и использует монотонное время `SystemClock.elapsedRealtime()`; launcher проверяет тот же интервал. Смена конфигурации не сбрасывает сессию; новый процесс всегда заблокирован независимо от настройки. В `MainActivity` флаг `FLAG_SECURE` действует во время ввода PIN для установки, смены или отключения. Обычные экраны доступны для съёмки при любом состоянии PIN.
 
 ### Характеристики
 - Хостит `NavHostFragment` с `nav_graph.xml`
@@ -188,7 +188,7 @@ DI мигрирован с **Koin 4.x** на **Hilt 2.55** (Фаза 2.1). Вс�
 | Файл | Описание | Используется в |
 |------|----------|----------------|
 | `DebtBookTopBar.kt` | `TopAppBar` с опциональной back-кнопкой, заголовком и слотом для action-иконок | Все экраны |
-| `SettingsPickerBottomSheet.kt` | `ModalBottomSheet` с `LazyColumn` + `RadioButton` для выбора одного значения из списка | NewDebt (валюта), CreateGoals (валюта), Finance (валюта, интервал), Settings (валюта x3, тема) |
+| `BubbleBottomSheet.kt` | Панель с прокручиваемым содержимым и общим заголовком `BubbleSheetHeader` | Финансы (период, набор значков категории, действия с операцией), долги и настройки |
 | `ConfirmationBottomSheet.kt` | `ModalBottomSheet` с заголовком, сообщением и кнопками Да/Нет | DebtDetails, CreateFinance, Synchronization |
 | `ExtraFunctionsBottomSheet.kt` | `ModalBottomSheet` с кнопками Удалить / Изменить / Отмена | DebtDetails, FinanceDetails, GoalDetails |
 | `SortFilterBottomSheet.kt` | `ModalBottomSheet` с двумя секциями RadioGroup (сортировка + фильтр) и чекбоксом "Запомнить выбор" | MainFragment, DebtDetails |

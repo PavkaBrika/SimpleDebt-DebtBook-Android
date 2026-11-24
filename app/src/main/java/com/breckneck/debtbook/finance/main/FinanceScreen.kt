@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.finance.main
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,18 +11,20 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -28,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
@@ -39,6 +44,7 @@ import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.breckneck.deptbook.domain.util.FinanceInterval
 import com.breckneck.deptbook.domain.util.LedgerDate
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -78,7 +84,7 @@ private fun FinanceContent(
     hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val colors = bubbleColors()
-    val directions = remember { listOf(FinanceCategoryState.INCOME, FinanceCategoryState.EXPENSE) }
+    val directions = financeDirections
     val pager = key(directions) {
         rememberPagerState(directions.indexOf(state.direction)) { directions.size }
     }
@@ -140,7 +146,7 @@ private fun FinanceContent(
                     FinanceOverview(state)
                 }
                 Spacer(Modifier.height(8.dp))
-                FinanceDirection(selected, directions) { direction ->
+                FinanceDirection(selected) { direction ->
                     tabAnimation?.cancel()
                     tabAnimation = scope.launch { pager.animateScrollToPage(directions.indexOf(direction)) }
                 }
@@ -196,6 +202,16 @@ private fun FinancePage(
     val amount = totals.total.takeIf { state.hasTotals }
     val expenses = direction == FinanceCategoryState.EXPENSE
     val palette = financeBalancePalette(direction)
+    var sharesOpen by rememberSaveable(direction) { mutableStateOf(false) }
+    val hasCategories = totals.categories.isNotEmpty()
+    val sharesExpanded = sharesOpen && hasCategories
+    val expansion = animateFloatAsState(if (sharesExpanded) 1f else 0f, tween(460), label = "Category shares")
+    val chartRequester = remember { BringIntoViewRequester() }
+    var chartSize by remember { mutableStateOf(IntSize.Zero) }
+    var revealChart by remember { mutableStateOf(false) }
+    LaunchedEffect(state.hasTotals, hasCategories) {
+        if (state.hasTotals && !hasCategories) sharesOpen = false
+    }
     val layout = LocalLayoutDirection.current
     val start = padding.calculateStartPadding(layout)
     val end = padding.calculateEndPadding(layout)
@@ -229,12 +245,26 @@ private fun FinancePage(
         } else {
             padding
         }
+        val chartBottomInset = with(LocalDensity.current) { listPadding.calculateBottomPadding().toPx() }
+        LaunchedEffect(sharesExpanded, revealChart) {
+            if (sharesExpanded && revealChart) {
+                snapshotFlow { expansion.value }.first { it == 1f }
+                withFrameNanos {}
+                if (chartSize != IntSize.Zero) {
+                    chartRequester.bringIntoView(
+                        Rect(0f, 0f, chartSize.width.toFloat(), chartSize.height + chartBottomInset),
+                    )
+                }
+                revealChart = false
+            }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().consumeWindowInsets(listPadding),
             state = listState,
             contentPadding = listPadding,
         ) {
             item(key = "balance") {
+                val progress = expansion.value
                 key(state.currency) {
                     BubbleBalanceCard(
                         stringResource(if (expenses) R.string.expenses else R.string.revenues),
@@ -243,35 +273,29 @@ private fun FinancePage(
                         onCurrencyClick = onCurrencyClick,
                         balanceValue = amount,
                         palette = palette,
-                        artwork = { FinanceSummaryArtwork(direction, palette, it) },
+                        artwork = {
+                            FinanceSummaryChart(
+                                totals,
+                                palette,
+                                expanded = sharesExpanded,
+                                expansion = progress,
+                                onToggle = if (hasCategories) ({
+                                    sharesOpen = !sharesOpen
+                                    revealChart = sharesOpen
+                                }) else null,
+                                modifier = it.bringIntoViewRequester(chartRequester).onSizeChanged { chartSize = it },
+                            )
+                        },
+                        artworkExpansion = progress,
                     ) {
-                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                val arrowColors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = palette.border,
-                                    contentColor = palette.content,
-                                )
-                                IconButton({ stepPeriod(-1) }, colors = arrowColors) {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.finance_previous))
-                                }
-                                TextButton(onPeriodClick, Modifier.weight(1f)) {
-                                    Icon(Icons.Outlined.DateRange, null, Modifier.size(16.dp), tint = palette.content)
-                                    Spacer(Modifier.width(5.dp))
-                                    Text(state.period.label(), color = palette.content, textAlign = TextAlign.Center)
-                                }
-                                IconButton({ stepPeriod(1) }, colors = arrowColors) {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.finance_next))
-                                }
-                            }
-                            if (onCurrentPeriod != null) {
-                                TextButton(
-                                    onClick = onCurrentPeriod,
-                                    colors = ButtonDefaults.textButtonColors(contentColor = palette.content),
-                                ) {
-                                    Text(stringResource(R.string.finance_current_period), textAlign = TextAlign.Center)
-                                }
-                            }
-                        }
+                        FinancePeriodControls(
+                            period = state.period,
+                            palette = palette,
+                            onPrevious = { stepPeriod(-1) },
+                            onNext = { stepPeriod(1) },
+                            onSelectPeriod = onPeriodClick,
+                            onCurrentPeriod = onCurrentPeriod,
+                        )
                     }
                 }
             }
@@ -297,7 +321,11 @@ private fun FinancePage(
                     )
                 }
                 else -> itemsIndexed(totals.categories, key = { _, row -> row.category.id }) { index, row ->
-                    BubbleGroupedRow(index, totals.categories.size, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+                    val progress = expansion.value
+                    val placement = if (progress == 0f || progress == 1f) {
+                        Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+                    } else Modifier
+                    BubbleGroupedRow(index, totals.categories.size, placement) {
                         BubbleListRow(
                             Modifier.clickable { onCategory(row.category) }.padding(12.dp),
                             leading = { CategoryBadge(row.category) },

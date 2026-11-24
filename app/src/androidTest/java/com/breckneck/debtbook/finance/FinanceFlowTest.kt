@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.node.RootForTest
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsActions
@@ -17,6 +18,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getAllSemanticsNodes
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
@@ -86,8 +88,21 @@ class FinanceFlowTest {
         input(R.string.comment, note)
         act(R.string.create_new_category)
         node(hasSetTextAction() and hasText(str(R.string.name))).performTextReplacement(books)
-        act(R.string.finance_icon_set)
+        val iconSetLabel = str(R.string.finance_icon_set)
+        val foodLabel = str(R.string.emoji_tab_food)
+        val iconSetField = hasText(iconSetLabel) and hasClickAction()
+        val sheetHeader = hasText(iconSetLabel) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        act(iconSetLabel)
+        node(sheetHeader).assertIsDisplayed()
+        node(hasText(foodLabel) and isSelected()).assertIsDisplayed()
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
+        capture("icon-set")
+        desc(R.string.cancel)
+        compose.waitUntil(8000) { compose.onAllNodes(sheetHeader).fetchSemanticsNodes().isEmpty() }
+        node(iconSetField and hasText(foodLabel))
+        act(iconSetLabel)
         act(R.string.emoji_tab_education)
+        node(iconSetField and hasText(str(R.string.emoji_tab_education)))
         act("📚")
         compose.onNodeWithContentDescription(context.getString(R.string.finance_color, 10)).performScrollTo().performClick()
         act(R.string.finance_save_category)
@@ -99,7 +114,15 @@ class FinanceFlowTest {
         capture("summary")
         val id = dao.getAllFinances().single { it.info == note }.id
         act(books)
-        pencil()
+        val entryRow = node(hasText(note) and hasClickAction()).assertIsDisplayed()
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
+        capture("history-chevron")
+        entryRow.performTouchInput {
+            click(Offset(width - 12.dp.toPx(), center.y))
+        }
+        node(hasText(str(R.string.finance_edit_entry)) and hasClickAction()).assertIsDisplayed()
+        capture("entry-actions")
+        act(R.string.finance_edit_entry)
         input(R.string.sum, "300")
         act(R.string.finance_save_entry)
         awaitText(note)
@@ -118,12 +141,14 @@ class FinanceFlowTest {
     @Test fun overviewAndPagesFollowTheSelectedPeriod() {
         val today = LedgerDate.today()
         val previous = FinancePeriod(FinanceInterval.DAY, today).shifted(-8).day
-        fun entry(name: String, direction: FinanceCategoryStateData, day: String, amount: Int) {
-            val category = dao.insertFinanceCategory(FinanceCategoryData(0, name, direction, "#C5E1A5", 0x1F4DA)).toInt()
+        fun entry(name: String, direction: FinanceCategoryStateData, day: String, amount: Int, color: String = "#C5E1A5") {
+            val category = dao.insertFinanceCategory(FinanceCategoryData(0, name, direction, color, 0x1F4DA)).toInt()
             dao.insertFinance(FinanceData(0, amount.toBigDecimal(), Date(), null, category, "RUB", day))
         }
-        entry("Expense today", FinanceCategoryStateData.EXPENSE, today, 45)
-        entry("Income today", FinanceCategoryStateData.INCOME, today, 90)
+        entry("Expense today", FinanceCategoryStateData.EXPENSE, today, 36)
+        entry("Other expense", FinanceCategoryStateData.EXPENSE, today, 9, "#FFCCBC")
+        entry("Income today", FinanceCategoryStateData.INCOME, today, 60)
+        entry("Other income", FinanceCategoryStateData.INCOME, today, 30, "#B3E5FC")
         repeat(16) { entry("Earlier expense $it", FinanceCategoryStateData.EXPENSE, previous, 16 - it) }
         act(R.string.debts)
         act(R.string.finances)
@@ -134,11 +159,43 @@ class FinanceFlowTest {
         assertTrue(overviewTitle.fetchSemanticsNode().boundsInRoot.bottom <= incomeTab.fetchSemanticsNode().boundsInRoot.top)
         total("90")
         awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
+        val incomeCategory = hasText("Income today") and hasText(context.getString(R.string.finance_share_of_total, 67))
+        val categoryLeft = node(incomeCategory).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.left
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("income-page")
+        val shares = node(hasText(str(R.string.finance_category_shares)) and hasClickAction())
+        val collapsedWidth = shares.fetchSemanticsNode().boundsInRoot.width
+        shares.performClick()
+        val addIncome = node(hasText(str(R.string.finance_add_income)) and hasClickAction())
+        val ring = shares.fetchSemanticsNode().boundsInRoot
+        assertTrue(ring.width > collapsedWidth * 2.5f)
+        assertTrue(ring.bottom <= addIncome.fetchSemanticsNode().boundsInRoot.top + 1f)
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
+        capture("shares-ring")
+        shares.performTouchInput { click(Offset(width * .92f, center.y)) }
+        node(hasText(str(R.string.finance_category_shares)) and hasText("Income today") and hasClickAction()).assertIsDisplayed()
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
+        capture("shares-expanded")
+        summaryList().performScrollToIndex(2)
+        val expandedCategory = node(incomeCategory).assertIsDisplayed()
+        assertEquals(categoryLeft, expandedCategory.fetchSemanticsNode().boundsInRoot.left, 1f)
+        assertTrue(expandedCategory.fetchSemanticsNode().boundsInRoot.center.y < addIncome.fetchSemanticsNode().boundsInRoot.top)
+        instrumentation.uiAutomation.waitForIdle(260, 4000)
+        capture("shares-breakdown")
+        expandedCategory.performClick()
+        awaitDestination(R.id.financeDetailsFragment)
+        awaitText("Income today")
+        back()
+        awaitDestination(R.id.financeFragment)
+        summaryList().performScrollToIndex(0)
+        assertTrue(shares.fetchSemanticsNode().boundsInRoot.width > collapsedWidth)
+        shares.performClick()
+        assertEquals(collapsedWidth, shares.fetchSemanticsNode().boundsInRoot.width)
 
         summaryList().performTouchInput { swipeLeft() }
         node(hasText(str(R.string.expenses)) and isSelected()).assertIsDisplayed()
         total("45")
+        node(hasText("Expense today") and hasText(context.getString(R.string.finance_share_of_total, 80))).assertIsDisplayed()
         capture("expense-page")
         summaryList().performTouchInput { swipeRight() }
         incomeTab.assertIsDisplayed()
@@ -146,8 +203,14 @@ class FinanceFlowTest {
         total("45")
 
         act(LedgerDate.display(today))
-        act(R.string.select_interval)
+        for (option in listOf(R.string.day, R.string.week, R.string.month, R.string.year_full, R.string.finance_date_range)) {
+            node(hasText(str(option)) and hasClickAction()).assertIsDisplayed()
+        }
+        node(hasText(str(R.string.day)) and isSelected()).assertIsDisplayed()
+        capture("inline-interval-day")
         act(R.string.week)
+        node(hasText(str(R.string.week)) and isSelected()).assertIsDisplayed()
+        capture("inline-interval-week")
         val week = FinancePeriod(FinanceInterval.WEEK, today)
         val previousWeek = week.shifted(-1)
         act(R.string.finance_choose_week)
@@ -177,12 +240,22 @@ class FinanceFlowTest {
         val date = node(hasText(LedgerDate.display(previous)) and hasClickAction())
         val currentPeriod = hasText(str(R.string.finance_current_period)) and hasClickAction()
         val currentPeriodAction = node(currentPeriod and hasAnyAncestor(verticalList)).assertIsDisplayed()
-        assertTrue(currentPeriodAction.fetchSemanticsNode().boundsInRoot.top >= date.fetchSemanticsNode().boundsInRoot.bottom)
+        val returnBounds = currentPeriodAction.fetchSemanticsNode().boundsInRoot
+        val previousArrow = node(hasContentDescription(str(R.string.finance_previous))).fetchSemanticsNode().boundsInRoot
+        val nextArrow = node(hasContentDescription(str(R.string.finance_next))).fetchSemanticsNode().boundsInRoot
+        assertTrue(returnBounds.top >= date.fetchSemanticsNode().boundsInRoot.bottom)
+        assertTrue(returnBounds.left <= previousArrow.left)
+        assertTrue(returnBounds.right >= nextArrow.right)
         capture("current-period")
-        currentPeriodAction.performClick()
+        currentPeriodAction.performTouchInput { click(Offset(8.dp.toPx(), center.y)) }
         awaitText(LedgerDate.display(today))
         total("45")
         awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
+        compose.onNode(currentPeriod).assertDoesNotExist()
+
+        desc(R.string.finance_previous)
+        node(currentPeriod).performTouchInput { click(Offset(width - 8.dp.toPx(), center.y)) }
+        node(hasText(LedgerDate.display(today)) and hasClickAction()).assertIsDisplayed()
         compose.onNode(currentPeriod).assertDoesNotExist()
     }
 
@@ -190,12 +263,23 @@ class FinanceFlowTest {
         val pager = SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)
         val expense = hasText(str(R.string.finance_add_expense)) and hasClickAction()
         val income = hasText(str(R.string.finance_add_income)) and hasClickAction()
+        val incomeTab = hasText(str(R.string.revenues)) and hasClickAction()
+        val expenseTab = hasText(str(R.string.expenses)) and hasClickAction()
         node(income and hasAnyAncestor(pager)).performClick()
         awaitText(str(R.string.finance_new_income))
+        val incomeBounds = node(incomeTab).assertIsSelected().fetchSemanticsNode().boundsInRoot
+        val expenseBounds = node(expenseTab).assertIsNotSelected().fetchSemanticsNode().boundsInRoot
+        assertTrue(incomeBounds.left < expenseBounds.left)
+        capture("income-form-accent")
+        node(expenseTab).performClick()
+        awaitText(str(R.string.finance_new_expense))
+        node(expenseTab).assertIsSelected()
+        capture("expense-form-accent")
         back()
         summaryList().performTouchInput { swipeLeft() }
         node(expense and hasAnyAncestor(pager)).performClick()
         awaitText(str(R.string.finance_new_expense))
+        node(expenseTab).assertIsSelected()
     }
 
     @Test fun customDateRangeIncludesBothEndsAndStepsByItsLength() {
@@ -211,8 +295,8 @@ class FinanceFlowTest {
         act(R.string.debts)
         act(R.string.finances)
         act(LedgerDate.display(LedgerDate.today()))
-        act(R.string.select_interval)
         act(R.string.finance_date_range)
+        node(hasText(str(R.string.finance_date_range)) and isSelected()).assertIsDisplayed()
         act(R.string.finance_range_start)
         chooseCalendarDay("2026-02-04")
         act(R.string.finance_range_end)
@@ -315,7 +399,7 @@ class FinanceFlowTest {
         direction(R.string.revenues)
         total("17.5", "EUR")
         act(R.string.salary)
-        pencil()
+        editEntry(str(R.string.salary))
         awaitText(str(R.string.salary))
         input(R.string.sum, "18,75")
         act(R.string.finance_save_entry)
@@ -362,9 +446,38 @@ class FinanceFlowTest {
         act(R.string.finance_save_entry)
         total("6")
         act(R.string.food)
-        node(hasContentDescription(str(R.string.finance_edit_entry), substring = true)).assertIsDisplayed()
+        node(hasText(str(R.string.food)) and hasClickAction()).assertIsDisplayed()
         SystemClock.sleep(350)
+        focus(str(R.string.food))
+        act(R.string.food)
         focus(str(R.string.finance_edit_entry))
+    }
+
+    @Test fun incomeFormScrollsBehindSaveAndShowsTheLastControl() {
+        repeat(24) { index ->
+            dao.insertFinanceCategory(FinanceCategoryData(
+                0, "Income category ${index + 1}", FinanceCategoryStateData.INCOME, "#DBEDCD", 0x1F4DA,
+            ))
+        }
+        act(R.string.finance_add_income)
+        val save = node(hasText(str(R.string.finance_save_entry)) and hasClickAction()).assertIsDisplayed()
+        val footer = save.fetchSemanticsNode().boundsInWindow
+        val form = node(hasScrollAction() and hasAnyDescendant(hasText(str(R.string.finance_entry_date))))
+        val viewport = form.fetchSemanticsNode().boundsInWindow
+        assertTrue(viewport.bottom > footer.bottom)
+
+        val category = node(hasText("Income category 12")).performScrollTo()
+        val distance = category.fetchSemanticsNode().boundsInWindow.center.y - footer.center.y
+        form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+        val row = category.fetchSemanticsNode().boundsInWindow
+        assertTrue("A category should pass behind the save button", footer.center.y in row.top..row.bottom)
+        assertEquals(footer, save.fetchSemanticsNode().boundsInWindow)
+        capture("form-under-save")
+
+        form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, viewport.height * 3) }
+        val last = node(hasText(str(R.string.create_new_category)) and hasClickAction()).assertIsDisplayed()
+        assertTrue(last.fetchSemanticsNode().boundsInWindow.bottom <= footer.top)
+        capture("form-end")
     }
 
     @Test fun keyboardLeavesSaveActionVisibleOnTheForm() {
@@ -383,9 +496,14 @@ class FinanceFlowTest {
                 .getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom
         }
         assertTrue(save.fetchSemanticsNode().boundsInWindow.bottom <= keyboardTop + 1)
+        val comment = node(hasText(str(R.string.comment)) and hasSetTextAction()).performScrollTo()
+        comment.performClick().performTextReplacement(note)
+        comment.assertIsFocused().assertIsDisplayed()
+        assertTrue(comment.fetchSemanticsNode().boundsInWindow.bottom <= save.fetchSemanticsNode().boundsInWindow.top)
         capture("keyboard")
         back()
         awaitText("12,34")
+        awaitText(note)
     }
 
     @Test fun monthBoundaryUsesTheSelectedDayInTheForm() {
@@ -397,8 +515,9 @@ class FinanceFlowTest {
         chooseCalendarDay(january)
         act(R.string.finance_apply_period)
         act(LedgerDate.display(january))
-        act(R.string.select_interval)
         act(R.string.month)
+        node(hasText(str(R.string.month)) and isSelected()).assertIsDisplayed()
+        node(hasText(str(R.string.finance_period_month_day)) and hasClickAction()).assertIsDisplayed()
         act(R.string.finance_apply_period)
         desc(R.string.finance_next)
         total("0")
@@ -447,7 +566,7 @@ class FinanceFlowTest {
             changeZone("America/Adak")
             act(R.string.food)
             awaitText(LedgerDate.display(day))
-            pencil()
+            editEntry(note)
             awaitText(LedgerDate.display(day))
             act(R.string.finance_save_entry)
             awaitText(note)
@@ -474,7 +593,7 @@ class FinanceFlowTest {
         act(R.string.finance_save_entry)
         total("255.75")
         act(R.string.food)
-        pencil()
+        editEntry(note)
         input(R.string.sum, "301")
         gesture(R.id.financeFormView, R.id.financeHistoryView, note, cancel = true)
         awaitText("301")
@@ -524,7 +643,10 @@ class FinanceFlowTest {
     private fun input(label: Int, value: String) {
         node(hasSetTextAction() and hasText(str(label))).performScrollTo().performTextReplacement(value)
     }
-    private fun pencil() = node(hasContentDescription(str(R.string.finance_edit_entry), substring = true)).performClick()
+    private fun editEntry(label: String) {
+        act(label)
+        act(R.string.finance_edit_entry)
+    }
     private fun currency(from: String, to: Int) {
         act(from)
         awaitDestination(R.id.currencyPickerFragment)

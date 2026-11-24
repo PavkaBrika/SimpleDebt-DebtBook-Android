@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
-import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
@@ -13,7 +12,6 @@ class ActivityAuthGate(
     private val activity: AppCompatActivity,
     private val pinEnabled: () -> Boolean,
     private val lockDelayMillis: () -> Long,
-    private val keepWindowSecure: () -> Boolean = { false },
 ) {
     private var awaitingAuthentication = false
     private val launcher = activity.registerForActivityResult(
@@ -58,13 +56,7 @@ class ActivityAuthGate(
         outState.putBoolean(AWAITING_AUTH, awaitingAuthentication)
     }
 
-    fun updateWindowSecurity(pinEnabled: Boolean) {
-        if (pinEnabled || keepWindowSecure()) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-    }
-
     private fun updateVisibility() {
-        updateWindowSecurity(pinEnabled())
         activity.window.decorView.visibility =
             if (canAccess()) View.VISIBLE else View.INVISIBLE
     }

@@ -78,7 +78,7 @@ class BubbleComponentsTest {
             DebtBookTheme {
                 Column {
                     for (entry in listOf(first, second)) {
-                        FinanceHistoryRow(entry, "Food", { selected = entry }, {})
+                        FinanceHistoryRow(entry, "Food", { selected = entry })
                     }
                 }
             }

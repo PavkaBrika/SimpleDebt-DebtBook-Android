@@ -2,6 +2,9 @@
     <string name="finance_add_expense">Добавить расход</string>
     <string name="finance_add_income">Добавить доход</string>
     <string name="finance_categories">Категории</string>
+    <string name="finance_category_shares">Доли</string>
+    <string name="finance_collapse_shares">Свернуть доли категорий</string>
+    <string name="finance_next_sector">Следующий сектор</string>
     <string name="finance_previous">Предыдущий период</string>
     <string name="finance_next">Следующий период</string>
     <string name="finance_current_period">К текущему периоду</string>
@@ -19,7 +22,6 @@
     <string name="finance_add_entry">Добавить операцию</string>
     <string name="finance_delete_entry">Удалить операцию</string>
     <string name="finance_delete_entry_message">Сумма категории будет пересчитана.</string>
-    <string name="finance_edit_named">Редактировать операцию · %1$s</string>
     <string name="finance_share_of_total">%1$d%% от суммы</string>
     <string name="finance_icon_set">Набор значков</string>
     <string name="finance_period">Период</string>

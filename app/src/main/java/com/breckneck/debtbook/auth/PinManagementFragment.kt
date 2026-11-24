@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -50,6 +51,19 @@ class PinManagementFragment : Fragment() {
                 },
             )
         }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        requireActivity().window.addFlags(FLAG_SECURE)
+    }
+
+    override fun onDestroyView() {
+        // Keep the outgoing PIN view secure until its exit animation has finished.
+        if (findNavController().currentDestination?.id != R.id.pinManagementFragment) {
+            requireActivity().window.clearFlags(FLAG_SECURE)
+        }
+        super.onDestroyView()
+    }
 
     override fun onResume() {
         super.onResume()

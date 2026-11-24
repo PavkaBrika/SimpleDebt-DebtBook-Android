@@ -34,6 +34,8 @@ import com.breckneck.deptbook.domain.util.MoneyDisplay
 import java.math.BigDecimal
 import java.util.Currency
 
+internal val financeDirections = listOf(FinanceCategoryState.INCOME, FinanceCategoryState.EXPENSE)
+
 @Composable
 internal fun financeActionColors(direction: FinanceCategoryState): ButtonColors {
     val colors = bubbleColors()
@@ -50,7 +52,7 @@ internal fun financeActionColors(direction: FinanceCategoryState): ButtonColors 
 @Composable
 internal fun FinanceDirection(
     selected: FinanceCategoryState,
-    directions: List<FinanceCategoryState> = FinanceCategoryState.entries,
+    enabled: Boolean = true,
     select: (FinanceCategoryState) -> Unit,
 ) {
     val colors = bubbleColors()
@@ -58,16 +60,16 @@ internal fun FinanceDirection(
     val action = financeActionColors(selected)
     val tabColor by animateColorAsState(action.containerColor, tween(200), label = "Direction color")
     BoxWithConstraints(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp)) {
-        val width = maxWidth / directions.size
-        val offset by animateDpAsState(width * directions.indexOf(selected), tween(200), label = "Direction")
+        val width = maxWidth / financeDirections.size
+        val offset by animateDpAsState(width * financeDirections.indexOf(selected), tween(200), label = "Direction")
         Box(Modifier.matchParentSize()) {
             Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(offset.roundToPx(), 0) }.width(width).fillMaxHeight().background(tabColor, CircleShape))
         }
         Row(Modifier.fillMaxWidth().selectableGroup()) {
-            for (direction in directions) {
+            for (direction in financeDirections) {
                 val active = direction == selected
                 Box(Modifier.weight(1f).clip(CircleShape)
-                    .selectable(active, role = Role.Tab) {
+                    .selectable(active, enabled = enabled, role = Role.Tab) {
                         if (!active) {
                             haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                             select(direction)
@@ -87,10 +89,12 @@ internal fun FinanceCategory.localizedName() = GetFinanceCategoryNameInLocalLang
 
 @Composable
 internal fun CategoryBadge(category: FinanceCategory, modifier: Modifier = Modifier) {
-    Box(modifier.size(38.dp).background(Color(category.color.toColorInt()), CircleShape), contentAlignment = Alignment.Center) {
+    Box(modifier.size(38.dp).background(category.badgeColor, CircleShape), contentAlignment = Alignment.Center) {
         Text(String(Character.toChars(category.image)), color = Color.Black)
     }
 }
+
+internal val FinanceCategory.badgeColor: Color get() = Color(color.toColorInt())
 
 internal fun BigDecimal.financeMoney(currency: String): String {
     val symbol = if (currency == "RUB") "₽" else runCatching {

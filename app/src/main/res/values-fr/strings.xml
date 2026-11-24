@@ -103,7 +103,6 @@
     <string name="color">Couleur</string>
     <string name="you_must_select_color">Vous devez sélectionner la couleur !</string>
     <string name="you_must_select_image">Vous devez sélectionner l\'image !</string>
-    <string name="select_interval">Sélectionner l\'intervalle</string>
     <string name="there_are_no_revenues_yet_click_the_button_below_to_add">Il n\'y a pas encore de revenus.\nCliquez sur le bouton ci-dessous pour ajouter.</string>
     <string name="there_are_no_expenses_yet_click_the_button_below_to_add">Il n\'y a pas encore de dépenses.\nCliquez sur le bouton ci-dessous pour ajouter.</string>
     <string name="health">Santé</string>

@@ -35,7 +35,6 @@ class AuthorizationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableBubbleEdgeToEdge()
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         trustedCaller = callingActivity?.packageName == packageName
         vm.setPINCodeAction(allowedPINAction(
             intent.getStringExtra("PINCodeState"),
@@ -51,6 +50,7 @@ class AuthorizationActivity : AppCompatActivity() {
             return
         }
 
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         vm.loadStoredPIN(this)
 
         setContent {

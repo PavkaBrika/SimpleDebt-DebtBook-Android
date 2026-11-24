@@ -8,17 +8,16 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
@@ -38,7 +37,6 @@ internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, hostInsets: Paddi
     val direction = stringResource(if (vm.direction == FinanceCategoryState.EXPENSE) R.string.expenses else R.string.revenues)
     val total = remember(history.entries) { history.entries.sumOf { it.sum } }
     var actionId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var confirm by rememberSaveable { mutableStateOf(false) }
     val selected = history.entries.find { it.id == actionId }
 
     BubbleScaffold(
@@ -71,39 +69,47 @@ internal fun FinanceDetailsScreen(vm: FinanceDetailsViewModel, hostInsets: Paddi
                 }
                 else -> itemsIndexed(history.entries, key = { _, entry -> entry.id }) { index, entry ->
                     BubbleGroupedRow(index, history.entries.size, Modifier.animateItem()) {
-                        FinanceHistoryRow(entry, title, onClick = { actionId = entry.id; confirm = false }, onEdit = { edit(entry) })
+                        FinanceHistoryRow(entry, title, onClick = { actionId = entry.id })
                     }
                 }
             }
         }
     }
     if (selected != null) {
-        if (confirm) ConfirmationBottomSheet(stringResource(R.string.finance_delete_entry),
-            stringResource(R.string.finance_delete_entry_message), { vm.delete(selected) }, { actionId = null },
-            confirmText = stringResource(R.string.delete), dismissText = stringResource(R.string.cancel),
-            enabled = !history.deleting, errorMessage = if (history.deleteFailed) stringResource(R.string.history_change_failed) else null)
-        else ExtraFunctionsBottomSheet(selected.sum.financeMoney(vm.currency),
-            onEdit = { actionId = null; edit(selected) }, onDelete = { confirm = true }, onDismiss = { actionId = null })
+        FinanceEntrySheet(
+            selected,
+            title,
+            vm.direction,
+            deleting = history.deleting,
+            deleteFailed = history.deleteFailed,
+            onEdit = {
+                if (actionId == selected.id) {
+                    actionId = null
+                    edit(selected)
+                }
+            },
+            onDelete = { vm.delete(selected) },
+            onDismiss = { actionId = null },
+        )
     }
 }
 
 
 @Composable
-internal fun FinanceHistoryRow(entry: Finance, categoryName: String, onClick: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Modifier) {
+internal fun FinanceHistoryRow(entry: Finance, categoryName: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = bubbleColors()
     val label = entry.info?.takeIf { it.isNotBlank() } ?: categoryName
-    val date = LedgerDate.display(entry.calendarDay ?: LedgerDate.fromDate(entry.date))
-    val money = entry.sum.financeMoney(entry.currency)
-    Row(modifier, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        BubbleListRow(Modifier.weight(1f).clickable { onClick() }.padding(12.dp),
-            leading = { Icon(Icons.AutoMirrored.Outlined.Notes, null, Modifier.background(colors.fill, CircleShape).padding(6.dp).size(16.dp)) },
-            trailing = { Text(money, fontWeight = FontWeight.SemiBold) }) {
-            Text(label, fontWeight = FontWeight.Bold)
-            Text(date, color = colors.muted, style = MaterialTheme.typography.bodySmall)
-        }
-        val editLabel = stringResource(R.string.finance_edit_named, "$label, $date, $money")
-        IconButton(onEdit, Modifier.semantics { contentDescription = editLabel }) {
-            Icon(Icons.Outlined.Edit, null)
-        }
+    BubbleListRow(
+        modifier.clickable(role = Role.Button, onClick = onClick).padding(12.dp),
+        leading = { Icon(Icons.AutoMirrored.Outlined.Notes, null, Modifier.background(colors.fill, CircleShape).padding(6.dp).size(16.dp)) },
+        trailing = {
+            Text(entry.sum.financeMoney(entry.currency), fontWeight = FontWeight.SemiBold)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(18.dp), tint = colors.muted)
+        },
+    ) {
+        Text(label, fontWeight = FontWeight.Bold)
+        Text(entry.displayDate(), color = colors.muted, style = MaterialTheme.typography.bodySmall)
     }
 }
+
+internal fun Finance.displayDate(): String = LedgerDate.display(calendarDay ?: LedgerDate.fromDate(date))

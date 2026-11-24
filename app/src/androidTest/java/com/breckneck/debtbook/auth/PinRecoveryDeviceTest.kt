@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.ParcelFileDescriptor
+import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -117,28 +118,15 @@ class PinRecoveryDeviceTest {
     private fun enterAppPin(pin: String) {
         pin.forEach { compose.onNodeWithText(it.toString()).performClick() }
     }
-    private fun capturePinLayout(name: String = "fix-pin-layout.png") {
+    private fun capturePinLayout(name: String = "fix-pin-layout.png", pinEntry: Boolean = true) {
         compose.waitForIdle()
-        // Screenshot only: production keeps FLAG_SECURE throughout this flow.
         lateinit var activity: PinRecoveryActivity
-        var windows = emptyList<Pair<android.view.View, android.view.WindowManager.LayoutParams>>()
         instrumentation.runOnMainSync {
             activity = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
                 .filterIsInstance<PinRecoveryActivity>().single()
-            assertTrue(activity.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
-            // The sheet owns another window. Clear only this test process's windows for the screenshot.
-            val roots = if (android.os.Build.VERSION.SDK_INT >= 29)
-                android.view.inspector.WindowInspector.getGlobalWindowViews() else listOf(activity.window.decorView)
-            windows = roots.mapNotNull { root ->
-                val params = root.layoutParams as? android.view.WindowManager.LayoutParams ?: return@mapNotNull null
-                root to android.view.WindowManager.LayoutParams().also { it.copyFrom(params) }
-            }
-            activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-            windows.forEach { (root, original) ->
-                val params = android.view.WindowManager.LayoutParams().also { it.copyFrom(original) }
-                params.flags = params.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE.inv()
-                (root.context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager).updateViewLayout(root, params)
-            }
+            assertEquals(pinEntry, activity.window.attributes.flags and FLAG_SECURE != 0)
+            // Temporarily reveal the test keypad for its layout screenshot.
+            if (pinEntry) activity.window.clearFlags(FLAG_SECURE)
         }
         try {
             instrumentation.waitForIdleSync()
@@ -149,12 +137,7 @@ class PinRecoveryDeviceTest {
             }
             bitmap.recycle()
         } finally {
-            instrumentation.runOnMainSync {
-                windows.filter { it.first.isAttachedToWindow }.forEach { (root, params) ->
-                    (root.context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager).updateViewLayout(root, params)
-                }
-                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-            }
+            if (pinEntry) instrumentation.runOnMainSync { activity.window.addFlags(FLAG_SECURE) }
         }
     }
 
@@ -171,7 +154,7 @@ class PinRecoveryDeviceTest {
             waitForText(R.string.pin_recovery_verify)
             compose.onNodeWithTag("pinRecoverySheet").assertIsDisplayed()
             compose.onNodeWithText(context.getString(R.string.pin_recovery_verify)).assertIsDisplayed()
-            capturePinLayout("polish-pin-sheet.png")
+            capturePinLayout("polish-pin-sheet.png", pinEntry = false)
             compose.onNodeWithContentDescription(context.getString(R.string.cancel)).performClick()
             compose.waitUntil(15_000) {
                 compose.onAllNodesWithTag("pinRecoverySheet").fetchSemanticsNodes(atLeastOneRootRequired = false).isEmpty()

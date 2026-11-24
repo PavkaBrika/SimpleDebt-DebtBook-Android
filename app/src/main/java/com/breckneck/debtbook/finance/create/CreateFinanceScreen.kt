@@ -1,6 +1,9 @@
 package com.breckneck.debtbook.finance.create
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -49,31 +53,49 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
     val focus = LocalFocusManager.current
     val amount = rememberTextFieldState(vm.amount)
     val comment = rememberTextFieldState(vm.comment)
-    val title = if (vm.editing) R.string.finance_edit_entry else if (direction == FinanceCategoryState.EXPENSE)
+    val expense = direction == FinanceCategoryState.EXPENSE
+    val accentContainer = if (expense) colors.dangerContainer else colors.mint
+    val accentContent = if (expense) colors.danger else colors.onMint
+    val title = if (vm.editing) R.string.finance_edit_entry else if (expense)
         R.string.finance_new_expense else R.string.finance_new_income
 
     BubbleScaffold(
         hostInsets = hostInsets,
+        scrollBehindBarsWithIme = true,
+        bottomBarScrim = false,
         topBar = {
             BubbleTopBar(stringResource(title), host::onBackButtonClick, hostInsets, backEnabled = enabled)
         },
         bottomAction = {
             if (saveState == CreateFinanceViewModel.SaveState.ERROR) {
-                Text(stringResource(R.string.save_failed_retry), Modifier.padding(horizontal = 16.dp), color = colors.danger)
+                BubbleGroup(Modifier.padding(horizontal = 16.dp)) {
+                    Text(stringResource(R.string.save_failed_retry), Modifier.padding(12.dp), color = colors.danger)
+                }
             }
-            BubbleButton({ attempted = true; focus.clearFocus(); vm.save() },
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), enabled = enabled) {
+            BubbleButton(
+                { attempted = true; focus.clearFocus(); vm.save() },
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                enabled = enabled,
+                colors = financeActionColors(direction),
+            ) {
                 Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.finance_save_entry), Modifier.padding(start = 8.dp))
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (!vm.editing) FinanceDirection(direction) { if (enabled) vm.changeDirection(it) }
+        FinanceFormScroll(padding) {
+            if (!vm.editing) FinanceDirection(direction, enabled = enabled, select = vm::changeDirection)
             val amountError = if (attempted && (amount.text.isEmpty() || vm.parsedAmount() == null))
                 stringResource(R.string.repayment_invalid) else null
-            BubbleAmountField(amount, vm.currency, vm::changeAmount, acceptEdits = enabled, errorMessage = amountError)
+            BubbleAmountField(
+                amount,
+                vm.currency,
+                vm::changeAmount,
+                acceptEdits = enabled,
+                errorMessage = amountError,
+                containerColor = accentContainer,
+                contentColor = accentContent,
+            )
             if (amountError != null) Text(amountError, color = colors.danger)
 
             BubbleGroup {
@@ -96,7 +118,11 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick)
                             } },
                             { Text(category.localizedName()) }, enabled = enabled, shape = CircleShape,
-                            colors = FilterChipDefaults.filterChipColors(containerColor = colors.paper, selectedContainerColor = colors.mint),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = colors.paper,
+                                selectedContainerColor = accentContainer,
+                                selectedLabelColor = accentContent,
+                            ),
                             leadingIcon = { CategoryBadge(category, Modifier.size(23.dp)) })
                     }
                     AssistChip({ focus.clearFocus(); host.onAddCategoryButtonClick(direction) },
@@ -119,4 +145,26 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
             enabled = !deleting, errorMessage = if (deleteFailed) stringResource(R.string.history_change_failed) else null)
     }
     LaunchedEffect(id) { if (id == 0) confirmDelete = false }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FinanceFormScroll(padding: PaddingValues, content: @Composable ColumnScope.() -> Unit) {
+    val defaultScroll = LocalBringIntoViewSpec.current
+    val density = LocalDensity.current
+    val top = with(density) { padding.calculateTopPadding().toPx() }
+    val bottom = with(density) { padding.calculateBottomPadding().toPx() }
+    val focusScroll = remember(defaultScroll, top, bottom) {
+        object : BringIntoViewSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
+                defaultScroll.calculateScrollDistance(offset - top, size, (containerSize - top - bottom).coerceAtLeast(0f))
+        }
+    }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides focusScroll) {
+        Column(
+            Modifier.fillMaxSize().consumeWindowInsets(padding).verticalScroll(rememberScrollState()).padding(padding),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+    }
 }
