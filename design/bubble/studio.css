@@ -123,8 +123,21 @@ svg { display:block; flex-shrink:0 }
 .person-photo-action { position:relative; min-height:48px; cursor:pointer }
 .person-photo-action:focus-within { outline:2px solid var(--forest); outline-offset:-2px }
 .person-photo-action input { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer }
-.debt-person-suggestions + .field,.debt-person-suggestions:not(:empty) { border-top:1px solid var(--edge) }
-.debt-person-hint { padding:10px 13px 0; color:var(--soft); font-size:12px }
+.debt-person-suggestions { overflow:hidden }
+.debt-person-choices { margin:0 10px 10px; border:1px solid var(--edge); border-radius:18px; background:var(--mint); color:var(--mint-ink); overflow:hidden }
+.debt-person-choices.choice-error { border-color:var(--coral); background:var(--coral-tint); color:var(--coral) }
+.debt-person-hint { padding:10px 13px 6px; font-size:13px; font-weight:650 }
+.debt-person-error { padding:0 14px 8px 58px; color:var(--coral); font-size:13px }
+.debt-person-choices .person-row { color:inherit; border-top:1px solid var(--edge); min-height:50px }
+.debt-contact-action { min-height:44px; padding-inline:5px; font-size:13px; color:var(--forest) }
+[data-draft-person-photo]+.field,.debt-draft-photo { border-top:1px solid var(--edge) }
+.debt-draft-photo { display:flex; align-items:center; padding-right:6px }
+.debt-draft-photo label { flex:1; gap:10px; justify-content:flex-start; color:var(--forest) }
+.debt-draft-photo .icon-button { background:none; border:0 }
+.debt-negative.btn,.segment.debt-negative::before { background:var(--coral); color:var(--paper) }
+.segment.debt-negative .active { color:var(--paper) }
+.debt-amount.debt-negative .amount-field { background:var(--coral-tint); color:var(--coral) }
+.debt-amount.debt-negative .amount-field input::placeholder { color:var(--coral) }
 .person-text,.event-text { flex:1; min-width:0 }.person-text strong,.event-text strong { display:block; font-size:15px; line-height:1.2; font-weight:600; letter-spacing:-.28px; overflow-wrap:anywhere }
 .person-text small,.event-text small,.subtle { display:block; color:var(--soft); font-size:12px; line-height:1.4; margin-top:3px }
 .money { margin-left:auto; font-size:15px; font-weight:650; letter-spacing:-.4px; text-align:right; line-height:1.2; overflow-wrap:anywhere }

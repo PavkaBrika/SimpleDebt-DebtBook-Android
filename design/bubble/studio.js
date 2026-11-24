@@ -214,13 +214,16 @@ function scheduleFields(obj,prefix,outstanding=true) {
 function newDebt(f) {
   const d=f.d;
   const owner=people.find(p=>p.id===(d.fixed||d.personId));
-  const action=d.fixed?'':owner?iconButton('clear-debt-person','Изменить выбор человека','close'):button('contacts','Контакты','','chip');
-  const personField=field('user','Человек',input('d.name',owner?.name||d.name,'Имя или название','text',owner?'readonly':'maxlength="80"'),action);
-  const suggestions=owner?'':'<div class="debt-person-suggestions" data-debt-person-suggestions>'+debtPersonSuggestions(d)+'</div>';
-  return layout('<div class="segment">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
-    amountField('d.sum',d.sum,owner?.cur||d.cur,!owner)+'<div class="group">'+personField+suggestions+
+  const action=d.fixed?'':owner?iconButton('clear-debt-person','Изменить выбор человека','close'):button('contacts','Контакты','','debt-contact-action');
+  const personField=field('user',owner&&!d.fixed?'Человек выбран':'Человек',input('d.name',owner?.name||d.name,'Имя или название','text',owner?'readonly':'maxlength="80"'),action);
+  const error='<p class="debt-person-error" data-debt-person-error role="alert"'+(d.personError?'':' hidden')+'>Выберите нужного человека из совпадений.</p>';
+  const suggestions=owner?'':error+'<div class="debt-person-suggestions" data-debt-person-suggestions>'+debtPersonSuggestions(d)+'</div>'+
+    '<div data-draft-person-photo>'+debtDraftPhoto(d)+'</div>';
+  const negative=d.dir<0?' debt-negative':'';
+  return layout('<div class="segment'+negative+'">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
+    '<div class="debt-amount'+negative+'">'+amountField('d.sum',d.sum,owner?.cur||d.cur,!owner)+'</div><div class="group">'+personField+suggestions+
     field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date'))+'</div>'+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
-    {action:primary('save','Сохранить долг','check'),topBar:backbar(d.editId?'Редактировать долг':screenNames.new)});
+    {action:button('save','Сохранить долг','','btn'+negative,'check'),topBar:backbar(d.editId?'Редактировать долг':screenNames.new)});
 }
 function findLoan(f,id) { return people.find(p=>p.id===f.personId).loans.find(l=>l.id===id); }
 function sheet(f) {
@@ -424,15 +427,20 @@ function saveDebt(i) {
   const f=frames[i],d=f.d,name=d.name.trim();
   let p=people.find(p=>p.id===(d.fixed||d.personId));
   if(!p) {
-    const matches=people.filter(p=>p.cur===d.cur&&normalizedPersonName(p.name)===normalizedPersonName(name));
-    if(matches.length>1)return fail(i,'Выберите нужного человека из совпадений.');
+    const matches=exactDebtPeople(d);
+    if(matches.length>1){
+      d.personError=true;
+      render(i,true);
+      sections[i].querySelector('[data-debt-person-error]').scrollIntoView({block:'center'});
+      return;
+    }
     p=matches[0];
   }
   const n=readMoney(d.sum,p?.cur||d.cur);
   if(!n||!name||!d.date) return fail(i,'Введите имя, положительную сумму и дату записи.');
   const issue=validSchedule(d);if(issue)return fail(i,issue);
   if(d.editId)return updateEditedDebt(i,n);
-  if(!p){p={id:serial++,name,art:people.length,cur:d.cur,loans:[]};people.unshift(p);}
+  if(!p){p={id:serial++,name,art:people.length,cur:d.cur,photo:d.photo||undefined,loans:[]};people.unshift(p);}
   p.loans.unshift({id:serial++,principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:'',returns:[]});
   f.cur=p.cur;f.personId=p.id;setRoute(f,'person',d.fixed?'back':'replace');refreshData(i,'Долг сохранён');
 }
@@ -522,6 +530,7 @@ function bind(event) {
     const i=Number(el.closest('.panel').dataset.index),file=el.files[0];
     if(el.dataset.file==='goal-photo')return selectPhoto(i,file);
     if(el.dataset.file==='person-photo')return selectPersonPhoto(i,file);
+    if(el.dataset.file==='debt-draft-photo')return selectDebtDraftPhoto(i,file);
     return readBackupFile(i,file);
   }
   const key=el.dataset.bind;if(!key)return;
@@ -534,8 +543,8 @@ function bind(event) {
   if(key==='d.name'){
     if(event.type==='input'){
       f.d.name=el.value;
-      const suggestions=sections[i].querySelector('[data-debt-person-suggestions]');
-      if(suggestions)suggestions.innerHTML=debtPersonSuggestions(f.d);
+      f.d.personError=false;
+      updateDebtPersonOptions(i);
     }
     return;
   }
@@ -544,7 +553,12 @@ function bind(event) {
   obj[prop]=el.type==='checkbox'?el.checked:el.value;
   if(!obj.due)obj.remind=false;
   if(prop==='remind'||prop==='due')obj.askNotify=!!obj.remind&&notificationAccess!=='granted';
-  if(event.type==='change'&&['due','remind','cur'].includes(prop))render(i,true);
+  if(event.type==='change'&&['due','remind','cur'].includes(prop)){
+    render(i,true);
+    if(key==='d.remind'&&obj.remind)sections[i].querySelector('[data-bind="d.time"]')?.scrollIntoView({
+      block:'center',behavior:reducedMotion.matches?'instant':'smooth'
+    });
+  }
   if(key==='s.sum')updateRemaining(i);
 }
 board.addEventListener('input',bind);board.addEventListener('change',bind);

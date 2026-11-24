@@ -109,6 +109,10 @@ flowActions['share-excel']=i=>{
 };
 const demoContacts=['Алексей Миронов','Анна Соколова','Виктория Ли','Елена Ким','Илья Волков','Михаил Орлов'];
 function normalizedPersonName(name) {return name.trim().toLocaleLowerCase('ru');}
+function exactDebtPeople(d) {
+  const name=normalizedPersonName(d.name);
+  return people.filter(p=>p.cur===d.cur&&normalizedPersonName(p.name)===name);
+}
 function debtPersonSuggestions(d) {
   const query=normalizedPersonName(d.name);
   if(!query)return '';
@@ -118,13 +122,51 @@ function debtPersonSuggestions(d) {
   const candidates=exact.sort(byCurrency).concat(matching.filter(p=>!exact.includes(p)).sort((a,b)=>
     Number(!normalizedPersonName(a.name).startsWith(query))-Number(!normalizedPersonName(b.name).startsWith(query))||byCurrency(a,b)
   ).slice(0,Math.max(0,5-exact.length)));
-  return candidates.length?'<p class="debt-person-hint">Люди из списка</p>'+candidates.map(p=>
-    '<button class="person-row" data-act="select-debt-person" data-value="'+p.id+'">'+personAvatar(p)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small>'+p.cur+'</small></span><span class="money">'+amount(balance(p),p.cur)+'</span></button>'
-  ).join(''):'';
+  return candidates.length?'<div class="debt-person-choices'+(d.personError?' choice-error':'')+'"><p class="debt-person-hint">Добавить долг к существующему человеку</p>'+candidates.map(p=>
+    '<button class="person-row" data-act="select-debt-person" data-value="'+p.id+'">'+personAvatar(p)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small>'+p.cur+'</small></span><span class="money">'+amount(balance(p),p.cur)+'</span>'+icon('chevron',16)+'</button>'
+  ).join('')+'</div>':'';
 }
-flowActions['select-debt-person']=(i,v)=>{
+function debtDraftPhoto(d) {
+  if(d.fixed||d.personId||exactDebtPeople(d).length)return '';
+  const photo=d.photo?'<img class="motif person-photo" alt="" src="'+escapeHtml(d.photo)+'">':icon('user',17);
+  return '<div class="debt-draft-photo"><label class="setting person-photo-action">'+photo+'<strong>'+
+    (d.photo?'Заменить фото':'Выбрать фото')+'</strong><input type="file" accept="image/*" data-file="debt-draft-photo"></label>'+
+    (d.photo?iconButton('clear-debt-draft-photo','Убрать фото','close'):'')+'</div>';
+}
+function updateDebtPersonOptions(i) {
+  const d=frames[i].d,panel=sections[i];
+  const suggestions=panel.querySelector('[data-debt-person-suggestions]');
+  if(!suggestions)return;
+  panel.querySelector('[data-debt-person-error]').hidden=!d.personError;
+  const from=suggestions.getBoundingClientRect().height;
+  suggestions.getAnimations().forEach(animation=>animation.cancel());
+  suggestions.innerHTML=debtPersonSuggestions(d);
+  const to=suggestions.getBoundingClientRect().height;
+  if(from!==to&&!reducedMotion.matches) {
+    suggestions.animate([{height:from+'px',opacity:from?1:0},{height:to+'px',opacity:1}],{duration:230,easing:settleEase});
+  }
+  panel.querySelector('[data-draft-person-photo]').innerHTML=debtDraftPhoto(d);
+}
+async function selectDebtDraftPhoto(i,file) {
+  const f=frames[i],d=f.d;
+  try {
+    const photo=await readDemoPhoto(file,192);
+    if(f.route==='new'&&f.d===d&&!d.personId){d.photo=photo;f.error='';render(i,true);}
+  } catch {if(f.route==='new'&&f.d===d)fail(i,'Не удалось загрузить фото.');}
+}
+flowActions['clear-debt-draft-photo']=i=>{frames[i].d.photo='';render(i,true);};
+flowActions['select-debt-person']=async(i,v)=>{
   const d=frames[i].d,p=people.find(p=>p.id===Number(v));
-  if(p){d.personId=p.id;d.name=p.name;frames[i].error='';render(i,true);}
+  const query=d.name;
+  const menu=sections[i].querySelector('[data-debt-person-suggestions]');
+  if(!p||!menu||menu.inert)return;
+  if(!reducedMotion.matches){
+    const from=menu.getBoundingClientRect().height;
+    menu.getAnimations().forEach(animation=>animation.cancel());
+    menu.inert=true;
+    await menu.animate([{height:from+'px',opacity:1},{height:'0px',opacity:0}],{duration:185,easing:settleEase}).finished.catch(()=>{});
+  }
+  if(frames[i].route==='new'&&frames[i].d===d&&d.name===query){d.personId=p.id;d.name=p.name;d.personError=false;frames[i].error='';render(i,true);}
 };
 flowActions['clear-debt-person']=i=>{
   frames[i].d.personId=null;
@@ -133,4 +175,4 @@ flowActions['clear-debt-person']=i=>{
 };
 function contactRows(query) {return demoContacts.filter(n=>n.toLowerCase().includes(query.toLowerCase())).map(n=>rowAction('contact-pick',n,n)).join('')||empty('Совпадений нет.');}
 flowActions.contacts=(i,v,b)=>showDialog(i,'Контакты',s=>'<p class="note">Демонстрационный список контактов</p>'+entry('sheet.query',s.query,'search','class="search-field" aria-label="Найти контакт" placeholder="Найти по имени"')+'<div class="group" data-contacts>'+contactRows(s.query)+'</div>',b,null,'',{query:''});
-flowActions['contact-pick']=(i,v)=>{frames[i].d.name=v;closeSheet(i);};
+flowActions['contact-pick']=(i,v)=>{frames[i].d.name=v;frames[i].d.personError=false;closeSheet(i);};
