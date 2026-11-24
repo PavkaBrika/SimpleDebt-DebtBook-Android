@@ -509,7 +509,10 @@ function bind(event) {
   const key=el.dataset.bind;if(!key)return;
   const i=Number(el.closest('.panel').dataset.index),f=frames[i];
   if(key==='beforeScreen'||key==='cur') {if(event.type==='change'){f[key]=el.value;render(i,true);}return;}
-  if(key==='query')return updatePeopleSearch(i,el.value);
+  if(key==='query'){
+    if(event.type==='input')updatePeopleSearch(i,el.value);
+    return;
+  }
   const [scope,prop]=key.split('.'),obj=scope==='s'?f.sheet:f.d;
   if(!obj)return;
   obj[prop]=el.type==='checkbox'?el.checked:el.value;
