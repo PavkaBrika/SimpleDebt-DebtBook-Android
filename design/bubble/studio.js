@@ -120,7 +120,7 @@ function peopleList(f) {
   return pool.length?pool.map(p=>{
     const next=p.loans.filter(l=>remaining(l)>0&&l.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
     const sub=next?dueLabel(next):p.loans.every(l=>remaining(l)===0)?'Расчёт завершён':'Без срока';
-    return '<button class="person-row" data-act="person" data-value="'+p.id+'">'+motif(p.art)+'<span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small class="'+(next?.due<TODAY?'late':'')+'">'+sub+'</small></span><span class="money '+(balance(p)<0?'neg':'pos')+'">'+motionAmount('person-'+p.id,balance(p),p.cur,true)+'</span></button>';
+    return '<button class="person-row" data-act="person" data-value="'+p.id+'"><span class="person-text"><strong>'+escapeHtml(p.name)+'</strong><small class="'+(next?.due<TODAY?'late':'')+'">'+sub+'</small></span><span class="money '+(balance(p)<0?'neg':'pos')+'">'+motionAmount('person-'+p.id,balance(p),p.cur,true)+'</span></button>';
   }).join(''):'<p class="empty">'+(f.query?'Никого не нашли. Попробуйте другое имя.':'Здесь пока нет записей для этого фильтра.')+'</p>';
 }
 function home(f) {
