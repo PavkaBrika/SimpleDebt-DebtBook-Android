@@ -123,8 +123,8 @@ class SettledDebtJourneyTest {
         compose.awaitTag("debtSumEditText").performTextReplacement("1000")
         compose.openDueCalendarInForm()
         compose.enterDebtDate(screen, com.breckneck.debtbook.debt.reminders.testDay(10))
-        compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
         compose.onNodeWithTag("dueSaveButton").performClick()
+        compose.onNodeWithTag("createDebtReminder").performScrollTo().performClick()
         tap(R.id.setFinanceButton)
         await { dao.getAllHuman().any { it.name == name } && records().size == 1 }
         awaitRows(issued().id)

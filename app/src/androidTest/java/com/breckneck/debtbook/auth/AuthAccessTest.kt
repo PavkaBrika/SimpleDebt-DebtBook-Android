@@ -3,13 +3,18 @@ package com.breckneck.debtbook.auth
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.graphics.Rect
 import android.view.WindowManager.LayoutParams.FLAG_SECURE
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import androidx.lifecycle.Lifecycle
@@ -21,9 +26,11 @@ import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.util.CryptoManager
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.debt.awaitTag
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import org.junit.After
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -150,6 +157,56 @@ class AuthAccessTest {
             assertFalse(AuthSession.isUnlocked)
             scenario.moveToState(Lifecycle.State.RESUMED)
             compose.onNodeWithText(context.getString(R.string.enter_pin)).assertExists()
+        }
+    }
+
+    @Test fun choosingSystemContactReturnsToUnlockedDraft() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val fixture = InstrumentationRegistry.getArguments().getString("debtContactFixture")
+        assumeTrue("Seed a contact on a disposable emulator", !fixture.isNullOrBlank())
+        val contact = requireNotNull(fixture)
+        val pickerTap = InstrumentationRegistry.getArguments().getString("debtContactTap")
+            ?.split(',')?.map(String::toInt)?.also { require(it.size == 2) }
+        instrumentation.runOnMainSync { AuthSession.unlock() }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.awaitTag("addHumanButton").performClick()
+            compose.awaitTag("debtSumEditText").performTextReplacement("42")
+            compose.awaitTag("pickDebtContact").performClick()
+            val automation = instrumentation.uiAutomation
+            automation.serviceInfo = automation.serviceInfo.apply {
+                flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            }
+            fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+                automation.executeShellCommand(command),
+            ).bufferedReader().use { it.readText() }
+            var chosen: AccessibilityNodeInfo? = null
+            compose.waitUntil(12_000) {
+                if (pickerTap != null) return@waitUntil shell("dumpsys window").lineSequence().any {
+                    "mCurrentFocus=" in it && ("com.google.android.contacts/" in it || "com.android.contacts/" in it)
+                }
+                val roots = listOfNotNull(automation.rootInActiveWindow) + automation.windows.mapNotNull { it.root }
+                chosen = roots.asSequence().filter { it.packageName != context.packageName }
+                    .flatMap { it.findAccessibilityNodeInfosByText(contact).orEmpty().asSequence() }
+                    .firstOrNull { it.text?.toString() == contact || it.contentDescription?.toString() == contact }
+                chosen != null
+            }
+            val coordinates = pickerTap ?: Rect().also(requireNotNull(chosen)::getBoundsInScreen).let {
+                listOf(it.centerX(), it.centerY())
+            }
+            if (pickerTap != null) {
+                // Window focus can arrive before the system picker renders the seeded contact.
+                android.os.SystemClock.sleep(1200)
+                val screenshot = automation.takeScreenshot()
+                File(context.getExternalFilesDir(null), "debt-pin-contact-picker.png").outputStream().use {
+                    screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+                screenshot.recycle()
+            }
+            shell("input tap ${coordinates[0]} ${coordinates[1]}")
+            compose.awaitTag("humanNameEditText").assertTextContains(contact)
+            compose.awaitTag("debtSumEditText").assertTextContains("42")
+            compose.onNodeWithText(context.getString(R.string.enter_pin)).assertDoesNotExist()
+            assertTrue(AuthSession.isUnlocked)
         }
     }
 }

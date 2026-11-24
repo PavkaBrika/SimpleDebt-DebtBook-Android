@@ -106,6 +106,16 @@ class CreateDebtViewModelTest {
         assertNull(model.savedOwner.value)
     }
 
+    @Test fun `photo stays in the draft until the new person and debt are saved`() {
+        val model = vm()
+        model.setPhoto { "/9j/2Q==" }
+        model.draftPhoto.await { it != null }
+        verifyNoInteractions(setHuman)
+        model.saveDebt(-1, -1, "New person", BigDecimal.TEN, "14 Nov 2026", "")
+        model.savedOwner.await { it?.name == "New person" }
+        verify(setHuman).execute("New person", BigDecimal.ZERO, "EUR", "/9j/2Q==")
+    }
+
     private fun <T> LiveData<T>.await(predicate: (T?) -> Boolean) {
         val latch = CountDownLatch(1)
         val observer = Observer<T> { if (predicate(it)) latch.countDown() }

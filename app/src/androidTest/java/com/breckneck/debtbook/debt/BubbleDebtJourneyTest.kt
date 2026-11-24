@@ -174,6 +174,32 @@ class BubbleDebtJourneyTest {
         assertEquals(0, dao.getHumanSumDebt(euro).compareTo(800.toBigDecimal()))
     }
 
+    @Test fun ambiguousPersonErrorReturnsToNameAndHighlightsTheChoices() {
+        val duplicate = 921004
+        dao.insertHuman(Human(duplicate, "Анна", BigDecimal.ZERO, "RUB"))
+        try {
+            compose.awaitTag("addHumanButton").performClick()
+            compose.awaitTag("humanNameEditText").performTextReplacement("Анна")
+            compose.awaitTag("debtSumEditText").performTextReplacement("20")
+            compose.awaitTag("setFinanceButton").performClick()
+            val message = context.getString(R.string.debt_choose_matching_person)
+            compose.waitUntil(8000) { compose.onAllNodesWithText(message).fetchSemanticsNodes(false).isNotEmpty() }
+            text(message).assertIsDisplayed()
+            compose.awaitTag("debtPersonSuggestions").assertIsDisplayed()
+            compose.onNodeWithTag("pickDebtPhoto").assertDoesNotExist()
+            capture("person-choice-error")
+            compose.awaitTag("debtPerson-$duplicate").performScrollTo().performClick()
+            compose.onNodeWithTag("debtPersonSuggestions").assertDoesNotExist()
+            text(message).assertDoesNotExist()
+            compose.awaitTag("setFinanceButton").performClick()
+            awaitDestination(R.id.debtDetailsFragment)
+            assertEquals(1, dao.getAllDebtsById(duplicate).size)
+        } finally {
+            dao.deleteDebtsByHumanId(duplicate)
+            dao.deleteHumanById(duplicate)
+        }
+    }
+
     @Test fun earliestDeadlineUsesIndividualOpenLoansAcrossFilters() {
         val yesterday = com.breckneck.debtbook.debt.reminders.testDay(-1)
         val before = com.breckneck.debtbook.debt.reminders.testDay(-2)
