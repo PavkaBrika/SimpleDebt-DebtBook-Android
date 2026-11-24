@@ -29,4 +29,11 @@
     <string name="debt_record_remaining">Reste sur cette dette</string>
     <string name="debt_after_repayment">Après le remboursement, il restera %1$s</string>
     <string name="debt_out_of">sur %1$s</string>
+    <string name="debt_change_person">Changer de personne</string>
+    <string name="debt_choose_matching_person">Choisissez la personne parmi les fiches correspondantes.</string>
+    <string name="debt_contacts_short">Contacts</string>
+    <string name="debt_existing_people">Personnes existantes</string>
+    <string name="debt_choose_photo">Choisir une photo</string>
+    <string name="debt_replace_photo">Remplacer la photo</string>
+    <string name="debt_remove_photo">Retirer la photo</string>
 </resources>

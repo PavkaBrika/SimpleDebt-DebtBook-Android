@@ -29,4 +29,11 @@
     <string name="debt_record_remaining">Restbetrag dieser Schuld</string>
     <string name="debt_after_repayment">Nach der Rückzahlung verbleiben %1$s</string>
     <string name="debt_out_of">von %1$s</string>
+    <string name="debt_change_person">Person ändern</string>
+    <string name="debt_choose_matching_person">Wähle die Person aus den passenden Karten.</string>
+    <string name="debt_contacts_short">Kontakte</string>
+    <string name="debt_existing_people">Vorhandene Personen</string>
+    <string name="debt_choose_photo">Foto auswählen</string>
+    <string name="debt_replace_photo">Foto ersetzen</string>
+    <string name="debt_remove_photo">Foto entfernen</string>
 </resources>

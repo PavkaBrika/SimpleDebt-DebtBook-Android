@@ -32,6 +32,17 @@ class BackupCodecTest {
         assertEquals("aW1hZ2U=", document.photos[5])
         assertFalse(document.legacy)
     }
+
+    @Test fun `a person photo travels with the right card and old copies still decode`() {
+        val data = fixture()
+        val jpeg = "/9j/2Q=="
+        val withPhoto = data.copy(humanList = listOf(data.humanList.single().copy(photo = jpeg)))
+        assertEquals(withPhoto, codec.decode(codec.encode(withPhoto)).data)
+        assertNull(codec.decode(encoded()).data.humanList.single().photo)
+        assertThrows(IllegalArgumentException::class.java) {
+            codec.encode(data.copy(humanList = listOf(data.humanList.single().copy(photo = "/tmp/photo.jpg"))))
+        }
+    }
     @Test fun `v4 independent entries have unknown purpose`() {
         val root = JsonParser.parseString(encoded()).asJsonObject
         root.addProperty("formatVersion", 4)

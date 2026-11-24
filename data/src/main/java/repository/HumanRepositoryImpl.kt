@@ -8,7 +8,7 @@ import com.breckneck.deptbook.domain.repository.HumanRepository
 
 class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanRepository {
 
-    private fun Human.toDomain() = HumanDomain(id, name, sumDebt, currency, openingAdjustment)
+    private fun Human.toDomain() = HumanDomain(id, name, sumDebt, currency, openingAdjustment, photo)
 
     override fun getHuman(id: Int) = humanStorage.getHuman(id)?.toDomain()
 
@@ -16,7 +16,7 @@ class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanReposit
 
     override fun replaceAllHumans(humanList: List<HumanDomain>) {
         val humanDataList: List<Human> = humanList.map {
-            Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+            Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment, photo = it.photo)
         }
         humanStorage.replaceAllHumans(humanList = humanDataList)
     }
@@ -24,7 +24,7 @@ class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanReposit
     override fun getPositiveHumans(): List<HumanDomain> {
         val humanList: List<Human> = humanStorage.getPositiveHumans()
         val humanDomainList: List<HumanDomain> = humanList.map {
-            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment, photo = it.photo)
         }
         return humanDomainList
     }
@@ -32,7 +32,7 @@ class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanReposit
     override fun getNegativeHumans(): List<HumanDomain> {
         val humanList: List<Human> = humanStorage.getNegativeHumans()
         val humanDomainList: List<HumanDomain> = humanList.map {
-            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+            HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment, photo = it.photo)
         }
         return humanDomainList
     }
@@ -43,7 +43,7 @@ class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanReposit
                 id = humanDomain.id,
                 name = humanDomain.name,
                 sumDebt = humanDomain.sumDebt,
-                currency = humanDomain.currency, openingAdjustment = humanDomain.openingAdjustment
+                currency = humanDomain.currency, openingAdjustment = humanDomain.openingAdjustment, photo = humanDomain.photo
             )
         )
     }
@@ -74,7 +74,7 @@ class HumanRepositoryImpl(private val humanStorage: HumanStorage) : HumanReposit
                 id = human.id,
                 name = human.name,
                 sumDebt = human.sumDebt,
-                currency = human.currency, openingAdjustment = human.openingAdjustment
+                currency = human.currency, openingAdjustment = human.openingAdjustment, photo = human.photo
             )
         )
     }

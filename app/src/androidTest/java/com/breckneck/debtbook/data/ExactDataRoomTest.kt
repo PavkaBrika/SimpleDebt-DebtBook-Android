@@ -64,6 +64,7 @@ class ExactDataRoomTest {
                     val dao = db.appDao()
                     val person = dao.getHuman(31)!!
                     assertEquals("EUR", person.currency)
+                    assertNull(person.photo)
                     assertAmount("100.01", person.sumDebt)
                     assertAmount("99.71", person.openingAdjustment)
                     assertAmount("-42", dao.getHuman(32)!!.sumDebt)
@@ -171,7 +172,7 @@ class ExactDataRoomTest {
             }
         }
         try {
-            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.migration15To16("USD"), DatabaseMigrations.MIGRATION_16_17, DatabaseMigrations.MIGRATION_17_18, DatabaseMigrations.MIGRATION_18_19, DatabaseMigrations.MIGRATION_19_20).build().use { db ->
+            Room.databaseBuilder(context, AppDataBase::class.java, name).addMigrations(failing, DatabaseMigrations.migration15To16("USD"), DatabaseMigrations.MIGRATION_16_17, DatabaseMigrations.MIGRATION_17_18, DatabaseMigrations.MIGRATION_18_19, DatabaseMigrations.MIGRATION_19_20, DatabaseMigrations.MIGRATION_20_21).build().use { db ->
                 try { db.appDao().getAllHuman(); fail("migration should fail") } catch (_: IllegalStateException) { }
             }
             assertTrue("Failing conversion was not exercised", converted)

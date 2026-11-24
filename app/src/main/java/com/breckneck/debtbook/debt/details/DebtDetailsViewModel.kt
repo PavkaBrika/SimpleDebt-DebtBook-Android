@@ -83,6 +83,9 @@ class DebtDetailsViewModel @Inject constructor(
     private val _humanName = savedStateHandle.getLiveData<String>("name")
     val humanName: LiveData<String>
         get() = _humanName
+    private val _humanPhoto = MutableLiveData<String?>()
+    internal val humanPhoto: LiveData<String?> get() = _humanPhoto
+    private var photoRevision = 0
     private var _humanCurrency = savedStateHandle.get<String>("currency")
     val humanCurrency: String?
         get() = _humanCurrency
@@ -217,6 +220,7 @@ class DebtDetailsViewModel @Inject constructor(
     /** One load owns the spinner and publishes the history and its total together. */
     fun retry() {
         if ((_screenState.value == DebtDetailsState.LOADING && loadJob?.isActive == true) || _isDeleting.value == true) return
+        val photoRevisionAtLoad = photoRevision
         _screenState.value = DebtDetailsState.LOADING
         loadJob = viewModelScope.launch {
             try {
@@ -257,6 +261,7 @@ class DebtDetailsViewModel @Inject constructor(
                 _overallSum.value = person.sumDebt
                 _openingAdjustment.value = person.openingAdjustment
                 _humanName.value = person.name
+                if (photoRevisionAtLoad == photoRevision) _humanPhoto.value = person.photo
                 _humanCurrency = person.currency
                 val request = savedStateHandle.get<String>("repaymentRequestId")
                 if (request != null && debts.any { it.operationId == request }) closeRepayment()
@@ -338,6 +343,29 @@ class DebtDetailsViewModel @Inject constructor(
                     people.updateHuman(requireNotNull(people.getHuman(id)).copy(name = name.trim()))
                 } }
                 _humanName.value = name.trim()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _operationFailed.value = true
+            } finally {
+                _isDeleting.value = false
+            }
+        }
+    }
+
+    internal fun updatePhoto(readPhoto: suspend () -> String?) {
+        val id = humanId ?: return
+        if (_isDeleting.value == true) return
+        _operationFailed.value = false
+        _isDeleting.value = true
+        viewModelScope.launch {
+            try {
+                val photo = readPhoto()
+                withContext(Dispatchers.IO) { transaction.run {
+                    people.updateHuman(requireNotNull(people.getHuman(id)).copy(photo = photo))
+                } }
+                photoRevision++
+                _humanPhoto.value = photo
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {

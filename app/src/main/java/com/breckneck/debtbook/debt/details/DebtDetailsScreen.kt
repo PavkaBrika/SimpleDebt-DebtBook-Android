@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.details
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +24,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -33,7 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
-import com.breckneck.debtbook.debt.PersonMotif
+import com.breckneck.debtbook.debt.PersonAvatar
+import com.breckneck.debtbook.debt.encodePersonPhoto
 import com.breckneck.debtbook.debt.main.dueLabel
 import com.breckneck.debtbook.debt.main.localDay
 import com.breckneck.debtbook.debt.main.signedMoney
@@ -49,6 +53,11 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
     sort: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit, onDue: (Int) -> Unit, onUndo: (Int) -> Unit) {
     val today = localDay()
     val name by vm.humanName.observeAsState("")
+    val photo by vm.humanPhoto.observeAsState()
+    val context = LocalContext.current.applicationContext
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) vm.updatePhoto { encodePersonPhoto(context, uri) }
+    }
     val currency = vm.humanCurrency.orEmpty()
     val sum by vm.overallSum.observeAsState()
     val state by vm.screenState.observeAsState()
@@ -66,7 +75,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
         modifier = Modifier.semantics { testTagsAsResourceId = true },
         topBar = {
             BubbleTopBar(name, host::onBackButtonClick, hostInsets,
-                leadingTitle = { vm.humanId?.let { PersonMotif(it, Modifier.size(28.dp)) } }) { size ->
+                leadingTitle = { vm.humanId?.let { PersonAvatar(it, photo, size = 28.dp) } }) { size ->
                 if (section != DebtSection.SETTLED) BubbleIconButton({ vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
                     Modifier.testTag("addDebtButton"), enabled = ready, diameter = size) {
                     Icon(Icons.Outlined.Add, stringResource(R.string.newdebt))
@@ -103,6 +112,19 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                         }
                         DropdownMenu(manage, { manage = false }) {
                             DropdownMenuItem({ Text(stringResource(R.string.person_rename)) }, { manage = false; renaming = true })
+                            DropdownMenuItem(
+                                { Text(stringResource(if (photo == null) R.string.debt_choose_photo else R.string.debt_replace_photo)) },
+                                {
+                                    manage = false
+                                    photoPicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                },
+                            )
+                            if (photo != null) {
+                                DropdownMenuItem({ Text(stringResource(R.string.debt_remove_photo)) }, {
+                                    manage = false
+                                    vm.updatePhoto { null }
+                                })
+                            }
                             DropdownMenuItem({ Text(stringResource(R.string.person_delete_action)) }, { manage = false; delete() })
                         }
                     }

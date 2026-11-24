@@ -7,4 +7,6 @@ data class HumanDomain(
     var name: String,
     var sumDebt: BigDecimal,
     var currency: String,
-    var openingAdjustment: BigDecimal = sumDebt)
+    var openingAdjustment: BigDecimal = sumDebt,
+    val photo: String? = null,
+)

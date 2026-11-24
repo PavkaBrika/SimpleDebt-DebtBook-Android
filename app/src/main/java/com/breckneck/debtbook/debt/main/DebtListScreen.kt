@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
+import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.Filter
@@ -190,6 +191,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     BubbleListRow(Modifier.combinedClickable(onClick = { host.onHumanClick(person.id, currency, person.name) },
                         onLongClickLabel = stringResource(R.string.person_rename), onLongClick = { rename(person) })
                         .testTag("person-${person.id}").padding(14.dp),
+                        leading = { PersonAvatar(person.id, person.photo) },
                         trailing = { Text(person.sumDebt.signedMoney(currency), fontWeight = FontWeight.Bold,
                             color = if (person.sumDebt.signum() < 0) colors.danger else colors.onMint) }) {
                         Text(person.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
