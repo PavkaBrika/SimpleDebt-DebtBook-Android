@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Rect
+import android.os.SystemClock
 import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.assertIsDisplayed
@@ -284,11 +285,19 @@ class AuthAccessTest {
         compose.waitUntil(12_000) { findThumbnail() != null }
         automation.waitForIdle(350, 5_000)
         val thumbnail = requireNotNull(findThumbnail())
-        tap(thumbnail)
         if (thumbnail.packageName == "com.google.android.photopicker") {
             fun done() = pickerNodes().firstOrNull { it.text?.toString() == "Done" }
-            compose.waitUntil(5_000) { done() != null }
+            var lastTap = 0L
+            compose.waitUntil(8_000) {
+                if (done() != null) return@waitUntil true
+                val now = SystemClock.elapsedRealtime()
+                // The picker can expose its thumbnail while its window is still opening.
+                if (now - lastTap >= 750) findThumbnail()?.let { tap(it); lastTap = now }
+                false
+            }
             tap(requireNotNull(done()))
+        } else {
+            tap(thumbnail)
         }
     }
 }
