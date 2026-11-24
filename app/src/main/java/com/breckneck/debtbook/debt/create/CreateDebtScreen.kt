@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -73,6 +72,8 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
     }
     val nameMissing = name.text.isBlank() && ownerId <= 0
     val directionColors = financeActionColors(if (positive) FinanceCategoryState.INCOME else FinanceCategoryState.EXPENSE)
+    val saveFill by animateColorAsState(directionColors.containerColor, tween(200), label = "Save debt background")
+    val saveInk by animateColorAsState(directionColors.contentColor, tween(200), label = "Save debt color")
     val amountContainer by animateColorAsState(if (positive) colors.mint else colors.dangerContainer, tween(200), label = "Debt amount background")
     val amountInk by animateColorAsState(if (positive) colors.onMint else colors.danger, tween(200), label = "Debt amount color")
     LaunchedEffect(savedOwner) { savedOwner?.let { saved(it.id, it.currency, it.name) } }
@@ -81,6 +82,8 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
         hostInsets = hostInsets,
         modifier = Modifier.semantics { testTagsAsResourceId = true },
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        scrollBehindBarsWithIme = true,
+        bottomBarScrim = false,
         topBar = {
             BubbleTopBar(stringResource(if (debtId > 0) R.string.editdebtcollaps else R.string.newdebt), back,
                 hostInsets, backEnabled = !busy)
@@ -111,13 +114,13 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
                 }
             }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("setFinanceButton"),
                 enabled = !busy && !loadingPhoto && savedOwner == null && (selectedPersonId == null || selectedPerson != null),
-                colors = directionColors) {
+                colors = directionColors.copy(containerColor = saveFill, contentColor = saveInk)) {
                 Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.debt_save), Modifier.padding(start = 8.dp))
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(padding),
+        BubbleFormScroll(padding, Modifier.testTag("debtFormScroll"), scroll,
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             BubbleDirectionTabs(
                 directions = listOf(true, false),
@@ -127,7 +130,9 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
                 onSelect = { positive = it },
                 tabModifier = { Modifier.testTag(if (it) "directionPositive" else "directionNegative") },
             ) { direction, active ->
-                val ink = if (active) colors.onAction else colors.ink
+                val ink by animateColorAsState(
+                    if (active) directionColors.contentColor else colors.ink, tween(200), label = "Debt tab color",
+                )
                 Row(
                     Modifier.padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),

@@ -241,6 +241,25 @@ class BubbleDebtJourneyTest {
         assertEquals(2, dao.getAllDebtsById(anna).size)
     }
 
+    @Test fun debtFormScrollDrawsBehindTheSaveButtonWhileTheKeyboardIsOpen() {
+        compose.awaitTag("addHumanButton").performClick()
+        val amount = compose.awaitTag("debtSumEditText").performClick()
+        compose.waitUntil(10_000) {
+            var imeVisible = false
+            onActivity { imeVisible = ViewCompat.getRootWindowInsets(it.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true }
+            imeVisible
+        }
+        val save = compose.awaitTag("setFinanceButton").assertIsDisplayed()
+        val form = compose.awaitTag("debtFormScroll")
+        assertTrue(form.fetchSemanticsNode().boundsInWindow.bottom > save.fetchSemanticsNode().boundsInWindow.bottom)
+        val originalSaveBounds = save.fetchSemanticsNode().boundsInWindow
+        form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 160f) }
+        assertEquals(originalSaveBounds, save.fetchSemanticsNode().boundsInWindow)
+        capture("form-ime-edge")
+        amount.performScrollTo().assertIsDisplayed()
+        pressBack()
+    }
+
     @Test fun earliestDeadlineUsesIndividualOpenLoansAcrossFilters() {
         val yesterday = com.breckneck.debtbook.debt.reminders.testDay(-1)
         val before = com.breckneck.debtbook.debt.reminders.testDay(-2)

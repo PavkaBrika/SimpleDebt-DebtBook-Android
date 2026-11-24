@@ -22,6 +22,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -51,9 +52,10 @@ internal fun DebtEntryDate(vm: CreateDebtViewModel) {
     val due by vm.dueDay.observeAsState()
     val saving by vm.isSaving.observeAsState(false)
     var open by rememberSaveable { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
     val title = stringResource(R.string.debt_entry_date)
     BubbleFieldRow(Icons.Outlined.DateRange, title, Modifier.testTag("createDebtDate")
-        .clickable(enabled = !saving && !vm.hasRepayments) { open = true }) {
+        .clickable(enabled = !saving && !vm.hasRepayments) { focus.clearFocus(); open = true }) {
         Text(date?.let(LedgerDate::display).orEmpty())
     }
     if (open) {
@@ -77,6 +79,7 @@ internal fun DebtDueFields(vm: CreateDebtViewModel, revealTimeRow: suspend () ->
     var requestedPermission by rememberSaveable { mutableStateOf(false) }
     val colors = bubbleColors()
     val context = LocalContext.current
+    val focus = LocalFocusManager.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val reminders = remember(context) { DebtReminders.get(context) }
     var allowed by remember { mutableStateOf(reminders.allowed()) }
@@ -104,7 +107,7 @@ internal fun DebtDueFields(vm: CreateDebtViewModel, revealTimeRow: suspend () ->
     BubbleFieldRow(
         Icons.Outlined.DateRange,
         stringResource(R.string.debt_deadline),
-        Modifier.testTag("createDebtDue").clickable(enabled = !saving, role = Role.Button) { calendarOpen = true },
+        Modifier.testTag("createDebtDue").clickable(enabled = !saving, role = Role.Button) { focus.clearFocus(); calendarOpen = true },
     ) { Text(due?.let(LedgerDate::display) ?: stringResource(R.string.debt_no_due)) }
 
     if (vm.canRemind) {
@@ -149,7 +152,10 @@ internal fun DebtDueFields(vm: CreateDebtViewModel, revealTimeRow: suspend () ->
                 BubbleFieldRow(
                     Icons.Outlined.Schedule,
                     stringResource(R.string.debt_time),
-                    Modifier.testTag("createDebtReminderTime").clickable(enabled = !saving, role = Role.Button) { timeOpen = true },
+                    Modifier.testTag("createDebtReminderTime").clickable(enabled = !saving, role = Role.Button) {
+                        focus.clearFocus()
+                        timeOpen = true
+                    },
                 ) { Text(formatMinute(minute)) }
                 if (vm.hasPastReminder()) Text(
                     stringResource(R.string.debt_future_time),

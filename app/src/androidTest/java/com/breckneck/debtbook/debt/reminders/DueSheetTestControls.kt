@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.debt.reminders
 
 import android.text.format.DateFormat
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.material3.R as MaterialR
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.hasAnyAncestor
@@ -39,8 +40,16 @@ internal fun ComposeTestRule.enterDebtDate(scenario: ActivityScenario<MainActivi
 }
 
 internal fun ComposeTestRule.openDueCalendarInForm() {
-    awaitTag("createDebtDue").performScrollTo().performClick()
+    revealDebtFormAction("createDebtDue").performClick()
     awaitTag("dueDatePicker").assertExists()
+}
+
+internal fun ComposeTestRule.revealDebtFormAction(tag: String): SemanticsNodeInteraction {
+    val action = awaitTag(tag).performScrollTo()
+    val saveTop = awaitTag("setFinanceButton").fetchSemanticsNode().boundsInWindow.top
+    val overlap = action.fetchSemanticsNode().boundsInWindow.bottom - saveTop
+    if (overlap > 0f) awaitTag("debtFormScroll").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, overlap + 8f) }
+    return action
 }
 
 internal fun testDay(offset: Int) = LedgerDate.fromDate(GregorianCalendar().apply { add(java.util.Calendar.DAY_OF_MONTH, offset) }.time)
