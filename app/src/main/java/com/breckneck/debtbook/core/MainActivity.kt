@@ -11,7 +11,6 @@ import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.debtbook.auth.AuthSession
 import database.AppDataBase
 import androidx.core.view.ViewCompat
-import androidx.core.view.doOnPreDraw
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
@@ -45,7 +44,6 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.edit
 import androidx.core.graphics.Insets
 import androidx.lifecycle.compose.currentStateAsState
-import androidx.fragment.app.Fragment
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.navOptions
@@ -114,7 +112,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     internal var screenInsets by mutableStateOf<PaddingValues?>(null)
         private set
     private var rootTabDestination by mutableStateOf<Int?>(null)
-    private var pendingTab: Int? = null
     private var debtSearchActive by mutableStateOf(false)
     private var measuredTabBarHeight by mutableStateOf<Dp?>(null)
     internal val hostedTabBarHeight: Dp?
@@ -193,6 +190,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
+        navHostFragment.prepareScreenTransitions()
         navController = navHostFragment.navController
         configureRootTabs(restoreLastTab = savedInstanceState == null && intent.action == ACTION_OPEN_FROM_LAUNCHER)
         configureHostInsets()
@@ -209,11 +207,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         }
         var previousDestinationId = navController.currentDestination?.id
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            val tab = destination.id.takeIf { it in TOP_LEVEL_DESTINATIONS }
-            rootTabDestination = tab
-            if (pendingTab != tab || tab == null) {
-                pendingTab = null
-            }
+            rootTabDestination = destination.id.takeIf { it in TOP_LEVEL_DESTINATIONS }
             if (destination.id != previousDestinationId) {
                 previousDestinationId = destination.id
                 RESTORABLE_TABS[destination.id]?.let { navigationPreferences.edit { putString(LAST_TAB, it) } }
@@ -236,17 +230,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         }
     }
 
-    internal fun prepareTabTransition(destination: Int, fragment: Fragment, view: View) {
-        if (pendingTab != destination) return
-        fragment.postponeEnterTransition()
-        view.doOnPreDraw {
-            if (pendingTab == destination && fragment.parentFragmentManager.primaryNavigationFragment === fragment) {
-                pendingTab = null
-            }
-            fragment.startPostponedEnterTransition()
-        }
-    }
-
     override fun onDebtSearchChanged(searching: Boolean) {
         debtSearchActive = searching
     }
@@ -254,7 +237,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     override fun onTabSelected(id: Int) {
         val from = navController.currentDestination?.id
         if (from !in TOP_LEVEL_DESTINATIONS || id !in TOP_LEVEL_DESTINATIONS || from == id) return
-        pendingTab = id
         navigateToTab(id)
         if (navController.currentDestination?.id == id) maybeShowInterstitial()
     }
@@ -555,6 +537,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun addNewDebtFragment(idHuman: Int, currency: String, name: String) {
+        if (navController.currentDestination?.id != R.id.debtDetailsFragment) return
         val args = Bundle()
         args.putInt("idHuman", idHuman)
         args.putString("currency", currency)
@@ -564,6 +547,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun editDebt(debtDomain: DebtDomain, currency: String, name: String, hasRepayments: Boolean, canRemind: Boolean) {
+        if (navController.currentDestination?.id != R.id.debtDetailsFragment) return
         val args = Bundle()
         args.putInt("idDebt", debtDomain.id)
         args.putInt("idHuman", debtDomain.idHuman)
@@ -594,6 +578,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
     //finance interface
     override fun onAddFinanceButtonClick(financeCategoryState: FinanceCategoryState, day: String, currency: String) {
+        if (navController.currentDestination?.id != R.id.financeFragment) return
         val args = Bundle()
         args.putString("categoryState", financeCategoryState.toString())
         args.putString("day", day)
@@ -604,6 +589,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onAddCategoryButtonClick(financeCategoryState: FinanceCategoryState) {
+        if (navController.currentDestination?.id != R.id.createFinanceFragment) return
         val args = Bundle()
         args.putString("categoryState", financeCategoryState.toString())
         navController.navigate(R.id.action_createFinanceFragment_to_createFinanceCategoryFragment, args)
@@ -617,6 +603,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         currency: String,
         day: String
     ) {
+        if (navController.currentDestination?.id != R.id.financeFragment) return
         val args = Bundle()
         args.putString("day", day)
         args.putString("categoryName", categoryName)
@@ -630,6 +617,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     //finance details interface
 
     override fun onAddCategoryFinance(categoryId: Int, currency: String, day: String, direction: FinanceCategoryState) {
+        if (navController.currentDestination?.id != R.id.financeDetailsFragment) return
         val args = Bundle().apply {
             putInt("categoryId", categoryId)
             putString("currency", currency)
@@ -641,6 +629,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onEditFinanceClick(finance: Finance, direction: FinanceCategoryState) {
+        if (navController.currentDestination?.id != R.id.financeDetailsFragment) return
         val args = Bundle()
         args.putString("categoryState", direction.name)
         args.putSerializable("financeEdit", finance)

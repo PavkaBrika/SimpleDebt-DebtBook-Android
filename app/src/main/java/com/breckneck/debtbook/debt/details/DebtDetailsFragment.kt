@@ -32,6 +32,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.bubbleScreen
+import com.breckneck.debtbook.core.screenAnimationsEnabled
 import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
 import com.breckneck.debtbook.debt.reminders.DebtDateSheet
 import com.breckneck.deptbook.domain.model.DebtDomain
@@ -82,7 +83,7 @@ class DebtDetailsFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) {
+        if (savedInstanceState == null && requireContext().screenAnimationsEnabled()) {
             awaitingContent = true
             postponeEnterTransition()
         }
@@ -95,15 +96,18 @@ class DebtDetailsFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        bubbleScreen(R.id.debtDetailsSheets) { insets ->
+        bubbleScreen(R.id.debtDetailsSheets, startTransitionOnLayout = !awaitingContent) { insets ->
             var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
             var personSheet by rememberSaveable { mutableStateOf<PersonSheet?>(null) }
             DebtDetailsScreen(vm, insets, requireActivity() as OnButtonClickListener,
                 onContentReady = ::onContentReady,
                 editPerson = {
-                    vm.humanId?.let { id ->
-                        findNavController().navigate(R.id.action_debtDetailsFragment_to_editDebtPersonFragment,
-                            Bundle().apply { putInt("idHuman", id) })
+                    val nav = findNavController()
+                    if (nav.currentDestination?.id == R.id.debtDetailsFragment) {
+                        vm.humanId?.let { id ->
+                            nav.navigate(R.id.action_debtDetailsFragment_to_editDebtPersonFragment,
+                                Bundle().apply { putInt("idHuman", id) })
+                        }
                     }
                 },
                 delete = { personSheet = PersonSheet.DELETE }, share = { personSheet = PersonSheet.SHARE },

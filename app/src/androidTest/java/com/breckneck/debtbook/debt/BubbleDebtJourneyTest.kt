@@ -7,18 +7,24 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.core.screenAnimationsEnabled
 import com.breckneck.debtbook.settings.edgeSwipe
 import com.breckneck.debtbook.settings.requirePredictiveGestures
 import com.breckneck.deptbook.domain.util.DecimalInput
@@ -793,8 +799,8 @@ class BubbleDebtJourneyTest {
             val actionNode = compose.onNode(matcher)
             if (tab == R.string.settings) actionNode.performScrollTo()
             actionNode.performClick()
-            awaitDestination(destination)
-            pressBack()
+            awaitResumed(destination)
+            returnFromForm()
             compose.waitUntil(8000) { compose.onAllNodes(matcher).fetchSemanticsNodes(false).isNotEmpty() }
         }
         compose.onNode(hasText(context.getString(R.string.debts)) and hasClickAction()).performClick()
@@ -806,6 +812,93 @@ class BubbleDebtJourneyTest {
             var current = false
             onActivity { current = it.navController.currentDestination?.id == id }
             current
+        }
+    }
+
+    private fun returnFromForm() {
+        closeSoftKeyboard()
+        pressBack()
+    }
+
+    private fun awaitResumed(destination: Int) {
+        compose.waitUntil(8000) {
+            var resumed = false
+            onActivity {
+                val entry = it.navController.currentBackStackEntry
+                resumed = entry?.destination?.id == destination && entry.lifecycle.currentState == Lifecycle.State.RESUMED
+            }
+            resumed
+        }
+    }
+
+    @Test fun repeatedFinanceTapDuringFormEntryOpensOneForm() {
+        compose.awaitTag("bottomTab-${R.id.financeFragment}").performClick()
+        awaitResumed(R.id.financeFragment)
+        val center = compose.awaitTag("addFinanceButton").assertIsDisplayed().fetchSemanticsNode().boundsInWindow.center
+        onActivity { activity ->
+            val decor = activity.window.decorView
+            val origin = IntArray(2).also(decor::getLocationInWindow)
+            fun tap() {
+                val down = SystemClock.uptimeMillis()
+                for (action in intArrayOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                    val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                        center.x - origin[0], center.y - origin[1], 0)
+                    try {
+                        event.source = InputDevice.SOURCE_TOUCHSCREEN
+                        decor.dispatchTouchEvent(event)
+                    } finally {
+                        event.recycle()
+                    }
+                }
+            }
+            tap()
+            assertEquals(R.id.createFinanceFragment, activity.navController.currentDestination?.id)
+            assertTrue(activity.findViewById<View>(R.id.financeSummaryView).isShown)
+            assertNull(activity.findViewById<View>(R.id.financeFormView))
+            tap()
+        }
+        awaitResumed(R.id.createFinanceFragment)
+        returnFromForm()
+        awaitResumed(R.id.financeFragment)
+    }
+
+    @Test fun debtAndFinanceFormsDrawDuringPushAndPop() {
+        Assume.assumeTrue("System animator scale is disabled", context.screenAnimationsEnabled())
+
+        fun checkForm(formId: Int, destination: Int, previous: Int, open: () -> Unit) {
+            var form: View? = null
+            val entering = mutableListOf<Float>()
+            val returning = mutableListOf<Float>()
+            var samples = entering
+            val listener = ViewTreeObserver.OnDrawListener {
+                // FragmentContainerView keeps drawing the exiting view after removing it from its children.
+                val view = form ?: main.findViewById<View>(formId)?.also { form = it }
+                if (view != null && view.isLaidOut && view.isAttachedToWindow && view.alpha > 0f) {
+                    samples.add(view.translationX)
+                }
+            }
+            onActivity { it.window.decorView.viewTreeObserver.addOnDrawListener(listener) }
+            try {
+                open()
+                awaitResumed(destination)
+                onActivity { samples = returning }
+                returnFromForm()
+                awaitResumed(previous)
+            } finally {
+                onActivity { it.window.decorView.viewTreeObserver.removeOnDrawListener(listener) }
+            }
+            val name = context.resources.getResourceEntryName(destination)
+            assertTrue("$name entry drew positions $entering", entering.zipWithNext().any { (a, b) -> a > b && b > 0f })
+            assertTrue("$name return drew positions $returning", returning.zipWithNext().any { (a, b) -> b > a && a > 0f })
+        }
+
+        checkForm(R.id.debtDueForm, R.id.newDebtFragment, R.id.mainFragment) {
+            compose.awaitTag("addHumanButton").performClick()
+        }
+        compose.awaitTag("bottomTab-${R.id.financeFragment}").performClick()
+        awaitResumed(R.id.financeFragment)
+        checkForm(R.id.financeFormView, R.id.createFinanceFragment, R.id.financeFragment) {
+            compose.awaitTag("addFinanceButton").performClick()
         }
     }
 

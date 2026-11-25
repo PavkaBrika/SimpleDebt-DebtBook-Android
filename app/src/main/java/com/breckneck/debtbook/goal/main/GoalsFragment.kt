@@ -52,7 +52,7 @@ class GoalsFragment : Fragment() {
         }
 
         val host = requireNotNull(onButtonClickListener)
-        return bubbleScreen(R.id.goalsComposeView, tabDestination = R.id.goalsFragment) { insets ->
+        return bubbleScreen(R.id.goalsComposeView) { insets ->
             GoalsScreen(vm = vm, hostInsets = insets, onTabSelected = host::onTabSelected)
         }
     }
