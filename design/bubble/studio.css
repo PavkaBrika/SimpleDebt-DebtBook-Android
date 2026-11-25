@@ -77,9 +77,9 @@ svg { display:block; flex-shrink:0 }
 }
 .panel[data-route=new] .screen-bottom-fade { background:none }
 .screen-top .icon-button,.screen-top .context-actions,.screen-dock button,.screen-dock .nav { pointer-events:auto }
-.apphead { display:flex; align-items:center; justify-content:space-between; padding:4px 0 9px; min-height:57px; gap:6px }
+.apphead { display:flex; align-items:center; justify-content:space-between; padding:4px 0 9px; min-height:59px; gap:6px }
 .apphead h2,h1,h2,h3,p { margin:0 }.apphead h2 { font-size:clamp(30px,9cqw,37px); line-height:1.15; font-weight:650; letter-spacing:-1.7px }
-.apphead.debt-home-header { padding-inline:16px; background:var(--bg) }
+.apphead.debt-home-header { margin-top:8px; padding-inline:16px; background:var(--bg) }
 .people-search { display:flex; align-items:center; width:100%; height:46px; border-radius:99px; box-shadow:inset 0 0 0 1px var(--edge); background:var(--paper); pointer-events:auto }
 .people-search:has(input:focus) { box-shadow:inset 0 0 0 1px var(--forest) }
 .people-search input { flex:1; min-width:0; align-self:stretch; margin:0 0 0 14px; padding:0; border:0; background:none; color:var(--ink) }
@@ -314,6 +314,8 @@ svg { display:block; flex-shrink:0 }
 .file-label { position:relative }.menu-row span {min-width:0}.history-actions {display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .sheet pre {white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:13px}
 .sheet .statement-preview { max-height: min(50vh, 360px); overflow:auto; padding:14px }
+.due-sheet-actions { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:8px }
+.sheet .due-clear { background:var(--paper); border:1px solid var(--edge); color:var(--coral) }
 .center{text-align:center}.pin-dots{text-align:center;font-size:27px;margin:28px auto;letter-spacing:5px}
 .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:250px;margin:0 auto}.key{height:52px;border-radius:25px;background:var(--paper);color:var(--ink);border:1px solid var(--edge);font-size:21px}
 .key:nth-last-child(2){grid-column:2}.sheet .field input,.sheet .field select{max-width:100%}

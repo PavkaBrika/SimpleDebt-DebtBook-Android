@@ -90,7 +90,7 @@ class DueDateScreenTest {
     }
 
     private fun applyDate() {
-        compose.onNodeWithTag("dueSaveButton").assertIsEnabled().performClick()
+        compose.onNodeWithTag("dueSaveButton").assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         waitForHistory()
     }
 
@@ -122,6 +122,14 @@ class DueDateScreenTest {
 
                 openDue(fromActions = true)
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
+                val calendar = compose.awaitTag("dueDatePicker").fetchSemanticsNode().boundsInWindow
+                val headline = compose.awaitTag("debtCalendarHeadline").fetchSemanticsNode().boundsInWindow
+                assertTrue(headline.left > calendar.left && headline.left < calendar.center.x)
+                if (compose.onNodeWithTag("debtCalendarMode").isDisplayed()) {
+                    val pencil = compose.onNodeWithTag("debtCalendarMode").fetchSemanticsNode().boundsInWindow
+                    assertEquals(headline.center.y, pencil.center.y, 2f)
+                    assertTrue(headline.right <= pencil.left)
+                }
                 if (sign > 0) capture()
                 compose.enterDebtDate(scenario, "2026-11-15")
                 compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
@@ -194,10 +202,15 @@ class DueDateScreenTest {
                 applyDate()
                 await("alarm enabled again") { scheduled() }
                 openDue()
-                compose.onNodeWithTag("clearDueDate").performScrollTo().performClick()
+                val clear = compose.awaitTag("clearDueDate").assertIsDisplayed()
+                val save = compose.awaitTag("dueSaveButton").assertIsDisplayed()
+                assertTrue(clear.fetchSemanticsNode().boundsInWindow.right <= save.fetchSemanticsNode().boundsInWindow.left)
                 assertNotNull(row().dueDay)
-                applyDate()
-                await("due date and scheduled alarm cleared") { row().dueDay == null && !scheduled() }
+                clear.performClick()
+                waitForHistory()
+                await("due date and scheduled alarm cleared") {
+                    row().dueDay == null && row().reminderMinute == null && row().reminderToken == null && !scheduled()
+                }
                 assertEquals(0, (100 * sign).toBigDecimal().compareTo(row().sum))
                 assertEquals(0, (if (sign > 0) 100 else -80).toBigDecimal().compareTo(dao.getHumanSumDebt(id)))
             }

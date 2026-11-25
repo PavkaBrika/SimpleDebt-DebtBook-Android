@@ -62,9 +62,9 @@ fun formatPersonDebtStatement(
         val principal = if (lent) R.string.statement_lent else R.string.statement_borrowed
         appendEntry(row, resources.getString(principal, money(row.sum.abs())))
         for (payment in loan.repayments) {
-            if (!payment.cancelled) continue
+            val label = if (payment.cancelled) R.string.statement_cancelled else R.string.statement_payment
             append('\n')
-            appendEntry(payment, resources.getString(R.string.statement_cancelled, money(payment.sum.abs())))
+            appendEntry(payment, resources.getString(label, money(payment.sum.abs())))
         }
         append('\n').append(resources.getString(R.string.statement_repaid, money(row.sum.abs() - loan.remaining)))
         append('\n').append(resources.getString(R.string.statement_remaining, money(loan.remaining)))

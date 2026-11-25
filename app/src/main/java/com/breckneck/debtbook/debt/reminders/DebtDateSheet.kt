@@ -19,17 +19,20 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
@@ -39,6 +42,8 @@ import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.ProvideTextStyle
@@ -83,6 +88,7 @@ import com.breckneck.debtbook.core.ui.components.DebtBookBottomSheet
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
+import com.breckneck.debtbook.core.ui.components.BubbleOutlinedButton
 import com.breckneck.debtbook.core.ui.components.BubbleSheetHeader
 import com.breckneck.debtbook.core.ui.components.bubbleSwitchColors
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -140,8 +146,6 @@ internal fun DebtDateSheet(
             revealTime = false
         }
     }
-    var clear by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(day) { if (day != null) clear = false }
     val unchangedTime = day == initialDay && initialReminder == true && minute == initialMinute
     val pastTime = day != null && showReminder && enabled && !unchangedTime &&
         DebtReminderPolicy.trigger(day, minute) <= System.currentTimeMillis()
@@ -149,6 +153,25 @@ internal fun DebtDateSheet(
     var busy by remember { mutableStateOf(false) }
     var closing by rememberSaveable { mutableStateOf(false) }
     val interactive = !busy && !closing
+
+    fun saveDue(selectedDay: String?, selectedMinute: Int?) {
+        if (busy || closing) return
+        busy = true
+        error = false
+        scope.launch(Dispatchers.Main.immediate) {
+            try {
+                onSave(selectedDay, selectedMinute)
+                closing = true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                Log.e("DebtDateSheet", "Could not save debt date", failure)
+                error = true
+            } finally {
+                busy = false
+            }
+        }
+    }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         allowed = reminders.allowed()
@@ -196,13 +219,6 @@ internal fun DebtDateSheet(
                         compact = compact,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    if (clearable && initialDay != null) {
-                        TextButton(
-                            { calendar.selectedDateMillis = null; clear = true; enabled = false },
-                            modifier = Modifier.padding(horizontal = 12.dp).testTag("clearDueDate"),
-                            enabled = interactive,
-                        ) { Text(stringResource(R.string.debt_clear_date), color = colors.danger) }
-                    }
                 }
                 AnimatedVisibility(visible = showReminder) {
                     BubbleGroup(Modifier.padding(horizontal = 16.dp).testTag("dueReminderFields")) {
@@ -249,30 +265,24 @@ internal fun DebtDateSheet(
             }
             if (pastTime) Text(stringResource(R.string.debt_future_time), Modifier.padding(horizontal = 16.dp), color = colors.danger)
             if (error) Text(stringResource(R.string.due_save_failed), Modifier.padding(horizontal = 16.dp), color = colors.danger)
-            BubbleButton(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("dueSaveButton"),
-                enabled = (day != null || clear) && interactive && !pastTime,
-                onClick = {
-                    val selectedDay = day
-                    busy = true
-                    error = false
-                    scope.launch(Dispatchers.Main.immediate) {
-                        try {
-                            val selectedMinute = minute.takeIf { selectedDay != null && showReminder && enabled &&
-                                reminders.allowed() && DebtReminderPolicy.canSchedule(selectedDay) }
-                            onSave(selectedDay, selectedMinute)
-                            closing = true
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (failure: Exception) {
-                            Log.e("DebtDateSheet", "Could not save debt date", failure)
-                            error = true
-                        } finally {
-                            busy = false
-                        }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (clearable && initialDay != null) {
+                    BubbleOutlinedButton({ saveDue(null, null) }, Modifier.weight(1f).testTag("clearDueDate"), enabled = interactive) {
+                        Text(stringResource(R.string.debt_clear_date), color = colors.danger, textAlign = TextAlign.Center)
                     }
-                },
-            ) { Text(confirmText) }
+                }
+                BubbleButton(
+                    modifier = Modifier.weight(1f).testTag("dueSaveButton"),
+                    enabled = day != null && interactive && !pastTime,
+                    onClick = {
+                        val selectedDay = day ?: return@BubbleButton
+                        val selectedMinute = minute.takeIf { showReminder && enabled && reminders.allowed() &&
+                            DebtReminderPolicy.canSchedule(selectedDay) }
+                        saveDue(selectedDay, selectedMinute)
+                    },
+                ) { Text(confirmText, textAlign = TextAlign.Center) }
+            }
         }
     }
 }
@@ -294,18 +304,26 @@ internal fun DebtCalendarPicker(
         colors = colors,
         title = title,
         headline = {
-            ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-            )) {
-                DatePickerDefaults.DatePickerHeadline(
-                    state.selectedDateMillis, state.displayMode, formatter,
-                    Modifier.fillMaxWidth().padding(start = if (compact) 12.dp else 60.dp, end = if (compact) 12.dp else 0.dp)
-                        .heightIn(min = 60.dp).wrapContentHeight(Alignment.CenterVertically).testTag("debtCalendarHeadline"),
-                    contentColor = colors.headlineContentColor,
-                )
+            Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 24.dp, end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)) {
+                    DatePickerDefaults.DatePickerHeadline(
+                        state.selectedDateMillis, state.displayMode, formatter,
+                        Modifier.weight(1f).testTag("debtCalendarHeadline"), contentColor = colors.headlineContentColor,
+                    )
+                }
+                if (!compact) {
+                    val typing = state.displayMode == DisplayMode.Input
+                    IconButton({ state.displayMode = if (typing) DisplayMode.Picker else DisplayMode.Input },
+                        Modifier.size(48.dp).testTag("debtCalendarMode")) {
+                        Icon(if (typing) Icons.Filled.DateRange else Icons.Filled.Edit,
+                            stringResource(if (typing) R.string.debt_calendar_show else R.string.debt_calendar_input),
+                            tint = colors.headlineContentColor)
+                    }
+                }
             }
         },
-        showModeToggle = !compact,
+        showModeToggle = false,
     )
 }
 

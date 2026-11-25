@@ -36,6 +36,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
+import com.breckneck.debtbook.core.ui.components.BubbleOutlinedButton
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.reminders.DebtDateSheet
 import com.breckneck.debtbook.debt.reminders.DebtCalendarPicker
@@ -234,7 +235,8 @@ private fun CreateDebtDueCalendar(initialDay: String?, minDay: String?, onDismis
                 },
             )
             if (initialDay != null) {
-                TextButton({ onSelect(null) }, Modifier.padding(start = 12.dp).testTag("clearDueDate")) {
+                BubbleOutlinedButton({ onSelect(null) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                    .testTag("clearDueDate")) {
                     Text(stringResource(R.string.debt_clear_date), color = colors.danger)
                 }
             }

@@ -68,7 +68,18 @@ function setField(event,el,i) {
   }
   if(scope==='categoryDraft'&&key==='name')sections[i].querySelector('.category-sample strong').textContent=el.value||'Категория';
   if(event.type==='change' && (scope==='frame'||key==='emojiGroup'||el.dataset.refresh)) {
+    const previous=key==='includeSettled'?sections[i].querySelector('.statement-preview'):null;
+    const previousHeight=previous?.offsetHeight;
     render(i,true);
+    if(previous) {
+      const current=sections[i].querySelector('.statement-preview');
+      if(current) {
+        current.scrollTop=previous.scrollTop;
+        if(!reducedMotion.matches&&previousHeight!==current.offsetHeight) {
+          current.animate([{height:previousHeight+'px'},{height:current.offsetHeight+'px'}],{duration:240,easing:'ease-in-out'});
+        }
+      }
+    }
     if(el.dataset.refresh) sections[i].querySelector('[data-field="'+CSS.escape(el.dataset.field)+'"]')?.focus({preventScroll:true});
   }
 }

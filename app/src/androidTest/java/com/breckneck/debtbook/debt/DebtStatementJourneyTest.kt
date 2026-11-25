@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.debt
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import com.breckneck.debtbook.debt.record
 import android.content.Context
@@ -78,6 +79,7 @@ class DebtStatementJourneyTest {
             add(-3600, 4, "First payment", lent.id)
             add(-2400, 7, "Second payment", lent.id)
             dao.removeDebt(add(-800, 8, "Voided payment", lent.id))
+            dao.removeDebt(add(-300, 6, "Another voided payment", lent.id))
             val borrowed = add(-500, 2, "Settled loan")
             add(500, 3, "Repaid in full", borrowed.id)
             // Enough settled entries to exercise scrolling even with compact loan summaries.
@@ -114,9 +116,14 @@ class DebtStatementJourneyTest {
                 assertFalse(open.contains(line(R.string.statement_borrowed, "500 RUB")))
                 assertFalse(open.contains("Original loan"))
                 assertFalse(open.contains("First payment"))
-                assertFalse(open.contains("3 600 RUB"))
-                includeSettled.performClick()
+                val payments = listOf(
+                    line(R.string.statement_payment, "3 600 RUB"), line(R.string.statement_cancelled, "300 RUB"),
+                    line(R.string.statement_payment, "2 400 RUB"), line(R.string.statement_cancelled, "800 RUB"),
+                )
+                assertTrue(payments.all { it in open })
+                assertTrue(payments.zipWithNext().all { (first, second) -> open.indexOf(first) < open.indexOf(second) })
                 val scroll = compose.onNodeWithTag("statementScroll")
+                includeSettled.performClick()
                 scroll.performTouchInput { swipeUp() }
                 assertTrue("Long statements must scroll inside the sheet",
                     scroll.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value() > 0)
@@ -127,7 +134,7 @@ class DebtStatementJourneyTest {
                     line(R.string.statement_you_owe, "10 250 RUB"), line(R.string.statement_lent, "16 000 RUB"),
                     line(R.string.statement_repaid, "6 000 RUB"), line(R.string.statement_remaining, "10 000 RUB"),
                     line(R.string.statement_cancelled, "800 RUB"), line(R.string.statement_borrowed, "500 RUB"),
-                    line(R.string.statement_remaining, "0 RUB")
+                    line(R.string.statement_payment, "500 RUB"), line(R.string.statement_remaining, "0 RUB")
                 )) assertTrue(expected, all.contains(expected))
                 assertTrue(all.contains(earlyNote))
                 screen.recreate()
@@ -158,7 +165,18 @@ class DebtStatementJourneyTest {
                 includeSettled.assertIsOff()
                 includeEarly.assertDoesNotExist()
                 assertTrue(displayedText().contains(screen.screenString(R.string.statement_empty)))
-                includeSettled.performClick()
+                val compactHeight = scroll.fetchSemanticsNode().size.height
+                compose.mainClock.autoAdvance = false
+                try {
+                    includeSettled.performSemanticsAction(SemanticsActions.OnClick)
+                    compose.mainClock.advanceTimeBy(96)
+                    val growing = scroll.fetchSemanticsNode().size.height
+                    compose.mainClock.advanceTimeBy(320)
+                    val expanded = scroll.fetchSemanticsNode().size.height
+                    assertTrue("Statement height $compactHeight → $growing → $expanded", compactHeight < growing && growing < expanded)
+                } finally {
+                    compose.mainClock.autoAdvance = true
+                }
                 val selected = displayedText()
                 assertTrue(selected.contains(screen.screenString(R.string.statement_negative)))
                 assertTrue(selected.contains(line(R.string.statement_you_owe, "10 250 RUB")))

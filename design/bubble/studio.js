@@ -272,7 +272,8 @@ function sheet(f) {
   }
   if(f.error&&s.kind!=='repay') body+='<p class="error" role="alert">'+f.error+'</p>';
   const action={repay:'Учесть возврат',due:'Сохранить',undo:'Отменить возврат',restore:'Восстановить возврат'}[s.kind];
-  body+=primary('confirm',action,s.kind==='undo'?'reset':'check');
+  const confirm=primary('confirm',action,s.kind==='undo'?'reset':'check');
+  body+=s.kind==='due'&&l.due?'<div class="due-sheet-actions">'+button('clear-due','Очистить срок','','btn due-clear')+confirm+'</div>':confirm;
   return '<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="'+name+'">'+body+'</section></div>';
 }
 const board=document.querySelector('#board');
@@ -602,6 +603,13 @@ board.addEventListener('click',event=>{
       const l=findLoan(f,Number(value));
       if(!l||!remaining(l))return;
       return openSheet(i,{kind:'due',loan:l.id,due:l.due,remind:!!l.reminder,time:l.reminder||'09:00'},b);
+    }
+    case 'clear-due':{
+      if(f.sheet?.kind!=='due')return;
+      const l=findLoan(f,f.sheet.loan);
+      if(!l||!remaining(l))return closeSheet(i);
+      l.due='';l.reminder='';f.sheet=null;f.error='';
+      return refreshData(i,'Срок и напоминание сняты');
     }
     case 'restore-repayment':
     case 'undo':{

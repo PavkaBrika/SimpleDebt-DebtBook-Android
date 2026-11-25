@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt.details
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -99,7 +101,8 @@ internal fun DebtStatementSheet(vm: DebtDetailsViewModel, onDismiss: () -> Unit,
                     }
                 }
             }
-            Column(Modifier.weight(1f, fill = false).testTag("statementScroll").verticalScroll(rememberScrollState())) {
+            Column(Modifier.weight(1f, fill = false).testTag("statementScroll")
+                .animateContentSize(tween(240), alignment = Alignment.TopStart).verticalScroll(rememberScrollState())) {
                 BubbleGroup {
                     Text(statement ?: stringResource(if (state == DebtDetailsState.ERROR) R.string.history_load_failed else R.string.loading),
                         Modifier.fillMaxWidth().testTag("statementText").padding(14.dp), style = MaterialTheme.typography.bodyLarge)
