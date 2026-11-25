@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.Search
@@ -23,6 +24,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +37,6 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.DebtFilterChip
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.finance.financeMoney
-import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.LedgerDate
 import java.math.BigDecimal
@@ -72,7 +73,7 @@ internal fun dueLabel(day: String, open: Boolean, today: String): String = when 
 
 @Composable
 internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: DebtFragment.OnButtonClickListener,
-    rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
+    onCurrencyClick: (String) -> Unit) {
     val colors = bubbleColors()
     val today = localDay()
     val balance = vm.balance.observeAsState().value
@@ -186,12 +187,20 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
             }
             itemsIndexed(people, key = { _, person -> person.id }, contentType = { _, _ -> "person" }) { index, person ->
                 BubbleGroupedRow(index, people.size, Modifier.animateItem(fadeInSpec = tween(180), placementSpec = null, fadeOutSpec = null)) {
-                    BubbleListRow(Modifier.combinedClickable(onClick = { host.onHumanClick(person.id, currency, person.name) },
-                        onLongClickLabel = stringResource(R.string.person_rename), onLongClick = { rename(person) })
-                        .testTag("person-${person.id}").padding(14.dp),
+                    BubbleListRow(
+                        modifier = Modifier
+                            .clickable(role = Role.Button) { host.onHumanClick(person.id, currency, person.name) }
+                            .testTag("person-${person.id}").padding(14.dp),
                         leading = { PersonAvatar(person.id, person.photo) },
-                        trailing = { Text(person.sumDebt.signedMoney(currency), fontWeight = FontWeight.Bold,
-                            color = if (person.sumDebt.signum() < 0) colors.danger else colors.onMint) }) {
+                        trailing = {
+                            Text(
+                                person.sumDebt.signedMoney(currency),
+                                fontWeight = FontWeight.Bold,
+                                color = if (person.sumDebt.signum() < 0) colors.danger else colors.onMint,
+                            )
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(18.dp), tint = colors.muted)
+                        },
+                    ) {
                         Text(person.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         val day = deadlines[person.id]
                         Text(if (day != null) dueLabel(day, true, today) else stringResource(

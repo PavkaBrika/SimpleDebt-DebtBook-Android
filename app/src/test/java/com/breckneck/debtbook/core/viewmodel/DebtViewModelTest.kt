@@ -13,7 +13,6 @@ import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.GetAllHumansUseCase
-import com.breckneck.deptbook.domain.usecase.Human.UpdateHuman
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
@@ -43,7 +42,6 @@ class DebtViewModelTest {
     private val getAllDebts = Mockito.mock(GetAllDebts::class.java)
     private val getAllHumansUseCase = Mockito.mock(GetAllHumansUseCase::class.java)
     private val getDefaultCurrency = Mockito.mock(GetDefaultCurrency::class.java)
-    private val updateHuman = Mockito.mock(UpdateHuman::class.java)
     private val setHumanOrder = Mockito.mock(SetHumanOrder::class.java)
     private val getHumanOrder = Mockito.mock(GetHumanOrder::class.java)
 
@@ -69,7 +67,6 @@ class DebtViewModelTest {
         getDefaultCurrency = getDefaultCurrency,
         getHumanOrder = getHumanOrder,
         setHumanOrder = setHumanOrder,
-        updateHuman = updateHuman
     )
 
     @After
@@ -77,7 +74,6 @@ class DebtViewModelTest {
         Mockito.reset(
             getAllHumansUseCase,
             getDefaultCurrency,
-            updateHuman,
             setHumanOrder,
             getHumanOrder,
         )

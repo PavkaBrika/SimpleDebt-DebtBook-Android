@@ -11,10 +11,12 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewTreeObserver
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -123,6 +125,19 @@ class BubbleDebtJourneyTest {
         val panel = hasAnyAncestor(hasTestTag("loanRemaining-$id"))
         compose.onNode(panel and hasText(context.getString(label)), useUnmergedTree = true).assertExists()
         compose.onNode(panel and hasText("$amount\u00a0₽"), useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun personRowOpensHistoryFromItsChevron() {
+        val rowTag = hasTestTag("person-$anna")
+        compose.awaitTag("peopleList").performScrollToNode(rowTag)
+        val row = compose.onNode(rowTag).assertIsDisplayed()
+        row.assertHasClickAction().assert(!SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
+        capture("people-chevron")
+        row.performTouchInput { click(centerRight - Offset(23.dp.toPx(), 0f)) }
+        awaitDestination(R.id.debtDetailsFragment)
+        val record = hasTestTag("record-$anna")
+        compose.awaitTag("personHistory").performScrollToNode(record)
+        compose.onNode(record).assertIsDisplayed()
     }
 
     @Test fun repeatedTapDuringPersonEntryOpensOneHistory() {
@@ -442,6 +457,8 @@ class BubbleDebtJourneyTest {
         field.performTextReplacement("бОр")
         compose.waitUntil(8000) { compose.onAllNodesWithTag("person-$anna").fetchSemanticsNodes(false).isEmpty() }
         text("Борис").assertIsDisplayed()
+        compose.onNodeWithTag("person-$other").assertHasClickAction()
+            .assert(!SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
         capture("people-search")
 
         fun imeVisible(): Boolean {
@@ -632,7 +649,8 @@ class BubbleDebtJourneyTest {
         compose.awaitTag("saveDebtPerson").performSemanticsAction(SemanticsActions.OnClick)
         awaitDestination(R.id.debtDetailsFragment)
         compose.waitUntil(8000) { dao.getHuman(anna)?.name == "Anna QA" }
-        text("Anna QA").assertIsDisplayed()
+        val renamedTitle = compose.onNode(hasText("Anna QA") and !hasSetTextAction())
+        compose.waitUntil(8000) { renamedTitle.isDisplayed() }
         manage(R.string.person_delete_action)
         compose.awaitTag("personDeleteSheet").assertIsDisplayed()
         text(context.getString(R.string.person_delete_title, "Anna QA")).assertIsDisplayed()
