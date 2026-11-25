@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.settings
 
+import com.breckneck.debtbook.core.ui.awaitRoute
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.test.SemanticsMatcher
@@ -72,7 +73,7 @@ class SettingsPagesTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             openSettings()
             action(R.string.default_currency).performClick()
-            assertDestination(scenario, R.id.defaultCurrencyFragment)
+            assertDestination("DefaultCurrency")
             val savedCurrency = awaitNode(hasText("🇨🇼 ANG")).assertIsSelected()
             val regionalCurrency = awaitNode(hasText(currencyLabel(DeviceCurrency.get(context))))
             assertTrue(
@@ -92,7 +93,7 @@ class SettingsPagesTest {
             compose.onNode(hasSetTextAction()).performTextInput("xCg")
             compose.onNodeWithText("🇨🇼 XCG").performClick()
 
-            assertDestination(scenario, R.id.settingsFragment)
+            assertDestination("Settings")
             action(R.string.default_currency).assertTextContains("🇨🇼 XCG")
             assertEquals("XCG", prefs.getString(currencyKey, null))
 
@@ -119,7 +120,7 @@ class SettingsPagesTest {
             contentDescription(R.string.search_currency).performClick()
             awaitNode(hasSetTextAction() and isFocused()).performTextInput("no-match")
             contentDescription(R.string.back).performClick()
-            assertDestination(scenario, R.id.settingsFragment)
+            assertDestination("Settings")
             assertEquals("ANG", prefs.getString(currencyKey, null))
         }
     }
@@ -128,13 +129,13 @@ class SettingsPagesTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             openSettings()
             action(R.string.app_theme).performClick()
-            assertDestination(scenario, R.id.appearanceFragment)
+            assertDestination("Appearance")
             awaitSelectedTheme(R.string.light_theme)
             assertEquals(AppCompatDelegate.MODE_NIGHT_NO, AppCompatDelegate.getDefaultNightMode())
 
             action(R.string.dark_theme).performClick()
             awaitSelectedTheme(R.string.dark_theme)
-            assertDestination(scenario, R.id.appearanceFragment)
+            assertDestination("Appearance")
             assertEquals(AppCompatDelegate.MODE_NIGHT_YES, AppCompatDelegate.getDefaultNightMode())
             assertEquals("DARK", prefs.getString(themeKey, null))
 
@@ -143,7 +144,7 @@ class SettingsPagesTest {
             assertEquals(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM, AppCompatDelegate.getDefaultNightMode())
             assertEquals("SYSTEM", prefs.getString(themeKey, null))
             pressBack()
-            assertDestination(scenario, R.id.settingsFragment)
+            assertDestination("Settings")
             action(R.string.app_theme).assertTextContains(context.getString(R.string.system_theme))
         }
     }
@@ -167,8 +168,8 @@ class SettingsPagesTest {
         return compose.onNode(matcher)
     }
 
-    private fun assertDestination(scenario: ActivityScenario<MainActivity>, destination: Int) {
+    private fun assertDestination(destination: String) {
         compose.onNode(isDialog()).assertDoesNotExist()
-        scenario.onActivity { assertEquals(destination, it.navController.currentDestination?.id) }
+        compose.awaitRoute(destination)
     }
 }

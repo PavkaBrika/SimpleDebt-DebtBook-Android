@@ -16,6 +16,16 @@ HTML-отчеты — `<module>/build/reports/tests/`, XML — `<module>/build/t
 
 CI выполняет ту же сборку, unit tests и lint на JDK 17. Push охватывает рабочие ветки; pull request не фильтруется по целевой ветке. [Правила GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) описывают различие этих фильтров. CI не подписывает и не публикует release.
 
+## Проверка рекламного слота
+
+Обычная debug-сборка запускается с выключенной рекламой. Для проверки баннера на выделенном эмуляторе соберите debug APK с демонстрационными ID Яндекса.
+
+```sh
+JAVA_HOME="$(/usr/libexec/java_home -v 17)" bash ./gradlew -Pandroid.builder.sdkDownload=false -PdemoAds=true :app:assembleDebug
+```
+
+Запустите приложение с иконки лаунчера. Дождитесь записи `Banner loaded` в Logcat, смените вкладку и поверните экран. Долгое нажатие на фильтр долгов переключает рекламу в этой сборке. Проверьте, что при отключении баннера список и нижняя панель занимают освободившееся место. Демонстрационная сборка использует `demo-banner-yandex` и `demo-interstitial-yandex`. [Документация Яндекса](https://ads.yandex.com/helpcenter/ru/dev/android/compose/adaptive-sticky-banner).
+
 ## AppMetrica для обоих магазинов
 
 В настройках Debt Book скопируйте **API key (для использования в SDK)**. Для обеих магазинных сборок укажите один ключ в `local.properties` как `appMetricaApiKey` или в среде сборки как `SIMPLEDEBT_APPMETRICA_API_KEY`. Переменная среды имеет приоритет. Gradle проверяет формат SDK API key при сборке release. Debug собирается с пустым ключом и без активации AppMetrica. [Настройки проекта Debt Book](https://appmetrica.yandex.ru/application/edit?type=edit&appId=6392758).

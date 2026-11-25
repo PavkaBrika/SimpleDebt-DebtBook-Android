@@ -1,6 +1,8 @@
 package com.breckneck.debtbook.debt.create
 
-import android.os.Bundle
+import com.breckneck.debtbook.core.navigation.DebtForm
+import com.breckneck.debtbook.core.navigation.LocalRouteActive
+import com.breckneck.debtbook.core.navigation.RouteBackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.rememberScrollState
@@ -36,14 +38,14 @@ import com.breckneck.deptbook.domain.util.LedgerDate
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues, args: Bundle, back: () -> Unit, feedback: () -> Unit,
+internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues, args: DebtForm, back: () -> Unit, feedback: () -> Unit,
     onContactClick: () -> Unit, onCurrencyClick: (String) -> Unit, saved: (Int, String, String, Boolean) -> Unit) {
     val context = LocalContext.current
     val colors = bubbleColors()
     val focus = LocalFocusManager.current
-    val personId = args.getInt("idHuman", -1)
-    val debtId = args.getInt("idDebt", -1)
-    val previous = args.getString("sum")?.toBigDecimalOrNull()
+    val personId = args.idHuman
+    val debtId = args.idDebt
+    val previous = args.sum?.toBigDecimalOrNull()
     val availablePeople by vm.availablePeople.observeAsState(emptyList())
     val selectedPersonId by vm.selectedPersonId.observeAsState()
     val selectedPerson = availablePeople.firstOrNull { it.id == selectedPersonId }
@@ -51,8 +53,8 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
     val currency = selectedPerson?.currency ?: draftCurrency
     val ownerId = if (personId > 0) personId else selectedPersonId ?: -1
     val amount = rememberTextFieldState(previous?.abs()?.let { DecimalInput.format(it, currency = currency) }.orEmpty())
-    val name = rememberTextFieldState(args.getString("name").orEmpty())
-    val note = rememberTextFieldState(args.getString("info").orEmpty())
+    val name = rememberTextFieldState(args.name.orEmpty())
+    val note = rememberTextFieldState(args.info.orEmpty())
     var positive by rememberSaveable { mutableStateOf((previous?.signum() ?: 1) >= 0) }
     var showFieldErrors by rememberSaveable { mutableStateOf(false) }
     val busy by vm.isSaving.observeAsState(false)
@@ -76,7 +78,11 @@ internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues
     val saveInk by animateColorAsState(directionColors.contentColor, tween(200), label = "Save debt color")
     val amountContainer by animateColorAsState(if (positive) colors.mint else colors.dangerContainer, tween(200), label = "Debt amount background")
     val amountInk by animateColorAsState(if (positive) colors.onMint else colors.danger, tween(200), label = "Debt amount color")
-    LaunchedEffect(savedOwner) { savedOwner?.let { saved(it.id, it.currency, it.name, positive) } }
+    val active = LocalRouteActive.current
+    RouteBackHandler(enabled = busy || savedOwner != null) {}
+    LaunchedEffect(savedOwner, active) {
+        if (active) savedOwner?.let { saved(it.id, it.currency, it.name, positive) }
+    }
 
     BubbleScaffold(
         hostInsets = hostInsets,

@@ -4,6 +4,7 @@ import java.math.BigDecimal
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.core.navigation.DebtForm
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import com.breckneck.deptbook.domain.model.DebtDomain
@@ -46,7 +47,7 @@ class CreateDebtViewModelTest {
         whenever(people.getAllHumans()).thenReturn(emptyList())
     }
     @After fun teardown() = Dispatchers.resetMain()
-    private fun vm() = CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum, transaction, SavedStateHandle(), people)
+    private fun vm() = CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum, transaction, SavedStateHandle(), people, DebtForm())
 
     @Test fun `duplicate save is ignored and navigation waits for persistence`() {
         val started = CountDownLatch(1)

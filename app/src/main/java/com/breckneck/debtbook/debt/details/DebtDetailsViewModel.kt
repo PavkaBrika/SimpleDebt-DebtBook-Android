@@ -7,6 +7,7 @@ import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.core.navigation.DebtPerson
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.debtbook.debt.DebtUpgradeGuidance
@@ -34,7 +35,9 @@ import kotlinx.coroutines.Dispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 
 enum class DebtSection { OPEN, SETTLED, EARLY }
 enum class DebtDetailsState { LOADING, SUCCESS, EMPTY, ERROR }
@@ -42,8 +45,8 @@ enum class RepaymentFeedback { SETTLED, OVER_LIMIT }
 
 enum class RepaymentError { INVALID_AMOUNT, EXCEEDS_REMAINING, SAVE_FAILED }
 
-@HiltViewModel
-class DebtDetailsViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = DebtDetailsViewModel.Factory::class)
+class DebtDetailsViewModel @AssistedInject internal constructor(
     private val getAllDebtsByIdUseCase: GetAllDebtsByIdUseCase,
     private val getLastHumanIdUseCase: GetLastHumanIdUseCase,
     private val people: com.breckneck.deptbook.domain.repository.HumanRepository,
@@ -58,7 +61,13 @@ class DebtDetailsViewModel @Inject constructor(
     private val editDebt: com.breckneck.deptbook.domain.usecase.Debt.EditDebtUseCase,
     private val recordRepayment: RecordRepaymentUseCase,
     private val upgradeGuidance: DebtUpgradeGuidance,
+    @Assisted private val route: DebtPerson,
 ) : ViewModel() {
+    @AssistedFactory
+    internal interface Factory {
+        fun create(route: DebtPerson): DebtDetailsViewModel
+    }
+
 
     private val _screenState = MutableLiveData(DebtDetailsState.LOADING)
     val screenState: LiveData<DebtDetailsState>
@@ -83,7 +92,8 @@ class DebtDetailsViewModel @Inject constructor(
     val resultedDebtList: LiveData<List<DebtDomain>>
         get() = _resultedDebtList
 
-    private var _humanId = savedStateHandle.get<Int>("idHuman")
+    private var _humanId = savedStateHandle.get<Int>("idHuman")?.takeIf { it > 0 }
+        ?: route.idHuman.takeIf { it > 0 }
     val humanId: Int?
         get() = _humanId
     private val _humanName = savedStateHandle.getLiveData<String>("name")
@@ -91,7 +101,7 @@ class DebtDetailsViewModel @Inject constructor(
         get() = _humanName
     private val _humanPhoto = MutableLiveData<String?>()
     internal val humanPhoto: LiveData<String?> get() = _humanPhoto
-    private var _humanCurrency = savedStateHandle.get<String>("currency")
+    private var _humanCurrency = route.currency
     val humanCurrency: String?
         get() = _humanCurrency
 
@@ -254,7 +264,7 @@ class DebtDetailsViewModel @Inject constructor(
                     _debtOrder.value = attribute to
                         (savedStateHandle.get<Boolean>("historyAscending") ?: preference.second)
                 }
-                val id = humanId?.takeIf { it > 0 } ?: if (savedStateHandle.get<Boolean>("newHuman") == true) {
+                val id = humanId?.takeIf { it > 0 } ?: if (route.newHuman && savedStateHandle.get<Boolean>("newHuman") != false) {
                     withContext(Dispatchers.IO) { getLastHumanIdUseCase.exectute() }
                 } else null
                 require(id != null && id > 0) { "Missing history ID" }
@@ -286,7 +296,7 @@ class DebtDetailsViewModel @Inject constructor(
                     }
                 }
                 val requested = savedStateHandle.get<DebtSection>("debtSection")
-                    ?: DebtSection.SETTLED.takeIf { savedStateHandle.get<Boolean>("showSettledDebts") == true }
+                    ?: DebtSection.SETTLED.takeIf { route.showSettledDebts }
                 _section.value = when {
                     requested == DebtSection.EARLY && personLoans.earlyEntries.isEmpty() -> DebtSection.OPEN
                     requested != null -> requested
@@ -304,10 +314,11 @@ class DebtDetailsViewModel @Inject constructor(
                     val original = originalDebt(selected)
                     if (original == null) closeRepayment() else repaymentRemaining.value = remaining(original)
                 }
-                savedStateHandle.remove<Int>("openDebtId")?.let { requested ->
-                    personLoans.loan(requested)?.let { loan ->
+                if (route.openDebtId > 0 && savedStateHandle.get<Boolean>("reminderOpened") != true) {
+                    savedStateHandle["reminderOpened"] = true
+                    personLoans.loan(route.openDebtId)?.let { loan ->
                         selectDebtSection(if (loan.remaining.signum() == 0) DebtSection.SETTLED else DebtSection.OPEN)
-                        selectDebtAction(requested)
+                        selectDebtAction(route.openDebtId)
                     }
                 }
                 applySort(sortedDebts?.takeIf { order == _debtOrder.value })

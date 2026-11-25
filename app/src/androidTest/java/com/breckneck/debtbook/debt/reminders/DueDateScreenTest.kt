@@ -113,7 +113,8 @@ class DueDateScreenTest {
                     repaymentOfId = id, operationId = "test-due-repayment-1"))
             }
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-                scenario.onActivity { it.onHumanClick(id, "EUR", "Due screen") }
+                compose.waitUntil(8000) { compose.onNodeWithText("Due screen").isDisplayed() }
+                compose.onNodeWithText("Due screen").performClick()
                 waitForHistory()
                 val dates = hasAnyAncestor(hasTestTag("historyDebtDates"))
                 compose.onNode(dates and hasText(LedgerDate.display("2026-11-16")), useUnmergedTree = true).assertExists()

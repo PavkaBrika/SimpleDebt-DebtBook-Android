@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.core.navigation.DebtForm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.DebtDueChange
@@ -18,7 +19,9 @@ import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
-import javax.inject.Inject
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,8 +29,8 @@ import kotlinx.coroutines.withContext
 
 internal data class SavedDebtOwner(val id: Int, val name: String, val currency: String)
 
-@HiltViewModel
-class CreateDebtViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = CreateDebtViewModel.Factory::class)
+class CreateDebtViewModel @AssistedInject internal constructor(
     private val getDefaultCurrency: GetDefaultCurrency,
     private val getCurrentDateUseCase: GetCurrentDateUseCase,
     private val setHuman: SetHumanUseCase,
@@ -39,7 +42,13 @@ class CreateDebtViewModel @Inject constructor(
     private val transaction: DataTransaction,
     private val savedState: SavedStateHandle,
     private val people: HumanRepository,
+    @Assisted private val route: DebtForm,
 ) : ViewModel() {
+    @AssistedFactory
+    internal interface Factory {
+        fun create(route: DebtForm): CreateDebtViewModel
+    }
+
 
     val isSaving = MutableLiveData(false)
     val saveError = MutableLiveData(false)
@@ -54,7 +63,7 @@ class CreateDebtViewModel @Inject constructor(
     internal val selectedPersonId = savedState.getLiveData<Int?>("draftPersonId", null)
 
     init {
-        if ((savedState.get<Int>("idHuman") ?: -1) <= 0) {
+        if (route.idHuman <= 0) {
             viewModelScope.launch {
                 reloadPeople()
             }
@@ -98,14 +107,14 @@ class CreateDebtViewModel @Inject constructor(
             }
         }
     }
-    private val initialDueDay = savedState.get<String>("dueDayOnEdit")?.let(LedgerDate::canonical)
-    private val initialRemind = savedState.get<Boolean>("remindOnEdit") == true
+    private val initialDueDay = route.dueDayOnEdit?.let(LedgerDate::canonical)
+    private val initialRemind = route.remindOnEdit
     val dueDay: LiveData<String?> = savedState.getLiveData("dueDay", initialDueDay)
     val remind: LiveData<Boolean> = savedState.getLiveData("remind", initialRemind)
-    private val initialMinute = savedState.get<Int>("minuteOnEdit") ?: DebtReminderPolicy.DEFAULT_MINUTE
+    private val initialMinute = route.minuteOnEdit.takeIf { it >= 0 } ?: DebtReminderPolicy.DEFAULT_MINUTE
     val minute: LiveData<Int> = savedState.getLiveData("draftMinute", initialMinute)
-    val hasRepayments = savedState.get<Boolean>("hasRepayments") == true
-    val canRemind = savedState.get<Boolean>("canRemind") ?: true
+    val hasRepayments = route.hasRepayments
+    val canRemind = route.canRemind
 
     val hasDueChange: Boolean
         get() = canRemind && (dueDay.value != initialDueDay || remind.value != initialRemind ||
@@ -182,9 +191,9 @@ class CreateDebtViewModel @Inject constructor(
 
     private class AmbiguousDebtOwner : IllegalStateException()
 
-    val currency = savedState.getLiveData("draftCurrency", savedState.get<String>("currency") ?: getDefaultCurrency.execute())
+    val currency = savedState.getLiveData("draftCurrency", route.currency ?: getDefaultCurrency.execute())
     val date: LiveData<String> = savedState.getLiveData(
-        "selectedDebtDate", savedState.get<String>("date") ?: getCurrentDateUseCase.execute()
+        "selectedDebtDate", route.date ?: getCurrentDateUseCase.execute()
     )
 
     fun setStoredDate(date: String) {

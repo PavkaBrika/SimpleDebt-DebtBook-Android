@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt
 
+import com.breckneck.debtbook.core.ui.awaitRoute
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.content.Context
@@ -7,16 +8,11 @@ import android.graphics.Bitmap
 import java.io.File
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
-import com.breckneck.debtbook.debt.details.DebtDetailsViewModel
-import com.breckneck.deptbook.domain.model.DebtDomain
 import database.AppDataBase
 import entity.Debt
 import entity.Human
@@ -72,13 +68,9 @@ class DebtReliabilityTest {
         }
         bitmap.recycle()
     }
-    private fun current(activity: MainActivity): Fragment =
-        (activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
-            .childFragmentManager.primaryNavigationFragment!!
-
     @Test fun createEditDeleteAndActivityRecreationPreserveAmounts() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { it.onAddButtonClick() }
+            compose.awaitTag("addHumanButton").performClick()
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             compose.awaitTag("humanNameEditText").performTextReplacement(name)
             compose.awaitTag("debtSumEditText").performTextReplacement("12,34")
@@ -88,17 +80,11 @@ class DebtReliabilityTest {
             val human = dao.getAllHuman().single { it.name == name }
             val initial = dao.getAllDebtsById(human.id).single()
             assertEquals(0, ("12.34".toBigDecimal().stripTrailingZeros()).compareTo(human.sumDebt!!))
-            await("details navigation") {
-                var ready = false
-                scenario.onActivity { ready = it.navController.currentDestination?.id == R.id.debtDetailsFragment }
-                ready
-            }
+            compose.awaitRoute("DebtPerson")
             scenario.recreate()
-            scenario.onActivity { activity ->
-                assertEquals(R.id.debtDetailsFragment, activity.navController.currentDestination?.id)
-                activity.editDebt(DebtDomain(initial.id, initial.sum, human.id, null, initial.date), human.currency, name)
-            }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            compose.awaitRoute("DebtPerson")
+            compose.record(initial.id).performClick()
+            compose.awaitTag("editButton").performClick()
             val input = compose.awaitTag("debtSumEditText")
             input.assertTextContains(com.breckneck.deptbook.domain.util.DecimalInput.format(initial.sum, currency = human.currency))
             input.performTextReplacement("20,55")
@@ -106,18 +92,13 @@ class DebtReliabilityTest {
             compose.awaitTag("setFinanceButton").performClick()
             await("edited amount not persisted") { dao.getAllDebtsById(human.id).single().sum == -"20.55".toBigDecimal().stripTrailingZeros() }
             assertEquals(0, (-"20.55".toBigDecimal().stripTrailingZeros()).compareTo(dao.getHumanSumDebt(human.id)!!))
-            await("details after edit") {
-                var ready = false
-                scenario.onActivity { ready = it.navController.currentDestination?.id == R.id.debtDetailsFragment }
-                ready
-            }
+            compose.awaitRoute("DebtPerson")
             val edited = dao.getAllDebtsById(human.id).single()
-            scenario.onActivity { activity ->
-                val vm = ViewModelProvider(current(activity))[DebtDetailsViewModel::class.java]
-                val record = DebtDomain(edited.id, edited.sum, edited.idHuman, edited.info, edited.date)
-                vm.deleteDebt(record)
-                vm.deleteDebt(record)
-            }
+            compose.record(edited.id).performClick()
+            compose.awaitTag("deleteButton").performClick()
+            val confirm = compose.onNode(hasText(context.getString(R.string.delete)) and hasClickAction())
+                .fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action!!
+            compose.runOnIdle { confirm(); confirm() }
             await("deleted record or balance survived") {
                 dao.getAllDebtsById(human.id).isEmpty() && com.breckneck.deptbook.domain.util.abs(dao.getHumanSumDebt(human.id)) < "0.00000001".toBigDecimal().stripTrailingZeros()
             }
@@ -174,7 +155,7 @@ class DebtReliabilityTest {
             await("keyboard did not finish opening") {
                 var shown = false
                 scenario.onActivity {
-                    val insets = ViewCompat.getRootWindowInsets(it.findViewById(R.id.rootLayout))!!
+                    val insets = ViewCompat.getRootWindowInsets(it.window.decorView)!!
                     val bottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
                     val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
                     stableImeFrames = if (bottom > bars && bottom == lastImeBottom) stableImeFrames + 1 else 0

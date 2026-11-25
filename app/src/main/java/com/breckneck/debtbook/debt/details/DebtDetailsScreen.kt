@@ -22,6 +22,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -64,8 +65,9 @@ private val historyOrders = listOf(
 )
 
 @Composable
-internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, host: DebtDetailsFragment.OnButtonClickListener,
-    onContentReady: () -> Unit, editPerson: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit,
+internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, onBack: () -> Unit,
+    reportPlacement: () -> Unit,
+    onAdd: (Int, String, String) -> Unit, editPerson: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit,
     onDue: (Int) -> Unit, onRepaymentAction: (Int) -> Unit) {
     val today = localDay()
     val name by vm.humanName.observeAsState("")
@@ -100,20 +102,20 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
         if (state == DebtDetailsState.LOADING) {
             delay(200)
             showLoading = true
-            // A slow read can finish mid-transition. Compose its cards once the fragment has entered.
+            // A slow read can finish mid-transition. Compose its cards once the destination has entered.
             enteringWithLoader = true
             lifecycle.withResumed { enteringWithLoader = false }
         }
     }
-    if (state != DebtDetailsState.LOADING || showLoading) {
-        SideEffect(onContentReady)
-    }
     val colors = bubbleColors()
+    val placement = if (state != DebtDetailsState.LOADING || showLoading) {
+        Modifier.onPlaced { reportPlacement() }
+    } else Modifier
     BubbleScaffold(
         hostInsets = hostInsets,
-        modifier = Modifier.semantics { testTagsAsResourceId = true },
+        modifier = placement.semantics { testTagsAsResourceId = true },
         topBar = {
-            BubbleTopBar(name, host::onBackButtonClick, hostInsets,
+            BubbleTopBar(name, onBack, hostInsets,
                 leadingTitle = {
                     vm.humanId?.let {
                         if (sum == null) Spacer(Modifier.size(28.dp))
@@ -137,7 +139,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
         },
         bottomAction = {
             if (sum != null) BubbleButton(
-                { vm.humanId?.let { host.addNewDebtFragment(it, currency, name) } },
+                { vm.humanId?.let { onAdd(it, currency, name) } },
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("addDebtButton"),
                 enabled = ready,
             ) {

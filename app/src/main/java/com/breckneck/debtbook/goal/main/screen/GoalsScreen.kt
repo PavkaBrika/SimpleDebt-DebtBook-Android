@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.navigation.MainTab
 import com.breckneck.debtbook.core.ui.components.BubbleScreenTabs
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleRootTitle
@@ -31,25 +32,21 @@ import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
 import com.breckneck.debtbook.core.ui.components.bubbleRootTitleTopPadding
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.GoalsAction
-import com.breckneck.debtbook.goal.main.GoalsState
 import com.breckneck.debtbook.goal.main.GoalsViewModel
 import com.breckneck.debtbook.goal.ui.DeleteGoalSheet
 import com.breckneck.deptbook.domain.util.ListState
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
-fun GoalsScreen(vm: GoalsViewModel, hostInsets: PaddingValues, onTabSelected: (Int) -> Unit) {
-    val state by vm.collectAsState()
-    GoalsContent(state, hostInsets, vm::onAction, onTabSelected)
-}
-
-@Composable
-private fun GoalsContent(
-    state: GoalsState,
+internal fun GoalsScreen(
+    vm: GoalsViewModel,
     hostInsets: PaddingValues,
-    onAction: (GoalsAction) -> Unit,
-    onTabSelected: (Int) -> Unit,
+    onAdd: () -> Unit,
+    onOpen: (Int) -> Unit,
+    onEdit: (Int) -> Unit,
 ) {
+    val state by vm.collectAsState()
+    val onAction = vm::onAction
     val colors = bubbleColors()
     val listScroll = rememberLazyListState()
     BubbleScaffold(
@@ -57,14 +54,14 @@ private fun GoalsContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bubbleRootTitleTopPadding, bottom = 8.dp),
         bottomAction = {
             BubbleButton(
-                onClick = { onAction(GoalsAction.AddGoalClick) },
+                onClick = onAdd,
                 modifier = Modifier.fillMaxWidth().testTag("addGoalButton"),
             ) {
                 Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))
             }
         },
-        tabs = { BubbleScreenTabs(R.id.goalsFragment, onTabSelected) },
+        tabs = { BubbleScreenTabs(MainTab.GOALS) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -91,9 +88,9 @@ private fun GoalsContent(
                     GoalItem(
                         goal,
                         modifier = Modifier.animateItem(),
-                        onOpen = { onAction(GoalsAction.GoalClick(goal.goalId)) },
+                        onOpen = { onOpen(goal.goalId) },
                         onAdd = { onAction(GoalsAction.ShowAddDepositPopup(goal.goalId)) },
-                        onEdit = { onAction(GoalsAction.EditGoalClick(goal.goalId)) },
+                        onEdit = { onEdit(goal.goalId) },
                         onDelete = { onAction(GoalsAction.ConfirmDelete(goal.goalId)) },
                     )
                 }

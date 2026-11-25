@@ -34,14 +34,6 @@ class GoalsViewModel @Inject constructor(
     )
 
     fun onAction(action: GoalsAction) = when (action) {
-        GoalsAction.AddGoalClick -> intent { postSideEffect(GoalsSideEffect.NavigateToAddGoal) }
-        is GoalsAction.GoalClick -> intent {
-            findGoal(action.goalId)?.let { postSideEffect(GoalsSideEffect.NavigateToGoalDetails(it)) }
-        }
-        is GoalsAction.EditGoalClick -> intent {
-            findGoal(action.goalId)?.takeIf { it.savedSum < it.sum }
-                ?.let { postSideEffect(GoalsSideEffect.NavigateToEditGoal(it)) }
-        }
         is GoalsAction.ShowAddDepositPopup -> intent {
             reduce { state.copy(adjustment = GoalAdjustment(action.goalId)) }
         }

@@ -27,7 +27,7 @@ import com.breckneck.deptbook.domain.util.LedgerDate
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: PaddingValues, host: CreateFinanceFragment.OnClickListener) {
+internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: PaddingValues, onBack: () -> Unit, onAddCategory: (FinanceCategoryState) -> Unit) {
     val colors = bubbleColors()
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val direction by vm.direction.observeAsState(FinanceCategoryState.EXPENSE)
@@ -38,7 +38,7 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
     val saveState by vm.saveState.observeAsState()
     val deleting by vm.deleting.observeAsState(false)
     val enabled = saveState != CreateFinanceViewModel.SaveState.SAVING && saveState != CreateFinanceViewModel.SaveState.SAVED && !deleting
-    androidx.activity.compose.BackHandler(enabled = !enabled) {}
+    com.breckneck.debtbook.core.navigation.RouteBackHandler(enabled = !enabled) {}
     val failed by vm.loadFailed.observeAsState(false)
     val deleteFailed by vm.deleteFailed.observeAsState(false)
     var attempted by rememberSaveable { mutableStateOf(false) }
@@ -58,7 +58,7 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
         scrollBehindBarsWithIme = true,
         bottomBarScrim = false,
         topBar = {
-            BubbleTopBar(stringResource(title), host::onBackButtonClick, hostInsets, backEnabled = enabled)
+            BubbleTopBar(stringResource(title), onBack, hostInsets, backEnabled = enabled)
         },
         bottomAction = {
             if (saveState == CreateFinanceViewModel.SaveState.ERROR) {
@@ -119,7 +119,7 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
                             ),
                             leadingIcon = { CategoryBadge(category, Modifier.size(23.dp)) })
                     }
-                    AssistChip({ focus.clearFocus(); host.onAddCategoryButtonClick(direction) },
+                    AssistChip({ focus.clearFocus(); onAddCategory(direction) },
                         { Text(stringResource(R.string.create_new_category)) }, enabled = enabled, shape = CircleShape,
                         leadingIcon = { Icon(Icons.Outlined.Add, null, Modifier.size(16.dp)) })
                 }

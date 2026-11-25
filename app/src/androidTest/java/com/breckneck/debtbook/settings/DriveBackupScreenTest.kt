@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.settings
 
+import com.breckneck.debtbook.core.ui.awaitRoute
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -9,16 +10,12 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import org.junit.Rule
 import android.content.Context
-import android.view.View
-import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
-import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.debtbook.settings.synchronization.SynchronizationViewModel
 import com.breckneck.debtbook.settings.synchronization.util.BackupDrive
 import com.breckneck.deptbook.domain.backup.BackupCodec
@@ -61,9 +58,6 @@ class DriveBackupScreenTest {
     private fun snapshot(id: Int) = AppDataLists(
         listOf(HumanDomain(id, "Drive fixture $id", BigDecimal("12.34"), fixtureCurrency)),
         emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
-    private fun current(activity: MainActivity) =
-        (activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
-            .childFragmentManager.primaryNavigationFragment!!
     private fun await(condition: () -> Boolean) {
         compose.waitUntil(15_000, condition)
     }
@@ -121,7 +115,7 @@ class DriveBackupScreenTest {
                 action(R.string.synchronization).performScrollTo().performClick()
                 action(R.string.backup_export_file).assertIsEnabled()
                 scenario.onActivity { activity ->
-                    vm = ViewModelProvider(current(activity))[SynchronizationViewModel::class.java]
+                    vm = activity.backupFixtureModel()
                     vm.setUser("Backup test", "backup-test@example.invalid")
                     vm.setDriveServiceHelper(drive)
                     vm.setFileId(null)
@@ -190,13 +184,11 @@ class DriveBackupScreenTest {
         action(R.string.backup_confirm_restore).performScrollTo().performClick()
         await { vm.isRestoring.value == false && repo.getAllAppData() == latest }
         assertEquals(0, drive.writes)
-        scenario.onActivity { activity ->
-            activity.onBackButtonClick()
-            activity.onBackButtonClick()
-        }
-        lateinit var debts: DebtViewModel
-        scenario.onActivity { debts = ViewModelProvider(current(it))[DebtViewModel::class.java] }
-        await { debts.resultedHumanList.value == latest.humanList }
+        androidx.test.espresso.Espresso.pressBack()
+        compose.awaitRoute("Settings")
+        androidx.test.espresso.Espresso.pressBack()
+        compose.awaitRoute("Debts")
+        compose.waitUntil(10_000) { compose.onNodeWithText(latest.humanList.single().name).isDisplayed() }
     }
     @Test fun savingRequiresConfirmationAndKeepsExactlyOneEarlierCopy() = withScreen { scenario, vm, drive ->
         val latest = BackupCodec().encode(snapshot(990011))
@@ -268,8 +260,8 @@ class DriveBackupScreenTest {
             vm.uploadBackup()
             it.onBackPressedDispatcher.onBackPressed()
             it.onBackPressedDispatcher.onBackPressed()
-            assertEquals(R.id.synchronizationFragment, it.navController.currentDestination?.id)
         }
+        compose.awaitRoute("Backup")
         val waitMessage = context.getString(R.string.backup_wait)
         compose.onNodeWithText(waitMessage).assertIsDisplayed()
         assertEquals(2, drive.writes)
@@ -282,8 +274,8 @@ class DriveBackupScreenTest {
         saveToDrive.assertIsEnabled()
         scenario.onActivity {
             it.onBackPressedDispatcher.onBackPressed()
-            assertEquals(R.id.settingsFragment, it.navController.currentDestination?.id)
         }
+        compose.awaitRoute("Settings")
     }
 
     @Test fun connectionShowsProgressUntilDriveIsReadyOrFails() = withScreen { scenario, vm, drive ->

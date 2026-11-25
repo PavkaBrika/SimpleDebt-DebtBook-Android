@@ -1,6 +1,6 @@
 package com.breckneck.debtbook.core.currency
 
-import androidx.activity.compose.BackHandler
+import com.breckneck.debtbook.core.navigation.RouteBackHandler
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -79,7 +79,7 @@ internal fun CurrencyPickerScreen(
         searching = false
     }
 
-    BackHandler(enabled = searching, onBack = ::closeSearch)
+    RouteBackHandler(enabled = searching, onBack = ::closeSearch)
 
     BubbleScaffold(
         hostInsets = hostInsets,

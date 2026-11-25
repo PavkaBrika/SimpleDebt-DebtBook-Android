@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.debt.main
 
-import androidx.activity.compose.BackHandler
+import com.breckneck.debtbook.core.navigation.MainTab
+import com.breckneck.debtbook.core.navigation.RouteBackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -75,8 +76,16 @@ internal fun dueLabel(day: String, open: Boolean, today: String): String = when 
 }
 
 @Composable
-internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: DebtFragment.OnButtonClickListener,
-    visible: Boolean, onCurrencyClick: (String) -> Unit) {
+internal fun DebtListScreen(
+    vm: DebtViewModel,
+    hostInsets: PaddingValues,
+    visible: Boolean,
+    onCurrencyClick: (String) -> Unit,
+    onPerson: (Int, String, String) -> Unit,
+    onAdd: () -> Unit,
+    onFilterLongClick: () -> Unit,
+    onTick: () -> Unit,
+) {
     val colors = bubbleColors()
     val today = localDay()
     val balance = vm.balance.observeAsState().value
@@ -108,7 +117,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
         vm.onStopSearch()
     }
 
-    BackHandler(enabled = searching, onBack = ::closeSearch)
+    RouteBackHandler(enabled = searching, onBack = ::closeSearch)
 
     BubbleScaffold(
         hostInsets = hostInsets,
@@ -132,13 +141,13 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
         },
         bottomAction = {
             if (!searching) {
-                BubbleButton(host::onAddButtonClick, Modifier.fillMaxWidth().testTag("addHumanButton")) {
+                BubbleButton(onAdd, Modifier.fillMaxWidth().testTag("addHumanButton")) {
                     Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                     Text(stringResource(R.string.newdebt), Modifier.padding(start = 8.dp))
                 }
             }
         },
-        tabs = if (searching) null else { { BubbleScreenTabs(R.id.mainFragment, host::onTabSelected) } },
+        tabs = if (searching) null else { { BubbleScreenTabs(MainTab.DEBTS) } },
     ) { padding ->
         val currency = balance?.currency ?: vm.selectedCurrency
         LazyColumn(
@@ -187,7 +196,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
             item(key = "peopleHeader") {
                 BubbleSectionTitle(stringResource(R.string.debt_people), Modifier.padding(top = 12.dp)) {
                     Row(Modifier.clip(CircleShape).combinedClickable(onClick = vm::onHumanSortDialogOpen,
-                        onLongClick = host::onFilterButtonLongClick).testTag("filterHumanButton")
+                        onLongClick = onFilterLongClick).testTag("filterHumanButton")
                         .heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                         Row(Modifier.background(colors.paper, CircleShape).border(1.dp, colors.border, CircleShape)
                             .padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -215,7 +224,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 BubbleGroupedRow(index, people.size, Modifier.animateItem(fadeInSpec = tween(180), placementSpec = null, fadeOutSpec = null)) {
                     BubbleListRow(
                         modifier = Modifier
-                            .clickable(role = Role.Button) { host.onHumanClick(person.id, currency, person.name) }
+                            .clickable(role = Role.Button) { onPerson(person.id, currency, person.name) }
                             .testTag("person-${person.id}").padding(14.dp),
                         leading = { PersonAvatar(person.id, person.photo) },
                         trailing = {
@@ -244,7 +253,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
         DebtPeopleOrderSheet(order, onDismiss = vm::onHumanSortDialogClose) { choice, rememberChoice ->
             vm.onSetHumanSort(filter, choice)
             if (rememberChoice) vm.saveHumanOrder(choice)
-            host.onTickVibration()
+            onTick()
         }
     }
 }

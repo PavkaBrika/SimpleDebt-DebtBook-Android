@@ -93,7 +93,7 @@ fun CreateFinanceCategoryScreen(
     onBackClick: () -> Unit
 ) {
     val state by vm.collectAsState()
-    androidx.activity.compose.BackHandler(enabled = state.saving) {}
+    com.breckneck.debtbook.core.navigation.RouteBackHandler(enabled = state.saving) {}
 
     CreateFinanceCategoryContent(
         state = state,

@@ -1,6 +1,8 @@
 package com.breckneck.debtbook.finance.create_category
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.navigation.toRoute
+import com.breckneck.debtbook.core.navigation.FinanceCategoryForm
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.atomic.AtomicBoolean
 import androidx.lifecycle.ViewModel
@@ -53,7 +55,7 @@ class CreateFinanceCategoryViewModel @Inject constructor(
     override val container = container<CreateFinanceCategoryState, CreateFinanceCategorySideEffect>(
         CreateFinanceCategoryState.initial().copy(
             categoryName = saved["name"] ?: "", selectedImage = saved["image"], selectedColor = saved["color"],
-            financeCategoryState = FinanceCategoryState.valueOf(saved["categoryState"] ?: "EXPENSE"),
+            financeCategoryState = FinanceCategoryState.valueOf(saved.toRoute<FinanceCategoryForm>().categoryState),
         )
     )
 

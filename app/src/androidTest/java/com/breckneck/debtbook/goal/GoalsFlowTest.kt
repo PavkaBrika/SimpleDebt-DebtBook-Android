@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.goal
 
+import com.breckneck.debtbook.core.ui.awaitRoute
+import com.breckneck.debtbook.core.ui.routeIsVisible
 import android.app.UiAutomation
 import android.content.Context
 import android.content.Intent
@@ -13,9 +15,6 @@ import android.provider.Settings
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.View
-import androidx.compose.ui.node.RootForTest
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getAllSemanticsNodes
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -50,7 +49,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
@@ -99,7 +97,7 @@ class GoalsFlowTest {
 
     private fun launchGoalsFromLauncher() {
         launchFromLauncher()
-        tab(R.string.goals, R.id.goalsFragment)
+        tab(R.string.goals, "Goals")
     }
 
     private fun launchFromLauncher() {
@@ -126,14 +124,14 @@ class GoalsFlowTest {
     @Test fun goalsFromLauncherThroughCompletionAndDeletion() {
         capture("empty")
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         click(R.string.goal_save)
         node(R.string.youmustentername).performScrollTo().assertIsDisplayed()
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performTextReplacement("20000")
         textField(R.string.already_saved_sum).performTextReplacement("1000")
         click(R.string.goal_save)
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         assertBalance(initialName, "1000", 1)
         val goal = dao.getAllGoals().single { it.name == initialName }
         val openingDeposit = dao.getGoalDepositsByGoalId(goal.id).single()
@@ -150,7 +148,7 @@ class GoalsFlowTest {
         }
         scrollToGoalContent(R.string.already_saved_sum).assertIsDisplayed()
         scrollToGoalContent("1000".toBigDecimal().formatGoalMoney("RUB", showPlus = true)).assertIsDisplayed()
-        ordinaryBack(R.id.goalsFragment)
+        ordinaryBack("Goals")
 
         click(R.string.goal_top_up)
         node(R.string.goal_add_money).assertIsDisplayed()
@@ -186,21 +184,21 @@ class GoalsFlowTest {
         assertDisplayedAmount("16800")
         capture("details")
 
-        ordinaryBack(R.id.goalsFragment)
+        ordinaryBack("Goals")
         compose.onNode(hasScrollToIndexAction()).performTouchInput { swipeUp() }
         click(R.string.goal_edit_action)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         textField(R.string.name).performTextReplacement(editedName)
         click(R.string.goal_save)
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         openGoal(editedName)
         awaitHistory()
         assertBalance(editedName, "3200", 3)
         chooseGoalAction(R.string.goal_edit)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         textField(R.string.name).performTextReplacement(finalName)
         click(R.string.goal_save)
-        awaitDestination(R.id.goalDetailsFragment)
+        compose.awaitRoute("GoalDetails")
         compose.onNodeWithText(finalName).assertIsDisplayed()
         awaitHistory()
 
@@ -214,7 +212,7 @@ class GoalsFlowTest {
         compose.onAllNodesWithText(context.getString(R.string.goal_withdraw)).assertCountEquals(0)
         compose.onAllNodesWithText(context.getString(R.string.goal_edit)).assertCountEquals(0)
         compose.waitUntil(10000) { onMain { it.hasWindowFocus() } == true && !keyboardVisible() }
-        ordinaryBack(R.id.goalsFragment)
+        ordinaryBack("Goals")
         val total = "20000".toBigDecimal().formatGoalMoney("RUB")
         compose.onNodeWithText(context.getString(R.string.goal_balance, total)).assertIsDisplayed()
         compose.onAllNodesWithText(context.getString(R.string.goal_target_caption, total)).assertCountEquals(0)
@@ -233,7 +231,7 @@ class GoalsFlowTest {
         assertBalance(finalName, "20000", 4)
         deleteButton.performClick()
         click(R.string.delete)
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         awaitText(R.string.goal_empty_list)
         assertTrue(dao.getAllGoals().none { it.name == finalName })
     }
@@ -241,12 +239,12 @@ class GoalsFlowTest {
     @Test fun goalsCreatedWithZeroOrBlankSavingsHaveEmptyHistory() {
         for ((name, savings) in listOf(initialName to "0", editedName to "")) {
             click(R.string.goal_new)
-            awaitDestination(R.id.createGoalsFragment)
+            compose.awaitRoute("GoalForm")
             textField(R.string.name).performTextReplacement(name)
             textField(R.string.goal_target_amount).performTextReplacement("20000")
             if (savings.isNotEmpty()) textField(R.string.already_saved_sum).performTextReplacement(savings)
             click(R.string.goal_save)
-            awaitDestination(R.id.goalsFragment)
+            compose.awaitRoute("Goals")
             openGoal(name)
             scrollToGoalContent(R.string.goal_empty_history).assertIsDisplayed()
             assertBalance(name, "0", 0)
@@ -255,20 +253,20 @@ class GoalsFlowTest {
             compose.onNodeWithTag("goal_adjustment_confirm").performClick()
             scrollToGoalContent(R.string.goal_deposit).assertIsDisplayed()
             assertBalance(name, "1000", 1)
-            ordinaryBack(R.id.goalsFragment)
+            ordinaryBack("Goals")
         }
     }
 
     @Test fun goalListScrollsUnderTheBarsAndClearsTheLastAction() {
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         dao.insertAllGoals(scrollGoals.mapIndexed { index, name ->
             GoalData(0, name, "20000".toBigDecimal(), (1000 * (index + 1)).toBigDecimal(), "RUB", null, Date(), null)
         })
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performTextReplacement("20000")
         click(R.string.goal_save)
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         val list = compose.onNode(hasScrollToIndexAction())
         val viewport = list.fetchSemanticsNode().boundsInRoot
         val screenHeight = checkNotNull(onMain { it.window.decorView.height })
@@ -352,40 +350,39 @@ class GoalsFlowTest {
         openGoalActions()
         node(R.string.goal_edit).assertIsDisplayed()
         node(R.string.goal_delete).assertIsDisplayed()
-        ordinaryBack(R.id.goalDetailsFragment)
+        ordinaryBack("GoalDetails")
         val oldest = 1.toBigDecimal().formatGoalMoney("RUB", showPlus = true)
         list.performScrollToNode(hasText(oldest))
         list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, height.toFloat()) }
         val lastRow = compose.onNodeWithText(oldest).fetchSemanticsNode().boundsInRoot
         assertTrue(lastRow.top > titleBounds.bottom && lastRow.bottom <= height - bars.bottom)
         capture("history-end")
-        ordinaryBack(R.id.goalsFragment)
+        ordinaryBack("Goals")
     }
 
     @Test fun tabSelectionAndSystemInsetsFollowNavHost() {
         for ((title, id) in listOf(
-            R.string.debts to R.id.mainFragment, R.string.finances to R.id.financeFragment,
-            R.string.settings to R.id.settingsFragment, R.string.goals to R.id.goalsFragment,
+            R.string.debts to "Debts", R.string.finances to "Finances",
+            R.string.settings to "Settings", R.string.goals to "Goals",
         )) {
             tab(title, id)
-            val oldEntry = onMain { it.navController.currentBackStackEntry }
             tab(title, id)
-            assertTrue(oldEntry === onMain { it.navController.currentBackStackEntry })
+            compose.awaitRoute(id)
         }
         val goalsTab = compose.onNode(hasText(context.getString(R.string.goals)) and isSelectable())
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         goalsTab.assertDoesNotExist()
         compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         goalsTab.assertIsSelected().assertIsDisplayed()
     }
 
     @Test fun rapidTabChangesAndBackKeepTheIndicatorOnTheVisibleScreen() {
-        fun checkTab(title: Int, destination: Int) {
-            awaitDestination(destination)
+        fun checkTab(title: Int, destination: String) {
+            compose.awaitRoute(destination)
             compose.onNode(hasTestTag("bubbleRootTitle") and hasText(context.getString(title))).assertIsDisplayed()
-            val selected = compose.onNodeWithTag("bottomTab-$destination").assertIsSelected()
+            val selected = compose.onNodeWithTag("bottomTab-${destination.lowercase()}").assertIsSelected()
             val indicator = compose.onNodeWithTag("bottomTabIndicator", useUnmergedTree = true)
             assertEquals(
                 "The indicator must finish over the visible screen's tab",
@@ -395,45 +392,58 @@ class GoalsFlowTest {
             )
         }
 
-        tab(R.string.finances, R.id.financeFragment)
-        tab(R.string.settings, R.id.settingsFragment)
-        val bar = compose.onNodeWithTag("bubbleBottomBar-${R.id.settingsFragment}")
+        tab(R.string.finances, "Finances")
+        tab(R.string.settings, "Settings")
+        val bar = compose.onNodeWithTag("bubbleBottomBar-settings")
         val barOrigin = bar.fetchSemanticsNode().boundsInWindow.topLeft
-        val taps = listOf(R.id.financeFragment, R.id.goalsFragment, R.id.mainFragment).map { id ->
+        val taps = listOf("finances", "goals", "debts").map { id ->
             compose.onNodeWithTag("bottomTab-$id").fetchSemanticsNode().boundsInWindow.center - barOrigin
         }
         bar.performTouchInput { taps.forEach { click(it) } }
-        checkTab(R.string.debts, R.id.mainFragment)
+        checkTab(R.string.debts, "Debts")
 
-        tab(R.string.finances, R.id.financeFragment)
-        checkTab(R.string.finances, R.id.financeFragment)
+        tab(R.string.finances, "Finances")
+        checkTab(R.string.finances, "Finances")
         val previous = onMain { activity -> activity.also { it.recreate() } }
         compose.waitUntil(15_000) { onMain { it !== previous } == true }
-        checkTab(R.string.finances, R.id.financeFragment)
-        ordinaryBack(R.id.mainFragment)
-        checkTab(R.string.debts, R.id.mainFragment)
+        checkTab(R.string.finances, "Finances")
+        ordinaryBack("Debts")
+        checkTab(R.string.debts, "Debts")
     }
 
     @Test fun launcherRestoresLastTabAfterTaskIsCleared() {
+        fun relaunchOn(destination: String) {
+            compose.mainClock.autoAdvance = false
+            try {
+                launchFromLauncher()
+                compose.waitUntil(15_000) {
+                    compose.mainClock.advanceTimeByFrame()
+                    compose.onAllNodes(hasTestTag(destination)).fetchSemanticsNodes(false).isNotEmpty()
+                }
+                if (destination != "Debts") compose.onNodeWithTag("Debts").assertDoesNotExist()
+            } finally {
+                compose.mainClock.autoAdvance = true
+            }
+            compose.awaitRoute(destination)
+        }
+
         for ((title, destination) in listOf(
-            R.string.finances to R.id.financeFragment,
-            R.string.goals to R.id.goalsFragment,
-            R.string.debts to R.id.mainFragment,
+            R.string.finances to "Finances",
+            R.string.goals to "Goals",
+            R.string.debts to "Debts",
         )) {
             tab(title, destination)
-            launchFromLauncher()
-            awaitDestination(destination)
+            relaunchOn(destination)
 
-            tab(R.string.settings, R.id.settingsFragment)
-            launchFromLauncher()
-            awaitDestination(destination)
+            tab(R.string.settings, "Settings")
+            relaunchOn(destination)
             compose.onNode(hasText(context.getString(title)) and isSelectable()).assertIsSelected()
         }
     }
 
     @Test fun goalFormsScrollUnderFixedControlsAndKeepInputAboveTheKeyboard() {
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         fun verifyForm(title: Int) {
             awaitText(R.string.goal_photo_choose)
             val form = compose.onNode(hasScrollAction() and hasAnyDescendant(hasText(context.getString(R.string.goal_photo_choose))))
@@ -470,18 +480,18 @@ class GoalsFlowTest {
         }
         capture("form-keyboard")
         click(R.string.goal_save)
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         awaitGoal(initialName)
         compose.onNode(hasScrollToIndexAction()).performTouchInput { swipeUp() }
         click(R.string.goal_edit_action)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         verifyForm(R.string.goal_edit)
-        ordinaryBack(R.id.goalsFragment)
+        ordinaryBack("Goals")
     }
 
     @Test fun keyboardKeepsEveryCharacterWhenMovingBetweenGoalFields() {
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         textField(R.string.name).performClick()
         compose.waitUntil(8000) { keyboardVisible() }
         ParcelFileDescriptor.AutoCloseInputStream(
@@ -493,7 +503,7 @@ class GoalsFlowTest {
 
     @Test fun currencyScreenKeepsTheGoalDraft() {
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performTextReplacement("20000")
         selectYen()
@@ -504,12 +514,12 @@ class GoalsFlowTest {
 
     @Test fun rotationPreservesFormDraftAndCurrency() {
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performTextReplacement("20000")
         textField(R.string.already_saved_sum).performScrollTo().performClick().performTextReplacement("1000")
         compose.waitUntil(10000) { keyboardVisible() }
-        ordinaryBack(R.id.createGoalsFragment)
+        ordinaryBack("GoalForm")
         compose.waitUntil(10000) { !keyboardVisible() }
         selectYen()
         compose.waitUntil(10000) {
@@ -518,7 +528,7 @@ class GoalsFlowTest {
         compose.waitForIdle()
         try {
             rotate(UiAutomation.ROTATION_FREEZE_90, Configuration.ORIENTATION_LANDSCAPE)
-            awaitDestination(R.id.createGoalsFragment)
+            compose.awaitRoute("GoalForm")
             compose.onNodeWithText(initialName).performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("20000").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("1000").performScrollTo().assertIsDisplayed()
@@ -527,11 +537,14 @@ class GoalsFlowTest {
             val header = node(R.string.goal_new).fetchSemanticsNode().boundsInRoot
             val draftName = compose.onNodeWithText(initialName)
             draftName.performScrollTo()
-            val distance = draftName.fetchSemanticsNode().boundsInRoot.center.y - header.center.y
-            form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
-            compose.waitForIdle()
-            val behindHeader = draftName.fetchSemanticsNode().boundsInRoot
-            assertTrue("The draft must scroll beneath the header", header.center.y in behindHeader.top..behindHeader.bottom)
+            val beforeScroll = draftName.fetchSemanticsNode().boundsInRoot
+            val distance = beforeScroll.center.y - header.center.y
+            if (distance > 0f) {
+                form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+            }
+            compose.waitUntil(8_000) {
+                draftName.fetchSemanticsNode().boundsInRoot.top < header.bottom
+            }
             assertEquals(header, node(R.string.goal_new).fetchSemanticsNode().boundsInRoot)
             capture("rotated-draft")
             assertTrue(dao.getAllGoals().none { it.name == initialName })
@@ -544,11 +557,11 @@ class GoalsFlowTest {
         }
     }
 
-    @Test fun edgeSwipePreviewsThePreviousFragmentAndCanBeCancelled() {
+    @Test fun edgeSwipePreviewsThePreviousScreenAndCanBeCancelled() {
         assumeTrue(Build.VERSION.SDK_INT >= 35)
         assumeTrue(Settings.Secure.getInt(context.contentResolver, "navigation_mode", 0) == 2)
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performScrollTo().performClick().performTextReplacement("20000")
         compose.waitUntil(10000) { keyboardVisible() }
@@ -559,36 +572,36 @@ class GoalsFlowTest {
             compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() &&
                 onMain { it.hasWindowFocus() } == true && !keyboardVisible()
         }
-        swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalsComposeView, cancel = true, label = "new-goal")
-        awaitDestination(R.id.createGoalsFragment)
+        swipeBack(current = "GoalForm", previous = "Goals", cancel = true, label = "new-goal")
+        compose.awaitRoute("GoalForm")
         compose.onNodeWithText(initialName).assertIsDisplayed()
         compose.onNodeWithText("20000").assertIsDisplayed()
         assertTrue(dao.getAllGoals().none { it.name == initialName })
-        swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalsComposeView, label = "new-goal")
-        awaitDestination(R.id.goalsFragment)
+        swipeBack(current = "GoalForm", previous = "Goals", label = "new-goal")
+        compose.awaitRoute("Goals")
 
         click(R.string.goal_new)
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         textField(R.string.name).performTextReplacement(initialName)
         textField(R.string.goal_target_amount).performTextReplacement("20000")
         click(R.string.goal_save)
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         awaitGoal(initialName)
 
         compose.onNode(hasScrollToIndexAction()).performTouchInput { swipeUp() }
         click(R.string.goal_edit_action)
-        awaitDestination(R.id.createGoalsFragment)
-        swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalsComposeView, label = "edit-from-list")
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("GoalForm")
+        swipeBack(current = "GoalForm", previous = "Goals", label = "edit-from-list")
+        compose.awaitRoute("Goals")
         openGoal(initialName)
         chooseGoalAction(R.string.goal_edit)
-        awaitDestination(R.id.createGoalsFragment)
-        swipeBack(current = R.id.createGoalComposeView, previous = R.id.goalDetailsComposeView, label = "edit-from-details")
-        awaitDestination(R.id.goalDetailsFragment)
-        swipeBack(current = R.id.goalDetailsComposeView, previous = R.id.goalsComposeView, cancel = true, label = "details")
-        awaitDestination(R.id.goalDetailsFragment)
-        swipeBack(current = R.id.goalDetailsComposeView, previous = R.id.goalsComposeView, label = "details")
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("GoalForm")
+        swipeBack(current = "GoalForm", previous = "GoalDetails", label = "edit-from-details")
+        compose.awaitRoute("GoalDetails")
+        swipeBack(current = "GoalDetails", previous = "Goals", cancel = true, label = "details")
+        compose.awaitRoute("GoalDetails")
+        swipeBack(current = "GoalDetails", previous = "Goals", label = "details")
+        compose.awaitRoute("Goals")
     }
 
     private fun rotate(rotation: Int, orientation: Int) {
@@ -599,9 +612,8 @@ class GoalsFlowTest {
             assertTrue(automation.setRotation(rotation))
             compose.waitUntil(10000) {
                 onMain { activity ->
-                    activity.resources.configuration.orientation == orientation &&
-                        activity.findViewById<View>(R.id.createGoalComposeView)?.isLaidOut == true
-                } == true
+                    activity.resources.configuration.orientation == orientation
+                } == true && compose.routeIsVisible("GoalForm")
             }
             instrumentation.waitForIdleSync()
         } finally {
@@ -609,10 +621,9 @@ class GoalsFlowTest {
         }
     }
 
-    private fun swipeBack(current: Int, previous: Int, cancel: Boolean = false, label: String) {
+    private fun swipeBack(current: String, previous: String, cancel: Boolean = false, label: String) {
         compose.waitForIdle()
         val (width, height) = checkNotNull(onMain { it.window.decorView.run { width to height } })
-        val outgoing = checkNotNull(onMain { it.findViewById<View>(current) })
         val y = height * .42f
         val down = SystemClock.uptimeMillis()
         fun touch(action: Int, x: Float) {
@@ -626,28 +637,12 @@ class GoalsFlowTest {
                 SystemClock.sleep(18)
                 touch(MotionEvent.ACTION_MOVE, width * .60f * step / 20)
             }
-            // Inspect the actual animated views while the system still owns the pointer stream.
-            val deadline = SystemClock.uptimeMillis() + 2500
-            var preview = false
-            while (!preview && SystemClock.uptimeMillis() < deadline) {
-                preview = onMain { activity ->
-                    val host = activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
-                    val incoming = host.requireView().findViewById<View>(previous)
-                    // FragmentContainerView keeps drawing the outgoing View after removing its child.
-                    incoming != null && incoming.isShown && incoming.alpha > 0 && outgoing.translationX > 0
-                } == true
-                if (!preview) SystemClock.sleep(32)
-            }
+            compose.waitUntil(2500) { compose.routeIsVisible(previous) }
             capture("preview-$label${if (cancel) "-before-cancel" else ""}")
-            assertTrue("Previous fragment did not appear during $label edge swipe", preview)
-            if (previous == R.id.goalsComposeView) {
-                // During predictive back the preview is drawn below the resumed Compose test root.
-                val goalsTab = hasText(context.getString(R.string.goals)) and isSelected()
-                assertTrue("Goals tab is missing from the preview", onMain { activity ->
-                    val list = activity.findViewById<ComposeView>(previous)
-                    val root = list.getChildAt(0) as RootForTest
-                    root.semanticsOwner.getAllSemanticsNodes(mergingEnabled = true).any(goalsTab::matches)
-                } == true)
+            assertTrue("Outgoing screen follows the gesture",
+                compose.onNodeWithTag(current).fetchSemanticsNode().boundsInRoot.left > 0f)
+            if (previous == "Goals") {
+                compose.onNode(hasText(context.getString(R.string.goals)) and isSelected()).assertIsDisplayed()
             }
             if (cancel) {
                 for (step in 19 downTo 0) {
@@ -672,7 +667,7 @@ class GoalsFlowTest {
     }
     private fun selectYen() {
         compose.onNodeWithText("RUB").performScrollTo().performClick()
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         val search = hasContentDescription(context.getString(R.string.search_currency))
         compose.waitUntil(8000) { compose.onAllNodes(search).fetchSemanticsNodes(false).isNotEmpty() }
         compose.onNode(search).performClick()
@@ -681,12 +676,12 @@ class GoalsFlowTest {
         val yen = context.getString(R.string.jpy)
         awaitGoal(yen)
         compose.onNodeWithText(yen).performClick()
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
     }
     private fun openGoal(name: String) {
         awaitGoal(name)
         compose.onNodeWithText(name).performClick()
-        awaitDestination(R.id.goalDetailsFragment)
+        compose.awaitRoute("GoalDetails")
     }
     private fun openGoalActions() =
         compose.onNodeWithContentDescription(context.getString(R.string.goal_actions)).performClick()
@@ -726,30 +721,18 @@ class GoalsFlowTest {
         assertEquals(0, expected.toBigDecimal().compareTo(goal.savedSum))
         assertEquals(movements, dao.getGoalDepositsByGoalId(goal.id).size)
     }
-    private fun tab(title: Int, destination: Int) {
+    private fun tab(title: Int, destination: String) {
         val tab = hasText(context.getString(title)) and isSelectable()
         compose.waitUntil(45_000) {
             compose.onAllNodes(tab).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
         }
         compose.onNode(tab).performClick()
-        awaitDestination(destination)
+        compose.awaitRoute(destination)
         compose.onNode(hasText(context.getString(title)) and isSelected()).assertIsDisplayed()
     }
-    private fun ordinaryBack(destination: Int) {
+    private fun ordinaryBack(destination: String) {
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-        awaitDestination(destination)
-    }
-    private fun awaitDestination(id: Int, timeoutMillis: Long = 10000) {
-        compose.waitUntil(timeoutMillis) {
-            onMain { activity ->
-                val entry = activity.navController.currentBackStackEntry
-                val host = activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
-                val fragment = host.childFragmentManager.primaryNavigationFragment
-                entry?.destination?.id == id && fragment != null && fragment.tag == entry.id &&
-                    fragment.isResumed && fragment.view?.isShown == true
-            } == true
-        }
-        compose.waitForIdle()
+        compose.awaitRoute(destination)
     }
     private fun keyboardVisible(): Boolean = onMain {
         ViewCompat.getRootWindowInsets(it.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime())

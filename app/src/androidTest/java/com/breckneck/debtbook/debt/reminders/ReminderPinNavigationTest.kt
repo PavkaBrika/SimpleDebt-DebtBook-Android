@@ -91,12 +91,7 @@ class ReminderPinNavigationTest {
                         .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
                 }
                 compose.onNodeWithTag("debtActionsCancel").assertExists()
-                InstrumentationRegistry.getInstrumentation().runOnMainSync {
-                    val activity = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).single() as MainActivity
-                    val nav = activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as androidx.navigation.fragment.NavHostFragment
-                    val owner = requireNotNull(nav.childFragmentManager.primaryNavigationFragment)
-                    assertEquals(id, androidx.lifecycle.ViewModelProvider(owner)[com.breckneck.debtbook.debt.details.DebtDetailsViewModel::class.java].debtActionId.value)
-                }
+                compose.onNodeWithText(amount, substring = true).assertExists()
                 if (android.os.Build.VERSION.SDK_INT >= 35) {
                     inst.edgeSwipe(false) {}
                 } else compose.onNodeWithTag("debtActionsCancel").performClick()

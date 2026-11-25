@@ -1,6 +1,8 @@
 package com.breckneck.debtbook.debt.details
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.navigation.toRoute
+import com.breckneck.debtbook.core.navigation.EditDebtPerson
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.HumanDomain
@@ -33,7 +35,7 @@ internal class EditDebtPersonViewModel @Inject constructor(
     private val transaction: DataTransaction,
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
-    private val id = requireNotNull(savedState.get<Int>("idHuman"))
+    private val id = savedState.toRoute<EditDebtPerson>().idHuman
     private val _state = MutableStateFlow(EditDebtPersonState())
     val state = _state.asStateFlow()
 

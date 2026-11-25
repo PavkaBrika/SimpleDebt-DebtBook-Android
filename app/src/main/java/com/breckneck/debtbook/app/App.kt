@@ -8,20 +8,25 @@ import com.yandex.mobile.ads.common.YandexAds
 import dagger.hilt.android.HiltAndroidApp
 import io.appmetrica.analytics.AppMetrica
 import io.appmetrica.analytics.AppMetricaConfig
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @HiltAndroidApp
 class App: Application() {
+    private val adsInitialized = MutableStateFlow(false)
+    internal val adsReady = adsInitialized.asStateFlow()
 
     override fun onCreate() {
         super.onCreate()
 
         com.breckneck.debtbook.debt.reminders.DebtReminders.get(this).start()
 
-        if (!BuildConfig.DEBUG) {
+        if (!BuildConfig.DEBUG || BuildConfig.DEMO_ADS) {
             YandexAds.setUserConsent(false)
             YandexAds.setAppAdAnalyticsReporting(false)
-            activateAppMetrica()
+            if (!BuildConfig.DEBUG) activateAppMetrica()
             YandexAds.initialize(this) {
+                adsInitialized.value = true
                 Log.i("YandexAds", "Yandex initialized")
             }
         }

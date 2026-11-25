@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.finance
 
+import com.breckneck.debtbook.core.ui.routeIsVisible
+import com.breckneck.debtbook.core.ui.awaitRoute
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.UiAutomation
 import android.view.accessibility.AccessibilityManager
@@ -9,10 +11,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.KeyEvent
-import android.view.View
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.node.RootForTest
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getAllSemanticsNodes
@@ -184,10 +183,10 @@ class FinanceFlowTest {
         instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("shares-breakdown")
         expandedCategory.performClick()
-        awaitDestination(R.id.financeDetailsFragment)
+        compose.awaitRoute("FinanceHistory")
         awaitText("Income today")
         back()
-        awaitDestination(R.id.financeFragment)
+        compose.awaitRoute("Finances")
         summaryList().performScrollToIndex(0)
         assertTrue(shares.fetchSemanticsNode().boundsInRoot.width > collapsedWidth)
         shares.performClick()
@@ -277,7 +276,7 @@ class FinanceFlowTest {
         capture("expense-form-accent")
         compose.hideKeyboardBeforeBack(activity { it.window })
         back()
-        awaitDestination(R.id.financeFragment)
+        compose.awaitRoute("Finances")
         summaryList().performTouchInput { swipeLeft() }
         node(expense and hasTestTag("addFinanceButton")).performClick()
         awaitText(str(R.string.finance_new_expense))
@@ -326,9 +325,9 @@ class FinanceFlowTest {
         desc(R.string.finance_previous)
         direction(R.string.revenues)
         act("RUB")
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         desc(R.string.back)
-        awaitDestination(R.id.financeFragment)
+        compose.awaitRoute("Finances")
         node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
         node(hasText(LedgerDate.display(yesterday)) and hasClickAction()).assertIsDisplayed()
         node(hasText("RUB") and hasClickAction()).assertIsDisplayed()
@@ -587,9 +586,9 @@ class FinanceFlowTest {
         act(R.string.food)
         act(R.string.create_new_category)
         node(hasSetTextAction() and hasText(str(R.string.name))).performTextReplacement("Draft category")
-        gesture(R.id.financeCategoryView, R.id.financeFormView, "255,75", cancel = true)
+        gesture("FinanceCategoryForm", "FinanceForm", "255,75", cancel = true)
         awaitText("Draft category")
-        gesture(R.id.financeCategoryView, R.id.financeFormView, note, cancel = false)
+        gesture("FinanceCategoryForm", "FinanceForm", note, cancel = false)
         node(hasText(str(R.string.food)) and isSelected())
         awaitText("255,75")
         act(R.string.finance_save_entry)
@@ -597,12 +596,12 @@ class FinanceFlowTest {
         act(R.string.food)
         editEntry(note)
         input(R.string.sum, "301")
-        gesture(R.id.financeFormView, R.id.financeHistoryView, note, cancel = true)
+        gesture("FinanceForm", "FinanceHistory", note, cancel = true)
         awaitText("301")
-        gesture(R.id.financeFormView, R.id.financeHistoryView, note, cancel = false)
+        gesture("FinanceForm", "FinanceHistory", note, cancel = false)
         awaitText(note)
         for (cancel in listOf(true, false)) {
-            gesture(R.id.financeHistoryView, R.id.financeSummaryView, str(R.string.finance_add_expense), cancel)
+            gesture("FinanceHistory", "Finances", str(R.string.finance_add_expense), cancel)
             if (cancel) awaitText(note)
         }
         total("255.75")
@@ -651,15 +650,12 @@ class FinanceFlowTest {
     }
     private fun currency(from: String, to: Int) {
         act(from)
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         desc(R.string.search_currency)
         node(hasSetTextAction()).performTextReplacement(str(to).substringAfterLast(' '))
         act(to)
-        awaitDestination(R.id.financeFragment)
+        compose.awaitRoute("Finances")
         awaitText(str(to).substringAfterLast(' '))
-    }
-    private fun awaitDestination(id: Int) {
-        compose.waitUntil(8000) { activity { it.navController.currentDestination?.id == id } }
     }
     private fun summaryList() = node(verticalList)
     private fun total(amount: String, currency: String = "RUB") {
@@ -682,7 +678,7 @@ class FinanceFlowTest {
         return requireNotNull(result)
     }
 
-    private fun gesture(out: Int, into: Int, previewText: String, cancel: Boolean) {
+    private fun gesture(out: String, into: String, previewText: String, cancel: Boolean) {
         compose.waitForIdle()
         SystemClock.sleep(450)
         if (activity { androidx.core.view.ViewCompat.getRootWindowInsets(it.window.decorView)
@@ -690,16 +686,11 @@ class FinanceFlowTest {
             back()
             SystemClock.sleep(400)
         }
-        val outgoing = activity { it.findViewById<View>(out) }
         instrumentation.edgeSwipe(cancel) {
             capture("preview-$out-$cancel")
-            assertTrue("Preview must show $previewText while the pointer is down", activity {
-                val view = it.findViewById<ComposeView>(into) ?: return@activity false
-                val root = view.getChildAt(0) as RootForTest
-                view.isShown && view.alpha > 0 && outgoing.translationX > 0 &&
-                    root.semanticsOwner.getAllSemanticsNodes(mergingEnabled = true).any(hasText(previewText)::matches)
-            })
-
+            assertTrue(compose.routeIsVisible(into))
+            compose.onNode(hasAnyAncestor(hasTestTag(into)) and hasText(previewText)).assertExists()
+            assertTrue(compose.onNodeWithTag(out).fetchSemanticsNode().boundsInRoot.left > 0f)
         }
         SystemClock.sleep(450)
     }

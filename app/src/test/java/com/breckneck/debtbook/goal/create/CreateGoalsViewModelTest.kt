@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.core.navigation.GoalForm
 import com.breckneck.debtbook.goal.create.model.CreateGoalUi
 import com.breckneck.debtbook.goal.create.model.NameError
 import com.breckneck.debtbook.goal.create.model.SumError
@@ -60,6 +61,8 @@ class CreateGoalsViewModelTest {
             updateGoal,
             getDefaultCurrency,
             savedStateHandle,
+            mock(com.breckneck.deptbook.domain.usecase.Goal.GetAllGoals::class.java),
+            GoalForm(),
         )
     }
 

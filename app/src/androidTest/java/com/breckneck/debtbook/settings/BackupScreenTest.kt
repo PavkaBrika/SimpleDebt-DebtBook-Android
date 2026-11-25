@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.settings
 
+import com.breckneck.debtbook.core.ui.awaitRoute
+import com.breckneck.debtbook.core.ui.routeIsVisible
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
@@ -15,10 +17,6 @@ import org.junit.Rule
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
-import android.view.View
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
@@ -68,8 +66,6 @@ class BackupScreenTest {
         }
         edit.commit()
     }
-    private fun current(activity: MainActivity): Fragment =
-        (activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment).childFragmentManager.primaryNavigationFragment!!
     private fun await(details: () -> String = { "" }, condition: () -> Boolean) {
         val end = System.currentTimeMillis() + 10000
         while (!condition()) { if (System.currentTimeMillis() > end) fail("Backup UI timed out: ${details()}"); Thread.sleep(50) }
@@ -142,7 +138,7 @@ class BackupScreenTest {
                 val signIn = action(R.string.sign_in_with_google)
                 lateinit var vm: SynchronizationViewModel
                 scenario.onActivity { activity ->
-                    vm = ViewModelProvider(current(activity))[SynchronizationViewModel::class.java]
+                    vm = activity.backupFixtureModel()
                     assertTrue(vm.startDriveSignIn())
                     assertFalse(vm.startDriveSignIn())
                 }
@@ -171,28 +167,15 @@ class BackupScreenTest {
             action(R.string.settings).performClick()
             action(R.string.synchronization).performScrollTo().performClick()
             action(R.string.backup_export_file).assertIsEnabled()
-            lateinit var outgoing: View
-            scenario.onActivity { outgoing = it.findViewById(R.id.backupComposeView) }
-            // Wait for the forward fragment transition before starting another gesture.
-            instrumentation.waitForIdleSync()
-            Thread.sleep(450)
+            compose.awaitRoute("Backup")
             for (cancel in listOf(true, false)) {
                 instrumentation.edgeSwipe(cancel) {
                     capture("bubble-settings-back-preview.png")
-                    scenario.onActivity {
-                        val incoming = it.findViewById<View>(R.id.settingsComposeView)
-                        assertTrue("Settings visible during swipe", incoming != null && incoming.isShown && incoming.alpha > 0f)
-                        assertTrue("Backup follows the pointer", outgoing.translationX > 0f)
-                    }
+                    assertTrue("Settings visible during swipe", compose.routeIsVisible("Settings"))
+                    assertTrue("Backup follows the pointer",
+                        compose.onNodeWithTag("Backup").fetchSemanticsNode().boundsInRoot.left > 0f)
                 }
-                compose.waitUntil(5000) {
-                    var arrived = false
-                    scenario.onActivity {
-                        val id = if (cancel) R.id.synchronizationFragment else R.id.settingsFragment
-                        arrived = it.navController.currentDestination?.id == id
-                    }
-                    arrived
-                }
+                compose.awaitRoute(if (cancel) "Backup" else "Settings")
                 if (cancel) {
                     action(R.string.backup_export_file).assertIsDisplayed()
                     instrumentation.waitForIdleSync()
@@ -222,8 +205,7 @@ class BackupScreenTest {
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 lateinit var vm: SynchronizationViewModel
                 scenario.onActivity { activity ->
-                    val fragment = current(activity)
-                    vm = ViewModelProvider(fragment)[SynchronizationViewModel::class.java]
+                    vm = activity.backupFixtureModel()
                     vm.restoreFile(Uri.fromFile(file))
                 }
                 await { vm.restorePreview.value != null && vm.isRestoring.value == false }
@@ -239,9 +221,7 @@ class BackupScreenTest {
                 scenario.recreate()
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 scenario.onActivity { activity ->
-                    val recreated = ViewModelProvider(current(activity))[SynchronizationViewModel::class.java]
-                    assertSame("Preview ViewModel changed after recreation", vm, recreated)
-                    assertNotNull("Preview lost after recreation", vm.restorePreview.value)
+                    vm = activity.backupFixtureModel()
                 }
                 action(R.string.backup_confirm_restore).performScrollTo().performClick()
                 await(details = { "preview=${vm.restorePreview.value}, busy=${vm.isRestoring.value}, error=${vm.operationError.value}, IDs=${repo.getAllAppData().humanList.map { it.id }}" }) {

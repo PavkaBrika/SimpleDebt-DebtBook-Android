@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.navigation.MainTab
 import com.breckneck.debtbook.core.MainViewModel
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -22,7 +23,8 @@ internal fun SettingsScreen(
     vm: SettingsViewModel,
     hostInsets: PaddingValues,
     main: MainViewModel,
-    host: SettingsFragment.OnButtonClickListener,
+    onBackup: () -> Unit,
+    onRate: () -> Unit,
     onAppSecurity: () -> Unit,
     onDefaultCurrency: () -> Unit,
     onAppearance: () -> Unit,
@@ -36,7 +38,7 @@ internal fun SettingsScreen(
     BubbleScaffold(
         hostInsets = hostInsets,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bubbleRootTitleTopPadding, bottom = 16.dp),
-        tabs = { BubbleScreenTabs(R.id.settingsFragment, host::onTabSelected) },
+        tabs = { BubbleScreenTabs(MainTab.SETTINGS) },
     ) { padding ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -49,7 +51,7 @@ internal fun SettingsScreen(
             }
             BubbleSectionTitle(stringResource(R.string.settings_data_security))
             BubbleGroup {
-                SettingsRow(stringResource(R.string.synchronization), value = stringResource(R.string.backup_formats), onClick = host::onAuthorizationButtonClick)
+                SettingsRow(stringResource(R.string.synchronization), value = stringResource(R.string.backup_formats), onClick = onBackup)
                 HorizontalDivider(color = colors.border)
                 SettingsRow(
                     stringResource(R.string.pin_code_lock),
@@ -59,7 +61,7 @@ internal fun SettingsScreen(
             }
             BubbleSectionTitle(stringResource(R.string.info))
             BubbleGroup {
-                SettingsRow(stringResource(R.string.rate_app), onClick = host::onRateAppButtonClick)
+                SettingsRow(stringResource(R.string.rate_app), onClick = onRate)
                 for (label in listOf(R.string.write_email_to_developer, R.string.support_us, R.string.privacy_policy)) {
                     HorizontalDivider(color = colors.border)
                     SettingsRow(stringResource(label)) { onExternal(label) }
