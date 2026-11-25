@@ -22,6 +22,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -65,6 +66,7 @@ private val historyOrders = listOf(
 
 @Composable
 internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, onBack: () -> Unit,
+    reportPlacement: () -> Unit,
     onAdd: (Int, String, String) -> Unit, editPerson: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit,
     onDue: (Int) -> Unit, onRepaymentAction: (Int) -> Unit) {
     val today = localDay()
@@ -106,9 +108,12 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
         }
     }
     val colors = bubbleColors()
+    val placement = if (state != DebtDetailsState.LOADING || showLoading) {
+        Modifier.onPlaced { reportPlacement() }
+    } else Modifier
     BubbleScaffold(
         hostInsets = hostInsets,
-        modifier = Modifier.semantics { testTagsAsResourceId = true },
+        modifier = placement.semantics { testTagsAsResourceId = true },
         topBar = {
             BubbleTopBar(name, onBack, hostInsets,
                 leadingTitle = {

@@ -863,12 +863,14 @@ class BubbleDebtJourneyTest {
         Assume.assumeTrue("System animator scale is disabled", context.screenAnimationsEnabled())
 
         fun checkForm(form: String, previous: String, open: () -> Unit) {
+            val width = compose.onNodeWithTag(previous).fetchSemanticsNode().boundsInRoot.width
             compose.mainClock.autoAdvance = false
             try {
                 open()
-                compose.mainClock.advanceTimeBy(80)
+                compose.mainClock.advanceTimeBy(112)
                 val incoming = compose.onNodeWithTag(form).fetchSemanticsNode()
-                assertTrue("Incoming form has a horizontal offset", incoming.boundsInRoot.left > 0f)
+                assertTrue("Incoming form is between its start and end positions",
+                    incoming.boundsInRoot.left > 0f && incoming.boundsInRoot.left < width * .3f)
                 compose.mainClock.advanceTimeBy(350)
                 returnFromForm()
                 compose.mainClock.advanceTimeBy(120)
@@ -882,9 +884,88 @@ class BubbleDebtJourneyTest {
         }
 
         checkForm("DebtForm", "Debts") { compose.awaitTag("addHumanButton").performClick() }
+        person()
+        checkForm("DebtForm", "DebtPerson") { compose.awaitTag("addDebtButton").performClick() }
+        pressBack()
+        compose.awaitRoute("Debts")
         compose.awaitTag("bottomTab-finances").performClick()
         compose.awaitRoute("Finances")
         checkForm("FinanceForm", "Finances") { compose.awaitTag("addFinanceButton").performClick() }
+    }
+
+    @Test fun bottomTabsStayWithTheMainScreenDuringPushAndPop() {
+        Assume.assumeTrue("System animator scale is disabled", context.screenAnimationsEnabled())
+        compose.awaitRoute("Debts")
+        val bar = hasTestTag("bubbleBottomBar-debts")
+        val originalBar = compose.onNode(bar).fetchSemanticsNode().boundsInWindow
+        val originalAction = compose.onNodeWithTag("addHumanButton").fetchSemanticsNode().boundsInWindow
+
+        fun assertPanelInRootLayer() {
+            compose.onAllNodes(bar, useUnmergedTree = true).assertCountEquals(1)
+            val panel = compose.onNode(bar and hasAnyAncestor(hasTestTag("Debts")), useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInWindow
+            val action = compose.onNodeWithTag("addHumanButton").fetchSemanticsNode().boundsInWindow
+            assertEquals(originalBar.top, panel.top, 2f)
+            assertEquals(originalBar.bottom, panel.bottom, 2f)
+            assertEquals(originalAction.bottom, action.bottom, 2f)
+        }
+
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("addHumanButton").performSemanticsAction(SemanticsActions.OnClick)
+            compose.mainClock.advanceTimeBy(112)
+            assertTrue(compose.onNodeWithTag("DebtForm").fetchSemanticsNode().boundsInRoot.left > 0f)
+            assertPanelInRootLayer()
+
+            compose.mainClock.advanceTimeBy(350)
+            compose.onNode(bar).assertDoesNotExist()
+            pressBack()
+            compose.mainClock.advanceTimeBy(112)
+            assertTrue(compose.onNodeWithTag("DebtForm").fetchSemanticsNode().boundsInRoot.left > 0f)
+            assertPanelInRootLayer()
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        compose.awaitRoute("Debts")
+        compose.onNode(bar).assertIsDisplayed()
+    }
+
+    @Test fun personTransitionWaitsForItsLoadingFrame() {
+        Assume.assumeTrue("System animator scale is disabled", context.screenAnimationsEnabled())
+        compose.awaitRoute("Debts")
+        val row = compose.awaitTag("person-$anna")
+        val openHistory = requireNotNull(row.fetchSemanticsNode().config[SemanticsActions.OnClick].action)
+        val width = compose.onNodeWithTag("Debts").fetchSemanticsNode().boundsInRoot.width
+        val database = AppDataBase(context).openHelper.writableDatabase
+        database.beginTransactionNonExclusive()
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.runOnIdle { openHistory() }
+            val history = compose.onNodeWithTag("DebtPerson")
+            compose.waitUntil(5_000) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.onAllNodesWithTag("DebtPerson").fetchSemanticsNodes(false).isNotEmpty()
+            }
+            compose.mainClock.advanceTimeBy(112)
+            assertEquals("Incoming position before a slow read can show its loader",
+                width * .3f, history.fetchSemanticsNode().boundsInRoot.left, 2f)
+            compose.onNodeWithTag("personHistoryLoading").assertDoesNotExist()
+
+            compose.waitUntil(5_000) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.onAllNodesWithTag("personHistoryLoading").fetchSemanticsNodes(false).isNotEmpty()
+            }
+            compose.mainClock.advanceTimeBy(96)
+            val moving = history.fetchSemanticsNode().boundsInRoot.left
+            assertTrue("The loading screen is moving into position", moving > 0f && moving < width * .3f)
+        } finally {
+            database.endTransaction()
+            compose.mainClock.autoAdvance = true
+        }
+        compose.awaitRoute("DebtPerson")
+        compose.awaitTag("personBalanceCard").assertIsDisplayed()
+        compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
+        compose.awaitRoute("Debts")
     }
 
     @Test fun predictiveFormBackToPersonListAndLauncher() {

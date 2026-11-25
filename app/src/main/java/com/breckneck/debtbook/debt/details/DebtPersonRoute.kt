@@ -105,7 +105,7 @@ internal fun Destination.DebtPersonRoute(insets: PaddingValues, activity: MainAc
     var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
     var personSheet by rememberSaveable { mutableStateOf<PersonSheet?>(null) }
     DebtDetailsScreen(
-        vm, insets, onBack = ::back,
+        vm, insets, onBack = ::back, reportPlacement = reportPlacement,
         onAdd = { id, currency, name ->
             if (isCurrent) main.onActionClick()
             open(DebtForm(idHuman = id, currency = currency, name = name))

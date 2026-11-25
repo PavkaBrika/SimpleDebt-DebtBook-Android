@@ -89,7 +89,7 @@ internal fun NavGraphBuilder.debtDestinations(
         }
     }
 
-    destination<DebtPerson>(nav) { DebtPersonRoute(insets(), activity, main) }
+    destination<DebtPerson>(nav, waitForContent = true) { DebtPersonRoute(insets(), activity, main) }
 
     destination<EditDebtPerson>(nav) {
         EditDebtPersonScreen(hiltViewModel(entry), insets(), ::back) {

@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.semantics
@@ -23,29 +24,32 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
 
 internal inline fun <reified T : Any> NavGraphBuilder.destination(
     nav: NavController,
+    waitForContent: Boolean = false,
     crossinline content: @Composable Destination.() -> Unit,
 ) {
-    composable<T> { entry ->
+    val navigator = nav.navigatorProvider.getNavigator(ScreenNavigator::class.java)
+    destination(ScreenNavigator.Builder(navigator, T::class) { entry, reportPlacement, overlay ->
         val current by nav.currentBackStackEntryAsState()
         val lifecycle by entry.lifecycle.currentStateAsState()
         val active = entry == current
-        val scope = remember(nav, entry) { Destination(nav, entry) }
+        val scope = remember(nav, entry, reportPlacement) { Destination(nav, entry, reportPlacement) }
         CompositionLocalProvider(LocalRouteActive provides active) {
-            Box(Modifier.fillMaxSize().testTag(T::class.simpleName.orEmpty())
+            val placement = if (waitForContent) Modifier else Modifier.onPlaced { reportPlacement() }
+            Box(Modifier.fillMaxSize().then(placement).testTag(T::class.simpleName.orEmpty())
                 .semantics {
                     testTagsAsResourceId = true
                     this[RouteResumed] = active && lifecycle == Lifecycle.State.RESUMED
                 }) {
                 scope.content()
+                overlay()
             }
         }
-    }
+    })
 }
 
 internal val RouteResumed = SemanticsPropertyKey<Boolean>("RouteResumed")
@@ -57,7 +61,11 @@ internal fun RouteBackHandler(enabled: Boolean, onBack: () -> Unit) {
     BackHandler(enabled = enabled && LocalRouteActive.current, onBack = onBack)
 }
 
-internal class Destination(val nav: NavController, val entry: NavBackStackEntry) {
+internal class Destination(
+    val nav: NavController,
+    val entry: NavBackStackEntry,
+    val reportPlacement: () -> Unit,
+) {
     val isCurrent get() = nav.currentBackStackEntry == entry
 
     fun back() {

@@ -412,18 +412,31 @@ class GoalsFlowTest {
     }
 
     @Test fun launcherRestoresLastTabAfterTaskIsCleared() {
+        fun relaunchOn(destination: String) {
+            compose.mainClock.autoAdvance = false
+            try {
+                launchFromLauncher()
+                compose.waitUntil(15_000) {
+                    compose.mainClock.advanceTimeByFrame()
+                    compose.onAllNodes(hasTestTag(destination)).fetchSemanticsNodes(false).isNotEmpty()
+                }
+                if (destination != "Debts") compose.onNodeWithTag("Debts").assertDoesNotExist()
+            } finally {
+                compose.mainClock.autoAdvance = true
+            }
+            compose.awaitRoute(destination)
+        }
+
         for ((title, destination) in listOf(
             R.string.finances to "Finances",
             R.string.goals to "Goals",
             R.string.debts to "Debts",
         )) {
             tab(title, destination)
-            launchFromLauncher()
-            compose.awaitRoute(destination)
+            relaunchOn(destination)
 
             tab(R.string.settings, "Settings")
-            launchFromLauncher()
-            compose.awaitRoute(destination)
+            relaunchOn(destination)
             compose.onNode(hasText(context.getString(title)) and isSelectable()).assertIsSelected()
         }
     }
