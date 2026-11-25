@@ -114,6 +114,19 @@ class BubbleDebtJourneyTest {
         compose.onNode(panel and hasText("$amount\u00a0₽"), useUnmergedTree = true).assertExists()
     }
 
+    @Test fun repeatedTapDuringPersonEntryOpensOneHistory() {
+        compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$anna"))
+        val onClick = requireNotNull(compose.onNodeWithTag("person-$anna")
+            .fetchSemanticsNode().config[SemanticsActions.OnClick].action)
+        compose.runOnIdle {
+            onClick()
+            onClick()
+        }
+        compose.awaitTag("personHistory").assertIsDisplayed()
+        pressBack()
+        awaitDestination(R.id.mainFragment)
+    }
+
     @Test fun currencyScreenFiltersDebtsAndPreservesTheNewDebtDraft() {
         balance("+18 300")
         compose.onNode(hasText("RUB") and hasClickAction()).performClick()

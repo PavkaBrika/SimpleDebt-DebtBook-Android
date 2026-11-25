@@ -479,6 +479,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
     //MainFragment interfaces
     override fun onHumanClick(idHuman: Int, currency: String, name: String) {
+        if (navController.currentDestination?.id != R.id.mainFragment) return
         val args = Bundle()
         args.putInt("idHuman", idHuman)
         args.putString("currency", currency)
@@ -488,6 +489,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onAddButtonClick() {
+        if (navController.currentDestination?.id != R.id.mainFragment) return
         navController.navigate(R.id.action_mainFragment_to_newDebtFragment)
         vm.onActionClick()
     }
