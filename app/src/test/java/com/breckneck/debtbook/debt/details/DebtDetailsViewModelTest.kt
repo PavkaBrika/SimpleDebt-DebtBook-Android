@@ -1,14 +1,12 @@
 package com.breckneck.debtbook.debt.details
 
-import com.breckneck.debtbook.debt.DebtUpgradeGuidance
-import kotlinx.coroutines.flow.MutableStateFlow
-
-import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.debt.DebtUpgradeGuidance
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
@@ -22,6 +20,7 @@ import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.Filter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -300,6 +299,24 @@ class DebtDetailsViewModelTest {
         recreated.screenState.await { it == DebtDetailsState.SUCCESS }
         assertEquals(listOf(early), recreated.visibleDebtRows.value)
         assertEquals(rows, recreated.resultedDebtList.value)
+    }
+
+    @Test fun `automatic early history preserves the hint when there are also settled loans`() {
+        val early = record.copy(id = 8, info = "Earlier entry", recordedAsLoan = false)
+        val paid = record.copy(id = 10, sum = -record.sum, repaymentOfId = record.id, recordedAsLoan = false)
+        whenever(debts.execute(7)).thenReturn(listOf(early, record, paid))
+        val model = vm()
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(DebtSection.EARLY, model.section.value)
+        assertEquals(listOf(early), model.visibleDebtRows.value)
+        assertEquals(record, model.loans.value!!.settledLoans.single().original)
+
+        model.onDebtSectionClick(DebtSection.EARLY)
+        model.onDebtSectionClick(DebtSection.SETTLED)
+        verify(upgradeGuidance, never()).completeEarlyEntriesHint()
+        model.onDebtSectionClick(DebtSection.EARLY)
+        verify(upgradeGuidance).completeEarlyEntriesHint()
+        assertEquals(listOf(early), model.visibleDebtRows.value)
     }
 
     @Test fun `human deletion navigates only after both writes complete and ignores duplicate tap`() {
