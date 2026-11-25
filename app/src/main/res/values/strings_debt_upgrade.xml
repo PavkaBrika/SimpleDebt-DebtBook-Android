@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
+    <string name="debt_upgrade_title">Debts after the update</string>
+    <string name="debt_upgrade_intro">Your records are still here. Here’s where to find them.</string>
+    <string name="debt_upgrade_got_it">Got it</string>
+    <string name="debt_upgrade_currency_topic">Debts by currency</string>
+    <string name="debt_upgrade_currency_notice">Change the currency on the balance card to see other debts.</string>
+    <string name="debt_upgrade_history_topic">Early entries</string>
+    <string name="debt_upgrade_history_notice">Your history from the previous version is available in the person’s details.</string>
+    <string name="debt_upgrade_currency_hint">Debts in other currencies</string>
+    <string name="debt_upgrade_currency_description">Change the currency to see your other debts.</string>
+    <string name="debt_upgrade_open_currencies">Open currency list</string>
+    <string name="debt_upgrade_history_hint">Records from the previous version</string>
+    <string name="debt_upgrade_history_description">Find your previous history in the Early entries tab.</string>
+    <string name="debt_upgrade_open_early_entries">Open early entries</string>
+    <string name="debt_upgrade_close_notice">Close the update notice</string>
+    <string name="debt_upgrade_close_currency_hint">Dismiss the currency hint</string>
+    <string name="debt_upgrade_close_history_hint">Dismiss the early entries hint</string>
+</resources>

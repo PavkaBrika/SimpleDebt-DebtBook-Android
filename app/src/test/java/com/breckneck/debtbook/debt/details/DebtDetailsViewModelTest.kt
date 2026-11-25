@@ -1,11 +1,12 @@
 package com.breckneck.debtbook.debt.details
 
-import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.debt.DebtUpgradeGuidance
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
@@ -19,6 +20,7 @@ import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.Filter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -44,6 +46,7 @@ class DebtDetailsViewModelTest {
     private val getOrder: GetDebtOrder = mock()
     private val setOrder: SetDebtOrder = mock()
     private val recordRepayment: RecordRepaymentUseCase = mock()
+    private val upgradeGuidance: DebtUpgradeGuidance = mock()
     private val record = DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "1 Jan 2026", recordedAsLoan = true)
 
     private val person = com.breckneck.deptbook.domain.model.HumanDomain(7, "Person", record.sum, "EUR", BigDecimal.ZERO)
@@ -53,6 +56,7 @@ class DebtDetailsViewModelTest {
         whenever(getOrder.execute()).thenReturn(DebtOrderAttribute.CreationDate to false)
         whenever(debts.execute(any())).thenReturn(listOf(record))
         whenever(people.getHuman(7)).thenReturn(person)
+        whenever(upgradeGuidance.progress).thenReturn(MutableStateFlow(null))
     }
     @After fun teardown() = Dispatchers.resetMain()
 
@@ -60,7 +64,7 @@ class DebtDetailsViewModelTest {
         DebtDetailsViewModel(debts, latestId, people, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
-            }, state, mock(), recordRepayment)
+            }, state, mock(), recordRepayment, upgradeGuidance)
 
     @Test fun `repayment validates positive amount and refuses more than selected record`() {
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))
@@ -295,6 +299,24 @@ class DebtDetailsViewModelTest {
         recreated.screenState.await { it == DebtDetailsState.SUCCESS }
         assertEquals(listOf(early), recreated.visibleDebtRows.value)
         assertEquals(rows, recreated.resultedDebtList.value)
+    }
+
+    @Test fun `automatic early history preserves the hint when there are also settled loans`() {
+        val early = record.copy(id = 8, info = "Earlier entry", recordedAsLoan = false)
+        val paid = record.copy(id = 10, sum = -record.sum, repaymentOfId = record.id, recordedAsLoan = false)
+        whenever(debts.execute(7)).thenReturn(listOf(early, record, paid))
+        val model = vm()
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        assertEquals(DebtSection.EARLY, model.section.value)
+        assertEquals(listOf(early), model.visibleDebtRows.value)
+        assertEquals(record, model.loans.value!!.settledLoans.single().original)
+
+        model.onDebtSectionClick(DebtSection.EARLY)
+        model.onDebtSectionClick(DebtSection.SETTLED)
+        verify(upgradeGuidance, never()).completeEarlyEntriesHint()
+        model.onDebtSectionClick(DebtSection.EARLY)
+        verify(upgradeGuidance).completeEarlyEntriesHint()
+        assertEquals(listOf(early), model.visibleDebtRows.value)
     }
 
     @Test fun `human deletion navigates only after both writes complete and ignores duplicate tap`() {

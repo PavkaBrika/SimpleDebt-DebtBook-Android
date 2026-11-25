@@ -36,10 +36,12 @@ import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.DebtFilterChip
 import com.breckneck.debtbook.debt.DebtOrderSheet
+import com.breckneck.debtbook.debt.DebtUpgradeHint
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.debt.main.dueLabel
 import com.breckneck.debtbook.debt.main.localDay
 import com.breckneck.debtbook.debt.main.signedMoney
+import com.breckneck.debtbook.debt.rememberDebtUpgradeHintTransition
 import com.breckneck.debtbook.debt.reminders.formatMinute
 import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.DebtDomain
@@ -73,8 +75,15 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
     val rows by vm.visibleDebtRows.observeAsState(emptyList())
     val loans by vm.loans.observeAsState()
     val section by vm.section.observeAsState(DebtSection.OPEN)
+    val guidance by vm.upgradeProgress.collectAsState()
     val adjustment by vm.openingAdjustment.observeAsState(BigDecimal.ZERO)
     val ready = !busy && state in listOf(DebtDetailsState.SUCCESS, DebtDetailsState.EMPTY)
+    val inEarlyEntries = section == DebtSection.EARLY
+    val historyHint = rememberDebtUpgradeHintTransition(
+        if (ready && loans?.earlyEntries?.isNotEmpty() == true && guidance?.showEarlyEntriesHint == true) {
+            if (inEarlyEntries) R.string.debt_upgrade_got_it else R.string.debt_upgrade_open_early_entries
+        } else null,
+    )
     val refreshFailed by vm.refreshFailed.observeAsState(false)
     val order by vm.debtOrder.observeAsState()
     val filter by vm.debtFilter.observeAsState(Filter.ALL)
@@ -150,11 +159,25 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                         }
                     }
                 }
+                item(key = "upgradeEarlyEntriesHint") {
+                    DebtUpgradeHint(
+                        transition = historyHint,
+                        title = R.string.debt_upgrade_history_hint,
+                        description = R.string.debt_upgrade_history_description,
+                        dismissLabel = R.string.debt_upgrade_close_history_hint,
+                        onAction = {
+                            if (inEarlyEntries) vm.completeEarlyEntriesHint()
+                            else vm.onDebtSectionClick(DebtSection.EARLY)
+                        },
+                        onDismiss = vm::completeEarlyEntriesHint,
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
+                }
                 item(key = "debtSections") {
                     Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         DebtHistoryTabs(section, !loans?.earlyEntries.isNullOrEmpty(), ready,
-                            vm::selectDebtSection, Modifier.weight(1f))
+                            vm::onDebtSectionClick, Modifier.weight(1f))
                         BubbleIconButton({ sortOpen = true }, Modifier.testTag("sortButton"), enabled = ready && order != null) {
                             Icon(Icons.Outlined.Tune, stringResource(R.string.debt_history_order), Modifier.size(19.dp))
                         }
@@ -190,11 +213,17 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                 }
                 DebtDetailsState.SUCCESS -> items(rows, key = { it.id }) { row ->
                     val loan = loans?.loan(row.id)
+                    // Resizing the hint already moves every row in the lazy layout.
+                    val rowMotion = if (historyHint.isRunning || historyHint.currentState != historyHint.targetState) {
+                        Modifier.animateItem(placementSpec = null)
+                    } else {
+                        Modifier.animateItem()
+                    }
                     if (loan != null) {
-                        LoanCard(row, loan.remaining, currency, today, ready, Modifier.animateItem(),
+                        LoanCard(row, loan.remaining, currency, today, ready, rowMotion,
                             { onRecord(row.id) }, { onDue(row.id) }, { vm.openRepayment(row) })
                     } else {
-                        HistoryEntry(row, currency, enabled = ready, modifier = Modifier.animateItem()) {
+                        HistoryEntry(row, currency, enabled = ready, modifier = rowMotion) {
                             if (row.repaymentOfId != null && !row.cancelled) onRepaymentAction(row.id) else onRecord(row.id)
                         }
                     }

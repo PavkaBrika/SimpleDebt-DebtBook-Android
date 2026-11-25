@@ -1,6 +1,7 @@
 package com.breckneck.debtbook.app
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import com.breckneck.debtbook.BuildConfig
 import com.yandex.mobile.ads.common.YandexAds
@@ -27,9 +28,8 @@ class App: Application() {
     }
 
     private fun activateAppMetrica() {
-        val packageInfo = packageManager.getPackageInfo(packageName, 0)
         val config = AppMetricaConfig.newConfigBuilder(BuildConfig.APPMETRICA_API_KEY)
-            .handleFirstActivationAsUpdate(packageInfo.firstInstallTime != packageInfo.lastUpdateTime)
+            .handleFirstActivationAsUpdate(wasUpdated())
             .withSessionsAutoTrackingEnabled(true)
             .withLocationTracking(false)
             .withAdvIdentifiersTracking(false)
@@ -41,4 +41,9 @@ class App: Application() {
             .build()
         AppMetrica.activate(this, config)
     }
+}
+
+internal fun Context.wasUpdated(): Boolean {
+    val packageInfo = packageManager.getPackageInfo(packageName, 0)
+    return packageInfo.firstInstallTime != packageInfo.lastUpdateTime
 }

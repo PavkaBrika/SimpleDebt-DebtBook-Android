@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="debt_upgrade_title">Schulden nach dem Update</string>
+    <string name="debt_upgrade_intro">Ihre Einträge sind weiterhin verfügbar. Hier finden Sie sie.</string>
+    <string name="debt_upgrade_got_it">Verstanden</string>
+    <string name="debt_upgrade_currency_topic">Schulden nach Währung</string>
+    <string name="debt_upgrade_currency_notice">Ändern Sie die Währung auf der Saldokarte, um weitere Schulden zu sehen.</string>
+    <string name="debt_upgrade_history_topic">Frühere Einträge</string>
+    <string name="debt_upgrade_history_notice">Den Verlauf aus der vorherigen Version finden Sie in den Personendetails.</string>
+    <string name="debt_upgrade_currency_hint">Schulden in anderen Währungen</string>
+    <string name="debt_upgrade_currency_description">Ändern Sie die Währung, um die übrigen Schulden zu sehen.</string>
+    <string name="debt_upgrade_open_currencies">Währungsliste öffnen</string>
+    <string name="debt_upgrade_history_hint">Einträge aus der vorherigen Version</string>
+    <string name="debt_upgrade_history_description">Den bisherigen Verlauf finden Sie im Tab „Frühere Einträge“.</string>
+    <string name="debt_upgrade_open_early_entries">Frühere Einträge öffnen</string>
+    <string name="debt_upgrade_close_notice">Update-Hinweis schließen</string>
+    <string name="debt_upgrade_close_currency_hint">Währungshinweis schließen</string>
+    <string name="debt_upgrade_close_history_hint">Hinweis zu früheren Einträgen schließen</string>
+</resources>

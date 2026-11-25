@@ -5,10 +5,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import androidx.compose.runtime.getValue
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.currentStateAsState
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.core.currency.onCurrencySelected
 import com.breckneck.debtbook.core.currency.openCurrencyPicker
@@ -36,8 +42,13 @@ class DebtFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         bubbleScreen(R.id.humansLayout) { insets ->
+            val activity = requireActivity() as MainActivity
+            val backStackEntry by findNavController().currentBackStackEntryAsState()
+            val lifecycleState by viewLifecycleOwner.lifecycle.currentStateAsState()
             DebtListScreen(
-                vm, insets, requireActivity() as OnButtonClickListener,
+                vm, insets, activity,
+                visible = lifecycleState.isAtLeast(Lifecycle.State.RESUMED) &&
+                    backStackEntry?.destination?.id == R.id.mainFragment && activity.canAccessApp(),
                 rename = ::openChangeDebtNameDialog,
                 onCurrencyClick = { currency ->
                     val available = (vm.overviewCurrencies.value.orEmpty() + currency).filter(String::isNotBlank)
@@ -47,7 +58,7 @@ class DebtFragment : Fragment() {
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        onCurrencySelected(R.id.mainFragment, vm::selectCurrency)
+        onCurrencySelected(R.id.mainFragment, vm::selectCurrencyFromPicker)
         setFragmentResultListener("mainFragmentKey") { _, result ->
             result.getString("currency")?.let(vm::selectCurrency)
             vm.setListStateLoading()

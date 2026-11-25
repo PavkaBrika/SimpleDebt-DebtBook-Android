@@ -2,6 +2,7 @@ package com.breckneck.debtbook.core.viewmodel
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
+import androidx.lifecycle.SavedStateHandle
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.Filter
@@ -9,6 +10,9 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import com.breckneck.debtbook.debt.main.DebtListBalance
+import com.breckneck.debtbook.debt.DebtUpgradeGuidance
+import com.breckneck.debtbook.debt.DebtUpgradeProgress
+import com.breckneck.debtbook.debt.DebtUpgradeTopics
 import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
@@ -20,6 +24,7 @@ import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
 import com.breckneck.deptbook.domain.util.ScreenState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -46,6 +51,7 @@ class DebtViewModelTest {
     private val updateHuman = Mockito.mock(UpdateHuman::class.java)
     private val setHumanOrder = Mockito.mock(SetHumanOrder::class.java)
     private val getHumanOrder = Mockito.mock(GetHumanOrder::class.java)
+    private val upgradeGuidance = Mockito.mock(DebtUpgradeGuidance::class.java)
 
     private lateinit var viewModel: DebtViewModel
 
@@ -56,20 +62,22 @@ class DebtViewModelTest {
         whenever(getDefaultCurrency.execute()).thenReturn("RUB")
         whenever(getAllHumansUseCase.execute()).thenReturn(emptyList())
         whenever(getAllDebts.execute()).thenReturn(emptyList())
+        whenever(upgradeGuidance.progress).thenReturn(MutableStateFlow(null))
         viewModel = createViewModel()
     }
 
     private fun createViewModel(transaction: DataTransaction = object : DataTransaction {
         override fun <T> run(block: () -> T): T = block()
     }) = DebtViewModel(
-        saved = androidx.lifecycle.SavedStateHandle(),
+        saved = SavedStateHandle(),
         getAllDebts = getAllDebts,
         transaction = transaction,
         getAllHumansUseCase = getAllHumansUseCase,
         getDefaultCurrency = getDefaultCurrency,
         getHumanOrder = getHumanOrder,
         setHumanOrder = setHumanOrder,
-        updateHuman = updateHuman
+        updateHuman = updateHuman,
+        upgradeGuidance = upgradeGuidance,
     )
 
     @After
@@ -160,6 +168,74 @@ class DebtViewModelTest {
         } finally {
             vm.balance.removeObserver(observer)
             vm.screenState.removeObserver(stateObserver)
+        }
+    }
+
+    @Test
+    fun `upgrade topics use recorded currencies and complete only after explicit valid selection`() {
+        val person = HumanDomain(1, "Maria", "-75.40".toBigDecimal(), "EUR")
+        val entry = DebtDomain(1, person.sumDebt, person.id, "Tickets", "2026-11-25")
+        val topics = DebtUpgradeTopics(otherCurrencies = true, earlyEntries = true)
+        whenever(getDefaultCurrency.execute()).thenReturn("USD")
+        whenever(getAllHumansUseCase.execute()).thenReturn(listOf(person))
+        whenever(getAllDebts.execute()).thenReturn(listOf(entry))
+        whenever(upgradeGuidance.progress).thenReturn(MutableStateFlow(DebtUpgradeProgress(topics)))
+        val model = createViewModel()
+        val loaded = CountDownLatch(1)
+        val observer = Observer<DebtUpgradeTopics?> { if (it != null) loaded.countDown() }
+        model.availableUpgradeTopics.observeForever(observer)
+        try {
+            assertTrue(loaded.await(5, TimeUnit.SECONDS))
+            assertTrue(model.resultedHumanList.value!!.isEmpty())
+            assertEquals(listOf("USD", "EUR"), model.overviewCurrencies.value)
+            model.onSetHumanSort(Filter.POSITIVE, HumanOrderAttribute.Sum to true)
+            model.onStartSearch()
+            model.setSearchQuery("No match")
+            model.recordFirstDebtListVisit()
+            Mockito.verify(upgradeGuidance).recordFirstVisit(topics)
+
+            model.selectCurrencyFromPicker("USD")
+            model.selectCurrency("EUR")
+            assertEquals(DebtUpgradeTopics(earlyEntries = true), model.availableUpgradeTopics.value)
+            model.selectCurrencyFromPicker("USD")
+            Mockito.verify(upgradeGuidance, Mockito.never()).completeCurrencyHint()
+            model.selectCurrencyFromPicker("EUR")
+            Mockito.verify(upgradeGuidance).completeCurrencyHint()
+        } finally {
+            model.availableUpgradeTopics.removeObserver(observer)
+        }
+    }
+
+    @Test
+    fun `a picker restored before debts finish loading still acknowledges a valid choice`() {
+        val proceed = CountDownLatch(1)
+        val person = HumanDomain(1, "Maria", "-75.40".toBigDecimal(), "EUR")
+        val topics = DebtUpgradeTopics(otherCurrencies = true)
+        whenever(getDefaultCurrency.execute()).thenReturn("USD")
+        whenever(getAllHumansUseCase.execute()).thenReturn(listOf(person))
+        whenever(getAllDebts.execute()).thenReturn(
+            listOf(DebtDomain(1, person.sumDebt, person.id, "Tickets", "2026-11-25", recordedAsLoan = true))
+        )
+        whenever(upgradeGuidance.progress).thenReturn(MutableStateFlow(DebtUpgradeProgress(topics)))
+        val model = createViewModel(object : DataTransaction {
+            override fun <T> run(block: () -> T): T {
+                check(proceed.await(5, TimeUnit.SECONDS))
+                return block()
+            }
+        })
+        val loaded = CountDownLatch(1)
+        val observer = Observer<DebtUpgradeTopics?> { if (it != null) loaded.countDown() }
+        model.availableUpgradeTopics.observeForever(observer)
+        try {
+            model.selectCurrencyFromPicker("EUR")
+            Mockito.verify(upgradeGuidance, Mockito.never()).completeCurrencyHint()
+            proceed.countDown()
+            assertTrue(loaded.await(5, TimeUnit.SECONDS))
+            Mockito.verify(upgradeGuidance).completeCurrencyHint()
+            assertEquals("EUR", model.balance.value?.currency)
+        } finally {
+            proceed.countDown()
+            model.availableUpgradeTopics.removeObserver(observer)
         }
     }
 
