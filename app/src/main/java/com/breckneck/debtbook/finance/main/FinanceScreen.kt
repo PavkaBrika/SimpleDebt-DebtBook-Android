@@ -120,30 +120,21 @@ private fun FinanceContent(
                     .padding(
                         start = hostInsets.calculateStartPadding(layoutDirection) + 16.dp,
                         end = hostInsets.calculateEndPadding(layoutDirection) + 16.dp,
-                        top = hostInsets.calculateTopPadding() + 8.dp,
+                        top = hostInsets.calculateTopPadding() + bubbleRootTitleTopPadding,
                         bottom = 4.dp,
                     ),
             ) {
-                val title: @Composable () -> Unit = {
-                    Text(
-                        stringResource(R.string.finances),
-                        Modifier.padding(vertical = 4.dp),
-                        color = colors.ink,
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
                 if (headerInRow) {
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.Top,
                     ) {
-                        title()
+                        BubbleRootTitle(stringResource(R.string.finances))
                         Box(Modifier.weight(1f)) { FinanceOverview(state) }
                     }
                 } else {
-                    if (!shortWindow) title()
+                    BubbleRootTitle(stringResource(R.string.finances))
                     FinanceOverview(state)
                 }
                 Spacer(Modifier.height(8.dp))

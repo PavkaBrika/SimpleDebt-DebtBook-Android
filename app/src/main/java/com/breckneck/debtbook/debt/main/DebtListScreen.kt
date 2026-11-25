@@ -221,16 +221,16 @@ private fun DebtListHeader(
     val colors = bubbleColors()
     val direction = LocalLayoutDirection.current
     val title = stringResource(R.string.debts)
-    val titleStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
+    val titleStyle = bubbleRootTitleStyle()
     val titleHeight = rememberTextMeasurer().measure(title, style = titleStyle, maxLines = 1).size.height
-    val headerHeight = with(LocalDensity.current) { maxOf(48.dp, titleHeight.toDp()) }
+    val headerHeight = with(LocalDensity.current) { maxOf(bubbleRootTitleMinHeight, titleHeight.toDp()) }
 
     Row(
         Modifier.fillMaxWidth().background(colors.background)
             .padding(
                 start = hostInsets.calculateStartPadding(direction) + 16.dp,
                 end = hostInsets.calculateEndPadding(direction) + 16.dp,
-                top = hostInsets.calculateTopPadding() + 16.dp,
+                top = hostInsets.calculateTopPadding() + bubbleRootTitleTopPadding,
                 bottom = 8.dp,
             ).height(headerHeight),
         verticalAlignment = Alignment.CenterVertically,
@@ -251,7 +251,7 @@ private fun DebtListHeader(
                 )
             }
         } else {
-            Text(title, Modifier.weight(1f), color = colors.ink, style = titleStyle, maxLines = 1)
+            BubbleRootTitle(title, Modifier.weight(1f))
             BubbleIconButton(onClick = onStartSearch) {
                 Icon(Icons.Outlined.Search, stringResource(R.string.find_person))
             }

@@ -649,6 +649,13 @@ class BubbleDebtJourneyTest {
         )
         val original = indicator(R.id.mainFragment).fetchSemanticsNode().boundsInWindow
         val debt = compose.awaitTag("addHumanButton").fetchSemanticsNode().boundsInWindow
+        fun title(label: Int): SemanticsNodeInteraction {
+            val title = hasTestTag("bubbleRootTitle") and hasText(context.getString(label))
+            compose.waitUntil(8000) { compose.onAllNodes(title).fetchSemanticsNodes(false).size == 1 }
+            return compose.onNode(title).assertIsDisplayed()
+        }
+        val debtTitle = title(R.string.debts).fetchSemanticsNode().boundsInWindow
+        capture("root-title-debts")
         compose.mainClock.autoAdvance = false
         try {
             compose.onNodeWithTag("bottomTab-${R.id.financeFragment}").performSemanticsAction(SemanticsActions.OnClick)
@@ -664,13 +671,26 @@ class BubbleDebtJourneyTest {
             compose.mainClock.autoAdvance = true
         }
         val finance = compose.awaitTag("addFinanceButton").fetchSemanticsNode().boundsInWindow
+        val financeTitle = title(R.string.finances).fetchSemanticsNode().boundsInWindow
+        capture("root-title-finance")
         compose.awaitTag("bottomTab-${R.id.goalsFragment}").performClick()
         awaitDestination(R.id.goalsFragment)
         val goal = compose.awaitTag("addGoalButton").fetchSemanticsNode().boundsInWindow
+        val goalsTitle = title(R.string.goals).fetchSemanticsNode().boundsInWindow
+        capture("root-title-goals")
         for (bounds in listOf(finance, goal)) {
             assertEquals(debt.left, bounds.left, 2f)
             assertEquals(debt.right, bounds.right, 2f)
             assertEquals(debt.bottom, bounds.bottom, 2f)
+        }
+        compose.awaitTag("bottomTab-${R.id.settingsFragment}").performClick()
+        awaitDestination(R.id.settingsFragment)
+        val settingsTitle = title(R.string.settings).fetchSemanticsNode().boundsInWindow
+        capture("root-title-settings")
+        for (bounds in listOf(financeTitle, goalsTitle, settingsTitle)) {
+            assertEquals(debtTitle.left, bounds.left, 2f)
+            assertEquals(debtTitle.top, bounds.top, 2f)
+            assertEquals(debtTitle.height, bounds.height, 2f)
         }
     }
 

@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,16 +20,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
 import com.breckneck.debtbook.core.ui.components.BubbleButton
+import com.breckneck.debtbook.core.ui.components.BubbleRootTitle
 import com.breckneck.debtbook.core.ui.components.BubbleScaffold
 import com.breckneck.debtbook.core.ui.components.ShimmerListPlaceholder
+import com.breckneck.debtbook.core.ui.components.bubbleRootTitleTopPadding
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.goal.main.GoalsAction
 import com.breckneck.debtbook.goal.main.GoalsState
@@ -56,7 +54,7 @@ private fun GoalsContent(
     val listScroll = rememberLazyListState()
     BubbleScaffold(
         hostInsets = hostInsets,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bubbleRootTitleTopPadding, bottom = 8.dp),
         bottomAction = {
             BubbleButton(
                 onClick = { onAction(GoalsAction.AddGoalClick) },
@@ -74,14 +72,7 @@ private fun GoalsContent(
             contentPadding = padding,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                Text(
-                    stringResource(R.string.goals),
-                    Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            item { BubbleRootTitle(stringResource(R.string.goals)) }
             if (state.loadFailed) {
                 item {
                     Column {

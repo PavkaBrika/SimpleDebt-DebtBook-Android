@@ -4,16 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
@@ -40,12 +35,12 @@ internal fun SettingsScreen(
 
     BubbleScaffold(
         hostInsets = hostInsets,
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bubbleRootTitleTopPadding, bottom = 16.dp),
         tabs = { BubbleBottomBar(R.id.settingsFragment, host::onTabSelected) },
     ) { padding ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.settings), Modifier.semantics { heading() }, color = colors.ink,
-                style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            BubbleRootTitle(stringResource(R.string.settings))
             BubbleSectionTitle(stringResource(R.string.application))
             BubbleGroup {
                 SettingsRow(stringResource(R.string.default_currency), value = currencyLabel(defaultCurrency), onClick = onDefaultCurrency)
