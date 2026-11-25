@@ -19,6 +19,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -59,7 +60,7 @@ private fun GoalsContent(
         bottomAction = {
             BubbleButton(
                 onClick = { onAction(GoalsAction.AddGoalClick) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp),
+                modifier = Modifier.fillMaxWidth().testTag("addGoalButton"),
             ) {
                 Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))

@@ -28,6 +28,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -152,6 +153,9 @@ private fun FinanceContent(
                 }
             }
         },
+        bottomAction = if (shortWindow) null else {
+            { FinanceAddButton(selected, { onAdd(selected) }, Modifier.fillMaxWidth()) }
+        },
         tabs = { BubbleBottomBar(R.id.financeFragment, onTab) },
     ) { padding ->
         HorizontalPager(
@@ -163,13 +167,12 @@ private fun FinanceContent(
                 direction = directions[page],
                 listState = listStates[page],
                 padding = padding,
-                pinAddAction = !shortWindow,
+                inlineAddAction = if (shortWindow) ({ onAdd(directions[page]) }) else null,
                 stepPeriod = stepPeriod,
                 onPeriodClick = { choosingPeriod = true },
                 onCurrentPeriod = currentPeriodAction,
                 onCurrencyClick = onCurrencyClick,
                 onCategory = onCategory,
-                onAdd = { onAdd(directions[page]) },
                 retry = retry,
             )
         }
@@ -183,18 +186,26 @@ private fun FinanceContent(
 }
 
 @Composable
+private fun FinanceAddButton(direction: FinanceCategoryState, onAdd: () -> Unit, modifier: Modifier) {
+    BubbleButton(onAdd, modifier.testTag("addFinanceButton"), colors = financeActionColors(direction)) {
+        Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+        val label = if (direction == FinanceCategoryState.EXPENSE) R.string.finance_add_expense else R.string.finance_add_income
+        Text(stringResource(label), Modifier.padding(start = 8.dp))
+    }
+}
+
+@Composable
 private fun FinancePage(
     state: FinanceSummary,
     direction: FinanceCategoryState,
     listState: LazyListState,
     padding: PaddingValues,
-    pinAddAction: Boolean,
+    inlineAddAction: (() -> Unit)?,
     stepPeriod: (Int) -> Unit,
     onPeriodClick: () -> Unit,
     onCurrentPeriod: (() -> Unit)?,
     onCurrencyClick: () -> Unit,
     onCategory: (FinanceCategory) -> Unit,
-    onAdd: () -> Unit,
     retry: () -> Unit,
 ) {
     val colors = bubbleColors()
@@ -212,133 +223,101 @@ private fun FinancePage(
     LaunchedEffect(state.hasTotals, hasCategories) {
         if (state.hasTotals && !hasCategories) sharesOpen = false
     }
-    val layout = LocalLayoutDirection.current
-    val start = padding.calculateStartPadding(layout)
-    val end = padding.calculateEndPadding(layout)
-    val addAction: @Composable (Modifier) -> Unit = { modifier ->
-        BubbleButton(onClick = onAdd, modifier = modifier, colors = financeActionColors(direction)) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-            val label = if (expenses) R.string.finance_add_expense else R.string.finance_add_income
-            Text(stringResource(label), Modifier.padding(start = 8.dp))
+    val chartBottomInset = with(LocalDensity.current) { padding.calculateBottomPadding().toPx() }
+    LaunchedEffect(sharesExpanded, revealChart) {
+        if (sharesExpanded && revealChart) {
+            snapshotFlow { expansion.value }.first { it == 1f }
+            withFrameNanos {}
+            if (chartSize != IntSize.Zero) {
+                chartRequester.bringIntoView(
+                    Rect(0f, 0f, chartSize.width.toFloat(), chartSize.height + chartBottomInset),
+                )
+            }
+            revealChart = false
         }
     }
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-        bottomBar = {
-            if (pinAddAction) {
-                val belowAction = (padding.calculateBottomPadding() - 16.dp).coerceAtLeast(0.dp)
-                Box(Modifier.padding(start = start, end = end, bottom = belowAction)) {
-                    addAction(Modifier.fillMaxWidth().padding(vertical = 4.dp))
-                }
-            }
-        },
-    ) { bars ->
-        val listPadding = if (pinAddAction) {
-            PaddingValues(
-                start = start,
-                top = padding.calculateTopPadding(),
-                end = end,
-                bottom = bars.calculateBottomPadding() + 16.dp,
-            )
-        } else {
-            padding
-        }
-        val chartBottomInset = with(LocalDensity.current) { listPadding.calculateBottomPadding().toPx() }
-        LaunchedEffect(sharesExpanded, revealChart) {
-            if (sharesExpanded && revealChart) {
-                snapshotFlow { expansion.value }.first { it == 1f }
-                withFrameNanos {}
-                if (chartSize != IntSize.Zero) {
-                    chartRequester.bringIntoView(
-                        Rect(0f, 0f, chartSize.width.toFloat(), chartSize.height + chartBottomInset),
-                    )
-                }
-                revealChart = false
-            }
-        }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().consumeWindowInsets(listPadding),
-            state = listState,
-            contentPadding = listPadding,
-        ) {
-            item(key = "balance") {
-                val progress = expansion.value
-                key(state.currency) {
-                    BubbleBalanceCard(
-                        stringResource(if (expenses) R.string.expenses else R.string.revenues),
-                        state.currency,
-                        amount?.financeMoney(state.currency) ?: "…",
-                        onCurrencyClick = onCurrencyClick,
-                        balanceValue = amount,
-                        palette = palette,
-                        artwork = {
-                            FinanceSummaryChart(
-                                totals,
-                                palette,
-                                expanded = sharesExpanded,
-                                expansion = progress,
-                                onToggle = if (hasCategories) ({
-                                    sharesOpen = !sharesOpen
-                                    revealChart = sharesOpen
-                                }) else null,
-                                modifier = it.bringIntoViewRequester(chartRequester).onSizeChanged { chartSize = it },
-                            )
-                        },
-                        artworkExpansion = progress,
-                    ) {
-                        FinancePeriodControls(
-                            period = state.period,
-                            palette = palette,
-                            onPrevious = { stepPeriod(-1) },
-                            onNext = { stepPeriod(1) },
-                            onSelectPeriod = onPeriodClick,
-                            onCurrentPeriod = onCurrentPeriod,
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().consumeWindowInsets(padding),
+        state = listState,
+        contentPadding = padding,
+    ) {
+        item(key = "balance") {
+            val progress = expansion.value
+            key(state.currency) {
+                BubbleBalanceCard(
+                    stringResource(if (expenses) R.string.expenses else R.string.revenues),
+                    state.currency,
+                    amount?.financeMoney(state.currency) ?: "…",
+                    onCurrencyClick = onCurrencyClick,
+                    balanceValue = amount,
+                    palette = palette,
+                    artwork = {
+                        FinanceSummaryChart(
+                            totals,
+                            palette,
+                            expanded = sharesExpanded,
+                            expansion = progress,
+                            onToggle = if (hasCategories) ({
+                                sharesOpen = !sharesOpen
+                                revealChart = sharesOpen
+                            }) else null,
+                            modifier = it.bringIntoViewRequester(chartRequester).onSizeChanged { chartSize = it },
                         )
-                    }
-                }
-            }
-            if (!pinAddAction) {
-                item(key = "add-operation") { addAction(Modifier.fillMaxWidth().padding(top = 8.dp)) }
-            }
-            item(key = "categories") {
-                BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) {
-                    Text(stringResource(state.period.interval.labelResource), color = colors.muted)
-                }
-            }
-            if (state.failed) item(key = "retry") {
-                BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) }
-            }
-            when {
-                state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-                state.hasTotals && totals.categories.isEmpty() -> item {
-                    Text(
-                        stringResource(R.string.finance_empty_period),
-                        Modifier.fillMaxWidth().padding(22.dp),
-                        textAlign = TextAlign.Center,
-                        color = colors.muted,
+                    },
+                    artworkExpansion = progress,
+                ) {
+                    FinancePeriodControls(
+                        period = state.period,
+                        palette = palette,
+                        onPrevious = { stepPeriod(-1) },
+                        onNext = { stepPeriod(1) },
+                        onSelectPeriod = onPeriodClick,
+                        onCurrentPeriod = onCurrentPeriod,
                     )
                 }
-                else -> itemsIndexed(totals.categories, key = { _, row -> row.category.id }) { index, row ->
-                    val progress = expansion.value
-                    val placement = if (progress == 0f || progress == 1f) {
-                        Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
-                    } else Modifier
-                    BubbleGroupedRow(index, totals.categories.size, placement) {
-                        BubbleListRow(
-                            Modifier.clickable { onCategory(row.category) }.padding(12.dp),
-                            leading = { CategoryBadge(row.category) },
-                            trailing = {
-                                key(state.currency) {
-                                    AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
-                                }
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
-                            },
-                        ) {
-                            Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
-                        }
+            }
+        }
+        if (inlineAddAction != null) {
+            item(key = "add-operation") {
+                FinanceAddButton(direction, inlineAddAction, Modifier.fillMaxWidth().padding(top = 8.dp))
+            }
+        }
+        item(key = "categories") {
+            BubbleSectionTitle(stringResource(R.string.finance_categories), Modifier.padding(top = 16.dp, bottom = 8.dp)) {
+                Text(stringResource(state.period.interval.labelResource), color = colors.muted)
+            }
+        }
+        if (state.failed) item(key = "retry") {
+            BubbleOutlinedButton(retry) { Text(stringResource(R.string.history_retry)) }
+        }
+        when {
+            state.loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            state.hasTotals && totals.categories.isEmpty() -> item {
+                Text(
+                    stringResource(R.string.finance_empty_period),
+                    Modifier.fillMaxWidth().padding(22.dp),
+                    textAlign = TextAlign.Center,
+                    color = colors.muted,
+                )
+            }
+            else -> itemsIndexed(totals.categories, key = { _, row -> row.category.id }) { index, row ->
+                val progress = expansion.value
+                val placement = if (progress == 0f || progress == 1f) {
+                    Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+                } else Modifier
+                BubbleGroupedRow(index, totals.categories.size, placement) {
+                    BubbleListRow(
+                        Modifier.clickable { onCategory(row.category) }.padding(12.dp),
+                        leading = { CategoryBadge(row.category) },
+                        trailing = {
+                            key(state.currency) {
+                                AnimatedAmount(row.amount, row.amount.financeMoney(state.currency), style = MaterialTheme.typography.titleSmall)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = colors.muted)
+                        },
+                    ) {
+                        Text(row.category.localizedName(), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.finance_share_of_total, row.percent), color = colors.muted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

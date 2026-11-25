@@ -8,10 +8,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.IdRes
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.ui.components.LocalBubbleTabMotion
 
 internal fun ComponentActivity.enableBubbleEdgeToEdge() {
     // Before API 26 the navigation buttons are always white.
@@ -28,6 +30,10 @@ internal fun Fragment.bubbleScreen(
     return ComposeView(requireContext()).apply {
         id = viewId
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-        setContent { DebtBookTheme { content(host.screenInsets) } }
+        setContent {
+            DebtBookTheme {
+                CompositionLocalProvider(LocalBubbleTabMotion provides host.bubbleTabMotion) { content(host.screenInsets) }
+            }
+        }
     }
 }
