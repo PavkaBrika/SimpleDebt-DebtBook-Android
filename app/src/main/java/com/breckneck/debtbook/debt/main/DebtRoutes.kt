@@ -10,9 +10,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
@@ -30,7 +27,6 @@ import com.breckneck.debtbook.core.navigation.DebtForm
 import com.breckneck.debtbook.core.navigation.DebtPerson
 import com.breckneck.debtbook.core.navigation.Debts
 import com.breckneck.debtbook.core.navigation.EditDebtPerson
-import com.breckneck.debtbook.core.navigation.LocalRouteActive
 import com.breckneck.debtbook.core.navigation.destination
 import com.breckneck.debtbook.debt.create.CreateDebtScreen
 import com.breckneck.debtbook.debt.create.CreateDebtViewModel
@@ -42,12 +38,9 @@ internal fun NavGraphBuilder.debtDestinations(
     insets: @Composable () -> PaddingValues,
     activity: MainActivity,
     main: MainViewModel,
-    onSearch: (Boolean) -> Unit,
 ) {
     destination<Debts>(nav) {
         val vm = hiltViewModel<DebtViewModel>(entry)
-        val searching by vm.isSearching.observeAsState(false)
-        if (LocalRouteActive.current) SideEffect { onSearch(searching) }
         Result<String>(CURRENCY_RESULT, vm::selectCurrencyFromPicker)
         WhileResumed {
             entry.savedStateHandle.remove<String>(DEBT_LIST_CURRENCY)?.let(vm::selectCurrency)

@@ -232,8 +232,10 @@ class BubbleDebtJourneyTest {
             compose.awaitTag("debtPersonSuggestions").assertIsDisplayed()
             compose.onNodeWithTag("pickDebtPhoto").assertDoesNotExist()
             capture("person-choice-error")
-            compose.awaitTag("debtPerson-$duplicate").performScrollTo().performClick()
-            compose.onNodeWithTag("debtPersonSuggestions").assertDoesNotExist()
+            compose.awaitTag("debtPerson-$duplicate").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            compose.waitUntil(8000) {
+                compose.onAllNodesWithTag("debtPersonSuggestions").fetchSemanticsNodes().isEmpty()
+            }
             text(message).assertDoesNotExist()
             compose.awaitTag("setFinanceButton").performClick()
             compose.awaitRoute("DebtPerson")
@@ -890,18 +892,17 @@ class BubbleDebtJourneyTest {
         compose.awaitTag("addDebtButton").performClick()
         compose.awaitTag("debtSumEditText").performTextReplacement("123")
         compose.onNodeWithTag("debtInfoEditText").performScrollTo().performTextReplacement("Draft")
-        var keyboard = false
-        onActivity { keyboard = ViewCompat.getRootWindowInsets(it.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true }
-        if (keyboard) pressBack()
+        compose.hideKeyboardBeforeBack(main.window)
+        compose.awaitRoute("DebtForm")
         fun swipe(cancel: Boolean, previous: String) {
-            SystemClock.sleep(500)
             inst.edgeSwipe(cancel) {
-                assertTrue("Back preview", compose.routeIsVisible(previous))
                 capture("gesture-$previous-$cancel")
+                assertTrue("Back preview", compose.routeIsVisible(previous))
             }
             SystemClock.sleep(450)
         }
         swipe(true, "DebtPerson")
+        compose.awaitRoute("DebtForm")
         compose.awaitTag("debtSumEditText").assertTextContains("123")
         compose.onNodeWithTag("debtInfoEditText").assertTextContains("Draft")
         assertEquals(1, dao.getAllDebtsById(anna).size)
@@ -910,7 +911,7 @@ class BubbleDebtJourneyTest {
         compose.onNode(hasText("Анна") and hasClickAction().not()).assertExists()
         swipe(false, "Debts")
         compose.awaitTag("addHumanButton").performClick()
-        compose.awaitTag("debtSumEditText")
+        compose.awaitRoute("DebtForm")
         swipe(false, "Debts")
         compose.awaitRoute("Debts")
         fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(

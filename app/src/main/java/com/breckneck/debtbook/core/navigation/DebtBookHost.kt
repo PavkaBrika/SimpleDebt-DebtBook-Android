@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.NavDestination
@@ -56,6 +57,7 @@ import androidx.navigation.compose.rememberNavController
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.core.MainViewModel
 import com.breckneck.debtbook.core.screenAnimationsEnabled
+import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.debtbook.debt.main.debtDestinations
 import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
 import com.breckneck.debtbook.core.ui.components.LocalHostedTabBarHeight
@@ -73,9 +75,12 @@ internal fun DebtBookHost(
 ) {
     val nav = rememberNavController()
     val current by nav.currentBackStackEntryAsState()
-    val tab = current?.destination.mainTab()
-    var searching by remember { mutableStateOf(false) }
-    val visibleTab = tab?.takeUnless { it == MainTab.DEBTS && searching }
+    val entry = current
+    val tab = entry?.destination.mainTab()
+    val searching = if (entry != null && tab == MainTab.DEBTS) {
+        hiltViewModel<DebtViewModel>(entry).isSearching.observeAsState(false).value
+    } else false
+    val visibleTab = tab?.takeUnless { searching }
     val animate = activity.screenAnimationsEnabled()
 
     LaunchedEffect(nav) {
@@ -132,7 +137,7 @@ internal fun DebtBookHost(
                 },
             ) {
                 val screenInsets = @Composable { insets }
-                debtDestinations(nav, screenInsets, activity, main) { searching = it }
+                debtDestinations(nav, screenInsets, activity, main)
                 financeDestinations(nav, screenInsets, main)
                 goalDestinations(nav, screenInsets, main)
                 settingsDestinations(nav, screenInsets, activity, main)

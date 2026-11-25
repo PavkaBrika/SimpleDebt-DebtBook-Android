@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.currentStateAsState
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -24,6 +25,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import kotlinx.coroutines.launch
 
 internal inline fun <reified T : Any> NavGraphBuilder.destination(
     nav: NavController,
@@ -59,7 +61,9 @@ internal class Destination(val nav: NavController, val entry: NavBackStackEntry)
     val isCurrent get() = nav.currentBackStackEntry == entry
 
     fun back() {
-        if (isCurrent) nav.popBackStack()
+        entry.lifecycleScope.launch {
+            if (isCurrent) nav.popBackStack()
+        }
     }
 
     fun open(route: Any, options: NavOptionsBuilder.() -> Unit = {}) {
@@ -67,16 +71,21 @@ internal class Destination(val nav: NavController, val entry: NavBackStackEntry)
     }
 
     fun <T : Any> returnResult(key: String, value: T) {
-        if (!isCurrent) return
-        nav.previousBackStackEntry?.savedStateHandle?.set(key, value)
-        back()
+        entry.lifecycleScope.launch {
+            if (!isCurrent) return@launch
+            nav.previousBackStackEntry?.savedStateHandle?.set(key, value)
+            nav.popBackStack()
+        }
     }
 
     @Composable
     fun WhileResumed(block: suspend () -> Unit) {
         val currentBlock by rememberUpdatedState(block)
-        LaunchedEffect(entry) {
-            entry.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { currentBlock() }
+        DisposableEffect(entry) {
+            val job = entry.lifecycleScope.launch {
+                entry.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { currentBlock() }
+            }
+            onDispose { job.cancel() }
         }
     }
 
