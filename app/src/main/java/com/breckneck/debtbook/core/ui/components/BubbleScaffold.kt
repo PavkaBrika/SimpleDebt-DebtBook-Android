@@ -18,7 +18,7 @@ internal fun BubbleScaffold(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     topBar: (@Composable () -> Unit)? = null,
-    bottomAction: @Composable () -> Unit = {},
+    bottomAction: (@Composable () -> Unit)? = null,
     tabs: (@Composable () -> Unit)? = null,
     snackbarHost: @Composable () -> Unit = {},
     scrollBehindBarsWithIme: Boolean = false,
@@ -39,8 +39,10 @@ internal fun BubbleScaffold(
         snackbarHost = snackbarHost,
         bottomBar = {
             Column(Modifier.fillMaxWidth()) {
-                if (tabs != null) {
-                    Column(Modifier.padding(start = start, end = end)) { bottomAction() }
+                if (tabs != null && bottomAction != null) {
+                    Column(Modifier.fillMaxWidth().padding(start = start + 16.dp, end = end + 16.dp, top = 4.dp, bottom = 4.dp)) {
+                        bottomAction()
+                    }
                 }
                 val scrim = if (bottomBarScrim) {
                     Modifier.background(
@@ -53,7 +55,7 @@ internal fun BubbleScaffold(
                     Modifier.fillMaxWidth().then(scrim)
                         .padding(start = start, end = end, bottom = hostInsets.calculateBottomPadding()),
                 ) {
-                    if (tabs == null) bottomAction() else tabs()
+                    if (tabs == null) bottomAction?.invoke() else tabs()
                 }
             }
         },

@@ -130,11 +130,14 @@ interface AppDao {
             if (previous.cancelled) return
             updateDebt(previous.copy(cancelled = true))
         } else {
-            require(getAllDebts().none { it.repaymentOfId == previous.id }) { "Debt has repayment history" }
+            deleteLoanRepayments(previous.id, previous.idHuman)
             deleteDebt(previous)
         }
         addSum(previous.idHuman, BigDecimal.ZERO)
     }
+
+    @Query("DELETE FROM debt WHERE repaymentOfId = :loanId AND idHuman = :humanId")
+    fun deleteLoanRepayments(loanId: Int, humanId: Int)
 
     @Transaction
     fun restoreRepayment(id: Int, humanId: Int): Boolean {
@@ -169,10 +172,10 @@ interface AppDao {
         require(debt.repaymentOfId == null && debt.sum.signum() != 0)
         val next = debt.copy(dueDay = day, reminderMinute = minute, reminderToken = token, reminderDelivered = false)
         val original = next.toDomain()
+        require(RepaymentPolicy.remaining(original, history.map { it.toDomain() }).signum() > 0) { "Debt is settled" }
         DebtReminderPolicy.validate(original)
         day?.let { require(DebtReminderPolicy.canSetDueDay(debt.date, it)) { "Due day precedes the debt" } }
         if (minute != null) {
-            require(RepaymentPolicy.remaining(original, history.map { it.toDomain() }).signum() > 0)
             require(DebtReminderPolicy.canSchedule(requireNotNull(day), now)) { "Reminder day has passed" }
         }
         val unchanged = debt.dueDay == day && debt.reminderMinute == minute && debt.reminderToken != null && !debt.reminderDelivered

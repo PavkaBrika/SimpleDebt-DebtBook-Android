@@ -269,11 +269,16 @@ class BubbleDebtJourneyTest {
         assertTrue(share.fetchSemanticsNode().boundsInWindow.center.x < manage.fetchSemanticsNode().boundsInWindow.center.x)
         assertTrue(add.fetchSemanticsNode().boundsInWindow.top > manage.fetchSemanticsNode().boundsInWindow.bottom)
         manage.performClick()
-        text(context.getString(R.string.person_rename)).assertIsDisplayed()
-        text(context.getString(R.string.debt_choose_photo)).assertIsDisplayed()
+        text(context.getString(R.string.edit)).assertIsDisplayed()
+        text(context.getString(R.string.debt_choose_photo)).assertDoesNotExist()
         text(context.getString(R.string.person_delete_action)).assertIsDisplayed()
         pressBack()
 
+        val tabs = control("debtHistoryTabs").fetchSemanticsNode().boundsInWindow
+        val sort = compose.onNodeWithTag("sortButton").fetchSemanticsNode().boundsInWindow
+        assertTrue(tabs.right <= sort.left)
+        assertEquals(tabs.center.y, sort.center.y, 2f)
+        capture("history-tabs")
         control("settledDebtsTab").performClick().assertIsSelected()
         compose.record(settled).assertTextContains("Settled")
         add.performClick()
@@ -298,8 +303,10 @@ class BubbleDebtJourneyTest {
         pressBack()
 
         add.performClick()
-        compose.awaitTag("debtSumEditText").performTextReplacement("25")
-        compose.awaitTag("setFinanceButton").performClick()
+        val amount = compose.awaitTag("debtSumEditText")
+        amount.performTextReplacement("25")
+        amount.assertTextContains("25")
+        compose.awaitTag("setFinanceButton").assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         awaitDestination(R.id.debtDetailsFragment)
         val newId = dao.getAllDebtsById(anna).single { it.sum.compareTo(25.toBigDecimal()) == 0 }.id
         control("openDebtsTab").assertIsSelected()
@@ -581,22 +588,115 @@ class BubbleDebtJourneyTest {
         balance(MoneyDisplay.formatExact(opening, "RUB"))
         assertEquals(0, dao.getAllDebtsById(anna).single { it.repaymentOfId == anna }.sum.compareTo(-principal))
         fun manage(action: Int) {
-            compose.onNodeWithContentDescription(context.getString(R.string.debt_manage)).performClick()
+            val trigger = hasContentDescription(context.getString(R.string.debt_manage)) and hasClickAction()
+            compose.waitUntil(8000) { compose.onAllNodes(trigger).fetchSemanticsNodes(false).size == 1 }
+            compose.onNode(trigger).performClick()
             text(context.getString(action)).performClick()
         }
-        manage(R.string.person_rename)
-        compose.onNode(hasSetTextAction()).performTextReplacement("Anna QA")
-        text(context.getString(R.string.save)).performClick()
+        manage(R.string.edit)
+        awaitDestination(R.id.editDebtPersonFragment)
+        compose.awaitTag("editDebtPersonName").performTextReplacement("Cancel this change")
+        compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
+        awaitDestination(R.id.debtDetailsFragment)
+        assertEquals("Анна", dao.getHuman(anna)?.name)
+        manage(R.string.edit)
+        val nameField = compose.awaitTag("editDebtPersonName")
+        capture("person-edit")
+        nameField.performTextReplacement("Anna QA")
+        compose.awaitTag("saveDebtPerson").performSemanticsAction(SemanticsActions.OnClick)
+        awaitDestination(R.id.debtDetailsFragment)
         compose.waitUntil(8000) { dao.getHuman(anna)?.name == "Anna QA" }
         text("Anna QA").assertIsDisplayed()
         manage(R.string.person_delete_action)
-        val confirm = androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withId(R.id.okButton))
-            .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
-        SystemClock.sleep(500)
-        confirm.perform(androidx.test.espresso.action.ViewActions.click())
+        compose.awaitTag("personDeleteSheet").assertIsDisplayed()
+        text(context.getString(R.string.person_delete_title, "Anna QA")).assertIsDisplayed()
+        capture("person-delete")
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.cancel))).performClick()
+        compose.waitUntil(8000) { compose.onAllNodesWithTag("personDeleteSheet").fetchSemanticsNodes(false).isEmpty() }
+        assertNotNull(dao.getHuman(anna))
+        manage(R.string.person_delete_action)
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.delete))).performClick()
         compose.awaitTag("addHumanButton")
         assertNull(dao.getHuman(anna))
         assertTrue(dao.getAllDebtsById(anna).isEmpty())
+    }
+
+    @Test fun deletesLoanAndItsPaymentsAfterConfirmation() {
+        val sibling = anna + 200
+        dao.saveDebt(Debt(sibling, 500.toBigDecimal(), anna, "Other loan", today, recordedAsLoan = true))
+        dao.saveDebt(Debt(0, (-400).toBigDecimal(), anna, null, today,
+            repaymentOfId = anna, operationId = "cascade-current-payment"))
+        dao.saveDebt(Debt(0, (-100).toBigDecimal(), anna, null, today,
+            repaymentOfId = anna, operationId = "cascade-cancelled"))
+        dao.removeDebt(dao.getAllDebtsById(anna).first { it.operationId == "cascade-cancelled" })
+        person()
+        fun confirmation() {
+            compose.record(anna).performClick()
+            compose.awaitTag("deleteButton").performScrollTo().performClick()
+            text(context.getString(R.string.debt_delete_with_repayments_question)).assertIsDisplayed()
+        }
+        confirmation()
+        capture("delete-with-repayments")
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.cancel))).performClick()
+        compose.awaitTag("debtActionsCancel").performClick()
+        assertEquals(4, dao.getAllDebtsById(anna).size)
+        confirmation()
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.delete))).performClick()
+        compose.waitUntil(8000) { dao.getAllDebtsById(anna).map { it.id } == listOf(sibling) }
+        compose.record(sibling).assertTextContains("Other loan")
+        assertEquals(0, 500.toBigDecimal().compareTo(dao.getHumanSumDebt(anna)))
+    }
+
+    @Test fun rootTabIndicatorSlidesAndActionsShareBounds() {
+        fun indicator(destination: Int) = compose.onNode(
+            hasTestTag("bottomTabIndicator") and hasAnyAncestor(hasTestTag("bubbleBottomBar-$destination")),
+            useUnmergedTree = true,
+        )
+        val original = indicator(R.id.mainFragment).fetchSemanticsNode().boundsInWindow
+        val debt = compose.awaitTag("addHumanButton").fetchSemanticsNode().boundsInWindow
+        fun title(label: Int): SemanticsNodeInteraction {
+            val title = hasTestTag("bubbleRootTitle") and hasText(context.getString(label))
+            compose.waitUntil(8000) { compose.onAllNodes(title).fetchSemanticsNodes(false).size == 1 }
+            return compose.onNode(title).assertIsDisplayed()
+        }
+        val debtTitle = title(R.string.debts).fetchSemanticsNode().boundsInWindow
+        capture("root-title-debts")
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("bottomTab-${R.id.financeFragment}").performSemanticsAction(SemanticsActions.OnClick)
+            awaitDestination(R.id.financeFragment)
+            compose.mainClock.advanceTimeBy(80)
+            compose.awaitTag("bubbleBottomBar-${R.id.financeFragment}")
+            val halfway = indicator(R.id.financeFragment).fetchSemanticsNode().boundsInWindow
+            compose.mainClock.advanceTimeBy(320)
+            val end = indicator(R.id.financeFragment).fetchSemanticsNode().boundsInWindow
+            assertTrue("Indicator position ${original.left} → ${halfway.left} → ${end.left}",
+                original.left < halfway.left && halfway.left < end.left)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        val finance = compose.awaitTag("addFinanceButton").fetchSemanticsNode().boundsInWindow
+        val financeTitle = title(R.string.finances).fetchSemanticsNode().boundsInWindow
+        capture("root-title-finance")
+        compose.awaitTag("bottomTab-${R.id.goalsFragment}").performClick()
+        awaitDestination(R.id.goalsFragment)
+        val goal = compose.awaitTag("addGoalButton").fetchSemanticsNode().boundsInWindow
+        val goalsTitle = title(R.string.goals).fetchSemanticsNode().boundsInWindow
+        capture("root-title-goals")
+        for (bounds in listOf(finance, goal)) {
+            assertEquals(debt.left, bounds.left, 2f)
+            assertEquals(debt.right, bounds.right, 2f)
+            assertEquals(debt.bottom, bounds.bottom, 2f)
+        }
+        compose.awaitTag("bottomTab-${R.id.settingsFragment}").performClick()
+        awaitDestination(R.id.settingsFragment)
+        val settingsTitle = title(R.string.settings).fetchSemanticsNode().boundsInWindow
+        capture("root-title-settings")
+        for (bounds in listOf(financeTitle, goalsTitle, settingsTitle)) {
+            assertEquals(debtTitle.left, bounds.left, 2f)
+            assertEquals(debtTitle.top, bounds.top, 2f)
+            assertEquals(debtTitle.height, bounds.height, 2f)
+        }
     }
 
     @Test fun talkBackCanFocusDebtActions() {

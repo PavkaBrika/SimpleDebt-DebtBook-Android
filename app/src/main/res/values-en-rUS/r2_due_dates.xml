@@ -19,4 +19,7 @@
     <string name="due_optional">Optional</string>
     <string name="debt_entry_date">Debt date</string>
     <string name="due_reminder_on">Reminder on</string>
+    <string name="debt_delete_with_repayments_question">The loan and all its repayments will be deleted.</string>
+    <string name="debt_calendar_input">Enter date</string>
+    <string name="debt_calendar_show">Show calendar</string>
 </resources>

@@ -1,6 +1,5 @@
 package com.breckneck.debtbook.debt.details
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,10 +11,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.HideImage
 import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.SouthWest
 import androidx.compose.material.icons.outlined.Tune
@@ -25,7 +22,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -41,8 +37,6 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.DebtFilterChip
 import com.breckneck.debtbook.debt.DebtOrderSheet
 import com.breckneck.debtbook.debt.PersonAvatar
-import com.breckneck.debtbook.debt.encodePersonPhoto
-import com.breckneck.debtbook.debt.rememberDebtPhotoPicker
 import com.breckneck.debtbook.debt.main.dueLabel
 import com.breckneck.debtbook.debt.main.localDay
 import com.breckneck.debtbook.debt.main.signedMoney
@@ -67,16 +61,11 @@ private val historyOrders = listOf(
 
 @Composable
 internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, host: DebtDetailsFragment.OnButtonClickListener,
-    delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit, onDue: (Int) -> Unit, onRepaymentAction: (Int) -> Unit) {
+    editPerson: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit,
+    onDue: (Int) -> Unit, onRepaymentAction: (Int) -> Unit) {
     val today = localDay()
     val name by vm.humanName.observeAsState("")
     val photo by vm.humanPhoto.observeAsState()
-    val context = LocalContext.current.applicationContext
-    val photoPicker = rememberDebtPhotoPicker(
-        onFailure = { Toast.makeText(context, R.string.debt_photo_failed, Toast.LENGTH_SHORT).show() },
-    ) { uri ->
-        vm.updatePhoto { encodePersonPhoto(context, uri) }
-    }
     val currency = vm.humanCurrency.orEmpty()
     val sum by vm.overallSum.observeAsState()
     val state by vm.screenState.observeAsState()
@@ -98,7 +87,6 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
             showLoading = true
         }
     }
-    var renaming by rememberSaveable { mutableStateOf(false) }
     val colors = bubbleColors()
     BubbleScaffold(
         hostInsets = hostInsets,
@@ -120,14 +108,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                         }
                     },
                 ) { dismiss ->
-                    BubbleActionItem(stringResource(R.string.person_rename), Icons.Outlined.Edit,
-                        { dismiss(); renaming = true })
-                    BubbleActionItem(
-                        stringResource(if (photo == null) R.string.debt_choose_photo else R.string.debt_replace_photo),
-                        Icons.Outlined.AddAPhoto, { dismiss(); photoPicker() },
-                    )
-                    if (photo != null) BubbleActionItem(stringResource(R.string.debt_remove_photo), Icons.Outlined.HideImage,
-                        { dismiss(); vm.updatePhoto { null } })
+                    BubbleActionItem(stringResource(R.string.edit), Icons.Outlined.Edit, { dismiss(); editPerson() })
                     BubbleActionItem(stringResource(R.string.person_delete_action), Icons.Outlined.DeleteOutline,
                         { dismiss(); delete() }, destructive = true)
                 }
@@ -170,21 +151,22 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                     }
                 }
                 item(key = "debtSections") {
-                    DebtHistoryTabs(section, !loans?.earlyEntries.isNullOrEmpty(), ready, vm::selectDebtSection)
-                }
-                item(key = "historyControls") {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
-                                Filter.NEGATIVE to R.string.show_negative)) {
-                                DebtFilterChip(stringResource(label), filter == choice, {
-                                    order?.let { vm.onSetDebtSort(choice, it) }
-                                }, Modifier.testTag("historyFilter-${choice.name}"), enabled = ready)
-                            }
-                        }
+                        DebtHistoryTabs(section, !loans?.earlyEntries.isNullOrEmpty(), ready,
+                            vm::selectDebtSection, Modifier.weight(1f))
                         BubbleIconButton({ sortOpen = true }, Modifier.testTag("sortButton"), enabled = ready && order != null) {
                             Icon(Icons.Outlined.Tune, stringResource(R.string.debt_history_order), Modifier.size(19.dp))
+                        }
+                    }
+                }
+                item(key = "historyControls") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
+                            Filter.NEGATIVE to R.string.show_negative)) {
+                            DebtFilterChip(stringResource(label), filter == choice, {
+                                order?.let { vm.onSetDebtSort(choice, it) }
+                            }, Modifier.testTag("historyFilter-${choice.name}"), enabled = ready)
                         }
                     }
                 }
@@ -226,45 +208,30 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
             if (rememberChoice) vm.saveDebtOrder(choice)
         }
     }
-    if (renaming) {
-        var input by rememberSaveable { mutableStateOf(name) }
-        AlertDialog(onDismissRequest = { renaming = false }, title = { Text(stringResource(R.string.person_rename)) },
-            text = { OutlinedTextField(input, { input = it }, singleLine = true, label = { Text(stringResource(R.string.person_name)) }) },
-            confirmButton = { TextButton({ vm.rename(input); renaming = false }, enabled = input.isNotBlank()) { Text(stringResource(R.string.save)) } },
-            dismissButton = { TextButton({ renaming = false }) { Text(stringResource(R.string.cancel)) } })
-    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DebtHistoryTabs(section: DebtSection, hasEarlyEntries: Boolean, enabled: Boolean, select: (DebtSection) -> Unit) {
+private fun DebtHistoryTabs(section: DebtSection, hasEarlyEntries: Boolean, enabled: Boolean,
+    select: (DebtSection) -> Unit, modifier: Modifier = Modifier) {
     val colors = bubbleColors()
     val sections = if (hasEarlyEntries) DebtSection.entries else listOf(DebtSection.OPEN, DebtSection.SETTLED)
-    val index = sections.indexOf(section).coerceAtLeast(0)
-    val tabs: @Composable () -> Unit = {
-        for (tab in sections) {
-            val (label, tag) = when (tab) {
-                DebtSection.OPEN -> R.string.open_debts to "openDebtsTab"
-                DebtSection.SETTLED -> R.string.settled_debts to "settledDebtsTab"
-                DebtSection.EARLY -> R.string.early_entries to "earlyEntriesTab"
-            }
-            Tab(
-                selected = tab == section, onClick = { select(tab) }, enabled = enabled,
-                modifier = Modifier.testTag(tag), selectedContentColor = colors.action, unselectedContentColor = colors.muted,
-                text = { Text(stringResource(label), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleSmall) },
-            )
+    BubbleDirectionTabs(sections, section.takeIf(sections::contains) ?: DebtSection.OPEN, colors.action, enabled, select,
+        modifier = modifier.testTag("debtHistoryTabs"), tabModifier = { tab ->
+            Modifier.testTag(when (tab) {
+                DebtSection.OPEN -> "openDebtsTab"
+                DebtSection.SETTLED -> "settledDebtsTab"
+                DebtSection.EARLY -> "earlyEntriesTab"
+            })
+        },
+    ) { tab, active ->
+        val label = when (tab) {
+            DebtSection.OPEN -> R.string.open_debts
+            DebtSection.SETTLED -> R.string.settled_debts
+            DebtSection.EARLY -> R.string.early_entries
         }
-    }
-    if (hasEarlyEntries) {
-        SecondaryScrollableTabRow(
-            index, containerColor = colors.background, contentColor = colors.action,
-            edgePadding = 0.dp, divider = { HorizontalDivider(color = colors.border) }, tabs = tabs,
-        )
-    } else {
-        SecondaryTabRow(
-            index, containerColor = colors.background, contentColor = colors.action,
-            divider = { HorizontalDivider(color = colors.border) }, tabs = tabs,
-        )
+        Text(stringResource(label), Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+            color = if (active) colors.onAction else colors.ink, textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -321,11 +288,18 @@ private fun LoanCard(row: DebtDomain, rest: BigDecimal, currency: String, today:
                             day != null -> dueLabel(day, true, today)
                             else -> stringResource(R.string.debt_no_due)
                         }
-                        TextButton(due, enabled = enabled, modifier = Modifier.widthIn(max = badgeWidth),
+                        if (closed) {
+                            Row(Modifier.widthIn(max = badgeWidth).background(colors.mint, CircleShape).padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.Check, null, Modifier.size(14.dp), tint = colors.onMint)
+                                Text(label, Modifier.padding(start = 4.dp), color = colors.onMint,
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
+                        } else TextButton(due, enabled = enabled, modifier = Modifier.widthIn(max = badgeWidth).testTag("loanDue-${row.id}"),
                             contentPadding = PaddingValues(horizontal = 8.dp), colors = ButtonDefaults.textButtonColors(
-                                containerColor = if (overdue) colors.dangerContainer else if (closed) colors.mint else colors.fill,
+                                containerColor = if (overdue) colors.dangerContainer else colors.fill,
                                 contentColor = if (overdue) colors.danger else colors.onMint)) {
-                            Icon(if (closed) Icons.Outlined.Check else Icons.Outlined.DateRange, null, Modifier.size(14.dp))
+                            Icon(Icons.Outlined.DateRange, null, Modifier.size(14.dp))
                             Text(label, Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelSmall)
                         }
                     }

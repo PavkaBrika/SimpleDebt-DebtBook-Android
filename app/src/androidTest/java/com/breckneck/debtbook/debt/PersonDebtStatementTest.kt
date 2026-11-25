@@ -53,7 +53,7 @@ class PersonDebtStatementTest {
         assertTrue(included.contains("Entry · -200 RUB\nEarly mixed note"))
     }
 
-    @Test fun statementSummarizesPaymentsUnderEachLoan() {
+    @Test fun statementListsPaymentsAndTheirTotalsUnderEachLoan() {
         val loan = old.copy(sum = 16000.toBigDecimal())
         val first = old.copy(id = 2, sum = (-3600).toBigDecimal(), date = "2025-01-02", repaymentOfId = loan.id)
         val second = first.copy(id = 3, sum = (-2400).toBigDecimal(), date = "2025-01-03")
@@ -65,6 +65,8 @@ class PersonDebtStatementTest {
 
             Операции:
             ${LedgerDate.display(loan.date, Locale.forLanguageTag("ru"))} · Мой заём — 16 000 RUB
+            ${LedgerDate.display(first.date, Locale.forLanguageTag("ru"))} · Возврат — 3 600 RUB
+            ${LedgerDate.display(second.date, Locale.forLanguageTag("ru"))} · Возврат — 2 400 RUB
             Возвращено — 6 000 RUB
             Остаток — 10 000 RUB
         """.trimIndent(), statement(rows, "ru", "10000"))
@@ -76,7 +78,7 @@ class PersonDebtStatementTest {
         val rows = listOf(loan, payment, payment.copy(id = 3, cancelled = true))
         // Includes a +1 opening adjustment.
         val text = statement(rows, "en", "-6.505")
-        listOf("I owe you 6.505 RUB", "You lent me 10.005 RUB", "Cancelled repayment — 2.50 RUB",
+        listOf("I owe you 6.505 RUB", "You lent me 10.005 RUB", "Repayment — 2.50 RUB", "Cancelled repayment — 2.50 RUB",
             "Repaid — 2.50 RUB", "Remaining — 7.505 RUB").forEach { assertTrue(text, text.contains(it)) }
     }
 }

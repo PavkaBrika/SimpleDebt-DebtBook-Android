@@ -243,11 +243,20 @@ class AuthAccessTest {
                 compose.awaitTag("personHistory")
                 assertNotNull(person()?.photo)
                 compose.onNodeWithContentDescription(manage).performClick()
+                compose.onNodeWithText(context.getString(R.string.edit)).performClick()
                 compose.onNodeWithText(remove).performClick()
+                assertNotNull(person()?.photo)
+                compose.awaitTag("saveDebtPerson").performClick()
                 compose.waitUntil(5_000) { person()?.photo == null }
+                compose.awaitTag("personHistory")
                 compose.onNodeWithContentDescription(manage).performClick()
+                compose.onNodeWithText(context.getString(R.string.edit)).performClick()
                 compose.onNodeWithText(choose).performClick()
                 selectFixturePhoto()
+                compose.waitUntil(12_000) { compose.onAllNodesWithText(replace).fetchSemanticsNodes(false).isNotEmpty() }
+                assertNull(person()?.photo)
+                compose.onNodeWithText(context.getString(R.string.enter_pin)).assertDoesNotExist()
+                compose.awaitTag("saveDebtPerson").performClick()
                 compose.waitUntil(12_000) { person()?.photo != null }
                 compose.awaitTag("personHistory").assertIsDisplayed()
                 compose.onNodeWithText(context.getString(R.string.enter_pin)).assertDoesNotExist()

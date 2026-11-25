@@ -1,7 +1,7 @@
 package com.breckneck.debtbook.core.ui.components
 
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -32,16 +32,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
@@ -56,6 +63,33 @@ private val barTabs = listOf(
     BarTab(R.id.settingsFragment, R.string.settings, Icons.Outlined.Tune),
 )
 
+internal val LocalBubbleTabMotion = compositionLocalOf<BubbleTabMotion?> { null }
+
+/** Keeps the indicator position across the separate Fragment compositions. */
+internal class BubbleTabMotion {
+    private var target by mutableIntStateOf(-1)
+    var position by mutableFloatStateOf(0f)
+        private set
+
+    fun destinationChanged(destination: Int) {
+        val index = barTabs.indexOfFirst { it.destination == destination }
+        if (index < 0) {
+            if (target >= 0) position = target.toFloat()
+            target = -1
+        } else {
+            if (target < 0) position = index.toFloat()
+            target = index
+        }
+    }
+
+    suspend fun moveTo(index: Int) {
+        if (target != index || position == index.toFloat()) return
+        Animatable(position).animateTo(index.toFloat(), tween(240, easing = CubicBezierEasing(.2f, .8f, .2f, 1f))) {
+            if (target == index) position = value
+        }
+    }
+}
+
 /** Place above the system gesture inset. The host supplies the current nav graph destination. */
 @Composable
 internal fun BubbleBottomBar(
@@ -67,9 +101,11 @@ internal fun BubbleBottomBar(
     if (selectedIndex < 0) return
 
     val colors = bubbleColors()
+    val motion = LocalBubbleTabMotion.current
+    LaunchedEffect(motion, selectedIndex) { motion?.moveTo(selectedIndex) }
 
     Box(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).testTag("bubbleBottomBar-$destination"),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
@@ -81,13 +117,11 @@ internal fun BubbleBottomBar(
         ) {
             BoxWithConstraints(Modifier.padding(6.dp)) {
                 val tabWidth = maxWidth / barTabs.size
-                val offset by animateDpAsState(
-                    targetValue = tabWidth * selectedIndex,
-                    animationSpec = tween(240, easing = CubicBezierEasing(.2f, .8f, .2f, 1f)),
-                    label = "Selected destination",
-                )
                 Box(Modifier.matchParentSize()) {
-                    Box(Modifier.offset(x = offset).width(tabWidth).fillMaxHeight().background(colors.selectedTab, CircleShape))
+                    Box(Modifier.offset { IntOffset(
+                        (tabWidth * (motion?.position ?: selectedIndex.toFloat())).roundToPx(), 0,
+                    ) }.width(tabWidth).fillMaxHeight().background(colors.selectedTab, CircleShape)
+                        .testTag("bottomTabIndicator"))
                 }
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup()) {
                     barTabs.forEach { tab ->
@@ -96,6 +130,7 @@ internal fun BubbleBottomBar(
                         Column(
                             modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 50.dp)
                                 .clip(CircleShape)
+                                .testTag("bottomTab-${tab.destination}")
                                 .selectable(selected, role = Role.Tab) { onDestinationSelected(tab.destination) }
                                 .padding(horizontal = 1.dp, vertical = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,

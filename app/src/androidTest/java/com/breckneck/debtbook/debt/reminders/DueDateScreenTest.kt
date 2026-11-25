@@ -2,8 +2,12 @@ package com.breckneck.debtbook.debt.reminders
 
 import com.breckneck.debtbook.debt.awaitTag
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import com.breckneck.debtbook.debt.record
 import android.content.Context
+import android.graphics.Bitmap
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -17,14 +21,12 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.pressBack
-import androidx.test.espresso.matcher.ViewMatchers.*
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.deptbook.domain.util.LedgerDate
 import database.AppDataBase
 import entity.Debt
 import entity.Human
-import org.hamcrest.Matchers.*
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -41,14 +43,18 @@ class DueDateScreenTest {
     private val id = 900065
     private var oldPin = false
     private var oldAds = false
+    private var oldTheme: String? = null
     @Before fun setup() {
         oldPin = prefs.getBoolean("pin_code_is_enabled", false); oldAds = prefs.getBoolean("ads_disabled", false)
-        prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true).commit()
+        oldTheme = prefs.getString("app_theme", null)
+        val dark = InstrumentationRegistry.getArguments().getString("theme") == "dark"
+        prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true)
+            .putString("app_theme", if (dark) "DARK" else "LIGHT").commit()
         clean()
     }
     @After fun cleanup() {
         clean()
-        prefs.edit().putBoolean("pin_code_is_enabled", oldPin).putBoolean("ads_disabled", oldAds).commit()
+        prefs.edit().putBoolean("pin_code_is_enabled", oldPin).putBoolean("ads_disabled", oldAds).putString("app_theme", oldTheme).commit()
     }
     private fun clean() { dao.deleteDebtsByHumanId(id); dao.deleteHumanById(id) }
     private fun row() = dao.getAllDebtsById(id).first { it.id == id }
@@ -72,21 +78,31 @@ class DueDateScreenTest {
         }
     }
 
-    private fun edit() {
+    private fun openDue(fromActions: Boolean = false) {
         waitForHistory()
-        compose.record(id).performClick()
-        compose.onNodeWithTag("dueSettingsButton").assertExists()
-        compose.onNodeWithTag("editButton").performClick()
+        if (fromActions) {
+            compose.record(id).performClick()
+            compose.awaitTag("dueSettingsButton").performClick()
+        } else {
+            compose.onNodeWithTag("loanDue-$id").performClick()
+        }
+        compose.awaitTag("debtDueSheet").assertIsDisplayed()
     }
 
     private fun applyDate() {
-        compose.onNodeWithTag("dueSaveButton").assertIsEnabled().performClick()
-        compose.waitUntil(8000) { compose.onAllNodesWithTag("debtDueSheet").fetchSemanticsNodes(false).isEmpty() }
+        compose.onNodeWithTag("dueSaveButton").assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
+        waitForHistory()
     }
 
-    private fun saveForm() { compose.awaitTag("setFinanceButton").performClick() }
+    private fun capture() {
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        File(context.getExternalFilesDir(null), "details-due-sheet.png").outputStream().use {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        bitmap.recycle()
+    }
 
-    @Test fun editReminderFromDebtFormBothDirectionsIncludingAfterRepayment() {
+    @Test fun changeAndClearReminderFromDetailsInBothDirections() {
         assertTrue("Grant notifications before running", DebtReminders.get(context).allowed())
         for (sign in listOf(1, -1)) {
             dao.insertHuman(Human(id, "Due screen", BigDecimal.ZERO, "EUR"))
@@ -99,70 +115,61 @@ class DueDateScreenTest {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.onHumanClick(id, "EUR", "Due screen") }
                 waitForHistory()
-                val datesColumn = hasAnyAncestor(hasTestTag("historyDebtDates"))
-                compose.onNode(datesColumn and hasText(LedgerDate.display("2026-11-16")), useUnmergedTree = true).assertExists()
-                compose.onNode(datesColumn and hasText(scenario.screenString(R.string.due_reminder_on) + " · 10:00"), useUnmergedTree = true).assertExists()
+                val dates = hasAnyAncestor(hasTestTag("historyDebtDates"))
+                compose.onNode(dates and hasText(LedgerDate.display("2026-11-16")), useUnmergedTree = true).assertExists()
+                compose.onNode(dates and hasText(scenario.screenString(R.string.due_reminder_on) + " · 10:00"),
+                    useUnmergedTree = true).assertExists()
 
-                compose.record(id).performClick()
-                compose.onNodeWithTag("editButton").assertExists()
-                compose.onNodeWithTag("debtActionsCancel").performClick()
-
-                edit()
-                if (sign < 0) {
-                    compose.awaitTag("lockedAmount").assert(hasSetTextAction().not())
-                    compose.onNodeWithTag("directionNegative").assertIsNotEnabled()
-                    compose.onNodeWithTag("createDebtDate").assertIsNotEnabled()
-                }
-                compose.openDueCalendarInForm()
+                openDue(fromActions = true)
                 compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
+                val calendar = compose.awaitTag("dueDatePicker").fetchSemanticsNode().boundsInWindow
+                val headline = compose.awaitTag("debtCalendarHeadline").fetchSemanticsNode().boundsInWindow
+                assertTrue(headline.left > calendar.left && headline.left < calendar.center.x)
+                if (compose.onNodeWithTag("debtCalendarMode").isDisplayed()) {
+                    val pencil = compose.onNodeWithTag("debtCalendarMode").fetchSemanticsNode().boundsInWindow
+                    assertEquals(headline.center.y, pencil.center.y, 2f)
+                    assertTrue(headline.right <= pencil.left)
+                }
+                if (sign > 0) capture()
                 compose.enterDebtDate(scenario, "2026-11-15")
                 compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
                 compose.onNodeWithTag("dueCancelButton").performClick()
+                waitForHistory()
 
-                compose.openDueCalendarInForm()
+                openDue()
+                compose.enterDebtDate(scenario, "2099-12-29")
                 pressBack()
-                compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
-                compose.openDueCalendarInForm()
-                applyDate()
-                saveForm()
+                compose.waitForIdle()
+                if (compose.onNodeWithTag("debtDueSheet").isDisplayed()) pressBack()
                 waitForHistory()
                 assertEquals("2099-12-31", row().dueDay)
-                assertEquals(600, row().reminderMinute)
+                openDue()
+                applyDate()
                 assertEquals("legacy-token", row().reminderToken)
 
-                edit()
-                compose.openDueCalendarInForm()
-                compose.enterDebtDate(scenario, "2099-12-29")
-                applyDate()
-                assertEquals("2099-12-31", row().dueDay)
-                pressBack()
-                waitForHistory()
-                assertEquals("2099-12-31", row().dueDay)
-
-                edit()
-                compose.openDueCalendarInForm()
+                openDue()
                 compose.enterDebtDate(scenario, "2099-12-30")
                 scenario.recreate()
-                compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
+                compose.awaitTag("dueReminderSwitch").assertIsOn()
+                assertEquals("2099-12-31", row().dueDay)
                 applyDate()
-                saveForm()
                 await("reschedule") { row().dueDay == "2099-12-30" }
                 assertNotEquals("legacy-token", row().reminderToken)
                 assertEquals(600, row().reminderMinute)
 
-                edit()
-                compose.openDueCalendarInForm()
+                openDue()
                 compose.onNodeWithTag("dueTimeButton").performScrollTo().performClick()
-                compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("timeInput")))[0].performTextReplacement("16")
-                compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("timeInput")))[1].performTextReplacement("45")
-                compose.onNodeWithTag("timeConfirm").performClick()
-                compose.onNodeWithTag("dueTimeButton").assertTextContains("16:45", substring = true)
-                applyDate()
+                val inputs = compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("timeInput")))
+                inputs[0].performTextReplacement("16")
+                inputs[1].performTextReplacement("45")
+                compose.awaitTag("timeConfirm").performClick()
+                compose.onNodeWithTag("dueTimeButton").assertTextContains("16:45")
                 assertEquals(600, row().reminderMinute)
                 val oldToken = row().reminderToken
-                saveForm()
+                applyDate()
                 await("minute changed") { row().reminderMinute == 16 * 60 + 45 }
                 assertNotEquals(oldToken, row().reminderToken)
+
                 fun scheduled() = android.app.PendingIntent.getBroadcast(context, id,
                     android.content.Intent(context, DebtReminderReceiver::class.java).apply {
                         action = DebtReminders.ACTION_DELIVER
@@ -172,29 +179,38 @@ class DueDateScreenTest {
                 await("new time scheduled in Android") {
                     scheduled() && scheduler.getString("token-$id", null) == row().reminderToken
                 }
-
-                edit()
-                compose.openDueCalendarInForm()
-                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
-                compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
+                openDue()
+                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick().assertIsOff()
                 applyDate()
-                saveForm()
-                await("disable") { row().reminderToken == null }
                 assertEquals("2099-12-30", row().dueDay)
-                await("disabled alarm removed") { !scheduled() }
-                edit()
-                compose.openDueCalendarInForm()
-                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
+                await("disabled alarm removed") { row().reminderToken == null && !scheduled() }
+                openDue()
+                val toggle = compose.onNodeWithTag("dueReminderSwitch").performScrollTo()
+                val fields = compose.onNodeWithTag("dueReminderFields")
+                val collapsed = fields.fetchSemanticsNode().size.height
+                compose.mainClock.autoAdvance = false
+                try {
+                    toggle.performSemanticsAction(SemanticsActions.OnClick)
+                    compose.mainClock.advanceTimeBy(96)
+                    val growing = fields.fetchSemanticsNode().size.height
+                    compose.mainClock.advanceTimeBy(320)
+                    val expanded = fields.fetchSemanticsNode().size.height
+                    assertTrue("Animated height $collapsed → $growing → $expanded", collapsed < growing && growing < expanded)
+                } finally {
+                    compose.mainClock.autoAdvance = true
+                }
                 applyDate()
-                saveForm()
                 await("alarm enabled again") { scheduled() }
-                edit()
-                compose.openDueCalendarInForm()
-                compose.onNodeWithTag("clearDueDate").performScrollTo().performClick()
-                applyDate()
+                openDue()
+                val clear = compose.awaitTag("clearDueDate").assertIsDisplayed()
+                val save = compose.awaitTag("dueSaveButton").assertIsDisplayed()
+                assertTrue(clear.fetchSemanticsNode().boundsInWindow.right <= save.fetchSemanticsNode().boundsInWindow.left)
                 assertNotNull(row().dueDay)
-                saveForm()
-                await("due date and scheduled alarm cleared") { row().dueDay == null && !scheduled() }
+                clear.performClick()
+                waitForHistory()
+                await("due date and scheduled alarm cleared") {
+                    row().dueDay == null && row().reminderMinute == null && row().reminderToken == null && !scheduled()
+                }
                 assertEquals(0, (100 * sign).toBigDecimal().compareTo(row().sum))
                 assertEquals(0, (if (sign > 0) 100 else -80).toBigDecimal().compareTo(dao.getHumanSumDebt(id)))
             }

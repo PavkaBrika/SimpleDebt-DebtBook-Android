@@ -50,60 +50,78 @@ flowActions['choose-history-order']=(i,order)=>chooseDebtOrder(i,'historyOrder',
 flowActions['history-section']=(i,value)=>{frames[i].personSection=value;render(i,true);};
 flowActions['history-direction']=(i,value)=>{frames[i].historyFilter=value;render(i,true);};
 function personAt(i){return people.find(p=>p.id===frames[i].personId);}
-function personMenu(p) {
+function personMenu() {
   return contextActionMenu('Управление карточкой',
-    button('person-rename','Изменить имя','','menu-action','edit')+
-    '<label class="menu-action person-photo-action">'+icon('user',18)+(p.photo?'Заменить фото':'Выбрать фото')+
-      '<input type="file" accept="image/*" data-file="person-photo"></label>'+
-    (p.photo?button('person-photo-clear','Убрать фото','','menu-action','close'):'')+
+    button('person-edit','Изменить','','menu-action','edit')+
     button('person-delete','Удалить человека','','menu-action danger','trash'));
 }
 async function selectPersonPhoto(i,file) {
-  const p=personAt(i),f=frames[i];
-  const isCurrent=()=>f.route==='person'&&f.personId===p.id&&people.includes(p);
+  const f=frames[i],draft=f.personEdit;
+  const isCurrent=()=>f.route==='personEdit'&&f.personEdit===draft;
   try {
     const photo=await readDemoPhoto(file,192);
-    if(isCurrent()){p.photo=photo;changed(i,'Фото сохранено');}
+    if(isCurrent()){draft.photo=photo;render(i,true);}
   } catch {if(isCurrent())toast(i,'Не удалось прочитать фото. Выберите другое изображение.');}
 }
-flowActions['person-photo-clear']=i=>{delete personAt(i).photo;changed(i,'Фото убрано');};
-flowActions['person-rename']=(i,v,b)=>{
+flowViews.personEdit=f=>{
+  const p=people.find(person=>person.id===f.personId), draft=f.personEdit;
+  return layout('<div class="group"><div class="person-edit-photo">'+personAvatar({...p,photo:draft.photo})+
+    '<label class="btn secondary person-photo-action">'+(draft.photo?'Заменить фото':'Выбрать фото')+
+    '<input type="file" accept="image/*" data-file="person-photo"></label>'+
+    (draft.photo?button('person-photo-clear','Убрать фото','','chip'):'')+'</div>'+
+    field('user','Имя человека',entry('personEdit.name',draft.name,'text','maxlength="80"'))+'</div>'+errorText(f),
+    {action:primary('save-person','Сохранить','check'),topBar:backbar(flowNames.personEdit)});
+};
+flowActions['person-photo-clear']=i=>{frames[i].personEdit.photo='';render(i,true);};
+flowActions['person-edit']=i=>{
   const p=personAt(i);
-  showDialog(i,'Изменить имя',s=>field('user','Имя',entry('sheet.name',s.name,'text','maxlength="80"')),b,(_,s)=>{
-    if(!s.name.trim())return fail(i,'Введите имя.');p.name=s.name.trim();changed(i,'Имя изменено');
-  },'Сохранить',{name:p.name});
+  frames[i].personEdit={name:p.name,photo:p.photo||''};
+  go(i,'personEdit');
+};
+flowActions['save-person']=i=>{
+  const p=personAt(i), draft=frames[i].personEdit;
+  if(!draft.name.trim())return fail(i,'Введите имя.');
+  p.name=draft.name.trim();
+  if(draft.photo)p.photo=draft.photo;
+  else delete p.photo;
+  pop(i,'Карточка сохранена');
 };
 flowActions['person-delete']=(i,v,b)=>{
-  const p=personAt(i);confirmAction(i,b,'Удалить человека?',p.name+' и вся история расчётов будут удалены.',()=>{
+  const p=personAt(i);showDialog(i,'Удалить карточку «'+p.name+'»?',()=>'<p class="note">Все долги и возвраты в этой карточке будут удалены.</p>',b,()=>{
     people=people.filter(row=>row.id!==p.id);changed(i,'Человек удалён');
-  });
+  },'Удалить',{cancelBelow:true});
 };
 flowActions['loan-actions']=(i,v,b)=>{
   const l=findLoan(frames[i],Number(v));
   showDialog(i,l.principal>0?'Дал в долг':'Взял в долг',()=>'<div class="group">'+
-    (remaining(l)?rowAction('repay','Учесть возврат',v,'','take'):'')+rowAction('due','Срок и напоминание',v,'','date')+
+    (remaining(l)?rowAction('repay','Учесть возврат',v,'',l.principal>0?'take':'give')+rowAction('due','Срок и напоминание',v,'','date'):'')+
     (l.reminder&&remaining(l)?rowAction('reminder-preview','Предпросмотр уведомления',v,'','bell'):'')+
     rowAction('loan-edit','Редактировать запись',v,'','edit')+
-    (!l.returns.length?rowAction('loan-delete','Удалить запись',v,'','trash'):'')+'</div>',b);
+    rowAction('loan-delete','Удалить запись',v,'','trash')+'</div>',b);
 };
 flowActions['loan-edit']=(i,v)=>{
   const f=frames[i],p=personAt(i),l=findLoan(f,Number(v));if(!l)return;
-  f.d={...draft(p.cur),fixed:p.id,editId:l.id,locked:l.returns.length>0,dir:Math.sign(l.principal),name:p.name,
+  f.d={...draft(p.cur),fixed:p.id,editId:l.id,locked:l.returns.length>0,settled:!remaining(l),dir:Math.sign(l.principal),name:p.name,
     note:l.note,sum:moneyInput(Math.abs(l.principal)),date:l.date,due:l.due,remind:!!l.reminder,time:l.reminder||'09:00'};
   go(i,'new');
 };
 function updateEditedDebt(i,n) {
   const f=frames[i],d=f.d,l=findLoan(f,d.editId);
   if(!l||(l.returns.length&&(l.principal!==n*d.dir||l.date!==d.date)))return fail(i,'Исходная запись изменилась. Вернитесь в историю.');
-  Object.assign(l,{principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:''});pop(i,'Запись изменена');
+  Object.assign(l,{principal:n*d.dir,note:d.note.trim(),date:d.date});
+  if(remaining(l))Object.assign(l,{due:d.due,reminder:d.remind?d.time:''});
+  pop(i,'Запись изменена');
 }
 flowActions['loan-delete']=(i,v,b)=>{
-  const p=personAt(i),l=p.loans.find(l=>l.id===Number(v));if(!l||l.returns.length)return;
-  confirmAction(i,b,'Удалить запись?',(l.note||'Долг')+' · '+amount(l.principal,p.cur,true),()=>{p.loans=p.loans.filter(row=>row.id!==l.id);changed(i,'Запись удалена');});
+  const p=personAt(i),l=p.loans.find(l=>l.id===Number(v));if(!l)return;
+  const description=l.returns.length?'Долг и все связанные с ним возвраты будут удалены.':(l.note||'Долг')+' · '+amount(l.principal,p.cur,true);
+  showDialog(i,'Удалить запись?',()=>'<p class="note">'+escapeHtml(description)+'</p>',b,()=>{
+    p.loans=p.loans.filter(row=>row.id!==l.id);changed(i,'Запись удалена');
+  },'Удалить',{cancelBelow:true});
 };
-function exportRows(p) {
+function exportRows(p, loans=p.loans) {
   const entries=[];
-  for(const l of p.loans) {
+  for(const l of loans) {
     entries.push({date:l.date,id:l.id,label:l.note||'Долг',cents:l.principal});
     for(const r of l.returns)entries.push({date:r.date,id:r.id,label:r.cancelled?'Возврат отменён':'Возврат',cents:-Math.sign(l.principal)*r.amount});
   }
@@ -114,11 +132,20 @@ function downloadFile(name,type,content) {
   const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');
   a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-function shareText(p){return p.name+' · '+amount(balance(p),p.cur,true)+'\n\n'+exportRows(p).map(row=>row.join(' · ')).join('\n');}
+function shareText(p,loans){return p.name+' · '+amount(balance(p),p.cur,true)+'\n\n'+exportRows(p,loans).map(row=>row.join(' · ')).join('\n');}
 flowActions['person-share']=(i,v,b)=>{
-  const p=personAt(i);showDialog(i,'Поделиться историей',()=>'<pre>'+escapeHtml(shareText(p))+'</pre><div class="group">'+rowAction('share-text','Сохранить текст')+rowAction('share-excel','Сохранить таблицу Excel')+'</div>',b);
+  showDialog(i,'Поделиться историей',()=>'<div class="group">'+rowAction('share-preview','Текст','','','note')+
+    rowAction('share-excel','Файл Excel','','','stack')+'</div>',b);
 };
-flowActions['share-text']=i=>{const p=personAt(i);downloadFile('SimpleDebt-'+p.name+'.txt','text/plain;charset=utf-8',shareText(p));};
+flowActions['share-preview']=(i,v,b)=>{
+  const p=personAt(i),filter=frames[i].historyFilter;
+  const loans=p.loans.filter(l=>filter==='all'||Math.sign(l.principal)===(filter==='positive'?1:-1));
+  const closed=loans.some(l=>remaining(l)===0);
+  const included=s=>loans.filter(l=>s.includeSettled||remaining(l)>0);
+  showDialog(i,'Предпросмотр выписки',s=>(closed?'<label class="setting group">Включить погашенные долги <input type="checkbox" data-field="sheet.includeSettled" data-refresh="true" '+
+    (s.includeSettled?'checked':'')+'></label>':'')+'<div class="group statement-preview"><pre>'+escapeHtml(shareText(p,included(s)))+'</pre></div>',b,
+    (_,s)=>downloadFile('SimpleDebt-'+p.name+'.txt','text/plain;charset=utf-8',shareText(p,included(s))),'Сохранить текст');
+};
 flowActions['share-excel']=i=>{
   const p=personAt(i),rows=[['Дата','Запись','Сумма'],...exportRows(p)];
   const xml=rows.map(row=>'<Row>'+row.map(c=>'<Cell><Data ss:Type="String">'+escapeHtml(c)+'</Data></Cell>').join('')+'</Row>').join('');

@@ -1,8 +1,8 @@
 'use strict';
 // Classic scripts keep the design review usable offline from index.html.
 const flowViews = {}, flowActions = {};
-const flowNames = {categoryHistory:'История категории', financeForm:'Финансовая запись', categoryForm:'Новая категория', goalDetail:'Детали цели', goalForm:'Форма цели', backup:'Резервная копия', security:'Защита', pin:'Вход по PIN', recovery:'Восстановление PIN'};
-const flowRoots = {categoryHistory:'finance',financeForm:'finance',categoryForm:'finance',goalDetail:'goals',goalForm:'goals',backup:'settings',security:'settings',pin:'settings',recovery:'settings'};
+const flowNames = {personEdit:'Редактировать человека',categoryHistory:'История категории', financeForm:'Финансовая запись', categoryForm:'Новая категория', goalDetail:'Детали цели', goalForm:'Форма цели', backup:'Резервная копия', security:'Защита', pin:'Вход по PIN', recovery:'Восстановление PIN'};
+const flowRoots = {personEdit:'home',categoryHistory:'finance',financeForm:'finance',categoryForm:'finance',goalDetail:'goals',goalForm:'goals',backup:'settings',security:'settings',pin:'settings',recovery:'settings'};
 const currencyCodes = 'USD EUR RUB BYN UAH KZT JPY GBP AUD CAD CHF CNY SEK MXN PLN AED RON SAR RSD TJS TRY UZS MNT CZK AZN AMD BGN ILS VND BRL INR KRW IDR THB TWD NZD SGD HKD'.split(' ');
 function featureFrame() {
   return {financeDir:'Расходы',financeCur:defaultCurrency(),period:'День',day:TODAY,goalId:null,categoryId:null,trail:[],peopleOrder:prefs.peopleOrder,historyOrder:prefs.historyOrder,historyFilter:'all',personSection:'open'};
@@ -67,7 +67,21 @@ function setField(event,el,i) {
     const rows=sections[i].querySelector('[data-contacts]');if(rows)rows.innerHTML=contactRows(el.value);
   }
   if(scope==='categoryDraft'&&key==='name')sections[i].querySelector('.category-sample strong').textContent=el.value||'Категория';
-  if(event.type==='change' && (scope==='frame'||key==='emojiGroup'||el.dataset.refresh))render(i,true);
+  if(event.type==='change' && (scope==='frame'||key==='emojiGroup'||el.dataset.refresh)) {
+    const previous=key==='includeSettled'?sections[i].querySelector('.statement-preview'):null;
+    const previousHeight=previous?.offsetHeight;
+    render(i,true);
+    if(previous) {
+      const current=sections[i].querySelector('.statement-preview');
+      if(current) {
+        current.scrollTop=previous.scrollTop;
+        if(!reducedMotion.matches&&previousHeight!==current.offsetHeight) {
+          current.animate([{height:previousHeight+'px'},{height:current.offsetHeight+'px'}],{duration:240,easing:'ease-in-out'});
+        }
+      }
+    }
+    if(el.dataset.refresh) sections[i].querySelector('[data-field="'+CSS.escape(el.dataset.field)+'"]')?.focus({preventScroll:true});
+  }
 }
 function persistDemo() {
   try {localStorage.setItem('simpledebt-bubble-v2',JSON.stringify(demoSnapshot()));return true;} catch {return false;}
@@ -82,7 +96,7 @@ function applySnapshot(data) {
 function baseRoute(route) {return flowRoots[route] || (route==='person'||route==='new'?'home':route);}
 function repairRoute(f) {
     const missingPerson=!people.some(p=>p.id===f.personId);
-    if((f.route==='person'||(f.route==='new'&&f.d.fixed))&&missingPerson)setRoute(f,'home');
+    if((f.route==='person'||f.route==='personEdit'||(f.route==='new'&&f.d.fixed))&&missingPerson)setRoute(f,'home');
     if((f.route==='goalDetail'||(f.route==='goalForm'&&f.goalDraft?.id))&&!savings.some(g=>g.id===f.goalId))setRoute(f,'goals');
     if(f.route==='categoryHistory'&&!ledger.categories.some(c=>c.id===f.categoryId))setRoute(f,'finance');
     if(f.route==='financeForm'&&f.record?.id&&!ledger.entries.some(e=>e.id===f.record.id))setRoute(f,'finance');

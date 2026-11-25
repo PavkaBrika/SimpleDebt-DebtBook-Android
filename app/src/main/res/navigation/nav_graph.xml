@@ -110,6 +110,13 @@
         app:route="Details"
         tools:layout="@layout/fragment_debt_details">
         <action
+            android:id="@+id/action_debtDetailsFragment_to_editDebtPersonFragment"
+            app:destination="@id/editDebtPersonFragment"
+            app:enterAnim="@animator/goal_enter"
+            app:exitAnim="@animator/goal_fade_out"
+            app:popEnterAnim="@animator/goal_fade_in"
+            app:popExitAnim="@animator/goal_pop_exit" />
+        <action
             android:id="@+id/action_debtDetailsFragment_to_newDebtFragment"
             app:destination="@id/newDebtFragment"
             app:enterAnim="@animator/goal_enter"
@@ -134,6 +141,12 @@
             android:name="name"
             app:argType="string"
             app:nullable="true" />
+    </fragment>
+    <fragment
+        android:id="@+id/editDebtPersonFragment"
+        android:name="com.breckneck.debtbook.debt.details.EditDebtPersonFragment"
+        android:label="@string/person_edit_title">
+        <argument android:name="idHuman" app:argType="integer" />
     </fragment>
     <action
         android:id="@+id/action_openCurrencyPicker"

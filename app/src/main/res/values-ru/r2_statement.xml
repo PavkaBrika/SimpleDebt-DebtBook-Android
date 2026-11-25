@@ -19,4 +19,5 @@
     <string name="statement_include_settled">Включить погашенные долги</string>
     <string name="statement_include_early_entries">Добавить ранние записи</string>
     <string name="statement_empty">Нет операций</string>
+    <string name="statement_payment">Возврат — %1$s</string>
 </resources>

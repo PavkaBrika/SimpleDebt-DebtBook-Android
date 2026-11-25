@@ -45,6 +45,7 @@ import androidx.navigation.fragment.NavHostFragment
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
+import com.breckneck.debtbook.core.ui.components.BubbleTabMotion
 import com.breckneck.debtbook.debt.details.DebtDetailsFragment
 import com.breckneck.debtbook.debt.main.DebtFragment
 import com.breckneck.debtbook.debt.create.CreateDebtFragment
@@ -104,6 +105,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     )
     internal var screenInsets by mutableStateOf(PaddingValues(0.dp))
         private set
+    internal val bubbleTabMotion = BubbleTabMotion()
     private lateinit var tabMenu: Menu
     lateinit var navController: NavController
 
@@ -175,6 +177,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
         navController = navHostFragment.navController
+        navController.addOnDestinationChangedListener { _, destination, _ -> bubbleTabMotion.destinationChanged(destination.id) }
 
         configureHostInsets()
         // NavigationUI keeps each tab's saved back stack. The destination draws its own bar.

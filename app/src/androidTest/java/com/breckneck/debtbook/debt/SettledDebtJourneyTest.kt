@@ -140,18 +140,15 @@ class SettledDebtJourneyTest {
         awaitRows(lent, owed)
         compose.onNodeWithTag("personHistory").performScrollToNode(hasText("0\u00a0₽"))
         tap(R.id.shareHumanButton)
-        // Wait for the Material view sheet to finish moving before tapping its format button.
-        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-        android.os.SystemClock.sleep(500)
-        tap(R.id.deleteButton) // Text
-        val statement = onView(withId(R.id.statementText)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
-        await { runCatching { statement.check(matches(isDisplayed())) }.isSuccess }
-        onView(withId(R.id.includeEarlyEntries)).check(matches(withEffectiveVisibility(Visibility.GONE)))
+        compose.awaitTag("shareDebtText").performClick()
+        val statement = compose.awaitTag("statementText").assertIsDisplayed()
+        compose.onNodeWithTag("includeEarlyEntries").assertDoesNotExist()
+        compose.onNodeWithTag("includeSettled").assertDoesNotExist()
         for ((label, total) in listOf(R.string.statement_lent to 1000, R.string.statement_borrowed to 1000,
             R.string.statement_even to 0)) {
-            statement.check(matches(withText(containsString(screen.screenString(label).format("${amount(total)} RUB")))))
+            statement.assertTextContains(screen.screenString(label).format("${amount(total)} RUB"), substring = true)
         }
-        tap(R.id.cancelButton)
+        compose.awaitTag("closeDebtStatement").performClick()
         tap(R.id.settledDebtsTab)
         awaitRows()
         reopenFromPeople(positive = true, negative = true, balance = 0)

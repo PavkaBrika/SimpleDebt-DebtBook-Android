@@ -49,4 +49,6 @@
     <string name="debt_remove_photo">Foto entfernen</string>
     <string name="debt_selected_person">Person ausgewählt</string>
     <string name="debt_photo_failed">Foto konnte nicht geladen werden.</string>
+    <string name="person_edit_title">Person bearbeiten</string>
+    <string name="person_edit_failed">Die Person konnte nicht gespeichert werden.</string>
 </resources>

@@ -174,10 +174,12 @@ function loanCard(l,p) {
   const left=remaining(l), paid=Math.abs(l.principal)-left;
   const tagClass=left===0?'ok':(l.due && l.due<TODAY?'late':'');
   const lent=l.principal>0;
+  const due=left?'<button class="tag '+tagClass+'" data-act="due" data-value="'+l.id+'" aria-label="Срок и напоминание: '+dueLabel(l)+'">'+icon('date',13)+dueLabel(l)+'</button>':
+    '<span class="tag ok" data-motion-row="settled-'+l.id+'">'+icon('check',13)+dueLabel(l)+'</span>';
   return '<article class="loan '+(lent?'loan-lent':'loan-borrowed')+'"><div class="loan-top"><div><h4>'+(lent?'Дал в долг':'Взял в долг')+'</h4>'+
     (l.note?'<p class="loan-note">'+escapeHtml(l.note)+'</p>':'')+
     '<span class="subtle">'+dateText(l.date)+'</span></div>'+
-    '<button class="tag '+tagClass+'" '+(left?'':'data-motion-row="settled-'+l.id+'"')+' data-act="due" data-value="'+l.id+'" aria-label="Срок и напоминание: '+dueLabel(l)+'">'+icon(left?'date':'check',13)+dueLabel(l)+'</button>'+
+    due+
     '<button class="loan-chevron" data-act="loan-actions" data-value="'+l.id+'" aria-label="Действия с записью">'+icon('chevron',18)+'</button></div>'+
     (l.reminder?'<p class="subtle">Напомнить в '+l.reminder+'</p>':'')+
     '<div class="loan-remaining"><span>'+(lent?'Осталось получить':'Осталось вернуть')+'</span><strong>'+motionAmount('left-'+l.id,left,p.cur)+'</strong></div>'+
@@ -206,13 +208,13 @@ function person(f) {
   const p=people.find(p=>p.id===f.personId),sum=balance(p);
   const balanceClass=sum<0?' balance-debit':sum===0?' balance-neutral':'';
   return layout('<section class="balance'+balanceClass+'"><div class="eyebrow">'+(sum===0?'Баланс с человеком':sum>0?'Мне должны':'Я должен')+' · '+p.cur+'</div><div class="big-money">'+motionAmount('balance',Math.abs(sum),p.cur)+'</div></section>'+
-    '<div class="debt-history-tabs" role="tablist" aria-label="Статус долга">'+[['open','Открытые долги'],['settled','Погашенные долги']].map(([id,label])=>
-      '<button role="tab" aria-selected="'+(f.personSection===id)+'" data-act="history-section" data-value="'+id+'">'+label+'</button>').join('')+'</div>'+
-    '<div class="debt-history-controls">'+debtChips(debtDirections,f.historyFilter,'history-direction','Направление долга')+
+    '<div class="debt-history-controls"><div class="segment" role="tablist" aria-label="Статус долга">'+[['open','Открытые долги'],['settled','Погашенные долги']].map(([id,label])=>
+      '<button role="tab" class="'+(f.personSection===id?'active':'')+'" aria-selected="'+(f.personSection===id)+'" data-act="history-section" data-value="'+id+'">'+label+'</button>').join('')+'</div>'+
     iconButton('history-sort','Порядок истории','settings')+'</div>'+
+    debtChips(debtDirections,f.historyFilter,'history-direction','Направление долга')+
     (history(p,f)||empty(f.personSection==='open'?'Нет открытых долгов.':'Нет погашенных долгов.')),
     {action:primary('new','Новый долг','plus'),topBar:backbar(p.name,{action:'<div class="person-header-actions">'+
-      iconButton('person-share','Поделиться','share')+personMenu(p)+'</div>',avatar:personAvatar(p)})});
+      iconButton('person-share','Поделиться','share')+personMenu()+'</div>',avatar:personAvatar(p)})});
 }
 function field(iconName,label,control,trailing='') {
   return '<div class="field"><span class="field-icon">'+icon(iconName,17)+'</span><label class="field-body"><span class="label">'+label+'</span>'+control+'</label>'+trailing+'</div>';
@@ -229,9 +231,10 @@ function debtErrorSlot(key) {
 }
 function scheduleFields(obj,prefix,outstanding=true) {
   const inlineError=prefix==='d.'?debtErrorSlot:()=>'';
-  return '<div class="group">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+inlineError('due')+
-    '<label class="field"><span class="field-icon">'+icon('bell',17)+'</span><span class="field-body">Напомнить мне</span><input data-bind="'+prefix+'remind" type="checkbox" '+(obj.remind?'checked':'')+' '+(!obj.due||!outstanding?'disabled':'')+'></label>'+inlineError('remind')+
-    (obj.remind?field('bell','Время в день срока',input(prefix+'time',obj.time,'','time'))+inlineError('time'):'')+'</div>'+permissionPrompt(obj,prefix);
+  if(!outstanding)return '<div class="group">'+field('date','Срок возврата','<span class="field-current">'+(obj.due?dateText(obj.due):'Без срока')+'</span>')+'</div>';
+  return '<div class="group schedule-fields">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+inlineError('due')+
+    '<label class="field"><span class="field-icon">'+icon('bell',17)+'</span><span class="field-body">Напомнить мне</span><input data-bind="'+prefix+'remind" type="checkbox" '+(obj.remind?'checked':'')+' '+(!obj.due?'disabled':'')+'></label>'+inlineError('remind')+
+    (obj.remind?'<div class="reminder-time">'+field('bell','Время в день срока',input(prefix+'time',obj.time,'','time'))+inlineError('time')+'</div>':'')+'</div>'+permissionPrompt(obj,prefix);
 }
 function newDebt(f) {
   const d=f.d;
@@ -245,7 +248,7 @@ function newDebt(f) {
   const negative=d.dir<0?' debt-negative':'';
   return layout('<div class="segment'+negative+'">'+[[1,'Мне должны','take'],[-1,'Я должен','give']].map(([v,l,i])=>'<button '+(d.locked?'disabled ':'')+'data-act="direction" data-value="'+v+'" aria-pressed="'+(d.dir===v)+'" class="'+(d.dir===v?'active':'')+'">'+icon(i,16)+l+'</button>').join('')+'</div>'+
     '<div class="debt-amount'+negative+'">'+amountField('d.sum',d.sum,owner?.cur||d.cur,!owner,d.locked)+debtErrorSlot('sum')+'</div><div class="group">'+personField+suggestions+
-    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date',d.locked?'readonly':''))+debtErrorSlot('date')+'</div>'+titleRow('Возврат')+scheduleFields(d,'d.')+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
+    field('note','Комментарий',input('d.note',d.note,'На что одолжили','text','maxlength="160"'))+field('date','Дата записи',input('d.date',d.date,'','date',d.locked?'readonly':''))+debtErrorSlot('date')+'</div>'+titleRow('Возврат')+scheduleFields(d,'d.',!d.settled)+(f.error?'<p role="alert" class="error">'+f.error+'</p>':''),
     {action:button('save','Сохранить долг','','btn'+negative,'check'),topBar:backbar(d.editId?'Редактировать долг':screenNames.new)});
 }
 function findLoan(f,id) { return people.find(p=>p.id===f.personId).loans.find(l=>l.id===id); }
@@ -269,7 +272,8 @@ function sheet(f) {
   }
   if(f.error&&s.kind!=='repay') body+='<p class="error" role="alert">'+f.error+'</p>';
   const action={repay:'Учесть возврат',due:'Сохранить',undo:'Отменить возврат',restore:'Восстановить возврат'}[s.kind];
-  body+=primary('confirm',action,s.kind==='undo'?'reset':'check');
+  const confirm=primary('confirm',action,s.kind==='undo'?'reset':'check');
+  body+=s.kind==='due'&&l.due?'<div class="due-sheet-actions">'+button('clear-due','Очистить срок','','btn due-clear')+confirm+'</div>':confirm;
   return '<div class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-label="'+name+'">'+body+'</section></div>';
 }
 const board=document.querySelector('#board');
@@ -462,6 +466,7 @@ function confirmSheet(i) {
     if(!remaining(l))l.reminder='';
     message='Возврат записан';
   } else if(s.kind==='due') {
+    if(!remaining(l))return closeSheet(i);
     const issue=validSchedule(s);if(issue)return fail(i,issue);
     l.due=s.due;l.reminder=remaining(l)&&s.remind?s.time:'';message='Срок и напоминание сохранены в макете';
   } else if(s.kind==='restore') {
@@ -596,7 +601,15 @@ board.addEventListener('click',event=>{
     case 'repay':return openSheet(i,{kind:'repay',loan:Number(value),sum:''},b);
     case 'due':{
       const l=findLoan(f,Number(value));
+      if(!l||!remaining(l))return;
       return openSheet(i,{kind:'due',loan:l.id,due:l.due,remind:!!l.reminder,time:l.reminder||'09:00'},b);
+    }
+    case 'clear-due':{
+      if(f.sheet?.kind!=='due')return;
+      const l=findLoan(f,f.sheet.loan);
+      if(!l||!remaining(l))return closeSheet(i);
+      l.due='';l.reminder='';f.sheet=null;f.error='';
+      return refreshData(i,'Срок и напоминание сняты');
     }
     case 'restore-repayment':
     case 'undo':{
@@ -657,7 +670,20 @@ function bind(event) {
   if(prop==='remind'||prop==='due')obj.askNotify=!!obj.remind&&notificationAccess!=='granted';
   if(event.type==='change'&&['due','remind','cur'].includes(prop)){
     if(key==='d.cur')obj.personError=false;
+    const sheet=key==='s.remind'&&!reducedMotion.matches;
+    const previous=sheet?sections[i].querySelector('.sheet .reminder-time'):null;
+    const previousHeight=previous?.offsetHeight;
     render(i,true);
+    if(sheet) {
+      const current=sections[i].querySelector('.sheet .reminder-time');
+      const hidden={height:'0px',opacity:0};
+      if(current&&!previous) current.animate([hidden,{height:current.offsetHeight+'px',opacity:1}],{duration:220,easing:'ease-out'});
+      if(previous&&!current) {
+        previous.inert=true;previous.setAttribute('aria-hidden','true');
+        sections[i].querySelector('.sheet .schedule-fields').append(previous);
+        previous.animate([{height:previousHeight+'px',opacity:1},hidden],{duration:180,easing:'ease-in'}).onfinish=()=>previous.remove();
+      }
+    }
     if(key==='d.remind'&&obj.remind)sections[i].querySelector('[data-bind="d.time"]')?.scrollIntoView({
       block:'center',behavior:reducedMotion.matches?'instant':'smooth'
     });
