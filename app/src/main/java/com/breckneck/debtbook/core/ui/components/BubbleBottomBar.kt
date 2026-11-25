@@ -79,9 +79,8 @@ internal fun BubbleBottomBar(
     destination: Int,
     onDestinationSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    indicatorDestination: Int = destination,
 ) {
-    val selectedIndex = barTabs.indexOfFirst { it.destination == indicatorDestination }
+    val selectedIndex = barTabs.indexOfFirst { it.destination == destination }
     if (selectedIndex < 0) return
 
     val colors = bubbleColors()

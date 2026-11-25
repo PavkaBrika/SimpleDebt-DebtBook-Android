@@ -114,7 +114,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     internal var screenInsets by mutableStateOf<PaddingValues?>(null)
         private set
     private var rootTabDestination by mutableStateOf<Int?>(null)
-    private var indicatorDestination by mutableStateOf<Int?>(null)
     private var pendingTab: Int? = null
     private var debtSearchActive by mutableStateOf(false)
     private var measuredTabBarHeight by mutableStateOf<Dp?>(null)
@@ -214,7 +213,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             rootTabDestination = tab
             if (pendingTab != tab || tab == null) {
                 pendingTab = null
-                indicatorDestination = tab
             }
             if (destination.id != previousDestinationId) {
                 previousDestinationId = destination.id
@@ -232,7 +230,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
                 BubbleBottomBar(
                     destination = destination,
                     onDestinationSelected = ::onTabSelected,
-                    indicatorDestination = indicatorDestination ?: destination,
                     modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                 )
             }
@@ -245,7 +242,6 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         view.doOnPreDraw {
             if (pendingTab == destination && fragment.parentFragmentManager.primaryNavigationFragment === fragment) {
                 pendingTab = null
-                indicatorDestination = destination
             }
             fragment.startPostponedEnterTransition()
         }
@@ -264,10 +260,16 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     private fun navigateToTab(id: Int) {
+        val start = navController.graph.findStartDestination().id
+        if (id == start) {
+            // The start tab already owns the bottom entry. Save the departing tab for its next visit.
+            navController.popBackStack(start, inclusive = false, saveState = true)
+            return
+        }
         navController.navigate(id, null, navOptions {
             launchSingleTop = true
             restoreState = true
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            popUpTo(start) { saveState = true }
             anim {
                 enter = R.animator.tab_enter
                 exit = R.animator.tab_exit

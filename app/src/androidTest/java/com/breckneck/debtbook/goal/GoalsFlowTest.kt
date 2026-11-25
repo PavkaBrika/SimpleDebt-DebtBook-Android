@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getAllSemanticsNodes
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
@@ -28,6 +29,7 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.isSelectable
@@ -377,6 +379,39 @@ class GoalsFlowTest {
         compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
         awaitDestination(R.id.goalsFragment)
         goalsTab.assertIsSelected().assertIsDisplayed()
+    }
+
+    @Test fun rapidTabChangesAndBackKeepTheIndicatorOnTheVisibleScreen() {
+        fun checkTab(title: Int, destination: Int) {
+            awaitDestination(destination)
+            compose.onNode(hasTestTag("bubbleRootTitle") and hasText(context.getString(title))).assertIsDisplayed()
+            val selected = compose.onNodeWithTag("bottomTab-$destination").assertIsSelected()
+            val indicator = compose.onNodeWithTag("bottomTabIndicator", useUnmergedTree = true)
+            assertEquals(
+                "The indicator must finish over the visible screen's tab",
+                selected.fetchSemanticsNode().boundsInWindow.center.x,
+                indicator.fetchSemanticsNode().boundsInWindow.center.x,
+                3f,
+            )
+        }
+
+        tab(R.string.finances, R.id.financeFragment)
+        tab(R.string.settings, R.id.settingsFragment)
+        val bar = compose.onNodeWithTag("bubbleBottomBar-${R.id.settingsFragment}")
+        val barOrigin = bar.fetchSemanticsNode().boundsInWindow.topLeft
+        val taps = listOf(R.id.financeFragment, R.id.goalsFragment, R.id.mainFragment).map { id ->
+            compose.onNodeWithTag("bottomTab-$id").fetchSemanticsNode().boundsInWindow.center - barOrigin
+        }
+        bar.performTouchInput { taps.forEach { click(it) } }
+        checkTab(R.string.debts, R.id.mainFragment)
+
+        tab(R.string.finances, R.id.financeFragment)
+        checkTab(R.string.finances, R.id.financeFragment)
+        val previous = onMain { activity -> activity.also { it.recreate() } }
+        compose.waitUntil(15_000) { onMain { it !== previous } == true }
+        checkTab(R.string.finances, R.id.financeFragment)
+        ordinaryBack(R.id.mainFragment)
+        checkTab(R.string.debts, R.id.mainFragment)
     }
 
     @Test fun launcherRestoresLastTabAfterTaskIsCleared() {
