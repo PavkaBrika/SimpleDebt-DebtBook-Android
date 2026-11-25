@@ -49,25 +49,26 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.navigation.MainTab
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 
-private data class BarTab(val destination: Int, val title: Int, val icon: ImageVector)
+private data class BarTab(val destination: MainTab, val title: Int, val icon: ImageVector)
 
 private val barTabs = listOf(
-    BarTab(R.id.mainFragment, R.string.debts, Icons.Outlined.MenuBook),
-    BarTab(R.id.financeFragment, R.string.finances, Icons.Outlined.DonutSmall),
-    BarTab(R.id.goalsFragment, R.string.goals, Icons.Outlined.Flag),
-    BarTab(R.id.settingsFragment, R.string.settings, Icons.Outlined.Tune),
+    BarTab(MainTab.DEBTS, R.string.debts, Icons.Outlined.MenuBook),
+    BarTab(MainTab.FINANCES, R.string.finances, Icons.Outlined.DonutSmall),
+    BarTab(MainTab.GOALS, R.string.goals, Icons.Outlined.Flag),
+    BarTab(MainTab.SETTINGS, R.string.settings, Icons.Outlined.Tune),
 )
 
 internal val LocalHostedTabBarHeight = compositionLocalOf<Dp?> { null }
 
-/** A nested Fragment transition includes the root tab bar in the outgoing screen or back preview. */
+/** Keep the content clear of the shared panel. Previews can render their own panel. */
 @Composable
-internal fun BubbleScreenTabs(destination: Int, onDestinationSelected: (Int) -> Unit) {
+internal fun BubbleScreenTabs(destination: MainTab) {
     val hostedHeight = LocalHostedTabBarHeight.current
     if (hostedHeight == null) {
-        BubbleBottomBar(destination, onDestinationSelected)
+        BubbleBottomBar(destination, {})
     } else {
         Spacer(Modifier.height(hostedHeight))
     }
@@ -76,8 +77,8 @@ internal fun BubbleScreenTabs(destination: Int, onDestinationSelected: (Int) -> 
 /** Place above the system gesture inset. The host supplies the current nav graph destination. */
 @Composable
 internal fun BubbleBottomBar(
-    destination: Int,
-    onDestinationSelected: (Int) -> Unit,
+    destination: MainTab,
+    onDestinationSelected: (MainTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selectedIndex = barTabs.indexOfFirst { it.destination == destination }
@@ -92,7 +93,7 @@ internal fun BubbleBottomBar(
     )
 
     Box(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).testTag("bubbleBottomBar-$destination"),
+        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).testTag("bubbleBottomBar-${destination.key}"),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
@@ -120,7 +121,7 @@ internal fun BubbleBottomBar(
                         Column(
                             modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 50.dp)
                                 .clip(CircleShape)
-                                .testTag("bottomTab-${tab.destination}")
+                                .testTag("bottomTab-${tab.destination.key}")
                                 .selectable(selected, role = Role.Tab) { onDestinationSelected(tab.destination) }
                                 .padding(horizontal = 1.dp, vertical = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,

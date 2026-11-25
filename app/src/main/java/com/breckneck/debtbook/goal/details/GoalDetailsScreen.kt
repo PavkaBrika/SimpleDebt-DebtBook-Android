@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.navigation.RouteLoadingScreen
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
 import com.breckneck.debtbook.core.ui.components.BubbleListRow
@@ -54,9 +55,13 @@ import com.breckneck.debtbook.goal.ui.GoalDeleteButton
 import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
-internal fun GoalDetailsScreen(vm: GoalDetailsViewModel, hostInsets: PaddingValues, onBack: () -> Unit) {
+internal fun GoalDetailsScreen(vm: GoalDetailsViewModel, hostInsets: PaddingValues, onBack: () -> Unit, onEdit: () -> Unit) {
     val state by vm.collectAsState()
-    val goal = state.goal ?: return
+    val goal = state.goal
+    if (goal == null) {
+        RouteLoadingScreen(hostInsets, R.string.goals, onBack, state.loadFailed) { vm.retryHistory() }
+        return
+    }
     GoalDetailsContent(
         goal = goal,
         state = state,
@@ -64,7 +69,7 @@ internal fun GoalDetailsScreen(vm: GoalDetailsViewModel, hostInsets: PaddingValu
         onBack = onBack,
         onAdd = { vm.openAdjustment(withdraw = false) },
         onSubtract = { vm.openAdjustment(withdraw = true) },
-        onEdit = { vm.edit() },
+        onEdit = onEdit,
         onDelete = { vm.openDelete() },
         onRetry = { vm.retryHistory() },
     )

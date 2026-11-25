@@ -32,9 +32,10 @@ internal data class DebtForm(
 
 @Serializable
 internal data class DebtPerson(
-    val idHuman: Int,
-    val currency: String,
-    val name: String,
+    val idHuman: Int = 0,
+    val currency: String? = null,
+    val name: String? = null,
+    val newHuman: Boolean = false,
     val showSettledDebts: Boolean = false,
     val openDebtId: Int = -1,
 )

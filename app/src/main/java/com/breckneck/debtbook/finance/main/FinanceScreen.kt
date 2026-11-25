@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.navigation.MainTab
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -52,7 +53,8 @@ import kotlinx.coroutines.launch
 internal fun FinanceScreen(
     vm: FinanceViewModel,
     hostInsets: PaddingValues,
-    host: FinanceFragment.OnButtonClickListener,
+    onAdd: (FinanceCategoryState, String, String) -> Unit,
+    onCategory: (String, Int, FinanceCategoryState, String, String) -> Unit,
     onCurrencyClick: (String) -> Unit,
 ) {
     val state by vm.summary.collectAsState()
@@ -63,10 +65,9 @@ internal fun FinanceScreen(
         stepPeriod = vm::stepPeriod,
         onCurrencyClick = { onCurrencyClick(state.currency) },
         saveDirection = vm::setDirection,
-        onCategory = { host.onFinanceCategoryClick(it.name, it.id, it.state, state.currency, entryDay) },
-        onAdd = { host.onAddFinanceButtonClick(it, entryDay, state.currency) },
+        onCategory = { onCategory(it.name, it.id, it.state, state.currency, entryDay) },
+        onAdd = { onAdd(it, entryDay, state.currency) },
         retry = vm::refresh,
-        onTab = host::onTabSelected,
         hostInsets = hostInsets,
     )
 }
@@ -81,7 +82,6 @@ private fun FinanceContent(
     onCategory: (FinanceCategory) -> Unit,
     onAdd: (FinanceCategoryState) -> Unit,
     retry: () -> Unit,
-    onTab: (Int) -> Unit,
     hostInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val colors = bubbleColors()
@@ -147,7 +147,7 @@ private fun FinanceContent(
         bottomAction = if (shortWindow) null else {
             { FinanceAddButton(selected, { onAdd(selected) }, Modifier.fillMaxWidth()) }
         },
-        tabs = { BubbleScreenTabs(R.id.financeFragment, onTab) },
+        tabs = { BubbleScreenTabs(MainTab.FINANCES) },
     ) { padding ->
         HorizontalPager(
             state = pager,
@@ -323,7 +323,7 @@ private fun FinancePreview() {
     DebtBookTheme {
         FinanceContent(
             FinanceSummary("RUB", FinanceCategoryState.INCOME, period, summarizeFinances(emptyList(), "RUB", period)),
-            {}, {}, {}, {}, {}, {}, {}, {},
+            {}, {}, {}, {}, {}, {}, {},
         )
     }
 }

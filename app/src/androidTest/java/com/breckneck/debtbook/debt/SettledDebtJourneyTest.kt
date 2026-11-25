@@ -1,15 +1,13 @@
 package com.breckneck.debtbook.debt
 
+import com.breckneck.debtbook.core.ui.awaitRoute
 import android.content.Context
 import android.os.Process
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.*
 import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -17,8 +15,6 @@ import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
-import com.breckneck.debtbook.debt.details.DebtDetailsViewModel
-import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.debtbook.debt.reminders.enterDebtDate
 import com.breckneck.debtbook.debt.reminders.clickDebtFormAction
@@ -26,7 +22,6 @@ import com.breckneck.debtbook.debt.reminders.openDueCalendarInForm
 import com.breckneck.debtbook.debt.reminders.screenString
 import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.util.MoneyDisplay
-import com.breckneck.deptbook.domain.util.ScreenState
 import database.AppDataBase
 import entity.Debt
 import org.hamcrest.Matchers.*
@@ -52,19 +47,14 @@ class SettledDebtJourneyTest {
         val originalId = issued().id
         return records().filter { it.repaymentOfId == originalId }.sortedBy { it.id }
     }
-    private fun fragment(activity: MainActivity) =
-        (activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
-            .childFragmentManager.primaryNavigationFragment!!
-    private fun tap(id: Int) {
-        val tag = context.resources.getResourceEntryName(id)
-        when (id) {
-            R.id.openDebtsTab, R.id.settledDebtsTab -> {
+    private fun tap(tag: String) {
+        when (tag) {
+            "openDebtsTab", "settledDebtsTab" -> {
                 compose.awaitTag("personHistory").performScrollToIndex(0)
                 compose.onNodeWithTag(tag).performClick()
             }
-            R.id.shareHumanButton, R.id.addHumanButton, R.id.addDebtButton, R.id.setFinanceButton -> compose.awaitTag(tag).performClick()
-            R.id.backButton -> compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
-            else -> onView(withId(id)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).perform(click())
+            "backButton" -> compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
+            else -> compose.awaitTag(tag).performClick()
         }
     }
     private fun await(condition: () -> Boolean) = compose.waitUntil(20_000, condition)
@@ -119,27 +109,27 @@ class SettledDebtJourneyTest {
     }
 
     private fun settle() {
-        tap(R.id.addHumanButton)
+        tap("addHumanButton")
         compose.awaitTag("humanNameEditText").performTextReplacement(name)
         compose.awaitTag("debtSumEditText").performTextReplacement("1000")
         compose.openDueCalendarInForm()
         compose.enterDebtDate(screen, com.breckneck.debtbook.debt.reminders.testDay(10))
         compose.onNodeWithTag("dueSaveButton").performClick()
         compose.clickDebtFormAction("createDebtReminder")
-        tap(R.id.setFinanceButton)
+        tap("setFinanceButton")
         await { dao.getAllHuman().any { it.name == name } && records().size == 1 }
         awaitRows(issued().id)
         val token = checkNotNull(issued().reminderToken)
-        tap(R.id.addDebtButton)
+        tap("addDebtButton")
         compose.awaitTag("directionNegative").performClick()
         compose.awaitTag("debtSumEditText").performTextReplacement("1000")
-        tap(R.id.setFinanceButton)
+        tap("setFinanceButton")
         await { records().size == 2 }
         val lent = issued().id
         val owed = borrowed().id
         awaitRows(lent, owed)
         compose.onNodeWithTag("personHistory").performScrollToNode(hasText("0\u00a0₽"))
-        tap(R.id.shareHumanButton)
+        tap("shareHumanButton")
         compose.awaitTag("shareDebtText").performClick()
         val statement = compose.awaitTag("statementText").assertIsDisplayed()
         compose.onNodeWithTag("includeEarlyEntries").assertDoesNotExist()
@@ -149,7 +139,7 @@ class SettledDebtJourneyTest {
             statement.assertTextContains(screen.screenString(label).format("${amount(total)} RUB"), substring = true)
         }
         compose.awaitTag("closeDebtStatement").performClick()
-        tap(R.id.settledDebtsTab)
+        tap("settledDebtsTab")
         awaitRows()
         reopenFromPeople(positive = true, negative = true, balance = 0)
         pay(lent, 400)
@@ -158,7 +148,7 @@ class SettledDebtJourneyTest {
         assertRemaining(lent, 600)
         checkRow(borrowed(), R.string.debt_borrowed)
         assertEquals(token, issued().reminderToken)
-        tap(R.id.settledDebtsTab)
+        tap("settledDebtsTab")
         awaitRows()
         reopenFromPeople(positive = true, negative = true, balance = -400)
         pay(lent, 600)
@@ -180,7 +170,7 @@ class SettledDebtJourneyTest {
         compose.onNode(hasText(screen.screenString(R.string.repayment_cancel)) and hasClickAction()).performClick()
         await { records().single { it.id == last.id }.cancelled }
         awaitRows()
-        tap(R.id.openDebtsTab)
+        tap("openDebtsTab")
         awaitRows(lent, owed, first.id, last.id)
         assertRemaining(lent, 600)
         checkRow(records().single { it.id == last.id }, R.string.repayment_cancelled)
@@ -194,14 +184,14 @@ class SettledDebtJourneyTest {
         awaitRows()
         reopenFromPeople(positive = false, negative = false, balance = 0)
         awaitRows()
-        tap(R.id.settledDebtsTab)
+        tap("settledDebtsTab")
         awaitRows(*records().map { it.id }.toIntArray())
         checkRow(borrowed(), R.string.debt_borrowed)
         checkRow(records().single { it.repaymentOfId == owed }, R.string.repayment_paid)
     }
 
     private fun checkClosedHistory() {
-        tap(R.id.settledDebtsTab)
+        tap("settledDebtsTab")
         val (first, last) = repayments()
         awaitRows(issued().id, first.id, last.id)
         checkRow(issued(), R.string.debt_lent)
@@ -223,7 +213,7 @@ class SettledDebtJourneyTest {
     }
 
     private fun reopenFromPeople(positive: Boolean, negative: Boolean, balance: Int) {
-        tap(R.id.backButton)
+        tap("backButton")
         filtersAndOpen(positive, negative, balance)
     }
 
@@ -235,14 +225,8 @@ class SettledDebtJourneyTest {
             compose.awaitTag("peopleList").performScrollToNode(chip)
             compose.onNode(chip).performClick().assertIsSelected()
             await {
-                var ready = false
-                screen.onActivity {
-                    val vm = ViewModelProvider(fragment(it))[DebtViewModel::class.java]
-                    val people = vm.resultedHumanList.value
-                    val index = people?.indexOfFirst { p -> p.name == name } ?: -1
-                    ready = people != null && vm.screenState.value != ScreenState.LOADING && (index >= 0) == expected
-                }
-                ready
+                val row = compose.onNodeWithTag("person-${person.id}")
+                row.isDisplayed() == expected
             }
             if (expected) {
                 compose.onNodeWithTag("peopleList").performScrollToNode(hasText(name))
@@ -254,16 +238,12 @@ class SettledDebtJourneyTest {
     }
 
     private fun awaitRows(vararg ids: Int) {
-        await {
-            var ready = false
-            screen.onActivity { activity ->
-                if (activity.navController.currentDestination?.id == R.id.debtDetailsFragment) {
-                    val vm = ViewModelProvider(fragment(activity))[DebtDetailsViewModel::class.java]
-                    val rows = vm.visibleDebtRows.value
-                    ready = vm.isDeleting.value != true && rows?.map { it.id }?.toSet() == ids.toSet()
-                }
-            }
-            ready
+        compose.awaitRoute("DebtPerson")
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(hasTestTag("personHistoryLoading")).fetchSemanticsNodes().isEmpty() &&
+                (ids.isEmpty() || ids.all { id ->
+                    compose.onAllNodesWithTag("record-$id").fetchSemanticsNodes().isNotEmpty()
+                })
         }
         if (ids.isEmpty()) compose.awaitTag("personHistory").performScrollToNode(hasTestTag("emptyDebtsLayout"))
         else ids.forEach { compose.record(it).assertExists() }

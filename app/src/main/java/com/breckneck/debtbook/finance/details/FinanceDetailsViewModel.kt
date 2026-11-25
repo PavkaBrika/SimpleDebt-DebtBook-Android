@@ -1,6 +1,8 @@
 package com.breckneck.debtbook.finance.details
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.navigation.toRoute
+import com.breckneck.debtbook.core.navigation.FinanceHistory as FinanceHistoryRoute
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.breckneck.deptbook.domain.model.Finance
@@ -35,11 +37,12 @@ class FinanceDetailsViewModel @Inject constructor(
     private val getCategories: GetFinanceCategoriesByState,
     private val deleteFinance: DeleteFinance,
 ) : ViewModel() {
-    val categoryId = requireNotNull(saved.get<Int>("categoryId"))
-    val name = requireNotNull(saved.get<String>("categoryName"))
-    val currency = requireNotNull(saved.get<String>("currency"))
-    val direction = FinanceCategoryState.valueOf(requireNotNull(saved.get<String>("categoryState")))
-    val day = saved.get<String>("day") ?: LedgerDate.today()
+    private val route = saved.toRoute<FinanceHistoryRoute>()
+    val categoryId = route.categoryId
+    val name = route.categoryName
+    val currency = route.currency
+    val direction = FinanceCategoryState.valueOf(route.categoryState)
+    val day = route.day
     private val current = MutableStateFlow(FinanceHistory())
     internal val history = current.asStateFlow()
     private var load: Job? = null

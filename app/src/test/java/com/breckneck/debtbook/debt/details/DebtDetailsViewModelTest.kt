@@ -4,6 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.core.navigation.DebtPerson
 import com.breckneck.debtbook.debt.DebtUpgradeGuidance
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.repository.DataTransaction
@@ -64,7 +65,11 @@ class DebtDetailsViewModelTest {
         DebtDetailsViewModel(debts, latestId, people, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
-            }, state, mock(), recordRepayment, upgradeGuidance)
+            }, state, mock(), recordRepayment, upgradeGuidance, DebtPerson(
+                idHuman = state["idHuman"] ?: 0,
+                currency = state["currency"],
+                newHuman = state["newHuman"] ?: false,
+            ))
 
     @Test fun `repayment validates positive amount and refuses more than selected record`() {
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))

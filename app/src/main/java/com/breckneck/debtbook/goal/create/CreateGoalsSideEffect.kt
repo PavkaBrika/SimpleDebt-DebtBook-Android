@@ -7,5 +7,6 @@ sealed interface CreateGoalsSideEffect {
         val editedGoal: Goal? = null,
         val saved: Boolean = false,
     ) : CreateGoalsSideEffect
+    data object MissingGoal : CreateGoalsSideEffect
     data object LaunchImagePicker : CreateGoalsSideEffect
 }

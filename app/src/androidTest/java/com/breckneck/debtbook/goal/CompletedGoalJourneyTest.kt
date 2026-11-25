@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.goal
 
+import com.breckneck.debtbook.core.ui.awaitRoute
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -9,14 +10,11 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.goal.main.mapper.formatGoalMoney
 import database.AppDataBase
 import entity.GoalData
@@ -93,18 +91,18 @@ class CompletedGoalJourneyTest {
         // The cover can place the edit action behind the floating New goal button.
         compose.onNode(hasScrollToIndexAction()).performTouchInput { swipeUp() }
         text(R.string.goal_edit_action).performClick()
-        awaitDestination(R.id.createGoalsFragment)
+        compose.awaitRoute("GoalForm")
         waitText(name)
-        backTo(R.id.goalsFragment)
+        backTo("Goals")
 
         compose.onNodeWithText(name).performClick()
-        awaitDestination(R.id.goalDetailsFragment)
+        compose.awaitRoute("GoalDetails")
         compose.onNodeWithContentDescription(str(R.string.goal_actions)).performClick()
         text(R.string.goal_delete).assertIsDisplayed()
         text(R.string.goal_edit).performClick()
-        awaitDestination(R.id.createGoalsFragment)
-        backTo(R.id.goalDetailsFragment)
-        backTo(R.id.goalsFragment)
+        compose.awaitRoute("GoalForm")
+        backTo("GoalDetails")
+        backTo("Goals")
         topUp("1500")
         val amount = NumberFormat.getNumberInstance().format(18_000)
         val caption = str(R.string.goal_balance, "$amount\u00a0₽")
@@ -120,12 +118,12 @@ class CompletedGoalJourneyTest {
         confirmSheet(name)
         capture("headphones-confirmation")
         text(R.string.cancel).performClick()
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         compose.onNodeWithText(caption).assertIsDisplayed()
         assertEquals(history, dao.getGoalDepositsByGoalId(id))
 
         compose.onNodeWithText(name).performClick()
-        awaitDestination(R.id.goalDetailsFragment)
+        compose.awaitRoute("GoalDetails")
         compose.onNodeWithContentDescription(str(R.string.goal_actions)).assertDoesNotExist()
         val list = compose.onNode(hasScrollToIndexAction())
         capture("details")
@@ -134,12 +132,12 @@ class CompletedGoalJourneyTest {
         trash(name).performClick()
         confirmSheet(name)
         text(R.string.cancel).performClick()
-        awaitDestination(R.id.goalDetailsFragment)
+        compose.awaitRoute("GoalDetails")
         assertEquals(history, dao.getGoalDepositsByGoalId(id))
         trash(name).performClick()
         confirmSheet(name)
         text(R.string.delete).performClick()
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         compose.waitUntil(8000) { compose.onAllNodesWithText(name).fetchSemanticsNodes().isEmpty() }
         assertNull(dao.getGoal(id))
         assertTrue(dao.getGoalDepositsByGoalId(id).isEmpty())
@@ -177,12 +175,12 @@ class CompletedGoalJourneyTest {
         assertTrue("Delete remains at least 48 dp wide", deleteBounds.width >= with(compose.density) { 48.dp.toPx() })
 
         row.performTouchInput { click(Offset(right - 22.dp.toPx(), centerY)) }
-        awaitDestination(R.id.goalDetailsFragment)
-        backTo(R.id.goalsFragment)
+        compose.awaitRoute("GoalDetails")
+        backTo("Goals")
         delete.performTouchInput { click(center) }
         confirmSheet(name)
         text(R.string.cancel).performClick()
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         assertNotNull(dao.getGoal(id))
     }
 
@@ -191,7 +189,7 @@ class CompletedGoalJourneyTest {
         val id = seed(name, "500", "420", "USD")
         openGoals(name)
         compose.onNodeWithText(name).performClick()
-        awaitDestination(R.id.goalDetailsFragment)
+        compose.awaitRoute("GoalDetails")
         compose.onNodeWithContentDescription(str(R.string.goal_actions)).assertIsDisplayed()
         topUp("80")
         compose.waitUntil(8000) {
@@ -199,7 +197,7 @@ class CompletedGoalJourneyTest {
         }
         trash(name).assertIsDisplayed()
         compose.onNodeWithContentDescription(str(R.string.goal_actions)).assertDoesNotExist()
-        backTo(R.id.goalsFragment)
+        backTo("Goals")
         trash(name).assertIsDisplayed()
         assertEquals(1, dao.getGoalDepositsByGoalId(id).size)
     }
@@ -273,7 +271,7 @@ class CompletedGoalJourneyTest {
         dao.addGoalDeposit(GoalDepositData(0, oldAmount, Date(), id))
         openGoals(name)
         compose.onNodeWithText(name).performClick()
-        awaitDestination(R.id.goalDetailsFragment)
+        compose.awaitRoute("GoalDetails")
         val oldLabel = oldAmount.formatGoalMoney("USD", showPlus = true)
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(oldLabel))
         val movement = compose.onAllNodesWithText(oldLabel)
@@ -340,7 +338,7 @@ class CompletedGoalJourneyTest {
             compose.onAllNodes(goalsTab).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
         }
         compose.onNode(goalsTab).performClick()
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitRoute("Goals")
         waitText(name)
     }
 
@@ -366,22 +364,9 @@ class CompletedGoalJourneyTest {
     private fun waitText(value: String) = compose.waitUntil(8000) {
         compose.onAllNodesWithText(value).fetchSemanticsNodes().isNotEmpty()
     }
-    private fun backTo(id: Int) {
+    private fun backTo(id: String) {
         compose.waitForIdle()
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-        awaitDestination(id)
-    }
-    private fun awaitDestination(id: Int) = compose.waitUntil(30000) {
-        var ready = false
-        instrumentation.runOnMainSync {
-            ready = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
-                .filterIsInstance<MainActivity>().any { activity ->
-                    val entry = activity.navController.currentBackStackEntry
-                    val host = activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as? NavHostFragment
-                    entry?.destination?.id == id && entry.lifecycle.currentState == Lifecycle.State.RESUMED &&
-                        host?.childFragmentManager?.primaryNavigationFragment?.isResumed == true && activity.hasWindowFocus()
-                }
-        }
-        ready
+        compose.awaitRoute(id)
     }
 }

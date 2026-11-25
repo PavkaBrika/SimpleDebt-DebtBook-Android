@@ -3,11 +3,11 @@ package com.breckneck.debtbook.design
 import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
-import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.navigation.MainTab
 import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 
@@ -16,7 +16,7 @@ import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 @Preview(name = "Навигация · узкий экран", widthDp = 320, fontScale = 1.3f, locale = "ru", showBackground = true)
 @Composable
 private fun BubbleBottomBarPreview() {
-    var destination by remember { mutableIntStateOf(R.id.mainFragment) }
+    var destination by remember { mutableStateOf(MainTab.DEBTS) }
     DebtBookTheme {
         BubbleBottomBar(destination, onDestinationSelected = { destination = it })
     }

@@ -14,6 +14,7 @@ data class CreateGoalsState(
     val isDatePickerVisible: Boolean,
     val isEditMode: Boolean,
     val isInitialized: Boolean = false,
+    val loadFailed: Boolean = false,
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
     val photoFailed: Boolean = false,

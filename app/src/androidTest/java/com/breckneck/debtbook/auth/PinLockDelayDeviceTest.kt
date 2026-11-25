@@ -7,16 +7,11 @@ import com.breckneck.debtbook.settings.edgeSwipe
 import com.breckneck.debtbook.settings.requirePredictiveGestures
 import android.content.Context
 import android.os.Build
-import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
 import android.view.WindowManager
-import android.view.accessibility.AccessibilityNodeInfo
 import androidx.biometric.BiometricManager
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.pressBack
@@ -25,7 +20,6 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
-import com.breckneck.debtbook.settings.security.AppSecurityFragment
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import org.junit.*
 import org.junit.Assert.*
@@ -80,55 +74,23 @@ class PinLockDelayDeviceTest {
         AuthSession.lock()
     }
 
-    @Test fun fingerprintIsAvailableBeforeProtectionResumes() {
+    @Test fun fingerprintIsAvailableWhileProtectionEnters() {
         val status = BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
         assumeTrue(status == BiometricManager.BIOMETRIC_SUCCESS ||
             (Build.VERSION.SDK_INT >= 30 && status == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED))
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            var resumed = false
-            var protection: AppSecurityFragment? = null
-            val holdBeforeResume = object : FragmentManager.FragmentLifecycleCallbacks() {
-                override fun onFragmentViewCreated(
-                    fm: FragmentManager, fragment: Fragment, view: View, savedInstanceState: Bundle?
-                ) {
-                    if (fragment is AppSecurityFragment) {
-                        protection = fragment
-                        fm.beginTransaction().setMaxLifecycle(fragment, Lifecycle.State.STARTED).commit()
-                    }
-                }
-
-                override fun onFragmentResumed(fm: FragmentManager, fragment: Fragment) {
-                    if (fragment is AppSecurityFragment) resumed = true
-                }
-            }
-            scenario.onActivity {
-                val host = it.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
-                host.childFragmentManager.registerFragmentLifecycleCallbacks(holdBeforeResume, false)
-            }
+        ActivityScenario.launch(MainActivity::class.java).use {
             val label = context.getString(R.string.unlock_with_fingerprint)
-            val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-            fun containsLabel(node: AccessibilityNodeInfo?): Boolean {
-                if (node == null) return false
-                return node.text?.toString() == label || (0 until node.childCount).any {
-                    containsLabel(node.getChild(it))
-                }
-            }
+            awaitNode(hasText(context.getString(R.string.settings)) and hasClickAction()).performClick()
+            val protection = action(R.string.pin_code_lock).performScrollTo()
+            compose.mainClock.autoAdvance = false
             try {
-                openProtection()
-                // Compose tests only register roots whose lifecycle has reached RESUMED.
-                compose.waitUntil(10_000) { containsLabel(automation.rootInActiveWindow) }
-                scenario.onActivity { assertFalse("Protection must not have resumed yet", resumed) }
+                protection.performClick()
+                compose.mainClock.advanceTimeBy(96)
+                awaitNode(hasText(label)).assertIsDisplayed()
+                assertTrue(compose.onNodeWithTag("AppSecurity").fetchSemanticsNode().boundsInRoot.left > 0f)
             } finally {
-                scenario.onActivity {
-                    val host = it.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
-                    host.childFragmentManager.unregisterFragmentLifecycleCallbacks(holdBeforeResume)
-                    protection?.let { fragment ->
-                        host.childFragmentManager.beginTransaction()
-                            .setMaxLifecycle(fragment, Lifecycle.State.RESUMED).commit()
-                    }
-                }
+                compose.mainClock.autoAdvance = true
             }
-            awaitNode(hasText(label)).assertIsDisplayed()
         }
     }
 
@@ -136,7 +98,6 @@ class PinLockDelayDeviceTest {
         prefs.edit().remove("pin_lock_delay_millis").commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             openProtection()
-            scenario.onActivity { assertEquals(R.id.appSecurityFragment, it.navController.currentDestination?.id) }
             action(R.string.pin_lock_immediately).assertIsDisplayed()
             action(R.string.pin_lock_delay_title).performClick()
             compose.onNode(hasText(context.getString(R.string.pin_lock_immediately)) and isSelected()).assertIsDisplayed()
@@ -214,7 +175,6 @@ class PinLockDelayDeviceTest {
             action(R.string.change_pin_code).assertIsDisplayed()
 
             scenario.onActivity {
-                assertEquals(R.id.appSecurityFragment, it.navController.currentDestination?.id)
                 assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE)
             }
             assertTrue(AuthSession.isUnlocked)

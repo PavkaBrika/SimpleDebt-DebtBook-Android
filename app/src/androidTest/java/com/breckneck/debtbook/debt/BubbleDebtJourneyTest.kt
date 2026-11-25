@@ -1,5 +1,7 @@
 package com.breckneck.debtbook.debt
 
+import com.breckneck.debtbook.core.ui.awaitRoute
+import com.breckneck.debtbook.core.ui.routeIsVisible
 import android.app.UiAutomation
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.view.accessibility.AccessibilityManager
@@ -9,8 +11,6 @@ import android.content.Intent
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
-import android.view.View
-import android.view.ViewTreeObserver
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -19,7 +19,6 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
@@ -134,7 +133,7 @@ class BubbleDebtJourneyTest {
         row.assertHasClickAction().assert(!SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
         capture("people-chevron")
         row.performTouchInput { click(centerRight - Offset(23.dp.toPx(), 0f)) }
-        awaitDestination(R.id.debtDetailsFragment)
+        compose.awaitRoute("DebtPerson")
         val record = hasTestTag("record-$anna")
         compose.awaitTag("personHistory").performScrollToNode(record)
         compose.onNode(record).assertIsDisplayed()
@@ -150,39 +149,39 @@ class BubbleDebtJourneyTest {
         }
         compose.awaitTag("personHistory").assertIsDisplayed()
         pressBack()
-        awaitDestination(R.id.mainFragment)
+        compose.awaitRoute("Debts")
     }
 
     @Test fun currencyScreenFiltersDebtsAndPreservesTheNewDebtDraft() {
         balance("+18 300")
         compose.onNode(hasText("RUB") and hasClickAction()).performClick()
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         awaitCurrencyScreen()
         text(context.getString(R.string.rub)).assertIsSelected()
         text(context.getString(R.string.usd)).assertDoesNotExist()
         text(context.getString(R.string.eur)).performClick()
-        awaitDestination(R.id.mainFragment)
+        compose.awaitRoute("Debts")
         compose.awaitTag("peopleList").performScrollToNode(hasText("Claire"))
         text("Claire").assertIsDisplayed()
         text("Анна").assertDoesNotExist()
 
         compose.awaitTag("addHumanButton").performClick()
-        awaitDestination(R.id.newDebtFragment)
+        compose.awaitRoute("DebtForm")
         compose.awaitTag("debtSumEditText").performTextReplacement("123")
         compose.awaitTag("humanNameEditText").performTextReplacement("Draft")
         val currencyButton = compose.onNodeWithContentDescription(context.getString(R.string.select_currency))
         currencyButton.performScrollTo().performClick()
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         awaitCurrencyScreen()
         pressBack()
-        awaitDestination(R.id.newDebtFragment)
+        compose.awaitRoute("DebtForm")
         compose.awaitTag("humanNameEditText").assertTextContains("Draft")
         compose.awaitTag("debtSumEditText").assertTextContains("123")
         currencyButton.performScrollTo().performClick()
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         awaitCurrencyScreen()
         text(context.getString(R.string.eur)).performClick()
-        awaitDestination(R.id.newDebtFragment)
+        compose.awaitRoute("DebtForm")
         compose.awaitTag("humanNameEditText").assertTextContains("Draft")
         compose.awaitTag("debtSumEditText").assertTextContains("123")
         compose.onNode(hasText("EUR") and hasClickAction()).assertIsDisplayed()
@@ -213,7 +212,7 @@ class BubbleDebtJourneyTest {
         compose.awaitTag("debtSumEditText").performTextReplacement("10")
         capture("existing-person-form")
         compose.awaitTag("setFinanceButton").performClick()
-        awaitDestination(R.id.debtDetailsFragment)
+        compose.awaitRoute("DebtPerson")
         assertEquals(peopleCount, dao.getAllHuman().size)
         assertEquals(2, dao.getAllDebtsById(euro).size)
         assertEquals(0, dao.getHumanSumDebt(euro).compareTo(800.toBigDecimal()))
@@ -237,7 +236,7 @@ class BubbleDebtJourneyTest {
             compose.onNodeWithTag("debtPersonSuggestions").assertDoesNotExist()
             text(message).assertDoesNotExist()
             compose.awaitTag("setFinanceButton").performClick()
-            awaitDestination(R.id.debtDetailsFragment)
+            compose.awaitRoute("DebtPerson")
             assertEquals(1, dao.getAllDebtsById(duplicate).size)
         } finally {
             dao.deleteDebtsByHumanId(duplicate)
@@ -280,7 +279,7 @@ class BubbleDebtJourneyTest {
         name.performTextReplacement("Анна")
         name.assert(!fieldError(missingName))
         save.performClick()
-        awaitDestination(R.id.debtDetailsFragment)
+        compose.awaitRoute("DebtPerson")
         assertEquals(peopleCount, dao.getAllHuman().size)
         assertEquals(2, dao.getAllDebtsById(anna).size)
     }
@@ -316,9 +315,9 @@ class BubbleDebtJourneyTest {
         control("settledDebtsTab").performClick().assertIsSelected()
         compose.record(settled).assertTextContains("Settled")
         add.performClick()
-        awaitDestination(R.id.newDebtFragment)
+        compose.awaitRoute("DebtForm")
         pressBack()
-        awaitDestination(R.id.debtDetailsFragment)
+        compose.awaitRoute("DebtPerson")
         control("settledDebtsTab").assertIsSelected()
         compose.record(settled).assertTextContains("Settled")
         compose.onNodeWithTag("personHistoryLoading").assertDoesNotExist()
@@ -341,7 +340,7 @@ class BubbleDebtJourneyTest {
         amount.performTextReplacement("25")
         amount.assertTextContains("25")
         compose.awaitTag("setFinanceButton").assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
-        awaitDestination(R.id.debtDetailsFragment)
+        compose.awaitRoute("DebtPerson")
         val newId = dao.getAllDebtsById(anna).single { it.sum.compareTo(25.toBigDecimal()) == 0 }.id
         control("openDebtsTab").assertIsSelected()
         compose.record(newId).assertExists()
@@ -451,7 +450,7 @@ class BubbleDebtJourneyTest {
         assertEquals(searchCenter.x, closeCenter.x, 1f)
         assertEquals(searchCenter.y, closeCenter.y, 1f)
         balanceCard.assertDoesNotExist()
-        val tabs = compose.onNodeWithTag("bubbleBottomBar-${R.id.mainFragment}")
+        val tabs = compose.onNodeWithTag("bubbleBottomBar-debts")
         tabs.assertDoesNotExist()
 
         field.performTextReplacement("бОр")
@@ -498,7 +497,7 @@ class BubbleDebtJourneyTest {
         remainingAmount(anna, "10 000")
         capture("partial")
         pressBack()
-        awaitDestination(R.id.mainFragment)
+        compose.awaitRoute("Debts")
         compose.awaitTag("peopleList").performScrollToIndex(0)
         balance("+15 900")
         person()
@@ -510,11 +509,11 @@ class BubbleDebtJourneyTest {
         compose.record(payment.id).assertTextContains(context.getString(R.string.repayment_cancelled))
         capture("undone")
         pressBack()
-        awaitDestination(R.id.mainFragment)
+        compose.awaitRoute("Debts")
         compose.awaitTag("peopleList").performScrollToIndex(0)
         balance("+18 300")
         compose.onNode(hasText("RUB") and hasClickAction()).performClick()
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         awaitCurrencyScreen()
         text(context.getString(R.string.eur)).performClick()
         compose.awaitTag("peopleList").performScrollToNode(hasText("Claire"))
@@ -588,7 +587,7 @@ class BubbleDebtJourneyTest {
         dao.updateHuman(requireNotNull(dao.getHuman(euro)).copy(openingAdjustment = opening, sumDebt = opening + entry.sum))
 
         text("RUB").performClick()
-        awaitDestination(R.id.currencyPickerFragment)
+        compose.awaitRoute("Currencies")
         awaitCurrencyScreen()
         text(context.getString(R.string.eur)).performClick()
         compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$euro"))
@@ -637,17 +636,17 @@ class BubbleDebtJourneyTest {
             text(context.getString(action)).performClick()
         }
         manage(R.string.edit)
-        awaitDestination(R.id.editDebtPersonFragment)
+        compose.awaitRoute("EditDebtPerson")
         compose.awaitTag("editDebtPersonName").performTextReplacement("Cancel this change")
         compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
-        awaitDestination(R.id.debtDetailsFragment)
+        compose.awaitRoute("DebtPerson")
         assertEquals("Анна", dao.getHuman(anna)?.name)
         manage(R.string.edit)
         val nameField = compose.awaitTag("editDebtPersonName")
         capture("person-edit")
         nameField.performTextReplacement("Anna QA")
         compose.awaitTag("saveDebtPerson").performSemanticsAction(SemanticsActions.OnClick)
-        awaitDestination(R.id.debtDetailsFragment)
+        compose.awaitRoute("DebtPerson")
         compose.waitUntil(8000) { dao.getHuman(anna)?.name == "Anna QA" }
         val renamedTitle = compose.onNode(hasText("Anna QA") and !hasSetTextAction())
         compose.waitUntil(8000) { renamedTitle.isDisplayed() }
@@ -692,11 +691,11 @@ class BubbleDebtJourneyTest {
     }
 
     @Test fun rootTabIndicatorSlidesAndActionsShareBounds() {
-        fun indicator(destination: Int) = compose.onNode(
+        fun indicator(destination: String) = compose.onNode(
             hasTestTag("bottomTabIndicator") and hasAnyAncestor(hasTestTag("bubbleBottomBar-$destination")),
             useUnmergedTree = true,
         )
-        val originalIndicator = indicator(R.id.mainFragment).fetchSemanticsNode()
+        val originalIndicator = indicator("debts").fetchSemanticsNode()
         val original = originalIndicator.boundsInWindow
         val debt = compose.awaitTag("addHumanButton").fetchSemanticsNode().boundsInWindow
         fun title(label: Int): SemanticsNodeInteraction {
@@ -708,15 +707,14 @@ class BubbleDebtJourneyTest {
         capture("root-title-debts")
         compose.mainClock.autoAdvance = false
         try {
-            compose.onNodeWithTag("bottomTab-${R.id.financeFragment}").performSemanticsAction(SemanticsActions.OnClick)
-            awaitDestination(R.id.financeFragment)
+            compose.onNodeWithTag("bottomTab-finances").performSemanticsAction(SemanticsActions.OnClick)
             compose.mainClock.advanceTimeBy(80)
-            compose.awaitTag("bubbleBottomBar-${R.id.financeFragment}")
-            val movingIndicator = indicator(R.id.financeFragment).fetchSemanticsNode()
+            compose.awaitTag("bubbleBottomBar-finances")
+            val movingIndicator = indicator("finances").fetchSemanticsNode()
             assertEquals("The same indicator should move between tabs", originalIndicator.id, movingIndicator.id)
             val halfway = movingIndicator.boundsInWindow
             compose.mainClock.advanceTimeBy(320)
-            val end = indicator(R.id.financeFragment).fetchSemanticsNode().boundsInWindow
+            val end = indicator("finances").fetchSemanticsNode().boundsInWindow
             assertTrue("Indicator position ${original.left} → ${halfway.left} → ${end.left}",
                 original.left < halfway.left && halfway.left < end.left)
         } finally {
@@ -725,8 +723,8 @@ class BubbleDebtJourneyTest {
         val finance = compose.awaitTag("addFinanceButton").fetchSemanticsNode().boundsInWindow
         val financeTitle = title(R.string.finances).fetchSemanticsNode().boundsInWindow
         capture("root-title-finance")
-        compose.awaitTag("bottomTab-${R.id.goalsFragment}").performClick()
-        awaitDestination(R.id.goalsFragment)
+        compose.awaitTag("bottomTab-goals").performClick()
+        compose.awaitRoute("Goals")
         val goal = compose.awaitTag("addGoalButton").fetchSemanticsNode().boundsInWindow
         val goalsTitle = title(R.string.goals).fetchSemanticsNode().boundsInWindow
         capture("root-title-goals")
@@ -735,8 +733,8 @@ class BubbleDebtJourneyTest {
             assertEquals(debt.right, bounds.right, 2f)
             assertEquals(debt.bottom, bounds.bottom, 2f)
         }
-        compose.awaitTag("bottomTab-${R.id.settingsFragment}").performClick()
-        awaitDestination(R.id.settingsFragment)
+        compose.awaitTag("bottomTab-settings").performClick()
+        compose.awaitRoute("Settings")
         val settingsTitle = title(R.string.settings).fetchSemanticsNode().boundsInWindow
         capture("root-title-settings")
         for (bounds in listOf(financeTitle, goalsTitle, settingsTitle)) {
@@ -808,16 +806,16 @@ class BubbleDebtJourneyTest {
         pressBack()
         compose.awaitTag("addHumanButton")
         for ((tab, action, destination) in listOf(
-            Triple(R.string.finances, R.string.finance_add_income, R.id.createFinanceFragment),
-            Triple(R.string.goals, R.string.goal_new, R.id.createGoalsFragment),
-            Triple(R.string.settings, R.string.synchronization, R.id.synchronizationFragment))) {
+            Triple(R.string.finances, R.string.finance_add_income, "FinanceForm"),
+            Triple(R.string.goals, R.string.goal_new, "GoalForm"),
+            Triple(R.string.settings, R.string.synchronization, "Backup"))) {
             compose.onNode(hasText(context.getString(tab)) and hasClickAction()).performClick()
             val matcher = hasText(context.getString(action)) and hasClickAction()
             compose.waitUntil(8000) { compose.onAllNodes(matcher).fetchSemanticsNodes(false).isNotEmpty() }
             val actionNode = compose.onNode(matcher)
             if (tab == R.string.settings) actionNode.performScrollTo()
             actionNode.performClick()
-            awaitResumed(destination)
+            compose.awaitRoute(destination)
             returnFromForm()
             compose.waitUntil(8000) { compose.onAllNodes(matcher).fetchSemanticsNodes(false).isNotEmpty() }
         }
@@ -825,33 +823,14 @@ class BubbleDebtJourneyTest {
         compose.awaitTag("addHumanButton").assertIsDisplayed()
     }
 
-    private fun awaitDestination(id: Int) {
-        compose.waitUntil(8000) {
-            var current = false
-            onActivity { current = it.navController.currentDestination?.id == id }
-            current
-        }
-    }
-
     private fun returnFromForm() {
         compose.hideKeyboardBeforeBack(main.window)
         pressBack()
     }
 
-    private fun awaitResumed(destination: Int) {
-        compose.waitUntil(8000) {
-            var resumed = false
-            onActivity {
-                val entry = it.navController.currentBackStackEntry
-                resumed = entry?.destination?.id == destination && entry.lifecycle.currentState == Lifecycle.State.RESUMED
-            }
-            resumed
-        }
-    }
-
     @Test fun repeatedFinanceTapDuringFormEntryOpensOneForm() {
-        compose.awaitTag("bottomTab-${R.id.financeFragment}").performClick()
-        awaitResumed(R.id.financeFragment)
+        compose.awaitTag("bottomTab-finances").performClick()
+        compose.awaitRoute("Finances")
         val center = compose.awaitTag("addFinanceButton").assertIsDisplayed().fetchSemanticsNode().boundsInWindow.center
         onActivity { activity ->
             val decor = activity.window.decorView
@@ -870,54 +849,39 @@ class BubbleDebtJourneyTest {
                 }
             }
             tap()
-            assertEquals(R.id.createFinanceFragment, activity.navController.currentDestination?.id)
-            assertTrue(activity.findViewById<View>(R.id.financeSummaryView).isShown)
-            assertNull(activity.findViewById<View>(R.id.financeFormView))
             tap()
         }
-        awaitResumed(R.id.createFinanceFragment)
+        compose.awaitRoute("FinanceForm")
         returnFromForm()
-        awaitResumed(R.id.financeFragment)
+        compose.awaitRoute("Finances")
     }
 
     @Test fun debtAndFinanceFormsDrawDuringPushAndPop() {
         Assume.assumeTrue("System animator scale is disabled", context.screenAnimationsEnabled())
 
-        fun checkForm(formId: Int, destination: Int, previous: Int, open: () -> Unit) {
-            var form: View? = null
-            val entering = mutableListOf<Float>()
-            val returning = mutableListOf<Float>()
-            var samples = entering
-            val listener = ViewTreeObserver.OnDrawListener {
-                // FragmentContainerView keeps drawing the exiting view after removing it from its children.
-                val view = form ?: main.findViewById<View>(formId)?.also { form = it }
-                if (view != null && view.isLaidOut && view.isAttachedToWindow && view.alpha > 0f) {
-                    samples.add(view.translationX)
-                }
-            }
-            onActivity { it.window.decorView.viewTreeObserver.addOnDrawListener(listener) }
+        fun checkForm(form: String, previous: String, open: () -> Unit) {
+            compose.mainClock.autoAdvance = false
             try {
                 open()
-                awaitResumed(destination)
-                onActivity { samples = returning }
+                compose.mainClock.advanceTimeBy(80)
+                val incoming = compose.onNodeWithTag(form).fetchSemanticsNode()
+                assertTrue("Incoming form has a horizontal offset", incoming.boundsInRoot.left > 0f)
+                compose.mainClock.advanceTimeBy(350)
                 returnFromForm()
-                awaitResumed(previous)
+                compose.mainClock.advanceTimeBy(120)
+                assertTrue("Outgoing form has a horizontal offset",
+                    compose.onNodeWithTag(form).fetchSemanticsNode().boundsInRoot.left > 0f)
+                assertTrue(compose.routeIsVisible(previous))
             } finally {
-                onActivity { it.window.decorView.viewTreeObserver.removeOnDrawListener(listener) }
+                compose.mainClock.autoAdvance = true
             }
-            val name = context.resources.getResourceEntryName(destination)
-            assertTrue("$name entry drew positions $entering", entering.zipWithNext().any { (a, b) -> a > b && b > 0f })
-            assertTrue("$name return drew positions $returning", returning.zipWithNext().any { (a, b) -> b > a && a > 0f })
+            compose.awaitRoute(previous)
         }
 
-        checkForm(R.id.debtDueForm, R.id.newDebtFragment, R.id.mainFragment) {
-            compose.awaitTag("addHumanButton").performClick()
-        }
-        compose.awaitTag("bottomTab-${R.id.financeFragment}").performClick()
-        awaitResumed(R.id.financeFragment)
-        checkForm(R.id.financeFormView, R.id.createFinanceFragment, R.id.financeFragment) {
-            compose.awaitTag("addFinanceButton").performClick()
-        }
+        checkForm("DebtForm", "Debts") { compose.awaitTag("addHumanButton").performClick() }
+        compose.awaitTag("bottomTab-finances").performClick()
+        compose.awaitRoute("Finances")
+        checkForm("FinanceForm", "Finances") { compose.awaitTag("addFinanceButton").performClick() }
     }
 
     @Test fun predictiveFormBackToPersonListAndLauncher() {
@@ -929,26 +893,26 @@ class BubbleDebtJourneyTest {
         var keyboard = false
         onActivity { keyboard = ViewCompat.getRootWindowInsets(it.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true }
         if (keyboard) pressBack()
-        fun swipe(cancel: Boolean, previous: Int) {
+        fun swipe(cancel: Boolean, previous: String) {
             SystemClock.sleep(500)
             inst.edgeSwipe(cancel) {
-                onActivity { assertTrue("Back preview", it.findViewById<View>(previous)?.isShown == true) }
+                assertTrue("Back preview", compose.routeIsVisible(previous))
                 capture("gesture-$previous-$cancel")
             }
             SystemClock.sleep(450)
         }
-        swipe(true, R.id.debtDetailsSheets)
+        swipe(true, "DebtPerson")
         compose.awaitTag("debtSumEditText").assertTextContains("123")
         compose.onNodeWithTag("debtInfoEditText").assertTextContains("Draft")
         assertEquals(1, dao.getAllDebtsById(anna).size)
-        swipe(false, R.id.debtDetailsSheets)
-        awaitDestination(R.id.debtDetailsFragment)
+        swipe(false, "DebtPerson")
+        compose.awaitRoute("DebtPerson")
         compose.onNode(hasText("Анна") and hasClickAction().not()).assertExists()
-        swipe(false, R.id.humansLayout)
+        swipe(false, "Debts")
         compose.awaitTag("addHumanButton").performClick()
         compose.awaitTag("debtSumEditText")
-        swipe(false, R.id.humansLayout)
-        awaitDestination(R.id.mainFragment)
+        swipe(false, "Debts")
+        compose.awaitRoute("Debts")
         fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
             inst.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
         val launcher = shell("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME")

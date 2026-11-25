@@ -1,6 +1,6 @@
 package com.breckneck.debtbook.goal.create.screen
 
-import androidx.activity.compose.BackHandler
+import com.breckneck.debtbook.core.navigation.RouteBackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -112,7 +112,7 @@ internal fun CreateGoalsContent(
     LaunchedEffect(hasInputError) {
         if (hasInputError) scroll.animateScrollTo(0)
     }
-    BackHandler(enabled = state.isSaving) {}
+    RouteBackHandler(enabled = state.isSaving) {}
     BubbleScaffold(
         hostInsets = hostInsets,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

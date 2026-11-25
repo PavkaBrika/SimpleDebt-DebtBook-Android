@@ -2,6 +2,9 @@ package com.breckneck.debtbook.goal.details
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.navigation.toRoute
+import com.breckneck.debtbook.core.navigation.GoalDetails
+import com.breckneck.deptbook.domain.usecase.Goal.GetAllGoals
 import com.breckneck.debtbook.common.toDMYFormat
 import com.breckneck.debtbook.goal.main.GoalAdjustment
 import com.breckneck.debtbook.goal.main.GoalDeletion
@@ -42,42 +45,32 @@ data class GoalMovement(val id: Int, val amount: String, val date: String, val t
 }
 
 sealed interface GoalDetailsEffect {
-    data class Edit(val goal: Goal) : GoalDetailsEffect
     data class BalanceChanged(val goal: Goal) : GoalDetailsEffect
     data object WithdrawalRejected : GoalDetailsEffect
     data object Deleted : GoalDetailsEffect
+    data object Missing : GoalDetailsEffect
 }
 
 @HiltViewModel
 class GoalDetailsViewModel @Inject constructor(
-    private val savedState: SavedStateHandle,
+    savedState: SavedStateHandle,
+    private val getGoals: GetAllGoals,
     private val setGoalDeposit: SetGoalDeposit,
     private val getGoalDepositsByGoalId: GetGoalDepositsByGoalId,
     private val deleteGoal: DeleteGoal,
 ) : ViewModel(), ContainerHost<GoalDetailsState, GoalDetailsEffect> {
 
-    private var currentGoal: Goal = checkNotNull(savedState["goal"])
+    private val goalId = savedState.toRoute<GoalDetails>().goalId
+    private lateinit var currentGoal: Goal
     private var deposits: List<GoalDeposit> = emptyList()
     private var historyLoad = 0
 
     override val container = container<GoalDetailsState, GoalDetailsEffect>(
-        initialState = GoalDetailsState(goal = currentGoal.toUi()),
+        initialState = GoalDetailsState(),
         onCreate = { retryHistory() },
     )
 
     fun retryHistory() = intent { loadHistory() }
-
-    fun onEdited(goal: Goal) = intent {
-        if (currentGoal.id == goal.id) {
-            currentGoal = goal
-            savedState["goal"] = goal
-            reduce { state.copy(goal = goal.toUi(), history = formatHistory(goal.currency)) }
-        }
-    }
-
-    fun edit() = intent {
-        if (currentGoal.savedSum < currentGoal.sum) postSideEffect(GoalDetailsEffect.Edit(currentGoal))
-    }
 
     fun openAdjustment(withdraw: Boolean) = intent {
         if (currentGoal.savedSum < currentGoal.sum) {
@@ -128,7 +121,6 @@ class GoalDetailsViewModel @Inject constructor(
         }
         val updated = goal.copy(savedSum = goal.savedSum + amountChange)
         currentGoal = updated
-        savedState["goal"] = updated
         reduce { state.copy(adjustment = adjustment.copy(phase = GoalSheetPhase.SAVED, error = null)) }
         postSideEffect(GoalDetailsEffect.BalanceChanged(updated))
     }
@@ -160,11 +152,19 @@ class GoalDetailsViewModel @Inject constructor(
         val request = ++historyLoad
         reduce { state.copy(isLoading = true, loadFailed = false) }
         try {
-            val goalId = currentGoal.id
-            val rows = withContext(Dispatchers.IO) { getGoalDepositsByGoalId.execute(goalId) }
+            val records = withContext(Dispatchers.IO) {
+                val goal = getGoals.execute().firstOrNull { it.id == goalId }
+                goal?.let { it to getGoalDepositsByGoalId.execute(goalId) }
+            }
             if (request != historyLoad) return
+            if (records == null) {
+                postSideEffect(GoalDetailsEffect.Missing)
+                return
+            }
+            val (goal, rows) = records
+            currentGoal = goal
             deposits = rows.sortedWith(compareByDescending<GoalDeposit> { it.date }.thenByDescending { it.id })
-            reduce { state.copy(history = formatHistory(currentGoal.currency), isLoading = false) }
+            reduce { state.copy(goal = goal.toUi(), history = formatHistory(goal.currency), isLoading = false) }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

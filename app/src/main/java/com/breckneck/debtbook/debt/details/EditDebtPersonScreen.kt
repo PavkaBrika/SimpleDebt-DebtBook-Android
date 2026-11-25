@@ -1,9 +1,7 @@
 package com.breckneck.debtbook.debt.details
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import androidx.activity.compose.BackHandler
+import com.breckneck.debtbook.core.navigation.LocalRouteActive
+import com.breckneck.debtbook.core.navigation.RouteBackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,13 +26,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.setFragmentResult
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleFormScroll
 import com.breckneck.debtbook.core.ui.components.BubbleGroup
@@ -46,26 +39,13 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.debt.encodePersonPhoto
 import com.breckneck.debtbook.debt.rememberDebtPhotoPicker
-import dagger.hilt.android.AndroidEntryPoint
-
-@AndroidEntryPoint
-class EditDebtPersonFragment : Fragment() {
-    private val vm by viewModels<EditDebtPersonViewModel>()
-
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        bubbleScreen(R.id.editDebtPersonFragment) { insets ->
-            EditDebtPersonScreen(vm, insets, { findNavController().popBackStack() }) {
-                setFragmentResult(DEBT_DETAILS_RESULT, Bundle())
-                findNavController().popBackStack()
-            }
-        }
-}
 
 @Composable
-private fun EditDebtPersonScreen(vm: EditDebtPersonViewModel, insets: PaddingValues, onBack: () -> Unit, onSaved: () -> Unit) {
+internal fun EditDebtPersonScreen(vm: EditDebtPersonViewModel, insets: PaddingValues, onBack: () -> Unit, onSaved: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler(enabled = state.saving || state.saved) {}
-    LaunchedEffect(state.saved) { if (state.saved) onSaved() }
+    RouteBackHandler(enabled = state.saving || state.saved) {}
+    val active = LocalRouteActive.current
+    LaunchedEffect(state.saved, active) { if (state.saved && active) onSaved() }
     val person = state.person
     if (person == null) {
         BubbleScaffold(insets, topBar = { BubbleTopBar(stringResource(R.string.person_edit_title), onBack, insets) }) { padding ->

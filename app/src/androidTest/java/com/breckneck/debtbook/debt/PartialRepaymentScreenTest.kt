@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt
 
+import com.breckneck.debtbook.core.ui.awaitRoute
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
@@ -12,8 +13,6 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.action.ViewActions.click
@@ -69,31 +68,25 @@ class PartialRepaymentScreenTest {
         dao.insertHuman(Human(humanId, "R2 test", BigDecimal.ZERO, "EUR"))
         dao.saveDebt(Debt(originalId, (100 * sign).toBigDecimal(), humanId, "Original loan", "2026-11-16", recordedAsLoan = true))
     }
-    private fun details(activity: MainActivity) =
-        ((activity.supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment)
-            .childFragmentManager.primaryNavigationFragment as DebtDetailsFragment)
     private fun await(message: String, condition: () -> Boolean) {
         val end = System.currentTimeMillis() + 10_000
         while (!condition()) { if (System.currentTimeMillis() > end) fail(message); Thread.sleep(50) }
     }
-    private fun ready(scenario: ActivityScenario<MainActivity>) {
-        await("history did not load") {
-            var ready = false
-            val count = dao.getAllDebtsById(humanId).size
-            scenario.onActivity {
-                val vm = ViewModelProvider(details(it))[DebtDetailsViewModel::class.java]
-                ready = vm.screenState.value in listOf(DebtDetailsState.SUCCESS, DebtDetailsState.EMPTY) &&
-                    vm.isDeleting.value != true && vm.history.value?.size == count
-            }
-            ready
+    private fun ready() {
+        compose.awaitRoute("DebtPerson")
+        compose.waitUntil(10_000) {
+            compose.onNodeWithTag("personHistory").isDisplayed() &&
+                compose.onAllNodesWithTag("personHistoryLoading").fetchSemanticsNodes().isEmpty()
         }
     }
-    private fun open(scenario: ActivityScenario<MainActivity>) {
-        scenario.onActivity { it.onHumanClick(humanId, "EUR", "R2 test") }
-        ready(scenario)
+
+    private fun open() {
+        compose.waitUntil(8000) { compose.onNodeWithText("R2 test").isDisplayed() }
+        compose.onNodeWithText("R2 test").performClick()
+        ready()
     }
-    private fun openPayment(scenario: ActivityScenario<MainActivity>) {
-        ready(scenario)
+    private fun openPayment() {
+        ready()
         compose.record(originalId).performClick()
         compose.onNodeWithTag("repaymentButton").performClick()
         compose.onNodeWithTag("repaymentAmountInput").assertIsDisplayed()
@@ -121,7 +114,7 @@ class PartialRepaymentScreenTest {
             val due = "2099-12-31"
             dao.setDebtDueDate(originalId, due, null, null, System.currentTimeMillis())
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-                open(scenario)
+                open()
                 compose.record(originalId).performClick()
                 compose.onNodeWithTag("repaymentButton")
                     .assertTextContains(context.getString(R.string.debt_repay))
@@ -136,19 +129,19 @@ class PartialRepaymentScreenTest {
                 compose.onNodeWithTag("repaymentAmountInput").assertTextContains("20")
                 saveTwice()
                 await("partial payment not stored") { dao.getAllDebtsById(humanId).size == 2 }
-                ready(scenario)
+                ready()
                 assertAmount(80 * sign)
                 assertEquals(0, (100 * sign).toBigDecimal().compareTo(dao.getAllDebtsById(humanId).first { it.id == originalId }.sum))
                 screenshot("partial-$sign")
-                openPayment(scenario)
+                openPayment()
                 compose.onNodeWithTag("repaymentFullButton").performClick()
                 compose.onNodeWithTag("repaymentAmountInput").assertTextContains("80")
                 saveTwice()
                 await("full payment not stored") { dao.getAllDebtsById(humanId).size == 3 }
-                ready(scenario)
+                ready()
                 assertAmount(0)
                 scenario.recreate()
-                ready(scenario)
+                ready()
                 assertAmount(0)
                 val last = dao.getAllDebtsById(humanId).maxBy { it.id }
                 compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("settledDebtsTab"))
@@ -168,7 +161,7 @@ class PartialRepaymentScreenTest {
                 compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
                 compose.onNode(hasText(context.getString(R.string.repayment_cancel)) and hasClickAction()).performClick()
                 await("cancellation not stored") { dao.getAllDebtsById(humanId).any { it.id == last.id && it.cancelled } }
-                ready(scenario)
+                ready()
                 assertAmount(80 * sign)
                 assertEquals(3, dao.getAllDebtsById(humanId).size)
                 compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("openDebtsTab"))
@@ -182,7 +175,7 @@ class PartialRepaymentScreenTest {
                 compose.awaitTag("restoreRepaymentButton").performClick()
                 compose.awaitTag("restoreRepaymentConfirm").performClick()
                 await("restore not stored") { dao.getAllDebtsById(humanId).any { it.id == last.id && !it.cancelled } }
-                ready(scenario)
+                ready()
                 assertAmount(0)
                 assertEquals(last, dao.getAllDebtsById(humanId).single { it.id == last.id })
             }
@@ -199,7 +192,7 @@ class PartialRepaymentScreenTest {
         dao.saveDebt(Debt(0, (-50).toBigDecimal(), humanId, null, "2026-11-16", repaymentOfId = originalId,
             operationId = "restore-test-request-2"))
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            open(scenario)
+            open()
             compose.record(first.id).performClick()
             compose.awaitTag("restoreRepaymentButton").performClick()
             compose.awaitTag("restoreRepaymentConfirm").performClick()
@@ -212,17 +205,17 @@ class PartialRepaymentScreenTest {
     @Test fun progressInterpolatesWhileAnOpenLoanRefreshes() {
         seed(1)
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            open(scenario)
+            open()
             val progress = compose.record(originalId).let { compose.onNodeWithTag("repaymentProgress-$originalId") }
             fun fraction() = progress.fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo].current
             assertEquals(0f, fraction(), .001f)
-            openPayment(scenario)
+            openPayment()
             compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("60")
             compose.mainClock.autoAdvance = false
             try {
                 compose.onNodeWithTag("repaymentSaveButton").performSemanticsAction(SemanticsActions.OnClick)
                 await("payment not stored") { dao.getAllDebtsById(humanId).size == 2 }
-                ready(scenario)
+                ready()
                 compose.mainClock.advanceTimeBy(160)
                 val intermediate = fraction()
                 assertTrue("Intermediate fraction: $intermediate", intermediate > 0f && intermediate < .6f)
@@ -237,15 +230,13 @@ class PartialRepaymentScreenTest {
     @Test fun failedSaveKeepsInputAndRetryWritesOnce() {
         seed(1)
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            open(scenario)
-            openPayment(scenario)
+            open()
+            openPayment()
             compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("20")
             db.openHelper.writableDatabase.execSQL("CREATE TRIGGER r2_fail_balance BEFORE UPDATE ON Human BEGIN SELECT RAISE(ABORT, 'test save failure'); END")
             saveTwice()
-            await("save failure did not reach the form") {
-                var failed = false
-                scenario.onActivity { failed = ViewModelProvider(details(it))[DebtDetailsViewModel::class.java].repaymentError.value == RepaymentError.SAVE_FAILED }
-                failed
+            compose.waitUntil(10_000) {
+                compose.onNodeWithText(context.getString(R.string.repayment_save_failed)).isDisplayed()
             }
             compose.onNodeWithText(context.getString(R.string.repayment_save_failed)).assertIsDisplayed()
             assertEquals(1, dao.getAllDebtsById(humanId).size)
@@ -256,7 +247,7 @@ class PartialRepaymentScreenTest {
             db.openHelper.writableDatabase.execSQL("DROP TRIGGER r2_fail_balance")
             saveTwice()
             await("retry not stored") { dao.getAllDebtsById(humanId).size == 2 }
-            ready(scenario)
+            ready()
             assertAmount(80)
         }
     }
@@ -264,8 +255,8 @@ class PartialRepaymentScreenTest {
     @Test fun repaymentAmountAndSaveStayAboveKeyboard() {
         seed(1)
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            open(scenario)
-            openPayment(scenario)
+            open()
+            openPayment()
             compose.onNodeWithTag("repaymentAmountInput").performTouchInput { click() }
             compose.onNodeWithTag("repaymentAmountInput").assertIsFocused().performTextReplacement("20")
             val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
@@ -317,7 +308,7 @@ class PartialRepaymentScreenTest {
                 }
             }
             await("keyboard save did not persist") { dao.getAllDebtsById(humanId).size == 2 }
-            ready(scenario)
+            ready()
             assertAmount(80)
         }
     }

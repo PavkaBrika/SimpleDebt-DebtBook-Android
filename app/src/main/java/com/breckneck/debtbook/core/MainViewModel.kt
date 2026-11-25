@@ -59,9 +59,6 @@ class MainViewModel @Inject constructor(
     private val _appTheme = MutableLiveData<String>()
     val appTheme: LiveData<String>
         get() = _appTheme
-    private val _isNeedUpdateDebtData = MutableLiveData<Boolean>(false)
-    val isNeedDebtDataUpdate: LiveData<Boolean>
-        get() = _isNeedUpdateDebtData
     private val _isPINCodeEnabled = MutableLiveData<Boolean>(false)
     val isPINCodeEnabled: LiveData<Boolean>
         get() = _isPINCodeEnabled
@@ -145,10 +142,6 @@ class MainViewModel @Inject constructor(
 
     fun getAppTheme() {
         _appTheme.value = getAppTheme.execute()
-    }
-
-    fun setIsNeedUpdateDebtData(isNeedUpdate: Boolean) {
-        _isNeedUpdateDebtData.value = isNeedUpdate
     }
 
     fun setIsPINCodeEnabled(enabled: Boolean) {
