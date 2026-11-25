@@ -310,6 +310,7 @@ svg { display:block; flex-shrink:0 }
 .choices,.group,.note,.button-pair,.sheet h3 {overflow-wrap:anywhere}
 .file-label { position:relative }.menu-row span {min-width:0}.history-actions {display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .sheet pre {white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:13px}
+.sheet .statement-preview { max-height: min(50vh, 360px); overflow:auto; padding:14px }
 .center{text-align:center}.pin-dots{text-align:center;font-size:27px;margin:28px auto;letter-spacing:5px}
 .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:250px;margin:0 auto}.key{height:52px;border-radius:25px;background:var(--paper);color:var(--ink);border:1px solid var(--edge);font-size:21px}
 .key:nth-last-child(2){grid-column:2}.sheet .field input,.sheet .field select{max-width:100%}
@@ -327,11 +328,8 @@ svg { display:block; flex-shrink:0 }
   display:flex; border:1px solid var(--edge); border-radius:99px; background:var(--paper); pointer-events:auto;
 }
 .person-header-actions .icon-button { border:0; background:transparent; width:45px; height:46px }
-.debt-history-tabs { display:grid; grid-template-columns:1fr 1fr; margin:8px 0; border-bottom:1px solid var(--edge) }
-.debt-history-tabs button { min-height:48px; padding:5px; border-bottom:2px solid transparent; color:var(--soft); font-weight:600 }
-.debt-history-tabs [aria-selected=true] { border-bottom-color:var(--forest); color:var(--forest) }
-.debt-history-controls { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-bottom:8px }
-.debt-history-controls .tabs { margin:0 }
+.debt-history-controls { display:flex; align-items:center; gap:6px; margin:8px 0 }
+.debt-history-controls .segment { flex:1; min-width:0; margin:0 }
 .debt-history-controls .icon-button { flex-shrink:0 }
 .loan-note { margin-top:3px; color:var(--soft); font-size:14px }
 .loan-chevron { min-width:36px; min-height:44px; color:var(--soft); margin:-4px -8px 0 -6px }

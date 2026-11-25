@@ -8,11 +8,13 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.core.ui.theme.spacing
 
 @Composable
@@ -36,4 +38,15 @@ fun DebtBookSwitchRow(
             Switch(checked = checked, onCheckedChange = null, enabled = enabled)
         }
     }
+}
+
+@Composable
+internal fun bubbleSwitchColors() = bubbleColors().let { colors ->
+    SwitchDefaults.colors(
+        checkedThumbColor = colors.onAction,
+        checkedTrackColor = colors.action,
+        uncheckedThumbColor = colors.muted,
+        uncheckedTrackColor = colors.fill,
+        uncheckedBorderColor = colors.border,
+    )
 }

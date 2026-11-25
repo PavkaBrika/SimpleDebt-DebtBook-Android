@@ -170,21 +170,22 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                     }
                 }
                 item(key = "debtSections") {
-                    DebtHistoryTabs(section, !loans?.earlyEntries.isNullOrEmpty(), ready, vm::selectDebtSection)
-                }
-                item(key = "historyControls") {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
-                                Filter.NEGATIVE to R.string.show_negative)) {
-                                DebtFilterChip(stringResource(label), filter == choice, {
-                                    order?.let { vm.onSetDebtSort(choice, it) }
-                                }, Modifier.testTag("historyFilter-${choice.name}"), enabled = ready)
-                            }
-                        }
+                        DebtHistoryTabs(section, !loans?.earlyEntries.isNullOrEmpty(), ready,
+                            vm::selectDebtSection, Modifier.weight(1f))
                         BubbleIconButton({ sortOpen = true }, Modifier.testTag("sortButton"), enabled = ready && order != null) {
                             Icon(Icons.Outlined.Tune, stringResource(R.string.debt_history_order), Modifier.size(19.dp))
+                        }
+                    }
+                }
+                item(key = "historyControls") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for ((choice, label) in listOf(Filter.ALL to R.string.show_all, Filter.POSITIVE to R.string.show_positive,
+                            Filter.NEGATIVE to R.string.show_negative)) {
+                            DebtFilterChip(stringResource(label), filter == choice, {
+                                order?.let { vm.onSetDebtSort(choice, it) }
+                            }, Modifier.testTag("historyFilter-${choice.name}"), enabled = ready)
                         }
                     }
                 }
@@ -235,36 +236,28 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DebtHistoryTabs(section: DebtSection, hasEarlyEntries: Boolean, enabled: Boolean, select: (DebtSection) -> Unit) {
+private fun DebtHistoryTabs(section: DebtSection, hasEarlyEntries: Boolean, enabled: Boolean,
+    select: (DebtSection) -> Unit, modifier: Modifier = Modifier) {
     val colors = bubbleColors()
     val sections = if (hasEarlyEntries) DebtSection.entries else listOf(DebtSection.OPEN, DebtSection.SETTLED)
-    val index = sections.indexOf(section).coerceAtLeast(0)
-    val tabs: @Composable () -> Unit = {
-        for (tab in sections) {
-            val (label, tag) = when (tab) {
-                DebtSection.OPEN -> R.string.open_debts to "openDebtsTab"
-                DebtSection.SETTLED -> R.string.settled_debts to "settledDebtsTab"
-                DebtSection.EARLY -> R.string.early_entries to "earlyEntriesTab"
-            }
-            Tab(
-                selected = tab == section, onClick = { select(tab) }, enabled = enabled,
-                modifier = Modifier.testTag(tag), selectedContentColor = colors.action, unselectedContentColor = colors.muted,
-                text = { Text(stringResource(label), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleSmall) },
-            )
+    BubbleDirectionTabs(sections, section.takeIf(sections::contains) ?: DebtSection.OPEN, colors.action, enabled, select,
+        modifier = modifier.testTag("debtHistoryTabs"), tabModifier = { tab ->
+            Modifier.testTag(when (tab) {
+                DebtSection.OPEN -> "openDebtsTab"
+                DebtSection.SETTLED -> "settledDebtsTab"
+                DebtSection.EARLY -> "earlyEntriesTab"
+            })
+        },
+    ) { tab, active ->
+        val label = when (tab) {
+            DebtSection.OPEN -> R.string.open_debts
+            DebtSection.SETTLED -> R.string.settled_debts
+            DebtSection.EARLY -> R.string.early_entries
         }
-    }
-    if (hasEarlyEntries) {
-        SecondaryScrollableTabRow(
-            index, containerColor = colors.background, contentColor = colors.action,
-            edgePadding = 0.dp, divider = { HorizontalDivider(color = colors.border) }, tabs = tabs,
-        )
-    } else {
-        SecondaryTabRow(
-            index, containerColor = colors.background, contentColor = colors.action,
-            divider = { HorizontalDivider(color = colors.border) }, tabs = tabs,
-        )
+        Text(stringResource(label), Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+            color = if (active) colors.onAction else colors.ink, textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -321,11 +314,18 @@ private fun LoanCard(row: DebtDomain, rest: BigDecimal, currency: String, today:
                             day != null -> dueLabel(day, true, today)
                             else -> stringResource(R.string.debt_no_due)
                         }
-                        TextButton(due, enabled = enabled, modifier = Modifier.widthIn(max = badgeWidth),
+                        if (closed) {
+                            Row(Modifier.widthIn(max = badgeWidth).background(colors.mint, CircleShape).padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.Check, null, Modifier.size(14.dp), tint = colors.onMint)
+                                Text(label, Modifier.padding(start = 4.dp), color = colors.onMint,
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
+                        } else TextButton(due, enabled = enabled, modifier = Modifier.widthIn(max = badgeWidth).testTag("loanDue-${row.id}"),
                             contentPadding = PaddingValues(horizontal = 8.dp), colors = ButtonDefaults.textButtonColors(
-                                containerColor = if (overdue) colors.dangerContainer else if (closed) colors.mint else colors.fill,
+                                containerColor = if (overdue) colors.dangerContainer else colors.fill,
                                 contentColor = if (overdue) colors.danger else colors.onMint)) {
-                            Icon(if (closed) Icons.Outlined.Check else Icons.Outlined.DateRange, null, Modifier.size(14.dp))
+                            Icon(Icons.Outlined.DateRange, null, Modifier.size(14.dp))
                             Text(label, Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelSmall)
                         }
                     }

@@ -269,6 +269,11 @@ class BubbleDebtJourneyTest {
         text(context.getString(R.string.person_delete_action)).assertIsDisplayed()
         pressBack()
 
+        val tabs = control("debtHistoryTabs").fetchSemanticsNode().boundsInWindow
+        val sort = compose.onNodeWithTag("sortButton").fetchSemanticsNode().boundsInWindow
+        assertTrue(tabs.right <= sort.left)
+        assertEquals(tabs.center.y, sort.center.y, 2f)
+        capture("history-tabs")
         control("settledDebtsTab").performClick().assertIsSelected()
         compose.record(settled).assertTextContains("Settled")
         add.performClick()
@@ -293,8 +298,10 @@ class BubbleDebtJourneyTest {
         pressBack()
 
         add.performClick()
-        compose.awaitTag("debtSumEditText").performTextReplacement("25")
-        compose.awaitTag("setFinanceButton").performClick()
+        val amount = compose.awaitTag("debtSumEditText")
+        amount.performTextReplacement("25")
+        amount.assertTextContains("25")
+        compose.awaitTag("setFinanceButton").assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         awaitDestination(R.id.debtDetailsFragment)
         val newId = dao.getAllDebtsById(anna).single { it.sum.compareTo(25.toBigDecimal()) == 0 }.id
         control("openDebtsTab").assertIsSelected()
@@ -585,10 +592,14 @@ class BubbleDebtJourneyTest {
         compose.waitUntil(8000) { dao.getHuman(anna)?.name == "Anna QA" }
         text("Anna QA").assertIsDisplayed()
         manage(R.string.person_delete_action)
-        val confirm = androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withId(R.id.okButton))
-            .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
-        SystemClock.sleep(500)
-        confirm.perform(androidx.test.espresso.action.ViewActions.click())
+        compose.awaitTag("personDeleteSheet").assertIsDisplayed()
+        text(context.getString(R.string.person_delete_title, "Anna QA")).assertIsDisplayed()
+        capture("person-delete")
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.cancel))).performClick()
+        compose.waitUntil(8000) { compose.onAllNodesWithTag("personDeleteSheet").fetchSemanticsNodes(false).isEmpty() }
+        assertNotNull(dao.getHuman(anna))
+        manage(R.string.person_delete_action)
+        compose.onNode(hasClickAction() and hasText(context.getString(R.string.delete))).performClick()
         compose.awaitTag("addHumanButton")
         assertNull(dao.getHuman(anna))
         assertTrue(dao.getAllDebtsById(anna).isEmpty())

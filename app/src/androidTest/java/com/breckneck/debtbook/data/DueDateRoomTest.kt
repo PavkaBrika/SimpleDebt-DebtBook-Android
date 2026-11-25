@@ -50,6 +50,13 @@ class DueDateRoomTest {
             dao.saveDebt(full)
             assertNull(dao.getAllDebts().first().reminderToken)
             assertEquals("2099-12-30", dao.getAllDebts().first().dueDay)
+            assertThrows(IllegalArgumentException::class.java) {
+                dao.reviseDebt(dao.getAllDebts().first(), DebtDueChange("2099-12-31", null))
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                dao.reviseDebt(dao.getAllDebts().first(), DebtDueChange(null, null))
+            }
+            assertEquals("2099-12-30", dao.getAllDebts().first().dueDay)
             dao.removeDebt(dao.getAllDebts().last())
             val rows = dao.getAllDebts().map { it.toDomain() }
             assertEquals(0, BigDecimal("80").compareTo(RepaymentPolicy.remaining(rows.first(), rows)))

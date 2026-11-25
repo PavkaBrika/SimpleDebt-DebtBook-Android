@@ -1,20 +1,13 @@
 package com.breckneck.debtbook.debt
 
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import com.breckneck.debtbook.debt.record
 import android.content.Context
 import android.content.Intent
-import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
-import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.action.ViewActions.scrollTo
-import androidx.test.espresso.action.ViewActions.swipeUp
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.RootMatchers.isDialog
-import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.intent.IntentCallback
 import androidx.test.runner.intent.IntentMonitorRegistry
@@ -34,27 +27,28 @@ class DebtStatementJourneyTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val dao = AppDataBase(context).appDao()
     private val name = "Statement " + System.nanoTime().toString(36)
-    private fun tap(id: Int) {
-        if (id == R.id.shareHumanButton) {
-            compose.awaitTag("shareHumanButton").performClick()
-        } else if (id in listOf(R.id.sortButton, R.id.earlyEntriesTab, R.id.settledDebtsTab)) {
-            val tag = context.resources.getResourceEntryName(id)
-            compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
-            compose.onNodeWithTag(tag).performClick()
-        } else onView(withId(id)).perform(click())
+    private fun tapTab(tag: String) {
+        compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
+        compose.onNodeWithTag(tag).performClick()
     }
     private fun preview() {
-        tap(R.id.shareHumanButton)
-        android.os.SystemClock.sleep(500)
-        onView(withId(R.id.deleteButton)).inRoot(isDialog()).perform(click()) // Text in the share format sheet
-        compose.waitUntil(8000) { runCatching {
-            onView(withId(R.id.sendButton)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
-        }.isSuccess }
+        compose.awaitTag("shareHumanButton").performClick()
+        compose.awaitTag("shareDebtText").performClick()
+        compose.awaitTag("sendDebtStatement").assertIsDisplayed()
     }
-    private fun displayedText(): String {
-        var text = ""
-        onView(withId(R.id.statementText)).inRoot(isDialog()).check { view, _ -> text = (view as TextView).text.toString() }
-        return text
+    private fun displayedText(): String =
+        compose.awaitTag("statementText").fetchSemanticsNode().config[SemanticsProperties.Text].single().text
+
+    private fun dismissChooser(chooser: Intent) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val chooserPackage = requireNotNull(chooser.resolveActivity(context.packageManager)).packageName
+        val target = requireNotNull(chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT))
+        val sharePackages = context.packageManager.queryIntentActivities(target, 0).map { it.activityInfo.packageName } + chooserPackage
+        // On API 23 the chooser can immediately open the only app that handles the file type.
+        compose.waitUntil(8000) { automation.rootInActiveWindow?.packageName?.toString() in sharePackages }
+        automation.executeShellCommand("input keyevent 4")
+            .use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+        compose.awaitTag("settledDebtsTab").assertIsSelected()
     }
 
     @Test fun previewFromArchiveCancelFilterRecreateAndSend() {
@@ -96,24 +90,22 @@ class DebtStatementJourneyTest {
                 compose.awaitTag("peopleList").performScrollToNode(hasText(name))
                 compose.onNodeWithText(name).performClick()
                 compose.awaitTag("openDebtsTab").assertIsSelected()
-                tap(R.id.earlyEntriesTab)
+                tapTab("earlyEntriesTab")
                 compose.record(early.id).assertTextContains(earlyNote).assertTextContains("+250\u00a0₽")
                     .assertTextContains(screen.screenString(R.string.early_entry)).performClick()
                 compose.awaitTag("editButton").assertExists()
                 compose.onNodeWithTag("repaymentButton").assertDoesNotExist()
                 compose.onNodeWithTag("debtActionsCancel").performClick()
-                tap(R.id.settledDebtsTab)
+                tapTab("settledDebtsTab")
                 preview()
-                onView(withId(R.id.statementText)).inRoot(isDialog()).check(matches(
-                    isDescendantOfA(withId(com.google.android.material.R.id.design_bottom_sheet))
-                ))
+                compose.awaitTag("debtStatementSheet").assertExists()
                 fun line(id: Int, value: String) = screen.screenString(id).format(value)
-                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isNotChecked()))
-                onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isNotChecked()))
+                val includeSettled = compose.onNodeWithTag("includeSettled").assertIsOff()
+                val includeEarly = compose.onNodeWithTag("includeEarlyEntries").assertIsOff()
                 val open = displayedText()
                 assertFalse(open.contains(earlyNote))
                 assertTrue(open.contains(line(R.string.statement_you_owe, "10 250 RUB")))
-                tap(R.id.includeEarlyEntries)
+                includeEarly.performClick()
                 val withEarly = displayedText()
                 assertTrue(withEarly.contains(line(R.string.statement_entry, "+250 RUB")))
                 assertEquals(1, withEarly.lines().count { it == earlyNote })
@@ -123,13 +115,13 @@ class DebtStatementJourneyTest {
                 assertFalse(open.contains("Original loan"))
                 assertFalse(open.contains("First payment"))
                 assertFalse(open.contains("3 600 RUB"))
-                tap(R.id.includeSettled)
-                onView(withId(R.id.statementScroll)).perform(swipeUp()).check { view, error ->
-                    if (error != null) throw error
-                    assertTrue("Long statements must scroll inside the sheet", view.scrollY > 0)
-                }
-                onView(withId(R.id.sendButton)).check(matches(isCompletelyDisplayed()))
-                onView(withId(R.id.cancelButton)).check(matches(isCompletelyDisplayed()))
+                includeSettled.performClick()
+                val scroll = compose.onNodeWithTag("statementScroll")
+                scroll.performTouchInput { swipeUp() }
+                assertTrue("Long statements must scroll inside the sheet",
+                    scroll.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value() > 0)
+                compose.onNodeWithTag("sendDebtStatement").assertIsDisplayed()
+                compose.onNodeWithTag("closeDebtStatement").assertIsDisplayed()
                 val all = displayedText()
                 for (expected in listOf(
                     line(R.string.statement_you_owe, "10 250 RUB"), line(R.string.statement_lent, "16 000 RUB"),
@@ -139,20 +131,17 @@ class DebtStatementJourneyTest {
                 )) assertTrue(expected, all.contains(expected))
                 assertTrue(all.contains(earlyNote))
                 screen.recreate()
-                onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isChecked()))
-                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isChecked()))
+                compose.awaitTag("includeEarlyEntries").assertIsOn()
+                includeSettled.assertIsOn()
                 assertEquals(all, displayedText())
-                compose.waitUntil(5000) { runCatching {
-                    onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
-                }.isSuccess }
-                tap(R.id.includeEarlyEntries)
+                includeEarly.performClick()
                 compose.waitUntil(5000) { !displayedText().contains(earlyNote) }
                 val onlySettledAndOpen = displayedText()
                 assertFalse(onlySettledAndOpen.contains(earlyNote))
                 assertTrue(onlySettledAndOpen.contains(line(R.string.statement_borrowed, "500 RUB")))
-                tap(R.id.includeSettled)
+                includeSettled.performClick()
                 assertEquals(open, displayedText())
-                tap(R.id.cancelButton)
+                compose.awaitTag("closeDebtStatement").performClick()
                 compose.awaitTag("settledDebtsTab").assertIsSelected()
                 compose.record(borrowed.id).assertTextContains("Settled loan")
                 assertTrue(sent.isEmpty())
@@ -166,42 +155,29 @@ class DebtStatementJourneyTest {
                 compose.awaitTag("personHistory").performScrollToNode(negative)
                 compose.onNode(negative).performClick()
                 preview()
-                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isNotChecked()))
-                onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(withEffectiveVisibility(Visibility.GONE)))
+                includeSettled.assertIsOff()
+                includeEarly.assertDoesNotExist()
                 assertTrue(displayedText().contains(screen.screenString(R.string.statement_empty)))
-                tap(R.id.includeSettled)
+                includeSettled.performClick()
                 val selected = displayedText()
                 assertTrue(selected.contains(screen.screenString(R.string.statement_negative)))
                 assertTrue(selected.contains(line(R.string.statement_you_owe, "10 250 RUB")))
                 assertTrue(selected.contains(line(R.string.statement_borrowed, "500 RUB")))
                 assertFalse(selected.contains(line(R.string.statement_lent, "16 000 RUB")))
                 screen.recreate()
-                onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isChecked()))
+                compose.awaitTag("includeSettled").assertIsOn()
                 val shown = displayedText()
                 assertEquals(selected, shown)
-                compose.waitUntil(8000) {
-                    runCatching { onView(withId(R.id.sendButton)).check(matches(isCompletelyDisplayed())) }.isSuccess
-                }
-                val send = onView(withId(R.id.sendButton)).inRoot(isDialog())
-                compose.waitUntil(8000) { runCatching { send.check(matches(androidx.test.espresso.matcher.ViewMatchers.isEnabled())) }.isSuccess }
-                // Wait for the recreated sheet's entrance transition before a physical button tap.
-                android.os.SystemClock.sleep(500)
-                send.perform(click())
+                compose.awaitTag("sendDebtStatement").assertIsDisplayed().assertIsEnabled().performClick()
                 compose.waitUntil(8000) { sent.size == 1 }
                 val intent = sent.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
                 assertEquals(Intent.ACTION_SEND, intent.action)
                 assertEquals("text/plain", intent.type)
                 assertEquals(shown, intent.getStringExtra(Intent.EXTRA_TEXT))
-                val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-                val chooserPackage = requireNotNull(sent.single().resolveActivity(context.packageManager)).packageName
-                compose.waitUntil(8000) { automation.rootInActiveWindow?.packageName == chooserPackage }
-                automation.executeShellCommand("input keyevent 4")
-                    .use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
-                compose.awaitTag("settledDebtsTab").assertIsSelected()
+                dismissChooser(sent.single())
                 assertEquals(1, sent.size)
-                tap(R.id.shareHumanButton)
-                android.os.SystemClock.sleep(500)
-                onView(withId(R.id.editButton)).inRoot(isDialog()).perform(click())
+                compose.awaitTag("shareHumanButton").performClick()
+                compose.awaitTag("shareDebtExcel").performClick()
                 compose.waitUntil(10000) { sent.size == 2 }
                 val excel = requireNotNull(sent.last().getParcelableExtra<Intent>(Intent.EXTRA_INTENT))
                 assertEquals("application/vnd.ms-excel", excel.type)
@@ -209,6 +185,7 @@ class DebtStatementJourneyTest {
                 context.contentResolver.openInputStream(uri)!!.use {
                     assertArrayEquals(byteArrayOf(0xd0.toByte(), 0xcf.toByte(), 0x11, 0xe0.toByte()), ByteArray(4).also { header -> java.io.DataInputStream(it).readFully(header) })
                 }
+                dismissChooser(sent.last())
             }
         } finally {
             prefs.edit().apply {

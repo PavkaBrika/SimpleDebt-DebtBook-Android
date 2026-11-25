@@ -74,28 +74,30 @@ flowActions['person-rename']=(i,v,b)=>{
   },'Сохранить',{name:p.name});
 };
 flowActions['person-delete']=(i,v,b)=>{
-  const p=personAt(i);confirmAction(i,b,'Удалить человека?',p.name+' и вся история расчётов будут удалены.',()=>{
+  const p=personAt(i);showDialog(i,'Удалить карточку «'+p.name+'»?',()=>'<p class="note">Все долги и возвраты в этой карточке будут удалены.</p>',b,()=>{
     people=people.filter(row=>row.id!==p.id);changed(i,'Человек удалён');
-  });
+  },'Удалить',{cancelBelow:true});
 };
 flowActions['loan-actions']=(i,v,b)=>{
   const l=findLoan(frames[i],Number(v));
   showDialog(i,l.principal>0?'Дал в долг':'Взял в долг',()=>'<div class="group">'+
-    (remaining(l)?rowAction('repay','Учесть возврат',v,'','take'):'')+rowAction('due','Срок и напоминание',v,'','date')+
+    (remaining(l)?rowAction('repay','Учесть возврат',v,'',l.principal>0?'take':'give')+rowAction('due','Срок и напоминание',v,'','date'):'')+
     (l.reminder&&remaining(l)?rowAction('reminder-preview','Предпросмотр уведомления',v,'','bell'):'')+
     rowAction('loan-edit','Редактировать запись',v,'','edit')+
     (!l.returns.length?rowAction('loan-delete','Удалить запись',v,'','trash'):'')+'</div>',b);
 };
 flowActions['loan-edit']=(i,v)=>{
   const f=frames[i],p=personAt(i),l=findLoan(f,Number(v));if(!l)return;
-  f.d={...draft(p.cur),fixed:p.id,editId:l.id,locked:l.returns.length>0,dir:Math.sign(l.principal),name:p.name,
+  f.d={...draft(p.cur),fixed:p.id,editId:l.id,locked:l.returns.length>0,settled:!remaining(l),dir:Math.sign(l.principal),name:p.name,
     note:l.note,sum:moneyInput(Math.abs(l.principal)),date:l.date,due:l.due,remind:!!l.reminder,time:l.reminder||'09:00'};
   go(i,'new');
 };
 function updateEditedDebt(i,n) {
   const f=frames[i],d=f.d,l=findLoan(f,d.editId);
   if(!l||(l.returns.length&&(l.principal!==n*d.dir||l.date!==d.date)))return fail(i,'Исходная запись изменилась. Вернитесь в историю.');
-  Object.assign(l,{principal:n*d.dir,note:d.note.trim(),date:d.date,due:d.due,reminder:d.remind?d.time:''});pop(i,'Запись изменена');
+  Object.assign(l,{principal:n*d.dir,note:d.note.trim(),date:d.date});
+  if(remaining(l))Object.assign(l,{due:d.due,reminder:d.remind?d.time:''});
+  pop(i,'Запись изменена');
 }
 flowActions['loan-delete']=(i,v,b)=>{
   const p=personAt(i),l=p.loans.find(l=>l.id===Number(v));if(!l||l.returns.length)return;
@@ -116,7 +118,12 @@ function downloadFile(name,type,content) {
 }
 function shareText(p){return p.name+' · '+amount(balance(p),p.cur,true)+'\n\n'+exportRows(p).map(row=>row.join(' · ')).join('\n');}
 flowActions['person-share']=(i,v,b)=>{
-  const p=personAt(i);showDialog(i,'Поделиться историей',()=>'<pre>'+escapeHtml(shareText(p))+'</pre><div class="group">'+rowAction('share-text','Сохранить текст')+rowAction('share-excel','Сохранить таблицу Excel')+'</div>',b);
+  showDialog(i,'Поделиться историей',()=>'<div class="group">'+rowAction('share-preview','Текст','','','note')+
+    rowAction('share-excel','Файл Excel','','','stack')+'</div>',b);
+};
+flowActions['share-preview']=(i,v,b)=>{
+  showDialog(i,'Предпросмотр выписки',()=>'<div class="group statement-preview"><pre>'+escapeHtml(shareText(personAt(i)))+'</pre></div>',b,
+    ()=>flowActions['share-text'](i),'Сохранить текст');
 };
 flowActions['share-text']=i=>{const p=personAt(i);downloadFile('SimpleDebt-'+p.name+'.txt','text/plain;charset=utf-8',shareText(p));};
 flowActions['share-excel']=i=>{

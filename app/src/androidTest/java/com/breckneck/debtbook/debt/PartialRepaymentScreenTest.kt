@@ -118,11 +118,13 @@ class PartialRepaymentScreenTest {
     @Test fun receiveAndRepayMultiplePaymentsCloseAndCancelFromHistory() {
         for (sign in listOf(1, -1)) {
             seed(sign)
+            val due = "2099-12-31"
+            dao.setDebtDueDate(originalId, due, null, null, System.currentTimeMillis())
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 open(scenario)
                 compose.record(originalId).performClick()
                 compose.onNodeWithTag("repaymentButton")
-                    .assertTextEquals(context.getString(if (sign > 0) R.string.repayment_received else R.string.repayment_paid))
+                    .assertTextContains(context.getString(R.string.debt_repay))
                     .performClick()
                 compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("101")
                 compose.onNodeWithTag("repaymentSaveButton").performClick()
@@ -151,6 +153,17 @@ class PartialRepaymentScreenTest {
                 val last = dao.getAllDebtsById(humanId).maxBy { it.id }
                 compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("settledDebtsTab"))
                 compose.onNodeWithTag("settledDebtsTab").performClick()
+                compose.record(originalId).assertTextContains(context.getString(R.string.repayment_closed)).performClick()
+                compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
+                compose.onNodeWithTag("repaymentButton").assertDoesNotExist()
+                compose.onNodeWithTag("editButton").performClick()
+                compose.awaitTag("createDebtDue").performScrollTo().assert(hasClickAction().not())
+                compose.onNodeWithTag("createDebtReminder").assertDoesNotExist()
+                compose.awaitTag("debtInfoEditText").performScrollTo().performTextReplacement("Settled note")
+                compose.awaitTag("setFinanceButton").performClick()
+                compose.awaitTag("personHistory")
+                assertEquals(due, dao.getAllDebtsById(humanId).single { it.id == originalId }.dueDay)
+                compose.record(originalId).assertTextContains("Settled note")
                 compose.record(last.id).performClick()
                 compose.onNodeWithTag("dueSettingsButton").assertDoesNotExist()
                 compose.onNode(hasText(context.getString(R.string.repayment_cancel)) and hasClickAction()).performClick()
@@ -160,7 +173,9 @@ class PartialRepaymentScreenTest {
                 assertEquals(3, dao.getAllDebtsById(humanId).size)
                 compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("openDebtsTab"))
                 compose.onNodeWithTag("openDebtsTab").performClick()
-                compose.record(originalId)
+                compose.record(originalId).performClick()
+                compose.onNodeWithTag("dueSettingsButton").assertIsEnabled()
+                compose.onNodeWithTag("debtActionsCancel").performClick()
                 screenshot("cancelled-$sign")
 
                 compose.record(last.id).performClick()

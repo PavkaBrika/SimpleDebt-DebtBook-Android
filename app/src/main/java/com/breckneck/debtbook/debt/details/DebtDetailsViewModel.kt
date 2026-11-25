@@ -104,12 +104,6 @@ class DebtDetailsViewModel @Inject constructor(
     val debtDeleted: LiveData<Unit>
         get() = _debtDeleted
 
-    private val _isHumanDeleteDialogShown by lazy { MutableLiveData<Boolean>() }
-    val isHumanDeleteDialogShown: LiveData<Boolean>
-        get() = _isHumanDeleteDialogShown
-    private val _isShareDialogShown by lazy { MutableLiveData<Boolean>() }
-    val isShareDialogShown: LiveData<Boolean>
-        get() = _isShareDialogShown
     val debtActionId = savedStateHandle.getLiveData<Int?>("debtActionId", null)
     internal val restoreRemaining = MutableLiveData<BigDecimal?>(null)
 
@@ -474,22 +468,6 @@ class DebtDetailsViewModel @Inject constructor(
             }
             retry()
         }
-    }
-
-    fun onHumanDeleteDialogOpen() {
-        _isHumanDeleteDialogShown.value = true
-    }
-
-    fun onHumanDeleteDialogClose() {
-        _isHumanDeleteDialogShown.value = false
-    }
-
-    fun onShareDialogOpen() {
-        _isShareDialogShown.value = true
-    }
-
-    fun onShareDialogClose() {
-        _isShareDialogShown.value = false
     }
 
     fun onSetDebtSort(filter: Filter, order: Pair<DebtOrderAttribute, Boolean>) {

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.SouthWest
 import androidx.compose.material3.HorizontalDivider
@@ -81,12 +82,12 @@ internal fun DebtActionsSheet(
                 )
             } else {
                 if (remaining.signum() > 0) {
-                    DebtSheetAction(Icons.Outlined.SouthWest,
-                        if (debt.sum.signum() > 0) R.string.repayment_received else R.string.repayment_paid,
+                    DebtSheetAction(if (debt.sum.signum() > 0) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast,
+                        R.string.debt_repay,
                         "repaymentButton", enabled, onRepay)
                     HorizontalDivider(color = colors.border)
                 }
-                if (debt.sum.signum() != 0) {
+                if (remaining.signum() > 0 || (earlyEntry && debt.sum.signum() != 0)) {
                     DebtSheetAction(Icons.Outlined.DateRange, R.string.due_settings, "dueSettingsButton", enabled, onDue)
                     HorizontalDivider(color = colors.border)
                 }
@@ -101,7 +102,7 @@ internal fun DebtActionsSheet(
 }
 
 @Composable
-private fun DebtSheetAction(icon: ImageVector, label: Int, tag: String, enabled: Boolean, onClick: () -> Unit, destructive: Boolean = false) {
+internal fun DebtSheetAction(icon: ImageVector, label: Int, tag: String, enabled: Boolean, onClick: () -> Unit, destructive: Boolean = false) {
     val colors = bubbleColors()
     val ink = if (destructive) colors.danger else colors.ink
     BubbleListRow(

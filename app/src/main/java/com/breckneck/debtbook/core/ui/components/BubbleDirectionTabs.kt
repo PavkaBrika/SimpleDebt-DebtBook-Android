@@ -28,13 +28,14 @@ internal fun <T> BubbleDirectionTabs(
     indicatorColor: Color,
     enabled: Boolean,
     onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
     tabModifier: (T) -> Modifier = { Modifier },
     content: @Composable (T, Boolean) -> Unit,
 ) {
     val colors = bubbleColors()
     val haptic = LocalHapticFeedback.current
     val indicator by animateColorAsState(indicatorColor, tween(200), label = "Direction color")
-    BoxWithConstraints(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp)) {
+    BoxWithConstraints(modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp)) {
         val width = maxWidth / directions.size
         val offset by animateDpAsState(width * directions.indexOf(selected), tween(200), label = "Direction")
         Box(Modifier.matchParentSize()) {

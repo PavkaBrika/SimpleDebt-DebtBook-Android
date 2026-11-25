@@ -108,7 +108,8 @@ class CreateDebtViewModel @Inject constructor(
     val canRemind = savedState.get<Boolean>("canRemind") ?: true
 
     val hasDueChange: Boolean
-        get() = dueDay.value != initialDueDay || remind.value != initialRemind || (remind.value == true && minute.value != initialMinute)
+        get() = canRemind && (dueDay.value != initialDueDay || remind.value != initialRemind ||
+            (remind.value == true && minute.value != initialMinute))
 
     fun hasPastReminder(): Boolean {
         val day = dueDay.value ?: return false
@@ -117,6 +118,7 @@ class CreateDebtViewModel @Inject constructor(
     }
 
     fun setDueDraft(day: String?, selectedMinute: Int?) {
+        if (!canRemind) return
         savedState["dueDay"] = day
         savedState["remind"] = selectedMinute != null
         if (selectedMinute != null) savedState["draftMinute"] = selectedMinute
