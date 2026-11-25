@@ -127,7 +127,7 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 }
             }
         },
-        tabs = if (searching) null else { { BubbleBottomBar(R.id.mainFragment, host::onTabSelected) } },
+        tabs = if (searching) null else { { BubbleScreenTabs(R.id.mainFragment, host::onTabSelected) } },
     ) { padding ->
         if (balance == null) {
             DebtListLoading(padding, failed, vm::setListStateLoading)

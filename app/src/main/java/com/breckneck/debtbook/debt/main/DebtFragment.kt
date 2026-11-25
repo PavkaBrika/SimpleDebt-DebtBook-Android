@@ -28,6 +28,7 @@ class DebtFragment : Fragment() {
 
         fun onAddButtonClick()
         fun onTabSelected(id: Int)
+        fun onDebtSearchChanged(searching: Boolean)
 
         fun onFilterButtonLongClick()
 
@@ -47,6 +48,9 @@ class DebtFragment : Fragment() {
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        vm.isSearching.observe(viewLifecycleOwner) { searching ->
+            (requireActivity() as OnButtonClickListener).onDebtSearchChanged(searching)
+        }
         onCurrencySelected(R.id.mainFragment, vm::selectCurrency)
         setFragmentResultListener("mainFragmentKey") { _, result ->
             result.getString("currency")?.let(vm::selectCurrency)

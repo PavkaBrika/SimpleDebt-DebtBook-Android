@@ -147,7 +147,7 @@ private fun FinanceContent(
         bottomAction = if (shortWindow) null else {
             { FinanceAddButton(selected, { onAdd(selected) }, Modifier.fillMaxWidth()) }
         },
-        tabs = { BubbleBottomBar(R.id.financeFragment, onTab) },
+        tabs = { BubbleScreenTabs(R.id.financeFragment, onTab) },
     ) { padding ->
         HorizontalPager(
             state = pager,

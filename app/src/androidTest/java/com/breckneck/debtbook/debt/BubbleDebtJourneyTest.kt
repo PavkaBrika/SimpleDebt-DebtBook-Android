@@ -412,6 +412,8 @@ class BubbleDebtJourneyTest {
         assertEquals(searchCenter.x, closeCenter.x, 1f)
         assertEquals(searchCenter.y, closeCenter.y, 1f)
         balanceCard.assertDoesNotExist()
+        val tabs = compose.onNodeWithTag("bubbleBottomBar-${R.id.mainFragment}")
+        tabs.assertDoesNotExist()
 
         field.performTextReplacement("бОр")
         compose.waitUntil(8000) { compose.onAllNodesWithTag("person-$anna").fetchSemanticsNodes(false).isEmpty() }
@@ -432,6 +434,7 @@ class BubbleDebtJourneyTest {
         field.assertTextContains("бОр")
         pressBack()
         search.assertIsDisplayed()
+        tabs.assertIsDisplayed()
         assertEquals(originalHeight, balanceCard.fetchSemanticsNode().boundsInWindow.height, 1f)
         balance("+18 300")
     }
@@ -647,7 +650,8 @@ class BubbleDebtJourneyTest {
             hasTestTag("bottomTabIndicator") and hasAnyAncestor(hasTestTag("bubbleBottomBar-$destination")),
             useUnmergedTree = true,
         )
-        val original = indicator(R.id.mainFragment).fetchSemanticsNode().boundsInWindow
+        val originalIndicator = indicator(R.id.mainFragment).fetchSemanticsNode()
+        val original = originalIndicator.boundsInWindow
         val debt = compose.awaitTag("addHumanButton").fetchSemanticsNode().boundsInWindow
         fun title(label: Int): SemanticsNodeInteraction {
             val title = hasTestTag("bubbleRootTitle") and hasText(context.getString(label))
@@ -662,7 +666,9 @@ class BubbleDebtJourneyTest {
             awaitDestination(R.id.financeFragment)
             compose.mainClock.advanceTimeBy(80)
             compose.awaitTag("bubbleBottomBar-${R.id.financeFragment}")
-            val halfway = indicator(R.id.financeFragment).fetchSemanticsNode().boundsInWindow
+            val movingIndicator = indicator(R.id.financeFragment).fetchSemanticsNode()
+            assertEquals("The same indicator should move between tabs", originalIndicator.id, movingIndicator.id)
+            val halfway = movingIndicator.boundsInWindow
             compose.mainClock.advanceTimeBy(320)
             val end = indicator(R.id.financeFragment).fetchSemanticsNode().boundsInWindow
             assertTrue("Indicator position ${original.left} → ${halfway.left} → ${end.left}",

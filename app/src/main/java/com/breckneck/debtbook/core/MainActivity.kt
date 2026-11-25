@@ -14,7 +14,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
-import androidx.navigation.ui.onNavDestinationSelected
 import com.breckneck.debtbook.auth.ActivityAuthGate
 import com.breckneck.debtbook.auth.DebtSystemPicker
 import android.content.ComponentName
@@ -23,28 +22,35 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.*
 import android.util.Log
-import android.view.Menu
 import android.view.View
 import android.view.ViewStub
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.appcompat.widget.PopupMenu
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.navOptions
 import androidx.navigation.fragment.NavHostFragment
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.core.ui.components.BubbleTabMotion
+import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
 import com.breckneck.debtbook.debt.details.DebtDetailsFragment
 import com.breckneck.debtbook.debt.main.DebtFragment
 import com.breckneck.debtbook.debt.create.CreateDebtFragment
@@ -104,8 +110,11 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     )
     internal var screenInsets by mutableStateOf<PaddingValues?>(null)
         private set
-    internal val bubbleTabMotion = BubbleTabMotion()
-    private lateinit var tabMenu: Menu
+    private var rootTabDestination by mutableStateOf<Int?>(null)
+    private var debtSearchActive by mutableStateOf(false)
+    private var measuredTabBarHeight by mutableStateOf<Dp?>(null)
+    internal val hostedTabBarHeight: Dp?
+        get() = if (rootTabDestination != null) measuredTabBarHeight else null
     lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -176,20 +185,50 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
         navController = navHostFragment.navController
-        navController.addOnDestinationChangedListener { _, destination, _ -> bubbleTabMotion.destinationChanged(destination.id) }
-
+        configureRootTabs()
         configureHostInsets()
-        // NavigationUI keeps each tab's saved back stack. The destination draws its own bar.
-        tabMenu = PopupMenu(this, findViewById<View>(R.id.bottomDock)).apply { inflate(R.menu.menu_bottom_nav) }.menu
+    }
+
+    private fun configureRootTabs() {
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            rootTabDestination = destination.id.takeIf { it in TOP_LEVEL_DESTINATIONS }
+        }
+        val bar = findViewById<ComposeView>(R.id.rootTabBar)
+        bar.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            if (bottom > top) measuredTabBarHeight = ((bottom - top) / resources.displayMetrics.density).dp
+        }
+        bar.setContent {
+            val destination = rootTabDestination ?: return@setContent
+            if (destination == R.id.mainFragment && debtSearchActive) return@setContent
+            DebtBookTheme {
+                BubbleBottomBar(
+                    destination = destination,
+                    onDestinationSelected = ::onTabSelected,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                )
+            }
+        }
+    }
+
+    override fun onDebtSearchChanged(searching: Boolean) {
+        debtSearchActive = searching
     }
 
     override fun onTabSelected(id: Int) {
         val from = navController.currentDestination?.id
-        if (from in TOP_LEVEL_DESTINATIONS && from != id &&
-            tabMenu.findItem(id)?.onNavDestinationSelected(navController) == true
-        ) {
-            maybeShowInterstitial()
-        }
+        if (from !in TOP_LEVEL_DESTINATIONS || id !in TOP_LEVEL_DESTINATIONS || from == id) return
+        navController.navigate(id, null, navOptions {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            anim {
+                enter = R.animator.tab_enter
+                exit = R.animator.tab_exit
+                popEnter = R.animator.tab_enter
+                popExit = R.animator.tab_exit
+            }
+        })
+        if (navController.currentDestination?.id == id) maybeShowInterstitial()
     }
 
     private fun configureHostInsets() {
