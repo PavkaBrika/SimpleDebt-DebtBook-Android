@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         },
         lockDelayMillis = { vm.pinLockDelayMillis() },
     )
-    internal var screenInsets by mutableStateOf(PaddingValues(0.dp))
+    internal var screenInsets by mutableStateOf<PaddingValues?>(null)
         private set
     internal val bubbleTabMotion = BubbleTabMotion()
     private lateinit var tabMenu: Menu
@@ -195,25 +195,32 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     private fun configureHostInsets() {
         val root = findViewById<View>(R.id.rootLayout)
         val dock = findViewById<View>(R.id.bottomDock)
-        var safeBars = Insets.NONE
+        var safeBars: Insets? = null
+        var dockMeasured = false
 
         fun updateScreenInsets() {
+            val bars = safeBars ?: return
+            if (!dockMeasured) return
             val density = resources.displayMetrics.density
             screenInsets = PaddingValues.Absolute(
-                left = (safeBars.left / density).dp,
-                top = (safeBars.top / density).dp,
-                right = (safeBars.right / density).dp,
+                left = (bars.left / density).dp,
+                top = (bars.top / density).dp,
+                right = (bars.right / density).dp,
                 bottom = (dock.height / density).dp,
             )
         }
-        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateScreenInsets() }
-        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            safeBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-            val keyboardOpen = ime > safeBars.bottom
-            dock.translationY = if (keyboardOpen) -ime.toFloat() else 0f
-            dock.updatePadding(left = safeBars.left, right = safeBars.right, bottom = if (keyboardOpen) 0 else safeBars.bottom)
+        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            dockMeasured = true
             updateScreenInsets()
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            safeBars = bars
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val keyboardOpen = ime > bars.bottom
+            dock.translationY = if (keyboardOpen) -ime.toFloat() else 0f
+            dock.updatePadding(left = bars.left, right = bars.right, bottom = if (keyboardOpen) 0 else bars.bottom)
+            if (!dock.isLayoutRequested) updateScreenInsets()
             insets
         }
         ViewCompat.requestApplyInsets(root)

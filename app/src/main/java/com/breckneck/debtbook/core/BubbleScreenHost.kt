@@ -31,8 +31,9 @@ internal fun Fragment.bubbleScreen(
         id = viewId
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setContent {
+            val insets = host.screenInsets ?: return@setContent
             DebtBookTheme {
-                CompositionLocalProvider(LocalBubbleTabMotion provides host.bubbleTabMotion) { content(host.screenInsets) }
+                CompositionLocalProvider(LocalBubbleTabMotion provides host.bubbleTabMotion) { content(insets) }
             }
         }
     }
