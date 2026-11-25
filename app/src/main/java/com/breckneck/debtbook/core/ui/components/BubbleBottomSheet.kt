@@ -81,6 +81,7 @@ internal fun BubbleSheetHeader(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    closeModifier: Modifier = Modifier,
 ) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -89,7 +90,7 @@ internal fun BubbleSheetHeader(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
-        BubbleIconButton(onClick = onClose, enabled = enabled, diameter = 42.dp) {
+        BubbleIconButton(onClick = onClose, modifier = closeModifier, enabled = enabled, diameter = 42.dp) {
             Icon(Icons.Outlined.Close, stringResource(R.string.cancel), Modifier.size(20.dp))
         }
     }

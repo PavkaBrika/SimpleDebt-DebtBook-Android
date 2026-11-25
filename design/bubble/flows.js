@@ -5,7 +5,7 @@ const flowNames = {categoryHistory:'История категории', financeF
 const flowRoots = {categoryHistory:'finance',financeForm:'finance',categoryForm:'finance',goalDetail:'goals',goalForm:'goals',backup:'settings',security:'settings',pin:'settings',recovery:'settings'};
 const currencyCodes = 'USD EUR RUB BYN UAH KZT JPY GBP AUD CAD CHF CNY SEK MXN PLN AED RON SAR RSD TJS TRY UZS MNT CZK AZN AMD BGN ILS VND BRL INR KRW IDR THB TWD NZD SGD HKD'.split(' ');
 function featureFrame() {
-  return {financeDir:'Расходы',financeCur:defaultCurrency(),period:'День',day:TODAY,goalId:null,categoryId:null,trail:[],peopleOrder:'Исходный порядок',historyOrder:'Дата операции ↓',historyFilter:'Все'};
+  return {financeDir:'Расходы',financeCur:defaultCurrency(),period:'День',day:TODAY,goalId:null,categoryId:null,trail:[],peopleOrder:prefs.peopleOrder,historyOrder:prefs.historyOrder,historyFilter:'all',personSection:'open'};
 }
 function go(i, route) {
   const f=frames[i]; f.trail.push(f.route); setRoute(f,route,'forward'); render(i);
@@ -76,7 +76,8 @@ function demoSnapshot() {
   return {format:'SimpleDebt-design-2',people,finance:ledger,goals:savings,preferences:{...prefs},serial};
 }
 function applySnapshot(data) {
-  people=data.people;ledger=data.finance;savings=data.goals;prefs={defaultCur:data.preferences.defaultCur,theme:data.preferences.theme,delay:data.preferences.delay};serial=data.serial;
+  const {defaultCur,theme,delay,peopleOrder=defaultPrefs().peopleOrder,historyOrder=defaultPrefs().historyOrder}=data.preferences;
+  people=data.people;ledger=data.finance;savings=data.goals;prefs={defaultCur,theme,delay,peopleOrder,historyOrder};serial=data.serial;
 }
 function baseRoute(route) {return flowRoots[route] || (route==='person'||route==='new'?'home':route);}
 function repairRoute(f) {

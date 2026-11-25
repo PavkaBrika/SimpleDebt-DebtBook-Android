@@ -80,26 +80,8 @@ internal fun DebtDateSheet(
     val reminders = remember(context) { DebtReminders.get(context) }
     val scope = rememberCoroutineScope()
     val spacing = MaterialTheme.spacing
-    val minMillis = minDay?.let(LedgerDate::pickerMillis)
-    val maxMillis = maxDay?.let(LedgerDate::pickerMillis)
-    val selectableDates = remember(minMillis, maxMillis) {
-        object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
-                (minMillis == null || utcTimeMillis >= minMillis) && (maxMillis == null || utcTimeMillis <= maxMillis)
-        }
-    }
-    val initialMillis = initialDay?.let(LedgerDate::canonical)?.let(LedgerDate::pickerMillis)
-        ?.takeIf(selectableDates::isSelectableDate)
-    val todayMillis = LedgerDate.pickerMillis(LedgerDate.today())
-    val displayedMonth = initialMillis ?: todayMillis.coerceIn(minMillis ?: Long.MIN_VALUE, maxMillis ?: Long.MAX_VALUE)
-    val displayYear = LedgerDate.dayFromPickerMillis(displayedMonth).take(4).toInt()
-    val calendar = rememberDatePickerState(
-        initialSelectedDateMillis = initialMillis,
-        initialDisplayedMonthMillis = displayedMonth,
-        yearRange = minOf(displayYear, DatePickerDefaults.YearRange.first)..maxOf(displayYear, DatePickerDefaults.YearRange.last),
-        selectableDates = selectableDates
-    )
-    val day = calendar.selectedDateMillis?.takeIf(selectableDates::isSelectableDate)?.let(LedgerDate::dayFromPickerMillis)
+    val calendar = rememberDebtCalendar(initialDay, minDay, maxDay)
+    val day = calendar.selectedDateMillis?.takeIf(calendar.selectableDates::isSelectableDate)?.let(LedgerDate::dayFromPickerMillis)
     val showReminder = initialReminder != null && day != null && DebtReminderPolicy.canSchedule(day)
     var allowed by remember { mutableStateOf(reminders.allowed()) }
     var enabled by rememberSaveable { mutableStateOf(initialReminder == true && allowed) }
@@ -129,13 +111,10 @@ internal fun DebtDateSheet(
     }
 
     if (pickingTime) {
-        val time = rememberTimePickerState(minute / 60, minute % 60, is24Hour = true)
-        AlertDialog(onDismissRequest = { pickingTime = false },
-            title = { Text(stringResource(R.string.debt_time)) },
-            text = { TimeInput(time, Modifier.testTag("timeInput")) },
-            confirmButton = { TextButton({ minute = time.hour * 60 + time.minute; pickingTime = false },
-                modifier = Modifier.testTag("timeConfirm")) { Text(stringResource(R.string.due_apply)) } },
-            dismissButton = { TextButton({ pickingTime = false }) { Text(stringResource(R.string.cancel)) } })
+        DebtReminderTimeDialog(minute, { pickingTime = false }) {
+            minute = it
+            pickingTime = false
+        }
     }
     DebtBookBottomSheet(
         onDismiss = { if (!busy) onDismiss() },
@@ -246,7 +225,48 @@ internal fun DebtDateSheet(
     }
 }
 
-private fun openNotificationSettings(context: Context) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun rememberDebtCalendar(initialDay: String?, minDay: String? = null, maxDay: String? = null): androidx.compose.material3.DatePickerState {
+    val minMillis = minDay?.let(LedgerDate::pickerMillis)
+    val maxMillis = maxDay?.let(LedgerDate::pickerMillis)
+    val selectableDates = remember(minMillis, maxMillis) {
+        object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                (minMillis == null || utcTimeMillis >= minMillis) && (maxMillis == null || utcTimeMillis <= maxMillis)
+        }
+    }
+    val initialMillis = initialDay?.let(LedgerDate::canonical)?.let(LedgerDate::pickerMillis)
+        ?.takeIf(selectableDates::isSelectableDate)
+    val todayMillis = LedgerDate.pickerMillis(LedgerDate.today())
+    val displayedMonth = initialMillis ?: todayMillis.coerceIn(minMillis ?: Long.MIN_VALUE, maxMillis ?: Long.MAX_VALUE)
+    val displayYear = LedgerDate.dayFromPickerMillis(displayedMonth).take(4).toInt()
+    return rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis,
+        initialDisplayedMonthMillis = displayedMonth,
+        yearRange = minOf(displayYear, DatePickerDefaults.YearRange.first)..maxOf(displayYear, DatePickerDefaults.YearRange.last),
+        selectableDates = selectableDates
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DebtReminderTimeDialog(minute: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
+    val time = rememberTimePickerState(minute / 60, minute % 60, is24Hour = true)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.debt_time)) },
+        text = { TimeInput(time, Modifier.testTag("timeInput")) },
+        confirmButton = {
+            TextButton({ onSelect(time.hour * 60 + time.minute) }, Modifier.testTag("timeConfirm")) {
+                Text(stringResource(R.string.due_apply))
+            }
+        },
+        dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+internal fun openNotificationSettings(context: Context) {
     val intent = if (Build.VERSION.SDK_INT >= 26) {
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
     } else {

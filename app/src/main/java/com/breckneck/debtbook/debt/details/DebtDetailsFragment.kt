@@ -13,13 +13,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.CheckBox
-import android.widget.ImageView
-import android.widget.RadioButton
-import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.cardview.widget.CardView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.livedata.observeAsState
@@ -29,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.breckneck.debtbook.R
@@ -37,21 +33,17 @@ import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
 import com.breckneck.debtbook.debt.reminders.DebtDateSheet
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.usecase.Debt.ExportDebtDataInExcelUseCase
-import com.breckneck.deptbook.domain.util.DebtOrderAttribute
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
-import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.LedgerDate
 import com.breckneck.deptbook.domain.util.MoneyDisplay
-import com.breckneck.deptbook.domain.util.ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_DECREASE
-import com.breckneck.deptbook.domain.util.ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_INCREASE
-import com.breckneck.deptbook.domain.util.compareTo
-import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+
+internal const val DEBT_DETAILS_RESULT = "debtDetailsResult"
 
 @AndroidEntryPoint
 class DebtDetailsFragment : Fragment() {
@@ -87,11 +79,11 @@ class DebtDetailsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         bubbleScreen(R.id.debtDetailsSheets) { insets ->
             var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
-            DebtDetailsScreen(vm, insets, requireActivity() as OnButtonClickListener, ::showSortDialog,
+            DebtDetailsScreen(vm, insets, requireActivity() as OnButtonClickListener,
                 ::showDeleteHumanDialog, { showShareDialog(vm.humanName.value, vm.humanCurrency) },
                 onRecord = { id -> initialSheet = DebtSheet.ACTIONS; vm.selectDebtAction(id) },
                 onDue = { id -> initialSheet = DebtSheet.DUE; vm.selectDebtAction(id) },
-                onUndo = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
+                onRepaymentAction = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
             DebtSheets(initialSheet) { initialSheet = DebtSheet.ACTIONS }
         }
 
@@ -105,7 +97,10 @@ class DebtDetailsFragment : Fragment() {
                 ViewCompat.performHapticFeedback(view, feedback)
             }
         }
-        if (vm.isSortDialogShown.value == true) showSortDialog()
+        setFragmentResultListener(DEBT_DETAILS_RESULT) { _, result ->
+            if (result.getBoolean("newDebt")) vm.showAddedDebt(result.getBoolean("positive"))
+            vm.retry()
+        }
         if (vm.isHumanDeleteDialogShown.value == true) showDeleteHumanDialog()
         if (vm.isShareDialogShown.value == true) showShareDialog(vm.humanName.value, vm.humanCurrency)
         vm.humanDeleted.observe(viewLifecycleOwner) { if (it) buttonClickListener?.deleteHuman() }
@@ -156,6 +151,8 @@ class DebtDetailsFragment : Fragment() {
         val repaymentId by vm.repaymentDebtId.observeAsState()
         val debtId by vm.debtActionId.observeAsState()
         val history by vm.history.observeAsState()
+        val busy by vm.isDeleting.observeAsState(false)
+        val restoreRemaining by vm.restoreRemaining.observeAsState()
         val selected = repaymentId ?: debtId
         val debt = history?.firstOrNull { it.id == selected }
         if (debt != null && repaymentId != null) {
@@ -195,20 +192,26 @@ class DebtDetailsFragment : Fragment() {
                 }
                 DebtSheet.REMOVE -> {
                     val repayment = debt.repaymentOfId != null
-                    val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
-                    ConfirmationBottomSheet(
-                        title = action,
-                        message = if (repayment) listOfNotNull(
-                            "${MoneyDisplay.formatExact(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
-                            debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) },
-                            stringResource(R.string.repayment_cancel_confirm, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
-                        ).joinToString("\n")
-                        else stringResource(if (earlyEntry) R.string.early_entry_delete_question else R.string.debt_delete_question),
-                        confirmText = action,
-                        dismissText = stringResource(R.string.cancel),
-                        onConfirm = { close(); vm.deleteDebt(debt) },
-                        onDismiss = { if (initialSheet == DebtSheet.REMOVE) close() else sheet = DebtSheet.ACTIONS }
-                    )
+                    if (repayment && debt.cancelled) {
+                        RestoreRepaymentSheet(debt, debt.repaymentOfId?.let(vm::originalDebt), currency, busy, restoreRemaining,
+                            onRestore = { vm.restoreRepayment(debt.id) },
+                            onDismiss = { if (initialSheet == DebtSheet.REMOVE) close() else sheet = DebtSheet.ACTIONS })
+                    } else {
+                        val action = stringResource(if (repayment) R.string.repayment_cancel else R.string.delete)
+                        ConfirmationBottomSheet(
+                            title = action,
+                            message = if (repayment) listOfNotNull(
+                                "${MoneyDisplay.formatExact(debt.sum.abs(), currency)} $currency · ${LedgerDate.display(debt.date)}",
+                                debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) },
+                                stringResource(R.string.repayment_cancel_confirm, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
+                            ).joinToString("\n")
+                            else stringResource(if (earlyEntry) R.string.early_entry_delete_question else R.string.debt_delete_question),
+                            confirmText = action,
+                            dismissText = stringResource(R.string.cancel),
+                            onConfirm = { close(); vm.deleteDebt(debt) },
+                            onDismiss = { if (initialSheet == DebtSheet.REMOVE) close() else sheet = DebtSheet.ACTIONS }
+                        )
+                    }
                 }
             }
         }
@@ -274,113 +277,13 @@ class DebtDetailsFragment : Fragment() {
         return debt.copy(info = description.joinToString("; "))
     }
 
-    private fun showSortDialog() {
-        val orderDialog = BottomSheetDialog(requireContext())
-        orderDialog.setContentView(R.layout.dialog_sort)
-        orderDialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
-        vm.onSortDialogOpen()
-
-        var sortByIncrease = vm.debtOrder.value!!.second
-        val sortImageView = orderDialog.findViewById<ImageView>(R.id.sortImageView)
-        if (sortByIncrease)
-            sortImageView!!.rotationY = ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_INCREASE
-        else
-            sortImageView!!.rotationY = ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_DECREASE
-
-        var orderAttribute = vm.debtOrder.value!!.first
-        val orderCreationDateRadioButton =
-            orderDialog.findViewById<RadioButton>(R.id.orderCreationDateRadioButton)
-        val orderDateRadioButton = orderDialog.findViewById<RadioButton>(R.id.orderDateRadioButton)
-        val orderSumRadioButton = orderDialog.findViewById<RadioButton>(R.id.orderSumRadioButton)
-        when (orderAttribute) {
-            DebtOrderAttribute.CreationDate ->
-                orderCreationDateRadioButton!!.isChecked = true
-
-            DebtOrderAttribute.Date ->
-                orderDateRadioButton!!.isChecked = true
-
-            DebtOrderAttribute.Sum ->
-                orderSumRadioButton!!.isChecked = true
-        }
-
-        orderDialog.findViewById<CardView>(R.id.sortButtonCard)!!.setOnClickListener {
-            buttonClickListener!!.onTickVibration()
-            if (sortImageView.rotationY == ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_INCREASE) {
-                sortImageView.rotationY = ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_DECREASE
-                sortByIncrease = false
-            } else if (sortImageView.rotationY == ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_DECREASE) {
-                sortImageView.rotationY = ROTATE_DEGREE_DEBT_IMAGE_VIEW_BY_INCREASE
-                sortByIncrease = true
-            }
-        }
-
-        var debtFilter = vm.debtFilter.value!!
-        when (debtFilter) {
-            Filter.ALL -> orderDialog.findViewById<RadioButton>(R.id.showAllRadioButton)!!.isChecked =
-                true
-
-            Filter.NEGATIVE -> orderDialog.findViewById<RadioButton>(R.id.showNegativeRadioButton)!!.isChecked =
-                true
-
-            Filter.POSITIVE -> orderDialog.findViewById<RadioButton>(R.id.showPositiveRadioButton)!!.isChecked =
-                true
-        }
-
-        val rememberChoiceCheckBox = orderDialog.findViewById<CheckBox>(R.id.rememberChoiceCheckBox)
-        orderDialog.findViewById<Button>(R.id.confirmButton)!!.setOnClickListener {
-
-            when (orderDialog.findViewById<RadioGroup>(R.id.filterRadioGroup)!!.checkedRadioButtonId) {
-                R.id.showAllRadioButton -> debtFilter = Filter.ALL
-                R.id.showPositiveRadioButton -> debtFilter = Filter.POSITIVE
-                R.id.showNegativeRadioButton -> debtFilter = Filter.NEGATIVE
-            }
-
-            when (orderDialog.findViewById<RadioGroup>(R.id.orderRadioGroup)!!.checkedRadioButtonId) {
-                R.id.orderDateRadioButton -> {
-                    orderAttribute = DebtOrderAttribute.Date
-                }
-
-                R.id.orderCreationDateRadioButton -> {
-                    orderAttribute = DebtOrderAttribute.CreationDate
-                }
-
-                R.id.orderSumRadioButton -> {
-                    orderAttribute = DebtOrderAttribute.Sum
-                }
-            }
-
-            val order = Pair(orderAttribute, sortByIncrease)
-            vm.onSetDebtSort(filter = debtFilter, order = order)
-
-            if (rememberChoiceCheckBox!!.isChecked) {
-                vm.saveDebtOrder(Pair(orderAttribute, sortByIncrease))
-            }
-
-            orderDialog.dismiss()
-        }
-
-        orderDialog.findViewById<Button>(R.id.cancelButton)!!.setOnClickListener {
-            orderDialog.dismiss()
-        }
-
-        orderDialog.setOnDismissListener {
-            vm.onOrderDialogClose()
-        }
-
-        orderDialog.setOnCancelListener {
-            vm.onOrderDialogClose()
-        }
-
-        orderDialog.show()
-    }
-
     private val dayChanged = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) { vm.retry() }
     }
 
     override fun onResume() {
         super.onResume()
-        vm.retry()
+        vm.onResume()
         ContextCompat.registerReceiver(requireContext(), dayChanged, android.content.IntentFilter().apply {
             addAction(Intent.ACTION_DATE_CHANGED); addAction(Intent.ACTION_TIMEZONE_CHANGED); addAction(Intent.ACTION_TIME_CHANGED)
         }, ContextCompat.RECEIVER_NOT_EXPORTED)

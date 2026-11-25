@@ -1,11 +1,27 @@
 <resources>
     <string name="debt_total">Gesamtsaldo</string>
     <string name="debt_people">Personen</string>
+    <string name="people_order_title">Reihenfolge der Personen</string>
+    <string name="people_order_newest">Neueste zuerst</string>
+    <string name="people_order_oldest">Älteste zuerst</string>
+    <string name="people_order_highest_balance">Höchster Saldo zuerst</string>
+    <string name="people_order_lowest_balance">Niedrigster Saldo zuerst</string>
     <string name="find_person">Person suchen</string>
     <string name="debt_no_due">Ohne Fälligkeit</string>
     <string name="debt_today">Heute fällig</string>
     <string name="debt_overdue">Überfällig · %1$s</string>
     <string name="debt_empty_currency">Keine passenden Einträge</string>
+    <string name="debt_history_order">Reihenfolge des Verlaufs</string>
+    <string name="debt_order_date_newest">Buchungsdatum · neueste zuerst</string>
+    <string name="debt_order_date_oldest">Buchungsdatum · älteste zuerst</string>
+    <string name="debt_order_created_newest">Erstelldatum · neueste zuerst</string>
+    <string name="debt_order_created_oldest">Erstelldatum · älteste zuerst</string>
+    <string name="debt_order_amount_highest">Betrag · höchste zuerst</string>
+    <string name="debt_order_amount_lowest">Betrag · niedrigste zuerst</string>
+    <string name="debt_history_refresh_failed">Verlauf konnte nicht aktualisiert werden</string>
+    <string name="debt_amount_required">Geben Sie einen Betrag ein</string>
+    <string name="debt_name_required">Geben Sie einen Namen ein</string>
+    <string name="debt_save_failed">Die Schuld konnte nicht gespeichert werden</string>
     <string name="debt_save">Schuld speichern</string>
     <string name="debt_deadline">Fälligkeit</string>
     <string name="debt_clear_date">Fälligkeit entfernen</string>
@@ -24,4 +40,13 @@
     <string name="debt_record_remaining">Restbetrag dieser Schuld</string>
     <string name="debt_after_repayment">Nach der Rückzahlung verbleiben %1$s</string>
     <string name="debt_out_of">von %1$s</string>
+    <string name="debt_change_person">Person ändern</string>
+    <string name="debt_choose_matching_person">Wähle die Person aus den passenden Karten.</string>
+    <string name="debt_contacts_short">Kontakte</string>
+    <string name="debt_existing_people">Schuld einer vorhandenen Person hinzufügen</string>
+    <string name="debt_choose_photo">Foto auswählen</string>
+    <string name="debt_replace_photo">Foto ersetzen</string>
+    <string name="debt_remove_photo">Foto entfernen</string>
+    <string name="debt_selected_person">Person ausgewählt</string>
+    <string name="debt_photo_failed">Foto konnte nicht geladen werden.</string>
 </resources>

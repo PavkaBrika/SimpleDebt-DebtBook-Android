@@ -7,7 +7,7 @@ import com.breckneck.deptbook.domain.repository.HumanRepository
 
 class SetHumanUseCase(private val humanRepository: HumanRepository) {
 
-    fun execute(name: String, sumDebt: BigDecimal, currency: String) {
-        humanRepository.insertHuman(HumanDomain(name = name, sumDebt = sumDebt, currency = currency, id = 0))
+    fun execute(name: String, sumDebt: BigDecimal, currency: String, photo: String? = null) {
+        humanRepository.insertHuman(HumanDomain(name = name, sumDebt = sumDebt, currency = currency, id = 0, photo = photo))
     }
 }

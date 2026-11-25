@@ -19,10 +19,13 @@ function goalBalance(g, overview=false) {
 function goalDeleteButton(g) {
   return `<button type="button" class="icon-button goal-delete danger" data-act="goal-delete" data-value="${g.id}" aria-label="Удалить цель „${escapeHtml(g.name)}“">${icon('trash',22)}</button>`;
 }
+function contextActionMenu(description,items,extraClass='') {
+  return '<details class="context-actions '+extraClass+'"><summary class="icon-button" aria-label="'+escapeHtml(description)+'">'+icon('more')+'</summary><div class="context-menu">'+items+'</div></details>';
+}
 function goalMenu(g) {
-  return '<details class="goal-actions"><summary class="icon-button" aria-label="Действия с целью '+escapeHtml(g.name)+'">'+icon('more')+'</summary><div class="goal-menu">'
-    +button('goal-edit','Редактировать цель',g.id,'menu-action','edit')
-    +button('goal-delete','Удалить цель',g.id,'menu-action danger','trash')+'</div></details>';
+  return contextActionMenu('Действия с целью '+g.name,
+    button('goal-edit','Редактировать цель',g.id,'menu-action','edit')+
+    button('goal-delete','Удалить цель',g.id,'menu-action danger','trash'),'goal-actions');
 }
 function goalListItem(g) {
   const total=saved(g);
@@ -88,15 +91,19 @@ flowViews.goalForm=f=>{
   return goalScreenLayout(d.id?'Редактировать цель':'Новая цель','<div class="group">'+field('flag','Название',entry('goalDraft.name',d.name,'text','maxlength="100" placeholder="На что копим?"'))+field('stack','Целевая сумма',entry('goalDraft.target',d.target,'text','inputmode="decimal" placeholder="0"'))+field('take','Уже накоплено',entry('goalDraft.saved',d.saved,'text','inputmode="decimal" placeholder="0"'))+field('pie','Валюта',picker('goalDraft.cur',currencyCodes,d.cur,'Валюта цели'))+field('date','Срок · необязательно',entry('goalDraft.due',d.due,'date','min="'+addDays(TODAY,1)+'"'))+'</div><div class="group spaced photo-picker">'+photo+'</div>'+errorText(f),{action:primary('goal-save','Сохранить цель','check')});
 };
 flowActions['goal-photo-clear']=i=>{frames[i].goalDraft.photo='';render(i,true);};
-async function selectPhoto(i,file) {
-  const d=frames[i].goalDraft;
-  try {
+async function readDemoPhoto(file,maxSize) {
     const img=await createImageBitmap(file);
-    const scale=Math.min(1,720/Math.max(img.width,img.height));
+    const scale=Math.min(1,maxSize/Math.max(img.width,img.height));
     const canvas=document.createElement('canvas');
     canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
     canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);img.close();
-    if(frames[i].goalDraft===d&&frames[i].route==='goalForm'){d.photo=canvas.toDataURL('image/jpeg',0.8);render(i,true);}
+    return canvas.toDataURL('image/jpeg',0.8);
+}
+async function selectPhoto(i,file) {
+  const d=frames[i].goalDraft;
+  try {
+    const photo=await readDemoPhoto(file,720);
+    if(frames[i].goalDraft===d&&frames[i].route==='goalForm'){d.photo=photo;render(i,true);}
   } catch {if(frames[i].goalDraft===d)fail(i,'Не удалось прочитать фото. Выберите другое изображение.');}
 }
 flowActions['goal-save']=i=>{

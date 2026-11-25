@@ -1,17 +1,12 @@
 package com.breckneck.debtbook.debt.create
 
 import android.os.Bundle
-import android.provider.ContactsContract.Contacts
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.*
@@ -21,14 +16,12 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
@@ -36,133 +29,157 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.reminders.DebtReminders
+import com.breckneck.debtbook.finance.financeActionColors
+import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import com.breckneck.deptbook.domain.util.DecimalInput
 import com.breckneck.deptbook.domain.util.LedgerDate
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun CreateDebtScreen(vm: CreateDebtViewModel, hostInsets: PaddingValues, args: Bundle, back: () -> Unit, feedback: () -> Unit,
-    onCurrencyClick: (String) -> Unit, saved: (Int, String, String) -> Unit) {
+    onContactClick: () -> Unit, onCurrencyClick: (String) -> Unit, saved: (Int, String, String, Boolean) -> Unit) {
     val context = LocalContext.current
     val colors = bubbleColors()
-    val haptic = LocalHapticFeedback.current
     val focus = LocalFocusManager.current
     val personId = args.getInt("idHuman", -1)
     val debtId = args.getInt("idDebt", -1)
     val previous = args.getString("sum")?.toBigDecimalOrNull()
-    val currency by vm.currency.observeAsState("")
+    val availablePeople by vm.availablePeople.observeAsState(emptyList())
+    val selectedPersonId by vm.selectedPersonId.observeAsState()
+    val selectedPerson = availablePeople.firstOrNull { it.id == selectedPersonId }
+    val draftCurrency by vm.currency.observeAsState("")
+    val currency = selectedPerson?.currency ?: draftCurrency
+    val ownerId = if (personId > 0) personId else selectedPersonId ?: -1
     val amount = rememberTextFieldState(previous?.abs()?.let { DecimalInput.format(it, currency = currency) }.orEmpty())
     val name = rememberTextFieldState(args.getString("name").orEmpty())
     val note = rememberTextFieldState(args.getString("info").orEmpty())
     var positive by rememberSaveable { mutableStateOf((previous?.signum() ?: 1) >= 0) }
-    var error by rememberSaveable { mutableIntStateOf(0) }
+    var showFieldErrors by rememberSaveable { mutableStateOf(false) }
     val busy by vm.isSaving.observeAsState(false)
     val failed by vm.saveError.observeAsState(false)
-    val savedId by vm.savedHumanId.observeAsState()
-    LaunchedEffect(savedId) { savedId?.let { saved(it, currency, name.text.toString().trim()) } }
-
-    // The system picker grants access to the chosen contact only.
-    val contact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
-        if (uri != null) try {
-            context.contentResolver.query(uri, arrayOf(Contacts.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) name.setTextAndPlaceCursorAtEnd(cursor.getString(0).orEmpty())
-            }
-        } catch (_: SecurityException) { Toast.makeText(context, R.string.no_permission, Toast.LENGTH_SHORT).show() }
+    val savedOwner by vm.savedOwner.observeAsState()
+    val loadingPhoto by vm.loadingPhoto.observeAsState(false)
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val nameRequester = remember { BringIntoViewRequester() }
+    val amountText = amount.text.toString()
+    val parsed = remember(amountText, currency, previous) { DecimalInput.parse(amountText, currency, previous?.abs()) }
+    val amountError = when {
+        amountText.isBlank() -> R.string.debt_amount_required
+        parsed == null || parsed.signum() < 0 -> R.string.invalid_decimal_amount
+        parsed.signum() == 0 -> R.string.zerodebt
+        else -> null
     }
+    val nameMissing = name.text.isBlank() && ownerId <= 0
+    val directionColors = financeActionColors(if (positive) FinanceCategoryState.INCOME else FinanceCategoryState.EXPENSE)
+    val saveFill by animateColorAsState(directionColors.containerColor, tween(200), label = "Save debt background")
+    val saveInk by animateColorAsState(directionColors.contentColor, tween(200), label = "Save debt color")
+    val amountContainer by animateColorAsState(if (positive) colors.mint else colors.dangerContainer, tween(200), label = "Debt amount background")
+    val amountInk by animateColorAsState(if (positive) colors.onMint else colors.danger, tween(200), label = "Debt amount color")
+    LaunchedEffect(savedOwner) { savedOwner?.let { saved(it.id, it.currency, it.name, positive) } }
 
     BubbleScaffold(
         hostInsets = hostInsets,
         modifier = Modifier.semantics { testTagsAsResourceId = true },
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        scrollBehindBarsWithIme = true,
+        bottomBarScrim = false,
         topBar = {
             BubbleTopBar(stringResource(if (debtId > 0) R.string.editdebtcollaps else R.string.newdebt), back,
                 hostInsets, backEnabled = !busy)
         },
         bottomAction = {
-            if (error != 0 || failed) Text(stringResource(if (error != 0) error else R.string.history_change_failed),
-                Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
+            if (failed) Text(stringResource(R.string.debt_save_failed),
+                Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                color = MaterialTheme.colorScheme.error)
             BubbleButton({
-                val parsed = DecimalInput.parse(amount.text.toString(), currency, previous?.abs())
-                error = when {
-                    name.text.isBlank() && personId <= 0 -> R.string.youmustentername
-                    parsed == null || parsed.signum() < 0 -> R.string.invalid_decimal_amount
-                    parsed.signum() == 0 -> R.string.zerodebt
-                    vm.hasPastReminder() && DebtReminders.get(context).allowed() -> R.string.debt_future_time
-                    else -> 0
-                }
-                if (error == 0 && parsed != null) {
-                    if (vm.remind.value == true && vm.hasDueChange && !DebtReminders.get(context).allowed()) {
-                        vm.dueDay.value?.let { vm.setDueDraft(it, null) }
+                showFieldErrors = true
+                focus.clearFocus()
+                val remindersAllowed = DebtReminders.get(context).allowed()
+                when {
+                    amountError != null -> scope.launch { scroll.animateScrollTo(0) }
+                    nameMissing -> scope.launch {
+                        withFrameNanos {}
+                        nameRequester.bringIntoView()
                     }
-                    feedback()
-                    vm.saveDebt(personId, debtId, name.text.toString().trim(), if (positive) parsed else -parsed,
-                        vm.date.value ?: LedgerDate.today(), note.text.toString())
+                    vm.hasPastReminder() && remindersAllowed -> scope.launch { scroll.animateScrollTo(scroll.maxValue) }
+                    parsed != null -> {
+                        if (vm.remind.value == true && vm.hasDueChange && !remindersAllowed) {
+                            vm.dueDay.value?.let { vm.setDueDraft(it, null) }
+                        }
+                        feedback()
+                        vm.saveDebt(ownerId, debtId, name.text.toString().trim(), if (positive) parsed else -parsed,
+                            vm.date.value ?: LedgerDate.today(), note.text.toString())
+                    }
                 }
-            }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("setFinanceButton"), enabled = !busy && savedId == null) {
+            }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("setFinanceButton"),
+                enabled = !busy && !loadingPhoto && savedOwner == null && (selectedPersonId == null || selectedPerson != null),
+                colors = directionColors.copy(containerColor = saveFill, contentColor = saveInk)) {
                 Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
                 Text(stringResource(R.string.debt_save), Modifier.padding(start = 8.dp))
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
+        BubbleFormScroll(padding, Modifier.testTag("debtFormScroll"), scroll,
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth().clip(CircleShape).background(colors.fill).padding(4.dp).selectableGroup()) {
-                for (direction in listOf(true, false)) {
-                    val active = positive == direction
-                    val enabled = !busy && !vm.hasRepayments
-                    Row(Modifier.weight(1f).clip(CircleShape)
-                        .background(if (active) colors.action else colors.fill)
-                        .selectable(active, enabled = enabled, role = Role.Tab) {
-                            if (!active) {
-                                positive = direction
-                                haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                            }
-                        }
-                        .testTag(if (direction) "directionPositive" else "directionNegative")
-                        .heightIn(min = 48.dp).padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        val ink = if (active) colors.onAction else colors.muted
-                        Icon(if (direction) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast, null, Modifier.size(16.dp), tint = ink)
-                        Text(stringResource(if (direction) R.string.show_positive else R.string.show_negative),
-                            color = ink, style = MaterialTheme.typography.titleSmall)
-                    }
+            BubbleDirectionTabs(
+                directions = listOf(true, false),
+                selected = positive,
+                indicatorColor = directionColors.containerColor,
+                enabled = !busy && !vm.hasRepayments,
+                onSelect = { positive = it },
+                tabModifier = { Modifier.testTag(if (it) "directionPositive" else "directionNegative") },
+            ) { direction, active ->
+                val ink by animateColorAsState(
+                    if (active) directionColors.contentColor else colors.ink, tween(200), label = "Debt tab color",
+                )
+                Row(
+                    Modifier.padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(if (direction) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast, null, Modifier.size(16.dp), tint = ink)
+                    Text(stringResource(if (direction) R.string.show_positive else R.string.show_negative),
+                        color = ink, style = MaterialTheme.typography.titleSmall)
                 }
             }
             if (vm.hasRepayments) {
                 BubbleGroup { BubbleValueRow(stringResource(R.string.sum), "${amount.text} $currency",
                     Modifier.testTag("lockedAmount")) }
-            } else BubbleAmountField(amount, currency, { error = 0 }, Modifier.testTag("debtSumEditText"), acceptEdits = !busy) {
-                if (personId > 0) Text(currency)
-                else BubbleOutlinedButton({
-                    focus.clearFocus()
-                    onCurrencyClick(currency)
-                }, enabled = !busy) {
-                    Text(currency)
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.select_currency), Modifier.size(16.dp))
+            } else {
+                val errorMessage = amountError?.takeIf { showFieldErrors }?.let { stringResource(it) }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    BubbleAmountField(
+                        amount, currency, {}, Modifier.testTag("debtSumEditText"),
+                        acceptEdits = !busy, errorMessage = errorMessage, containerColor = amountContainer, contentColor = amountInk,
+                    ) {
+                        if (ownerId > 0) Text(currency, color = amountInk)
+                        else BubbleOutlinedButton({
+                            focus.clearFocus()
+                            onCurrencyClick(currency)
+                        }, enabled = !busy) {
+                            Text(currency)
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.select_currency), Modifier.size(16.dp))
+                        }
+                    }
+                    if (errorMessage != null) Text(
+                        errorMessage,
+                        Modifier.padding(horizontal = 18.dp).testTag("debtAmountError")
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                        color = colors.danger, style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
             BubbleGroup {
-                if (personId > 0) BubbleValueRow(stringResource(R.string.person_name), name.text.toString())
-                else {
-                    BubbleTextFieldRow(Icons.Outlined.Person, stringResource(R.string.person_name), name, stringResource(R.string.debt_name_hint), !busy,
-                        null, { true }, { error = 0 }, Modifier.testTag("humanNameEditText"))
-                }
+                CreateDebtPersonFields(vm, personId > 0, name, selectedPerson, showFieldErrors && nameMissing, nameRequester, onContactClick)
                 HorizontalDivider(color = colors.border)
                 BubbleTextFieldRow(Icons.Outlined.Edit, stringResource(R.string.comment), note, stringResource(R.string.debt_note_hint), !busy, null,
                     { true }, {}, Modifier.testTag("debtInfoEditText"))
                 HorizontalDivider(color = colors.border)
                 DebtEntryDate(vm)
             }
-            if (personId <= 0) TextButton({
-                try { contact.launch(null) } catch (_: android.content.ActivityNotFoundException) {
-                    Toast.makeText(context, R.string.no_permission, Toast.LENGTH_SHORT).show()
-                }
-            }, enabled = !busy) {
-                Icon(Icons.Outlined.Person, null, Modifier.size(16.dp))
-                Text(stringResource(R.string.contacts), Modifier.padding(start = 6.dp))
-            }
             BubbleSectionTitle(stringResource(R.string.debt_return_section))
-            BubbleGroup { DebtDueFields(vm) }
+            BubbleGroup { DebtDueFields(vm) { scroll.animateScrollTo(scroll.maxValue) } }
         }
     }
 }

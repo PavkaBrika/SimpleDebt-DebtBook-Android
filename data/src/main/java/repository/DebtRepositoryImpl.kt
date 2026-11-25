@@ -43,6 +43,8 @@ class DebtRepositoryImpl(val debtStorage: DebtStorage): DebtRepository {
         debtStorage.deleteDebt(debt)
     }
 
+    override fun restoreRepayment(id: Int, humanId: Int): Boolean = debtStorage.restoreRepayment(id, humanId)
+
     override fun editDebt(debtDomain: DebtDomain, due: DebtDueChange?) {
         val debt = debtDomain.toEntity()
         debtStorage.editDebt(debt, due)

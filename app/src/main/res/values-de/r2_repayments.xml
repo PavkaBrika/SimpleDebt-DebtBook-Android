@@ -5,6 +5,8 @@
     <string name="repayment_cancelled">Rückzahlung storniert · ohne Saldoänderung</string>
     <string name="debt_lent">Geld verliehen</string>
     <string name="debt_borrowed">Geld geliehen</string>
+    <string name="debt_remaining_to_receive">Noch zu erhalten</string>
+    <string name="debt_remaining_to_repay">Noch zurückzuzahlen</string>
     <string name="debt_remaining">Offen: %1$s %2$s</string>
     <string name="debt_repaid">Zurückgezahlt: %1$s %2$s</string>
     <string name="repayment_context">Ursprüngliche Schuld: %1$s %2$s (%3$s)</string>
@@ -15,4 +17,7 @@
     <string name="repayment_closed">Vollständig zurückgezahlt</string>
     <string name="repayment_cancel_confirm">Rückzahlung von %1$s %2$s stornieren? Der Betrag wird wieder zum Restbetrag addiert; die Rückzahlung bleibt im Verlauf.</string>
     <string name="repayment_amount">Rückzahlungsbetrag</string>
+    <string name="repayment_restore">Rückzahlung wiederherstellen</string>
+    <string name="repayment_restore_confirm">%1$s %2$s wieder auf die Schuld anrechnen?</string>
+    <string name="repayment_restore_over">Die Restschuld beträgt %1$s %2$s. Die Rückzahlung ist zu hoch und kann nicht wiederhergestellt werden.</string>
 </resources>

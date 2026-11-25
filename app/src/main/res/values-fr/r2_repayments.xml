@@ -5,6 +5,8 @@
     <string name="repayment_cancelled">Remboursement annulé · exclu du solde</string>
     <string name="debt_lent">Prêt accordé</string>
     <string name="debt_borrowed">Emprunt reçu</string>
+    <string name="debt_remaining_to_receive">Reste à recevoir</string>
+    <string name="debt_remaining_to_repay">Reste à rembourser</string>
     <string name="debt_remaining">Reste à rembourser : %1$s %2$s</string>
     <string name="debt_repaid">Remboursé : %1$s %2$s</string>
     <string name="repayment_context">Dette initiale : %1$s %2$s (%3$s)</string>
@@ -15,4 +17,7 @@
     <string name="repayment_closed">Entièrement remboursé</string>
     <string name="repayment_cancel_confirm">Annuler le remboursement de %1$s %2$s ? Le montant sera ajouté au reste dû ; le remboursement restera dans l’historique.</string>
     <string name="repayment_amount">Montant du remboursement</string>
+    <string name="repayment_restore">Rétablir le remboursement</string>
+    <string name="repayment_restore_confirm">Déduire à nouveau %1$s %2$s de la dette ?</string>
+    <string name="repayment_restore_over">Le solde restant est de %1$s %2$s. Le remboursement est trop élevé pour être rétabli.</string>
 </resources>

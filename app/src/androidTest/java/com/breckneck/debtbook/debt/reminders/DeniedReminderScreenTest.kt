@@ -60,7 +60,8 @@ class DeniedReminderScreenTest {
                 compose.openDueCalendarInForm()
                 compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
                 compose.enterDebtDate(scenario, "2099-12-31")
-                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
+                compose.onNodeWithTag("dueSaveButton").performClick()
+                compose.onNodeWithTag("createDebtReminder").performScrollTo().performClick()
                 val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
                 automation.serviceInfo = automation.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
                 var button: AccessibilityNodeInfo? = null
@@ -77,17 +78,16 @@ class DeniedReminderScreenTest {
                 bitmap.recycle()
                 assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
                 compose.waitUntil(15_000) {
-                    compose.onAllNodesWithTag("dueReminderSwitch")
+                    compose.onAllNodesWithTag("createDebtReminder")
                         .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
                 }
-                if (allow) compose.onNodeWithTag("dueReminderSwitch").assertIsOn()
+                if (allow) compose.onNodeWithTag("createDebtReminder").assertIsOn()
                 else {
-                    compose.onNodeWithTag("dueReminderSwitch").assertIsOff()
+                    compose.onNodeWithTag("createDebtReminder").assertIsOff()
                     compose.onNodeWithTag("duePermissionStatus").assertExists()
-                    compose.onNodeWithTag("dueTimeButton").assertDoesNotExist()
+                    compose.onNodeWithTag("createDebtReminderTime").assertDoesNotExist()
                 }
-                compose.onNodeWithTag("dueSaveButton").performClick()
-                compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
+                compose.onNodeWithTag("dueDatePicker").assertDoesNotExist()
                 assertNull(dao.getAllDebtsById(id).single().dueDay)
                 compose.awaitTag("setFinanceButton").performClick()
                 waitFor("due date not saved after denial") { dao.getAllDebtsById(id).single().dueDay == "2099-12-31" }

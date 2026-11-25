@@ -12,7 +12,7 @@ const automaticCurrency=(()=>{
   const euroRegions='AD AT BE BG CY DE EE ES FI FR GR HR IE IT LT LU LV MC ME MT NL PT SI SK SM VA XK'.split(' ');
   return currencies[region]||(euroRegions.includes(region)?'EUR':'USD');
 })();
-function defaultPrefs(){return {defaultCur:null,theme:'Светлая',delay:delays[0]};}
+function defaultPrefs(){return {defaultCur:null,theme:'Светлая',delay:delays[0],peopleOrder:'newest',historyOrder:'dateNewest'};}
 function defaultCurrency(){return prefs.defaultCur??automaticCurrency;}
 let prefs=defaultPrefs(), demoPin='',biometric=false,driveSigned=false,cloudCopies=[],previousCopy=null;
 function resetDemo(){
@@ -52,7 +52,10 @@ function validSnapshot(s) {
     if(s?.format!=='SimpleDebt-design-2'||!positive(s.serial)||!s.preferences)return false;
     const p=s.preferences;
     if((p.defaultCur!==null&&!cur(p.defaultCur))||!themeChoices.includes(p.theme)||!delays.includes(p.delay))return false;
-    if(!rows(s.people,p=>string(p.name)&&cur(p.cur)&&num(p.art)&&p.art>=0&&rows(p.loans,l=>num(l.principal)&&l.principal!==0&&string(l.note)&&date(l.date)&&optionalDate(l.due)&&string(l.reminder)&&(!l.reminder||(/^([01]\d|2[0-3]):[0-5]\d$/.test(l.reminder)&&l.due))&&rows(l.returns,r=>positive(r.amount)&&date(r.date)&&typeof r.cancelled==='boolean')&&remaining(l)>=0)))return false;
+    if(p.peopleOrder!==undefined&&!Object.hasOwn(peopleOrders,p.peopleOrder))return false;
+    if(p.historyOrder!==undefined&&!Object.hasOwn(historyOrders,p.historyOrder))return false;
+    const validPersonPhoto=photo=>photo===undefined||(string(photo)&&photo.length<=65536&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(photo));
+    if(!rows(s.people,p=>string(p.name)&&cur(p.cur)&&num(p.art)&&p.art>=0&&validPersonPhoto(p.photo)&&rows(p.loans,l=>num(l.principal)&&l.principal!==0&&string(l.note)&&date(l.date)&&optionalDate(l.due)&&string(l.reminder)&&(!l.reminder||(/^([01]\d|2[0-3]):[0-5]\d$/.test(l.reminder)&&l.due))&&rows(l.returns,r=>positive(r.amount)&&date(r.date)&&typeof r.cancelled==='boolean')&&remaining(l)>=0)))return false;
     if(!rows(s.finance.categories,c=>string(c.name)&&directions.includes(c.dir)&&string(c.emoji)&&/^#[0-9a-f]{6}$/i.test(c.color)))return false;
     const cats=new Set(s.finance.categories.map(c=>c.id));
     if(!rows(s.finance.entries,e=>cats.has(e.category)&&positive(e.cents)&&cur(e.cur)&&string(e.note)&&date(e.date)))return false;

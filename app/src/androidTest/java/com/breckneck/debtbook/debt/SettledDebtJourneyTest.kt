@@ -21,6 +21,7 @@ import com.breckneck.debtbook.debt.details.DebtDetailsViewModel
 import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.debtbook.debt.reminders.enterDebtDate
+import com.breckneck.debtbook.debt.reminders.clickDebtFormAction
 import com.breckneck.debtbook.debt.reminders.openDueCalendarInForm
 import com.breckneck.debtbook.debt.reminders.screenString
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -57,11 +58,11 @@ class SettledDebtJourneyTest {
     private fun tap(id: Int) {
         val tag = context.resources.getResourceEntryName(id)
         when (id) {
-            R.id.shareHumanButton, R.id.openDebtsTab, R.id.settledDebtsTab -> {
-                compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
+            R.id.openDebtsTab, R.id.settledDebtsTab -> {
+                compose.awaitTag("personHistory").performScrollToIndex(0)
                 compose.onNodeWithTag(tag).performClick()
             }
-            R.id.addHumanButton, R.id.addDebtButton, R.id.setFinanceButton -> compose.awaitTag(tag).performClick()
+            R.id.shareHumanButton, R.id.addHumanButton, R.id.addDebtButton, R.id.setFinanceButton -> compose.awaitTag(tag).performClick()
             R.id.backButton -> compose.onNodeWithContentDescription(context.getString(R.string.back)).performClick()
             else -> onView(withId(id)).inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog()).perform(click())
         }
@@ -123,8 +124,8 @@ class SettledDebtJourneyTest {
         compose.awaitTag("debtSumEditText").performTextReplacement("1000")
         compose.openDueCalendarInForm()
         compose.enterDebtDate(screen, com.breckneck.debtbook.debt.reminders.testDay(10))
-        compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
         compose.onNodeWithTag("dueSaveButton").performClick()
+        compose.clickDebtFormAction("createDebtReminder")
         tap(R.id.setFinanceButton)
         await { dao.getAllHuman().any { it.name == name } && records().size == 1 }
         awaitRows(issued().id)
@@ -185,7 +186,7 @@ class SettledDebtJourneyTest {
         tap(R.id.openDebtsTab)
         awaitRows(lent, owed, first.id, last.id)
         assertRemaining(lent, 600)
-        checkRow(last, R.string.repayment_cancelled)
+        checkRow(records().single { it.id == last.id }, R.string.repayment_cancelled)
         assertNull(issued().reminderMinute)
         assertNull(issued().reminderToken)
         reopenFromPeople(positive = true, negative = true, balance = -400)
@@ -272,7 +273,9 @@ class SettledDebtJourneyTest {
     }
 
     private fun assertRemaining(id: Int, expected: Int) {
-        compose.record(id).assertTextContains(screen.screenString(R.string.debt_remaining).format(amount(expected), "RUB"))
+        compose.record(id)
+        compose.onNode(hasAnyAncestor(hasTestTag("loanRemaining-$id")) and hasText(amount(expected) + "\u00a0₽"),
+            useUnmergedTree = true).assertExists()
     }
 
     private fun checkRow(debt: Debt, title: Int) {

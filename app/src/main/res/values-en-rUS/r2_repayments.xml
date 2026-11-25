@@ -5,6 +5,8 @@
     <string name="repayment_cancelled">Repayment cancelled · excluded from balance</string>
     <string name="debt_lent">I lent</string>
     <string name="debt_borrowed">I borrowed</string>
+    <string name="debt_remaining_to_receive">Still to receive</string>
+    <string name="debt_remaining_to_repay">Still to repay</string>
     <string name="debt_remaining">Remaining: %1$s %2$s</string>
     <string name="debt_repaid">Repaid: %1$s %2$s</string>
     <string name="repayment_context">Original debt: %1$s %2$s (%3$s)</string>
@@ -15,4 +17,7 @@
     <string name="repayment_closed">Fully repaid</string>
     <string name="repayment_cancel_confirm">Cancel the repayment of %1$s %2$s? The amount will be added back to the remaining debt; the repayment will stay in history.</string>
     <string name="repayment_amount">Repayment amount</string>
+    <string name="repayment_restore">Restore repayment</string>
+    <string name="repayment_restore_confirm">Count %1$s %2$s toward the debt again?</string>
+    <string name="repayment_restore_over">The remaining debt is %1$s %2$s. This repayment is too large to restore.</string>
 </resources>

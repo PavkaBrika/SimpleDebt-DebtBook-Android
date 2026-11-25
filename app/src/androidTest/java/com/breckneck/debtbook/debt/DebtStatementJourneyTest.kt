@@ -35,7 +35,9 @@ class DebtStatementJourneyTest {
     private val dao = AppDataBase(context).appDao()
     private val name = "Statement " + System.nanoTime().toString(36)
     private fun tap(id: Int) {
-        if (id in listOf(R.id.shareHumanButton, R.id.sortButton, R.id.earlyEntriesTab, R.id.settledDebtsTab)) {
+        if (id == R.id.shareHumanButton) {
+            compose.awaitTag("shareHumanButton").performClick()
+        } else if (id in listOf(R.id.sortButton, R.id.earlyEntriesTab, R.id.settledDebtsTab)) {
             val tag = context.resources.getResourceEntryName(id)
             compose.awaitTag("personHistory").performScrollToNode(hasTestTag(tag))
             compose.onNodeWithTag(tag).performClick()
@@ -72,7 +74,9 @@ class DebtStatementJourneyTest {
         val legacyBalanceKey = "sum_in_share_text"
         val previousRateThreshold = prefs.all[rateKey] as? Int
         val previousBalanceSetting = prefs.all[legacyBalanceKey] as? Boolean
-        prefs.edit().putInt(rateKey, Int.MAX_VALUE).putBoolean(legacyBalanceKey, true).commit()
+        val currencyKey = "default_currency"
+        val previousCurrency = prefs.all[currencyKey] as? String
+        prefs.edit().putInt(rateKey, Int.MAX_VALUE).putBoolean(legacyBalanceKey, true).putString(currencyKey, "RUB").commit()
         try {
             val earlyNote = "Earlier receipt"
             val early = add(250, 1, earlyNote)
@@ -89,9 +93,7 @@ class DebtStatementJourneyTest {
             }
 
             ActivityScenario.launch(MainActivity::class.java).use { screen ->
-                compose.onNodeWithText("USD").performClick()
-                compose.onNodeWithText("RUB", substring = true).performClick()
-                compose.onNodeWithTag("peopleList").performScrollToNode(hasText(name))
+                compose.awaitTag("peopleList").performScrollToNode(hasText(name))
                 compose.onNodeWithText(name).performClick()
                 compose.awaitTag("openDebtsTab").assertIsSelected()
                 tap(R.id.earlyEntriesTab)
@@ -140,7 +142,11 @@ class DebtStatementJourneyTest {
                 onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isChecked()))
                 onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isChecked()))
                 assertEquals(all, displayedText())
+                compose.waitUntil(5000) { runCatching {
+                    onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(isCompletelyDisplayed()))
+                }.isSuccess }
                 tap(R.id.includeEarlyEntries)
+                compose.waitUntil(5000) { !displayedText().contains(earlyNote) }
                 val onlySettledAndOpen = displayedText()
                 assertFalse(onlySettledAndOpen.contains(earlyNote))
                 assertTrue(onlySettledAndOpen.contains(line(R.string.statement_borrowed, "500 RUB")))
@@ -156,9 +162,9 @@ class DebtStatementJourneyTest {
                 compose.awaitTag("settledDebtsTab").assertIsSelected()
                 assertTrue(sent.isEmpty())
 
-                tap(R.id.sortButton)
-                onView(withId(R.id.showNegativeRadioButton)).inRoot(isDialog()).perform(scrollTo(), click())
-                onView(withId(R.id.confirmButton)).inRoot(isDialog()).perform(scrollTo(), click())
+                val negative = hasTestTag("historyFilter-NEGATIVE")
+                compose.awaitTag("personHistory").performScrollToNode(negative)
+                compose.onNode(negative).performClick()
                 preview()
                 onView(withId(R.id.includeSettled)).inRoot(isDialog()).check(matches(isNotChecked()))
                 onView(withId(R.id.includeEarlyEntries)).inRoot(isDialog()).check(matches(withEffectiveVisibility(Visibility.GONE)))
@@ -208,6 +214,7 @@ class DebtStatementJourneyTest {
             prefs.edit().apply {
                 if (previousRateThreshold == null) remove(rateKey) else putInt(rateKey, previousRateThreshold)
                 if (previousBalanceSetting == null) remove(legacyBalanceKey) else putBoolean(legacyBalanceKey, previousBalanceSetting)
+                if (previousCurrency == null) remove(currencyKey) else putString(currencyKey, previousCurrency)
             }.commit()
             monitor.removeIntentCallback(callback)
             dao.deleteDebtsByHumanId(person.id)

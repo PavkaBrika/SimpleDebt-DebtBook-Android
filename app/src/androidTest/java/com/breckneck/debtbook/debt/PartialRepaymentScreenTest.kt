@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.lifecycle.ViewModelProvider
@@ -161,8 +162,60 @@ class PartialRepaymentScreenTest {
                 compose.onNodeWithTag("openDebtsTab").performClick()
                 compose.record(originalId)
                 screenshot("cancelled-$sign")
+
+                compose.record(last.id).performClick()
+                compose.awaitTag("restoreRepaymentButton").performClick()
+                compose.awaitTag("restoreRepaymentConfirm").performClick()
+                await("restore not stored") { dao.getAllDebtsById(humanId).any { it.id == last.id && !it.cancelled } }
+                ready(scenario)
+                assertAmount(0)
+                assertEquals(last, dao.getAllDebtsById(humanId).single { it.id == last.id })
             }
             cleanup()
+        }
+    }
+
+    @Test fun restoreShowsWhyACancelledPaymentNoLongerFits() {
+        seed(1)
+        dao.saveDebt(Debt(0, (-60).toBigDecimal(), humanId, null, "2026-11-16", repaymentOfId = originalId,
+            operationId = "restore-test-request-1"))
+        val first = dao.getAllDebtsById(humanId).single { it.repaymentOfId != null }
+        dao.removeDebt(first)
+        dao.saveDebt(Debt(0, (-50).toBigDecimal(), humanId, null, "2026-11-16", repaymentOfId = originalId,
+            operationId = "restore-test-request-2"))
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            open(scenario)
+            compose.record(first.id).performClick()
+            compose.awaitTag("restoreRepaymentButton").performClick()
+            compose.awaitTag("restoreRepaymentConfirm").performClick()
+            compose.awaitTag("restoreRepaymentError").assertIsDisplayed()
+            assertAmount(50)
+            assertTrue(dao.getAllDebtsById(humanId).single { it.id == first.id }.cancelled)
+        }
+    }
+
+    @Test fun progressInterpolatesWhileAnOpenLoanRefreshes() {
+        seed(1)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            open(scenario)
+            val progress = compose.record(originalId).let { compose.onNodeWithTag("repaymentProgress-$originalId") }
+            fun fraction() = progress.fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo].current
+            assertEquals(0f, fraction(), .001f)
+            openPayment(scenario)
+            compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("60")
+            compose.mainClock.autoAdvance = false
+            try {
+                compose.onNodeWithTag("repaymentSaveButton").performSemanticsAction(SemanticsActions.OnClick)
+                await("payment not stored") { dao.getAllDebtsById(humanId).size == 2 }
+                ready(scenario)
+                compose.mainClock.advanceTimeBy(160)
+                val intermediate = fraction()
+                assertTrue("Intermediate fraction: $intermediate", intermediate > 0f && intermediate < .6f)
+                compose.mainClock.advanceTimeBy(420)
+                assertEquals(.6f, fraction(), .001f)
+            } finally {
+                compose.mainClock.autoAdvance = true
+            }
         }
     }
 

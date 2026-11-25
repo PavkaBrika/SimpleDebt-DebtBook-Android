@@ -1,11 +1,27 @@
 <resources>
     <string name="debt_total">Общий баланс</string>
     <string name="debt_people">Люди</string>
+    <string name="people_order_title">Порядок людей</string>
+    <string name="people_order_newest">Сначала новые</string>
+    <string name="people_order_oldest">Сначала старые</string>
+    <string name="people_order_highest_balance">Сначала с большим балансом</string>
+    <string name="people_order_lowest_balance">Сначала с меньшим балансом</string>
     <string name="find_person">Найти человека</string>
     <string name="debt_no_due">Без срока</string>
     <string name="debt_today">Срок сегодня</string>
     <string name="debt_overdue">Просрочен · %1$s</string>
     <string name="debt_empty_currency">Нет подходящих записей</string>
+    <string name="debt_history_order">Порядок истории</string>
+    <string name="debt_order_date_newest">Дата записи · сначала новые</string>
+    <string name="debt_order_date_oldest">Дата записи · сначала старые</string>
+    <string name="debt_order_created_newest">Дата создания · сначала новые</string>
+    <string name="debt_order_created_oldest">Дата создания · сначала старые</string>
+    <string name="debt_order_amount_highest">Сумма · сначала большие</string>
+    <string name="debt_order_amount_lowest">Сумма · сначала меньшие</string>
+    <string name="debt_history_refresh_failed">Не удалось обновить историю</string>
+    <string name="debt_amount_required">Введите сумму</string>
+    <string name="debt_name_required">Введите имя</string>
+    <string name="debt_save_failed">Не удалось сохранить долг</string>
     <string name="debt_save">Сохранить долг</string>
     <string name="debt_deadline">Срок</string>
     <string name="debt_clear_date">Очистить срок</string>
@@ -24,4 +40,13 @@
     <string name="debt_record_remaining">Остаток по записи</string>
     <string name="debt_after_repayment">После возврата останется %1$s</string>
     <string name="debt_out_of">из %1$s</string>
+    <string name="debt_change_person">Изменить выбор человека</string>
+    <string name="debt_choose_matching_person">Выберите нужного человека из совпадений.</string>
+    <string name="debt_contacts_short">Контакты</string>
+    <string name="debt_existing_people">Добавить долг к существующему человеку</string>
+    <string name="debt_choose_photo">Выбрать фото</string>
+    <string name="debt_replace_photo">Заменить фото</string>
+    <string name="debt_remove_photo">Убрать фото</string>
+    <string name="debt_selected_person">Человек выбран</string>
+    <string name="debt_photo_failed">Не удалось загрузить фото.</string>
 </resources>

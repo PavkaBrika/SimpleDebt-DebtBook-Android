@@ -30,6 +30,14 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+internal data class DebtListBalance(
+    val currency: String,
+    val receivable: BigDecimal,
+    val payable: BigDecimal,
+) {
+    val total: BigDecimal get() = receivable + payable
+}
+
 @HiltViewModel
 @OptIn(FlowPreview::class)
 class DebtViewModel @Inject constructor(
@@ -50,11 +58,10 @@ class DebtViewModel @Inject constructor(
         get() = _screenState
     private var refreshJob: Job? = null
 
-    private val _currency = MutableLiveData(saved.get<String>("listCurrency") ?: getDefaultCurrency.execute())
-    val currency: LiveData<String> get() = _currency
-    private val _mainSums = MutableLiveData<Pair<BigDecimal, BigDecimal>>()
-    val mainSums: LiveData<Pair<BigDecimal, BigDecimal>> get() = _mainSums
-    private var people = emptyList<HumanDomain>()
+    private var selectedCurrency = saved.get<String>("listCurrency") ?: getDefaultCurrency.execute()
+    private val _balance = MutableLiveData<DebtListBalance>()
+    internal val balance: LiveData<DebtListBalance> get() = _balance
+    private var people: List<HumanDomain>? = null
     private var histories = emptyMap<Int, PersonDebtHistory>()
     val overviewCurrencies = MutableLiveData<List<String>>()
     val loadFailed = MutableLiveData(false)
@@ -62,7 +69,7 @@ class DebtViewModel @Inject constructor(
     val settled = MutableLiveData<Set<Int>>()
     fun selectCurrency(value: String) {
         saved["listCurrency"] = value.takeUnless { it == getDefaultCurrency.execute() }
-        _currency.value = value
+        selectedCurrency = value
         publishHumans()
     }
 
@@ -77,7 +84,7 @@ class DebtViewModel @Inject constructor(
     val humanOrder: LiveData<Pair<HumanOrderAttribute, Boolean>>
         get() = _humanOrder
 
-    private val _isSortDialogOpened = MutableLiveData<Boolean>()
+    private val _isSortDialogOpened = saved.getLiveData("listOrderOpen", false)
     val isSortDialogOpened: LiveData<Boolean>
         get() = _isSortDialogOpened
     private val _isChangeDebtNameDialogOpened = MutableLiveData<Boolean>()
@@ -107,7 +114,10 @@ class DebtViewModel @Inject constructor(
     fun setListStateLoading() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
-            _screenState.value = ScreenState.LOADING
+            if (people == null) {
+                loadFailed.value = false
+                _screenState.value = ScreenState.LOADING
+            }
             try {
                 val (persons, loans) = withContext(Dispatchers.IO) {
                     val (persons, rows) = transaction.run { getAllHumansUseCase.execute() to getAllDebts.execute() }
@@ -119,7 +129,7 @@ class DebtViewModel @Inject constructor(
                 overviewCurrencies.value = currencies
                 val selected = saved.get<String>("listCurrency")?.takeIf { it in currencies && it != defaultCurrency }
                 saved["listCurrency"] = selected
-                _currency.value = selected ?: defaultCurrency
+                selectedCurrency = selected ?: defaultCurrency
                 loadFailed.value = false
                 people = persons
                 histories = loans
@@ -131,7 +141,6 @@ class DebtViewModel @Inject constructor(
             } catch (e: Exception) {
                 loadFailed.value = true
                 Log.e(TAG, "Could not refresh debts", e)
-                publishHumans()
             }
         }
     }
@@ -151,9 +160,12 @@ class DebtViewModel @Inject constructor(
     }
 
     private fun publishHumans() {
-        val inCurrency = people.filter { it.currency == currency.value }
-        _mainSums.value = inCurrency.filter { it.sumDebt.signum() > 0 }.sumOf { it.sumDebt } to
-            inCurrency.filter { it.sumDebt.signum() < 0 }.sumOf { it.sumDebt }
+        val inCurrency = people?.filter { it.currency == selectedCurrency } ?: return
+        _balance.value = DebtListBalance(
+            currency = selectedCurrency,
+            receivable = inCurrency.filter { it.sumDebt.signum() > 0 }.sumOf { it.sumDebt },
+            payable = inCurrency.filter { it.sumDebt.signum() < 0 }.sumOf { it.sumDebt },
+        )
         val filter = humanFilter.value ?: Filter.ALL
         val sorted = orderHumans(inCurrency.filter { histories.getValue(it.id).matches(filter, it.sumDebt) })
         val query = if (_isSearching.value == true) _searchQuery.value.trim() else ""

@@ -9,6 +9,9 @@ import java.math.BigDecimal
 class RepaymentExceedsRemaining(val remaining: BigDecimal) : IllegalArgumentException("Repayment exceeds remaining debt")
 
 class RecordRepaymentUseCase(private val repository: DebtRepository, private val transaction: DataTransaction) {
+    /** Returns true if restoring this payment settles its original loan. */
+    fun restore(id: Int, humanId: Int): Boolean = repository.restoreRepayment(id, humanId)
+
     /** Returns true only when this write settles the original loan. */
     fun execute(originalId: Int, humanId: Int, amount: BigDecimal, day: String, requestId: String): Boolean = transaction.run {
         require(amount.signum() > 0)

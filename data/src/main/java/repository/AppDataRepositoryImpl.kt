@@ -29,7 +29,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
         val dao = db.appDao()
         AppDataLists(
             humanList = dao.getAllHuman().map {
-                HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+                HumanDomain(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment, photo = it.photo)
             },
             debtList = dao.getAllDebts().map {
                 it.toDomain()
@@ -59,7 +59,7 @@ class AppDataRepositoryImpl(context: Context) : AppDataRepository {
     override fun replaceAllAppData(appDataLists: AppDataLists) {
         db.appDao().replaceAllAppData(
             humans = appDataLists.humanList.map {
-                Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment)
+                Human(id = it.id, name = it.name, sumDebt = it.sumDebt, currency = it.currency, openingAdjustment = it.openingAdjustment, photo = it.photo)
             },
             debts = appDataLists.debtList.map { debt ->
                 com.breckneck.deptbook.domain.util.DebtReminderPolicy.validate(debt)

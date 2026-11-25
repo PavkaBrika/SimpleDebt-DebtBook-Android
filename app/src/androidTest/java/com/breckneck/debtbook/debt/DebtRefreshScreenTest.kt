@@ -37,7 +37,9 @@ class DebtRefreshScreenTest {
         val pin = prefs.getBoolean("pin_code_is_enabled", false)
         val ads = prefs.getBoolean("ads_disabled", false)
         val rate = prefs.getInt("debts_quantity_for_app_rate_dialog_show", 0)
+        val currency = prefs.getString("default_currency", null)
         prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true)
+            .putString("default_currency", "EUR")
             .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
         try {
             repo.replaceAllAppData(empty)
@@ -71,7 +73,10 @@ class DebtRefreshScreenTest {
                 await { vm.resultedHumanList.value?.isEmpty() == true && vm.screenState.value == ScreenState.EMPTY }
                 // A second refresh from EMPTY must not be swallowed by equal StateFlow values.
                 repo.replaceAllAppData(empty.copy(humanList = listOf(HumanDomain(990002, "After empty", BigDecimal.ONE, "EUR"))))
-                scenario.onActivity { vm.setListStateLoading() }
+                scenario.onActivity {
+                    vm.setListStateLoading()
+                    assertEquals(ScreenState.EMPTY, vm.screenState.value)
+                }
                 await { vm.resultedHumanList.value?.singleOrNull()?.name == "After empty" }
                 scenario.onActivity {
                     vm.onStartSearch()
@@ -87,7 +92,7 @@ class DebtRefreshScreenTest {
         } finally {
             repo.replaceAllAppData(original)
             prefs.edit().putBoolean("pin_code_is_enabled", pin).putBoolean("ads_disabled", ads)
-                .putInt("debts_quantity_for_app_rate_dialog_show", rate).commit()
+                .putInt("debts_quantity_for_app_rate_dialog_show", rate).putString("default_currency", currency).commit()
         }
     }
 }

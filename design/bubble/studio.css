@@ -75,9 +75,17 @@ svg { display:block; flex-shrink:0 }
   display:flex; flex-direction:column;
   background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--bg) 90%,transparent));
 }
-.screen-top .icon-button,.screen-top .goal-actions,.screen-dock button,.screen-dock .nav { pointer-events:auto }
+.panel[data-route=new] .screen-bottom-fade { background:none }
+.screen-top .icon-button,.screen-top .context-actions,.screen-dock button,.screen-dock .nav { pointer-events:auto }
 .apphead { display:flex; align-items:center; justify-content:space-between; padding:4px 0 9px; min-height:57px; gap:6px }
 .apphead h2,h1,h2,h3,p { margin:0 }.apphead h2 { font-size:clamp(30px,9cqw,37px); line-height:1.15; font-weight:650; letter-spacing:-1.7px }
+.apphead.debt-home-header { padding-inline:16px; background:var(--bg) }
+.people-search { display:flex; align-items:center; width:100%; height:46px; border-radius:99px; box-shadow:inset 0 0 0 1px var(--edge); background:var(--paper); pointer-events:auto }
+.people-search:has(input:focus) { box-shadow:inset 0 0 0 1px var(--forest) }
+.people-search input { flex:1; min-width:0; align-self:stretch; margin:0 0 0 14px; padding:0; border:0; background:none; color:var(--ink) }
+.people-search input:focus { outline:none }
+.people-search input::placeholder { color:var(--soft) }
+.people-search .icon-button { border:0; background:transparent }
 .detailhead {
   display:grid; grid-template-columns:46px minmax(0,1fr) 46px; align-items:center;
   gap:8px; min-height:62px; padding:4px 16px 12px;
@@ -112,6 +120,26 @@ svg { display:block; flex-shrink:0 }
 .person-row,.timeline-row { display:flex; align-items:center; width:100%; gap:10px; padding:11px 13px; text-align:left; min-height:59px; color:var(--ink) }
 .person-row+.person-row,.timeline-row+.timeline-row,.setting+.setting,.field+.field { border-top:1px solid var(--edge) }
 .motif { width:38px; height:38px; flex-shrink:0; border-radius:50%; overflow:hidden }
+.person-photo { object-fit:cover }
+.person-photo-action { position:relative; min-height:48px; cursor:pointer }
+.person-photo-action:focus-within { outline:2px solid var(--forest); outline-offset:-2px }
+.person-photo-action input { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer }
+.debt-person-suggestions { overflow:hidden }
+.debt-person-choices { margin:0 10px 10px; border:1px solid var(--edge); border-radius:18px; background:var(--mint); color:var(--mint-ink); overflow:hidden }
+.debt-person-choices.choice-error { border-color:var(--coral); background:var(--coral-tint); color:var(--coral) }
+.debt-person-hint { padding:10px 13px 6px; font-size:13px; font-weight:650 }
+.debt-field-error { padding:0 14px 8px 58px; color:var(--coral); font-size:13px }
+.debt-amount .debt-field-error { padding:4px 18px 0 }
+.debt-person-choices .person-row { color:inherit; border-top:1px solid var(--edge); min-height:50px }
+.debt-contact-action { min-height:44px; padding-inline:5px; font-size:13px; color:var(--forest) }
+[data-draft-person-photo]+.field,.debt-draft-photo { border-top:1px solid var(--edge) }
+.debt-draft-photo { display:flex; align-items:center; padding-right:6px }
+.debt-draft-photo label { flex:1; gap:10px; justify-content:flex-start; color:var(--forest) }
+.debt-draft-photo .icon-button { background:none; border:0 }
+.debt-negative.btn,.segment.debt-negative::before { background:var(--coral); color:var(--paper) }
+.segment.debt-negative .active { color:var(--paper) }
+.debt-amount.debt-negative .amount-field { background:var(--coral-tint); color:var(--coral) }
+.debt-amount.debt-negative .amount-field input::placeholder { color:var(--coral) }
 .person-text,.event-text { flex:1; min-width:0 }.person-text strong,.event-text strong { display:block; font-size:15px; line-height:1.2; font-weight:600; letter-spacing:-.28px; overflow-wrap:anywhere }
 .person-text small,.event-text small,.subtle { display:block; color:var(--soft); font-size:12px; line-height:1.4; margin-top:3px }
 .money { margin-left:auto; font-size:15px; font-weight:650; letter-spacing:-.4px; text-align:right; line-height:1.2; overflow-wrap:anywhere }
@@ -140,8 +168,21 @@ svg { display:block; flex-shrink:0 }
 .nav button:focus-visible { outline-offset:-2px }
 .gesture { height:14px; flex-shrink:0; display:grid; place-items:center }.gesture:before { content:''; width:72px; height:4px; border-radius:2px; background:var(--ink); opacity:.65 }
 .balance { padding:15px 18px; border-radius:25px; background:var(--mint); color:var(--mint-ink); position:relative; isolation:isolate; overflow:hidden }
+.balance-debit { background:var(--coral-tint); color:var(--coral) }
+.balance-neutral { background:var(--fill); color:var(--ink) }
 .balance .eyebrow { color:inherit }.balance .big-money { margin-top:4px; font-size:clamp(32px,10cqw,43px) }
 .loan { padding:15px }.loan-top { display:flex; align-items:flex-start; justify-content:space-between; gap:6px }.loan h4 { font-size:17px; line-height:1.2; letter-spacing:-.4px; margin:0 }
+.loan-lent { --loan-ink:var(--mint-ink); --loan-fill:var(--mint) }
+.loan-borrowed { --loan-ink:var(--coral); --loan-fill:var(--coral-tint) }
+.loan h4 { color:var(--loan-ink,var(--ink)) }
+.loan-remaining {
+  display:grid; gap:3px; margin-top:8px; padding:10px 14px; border-radius:16px;
+  background:var(--loan-fill); color:var(--loan-ink); font-size:14px; font-weight:600;
+}
+.loan-remaining strong { font-size:clamp(24px,8cqw,32px); line-height:1.15; overflow-wrap:anywhere }
+.loan-remaining + .track { margin-top:8px }
+.loan .track i { background:var(--loan-ink,var(--forest)) }
+.loan .btn.secondary { background:var(--loan-fill,var(--mint)); color:var(--loan-ink,var(--mint-ink)) }
 .tag { gap:4px; flex-shrink:0; max-width:53%; background:var(--fill); color:var(--soft); padding:5px 7px; border-radius:100px; font-size:11px; font-weight:600; line-height:1.1 }
 .tag.late { background:var(--coral-tint) }.tag.ok { background:var(--mint); color:var(--mint-ink) }
 .track { border-radius:100px; height:6px; background:var(--fill); overflow:hidden; margin:14px 0 8px }.track i { border-radius:inherit; display:block; height:100%; background:var(--forest) }
@@ -163,6 +204,11 @@ svg { display:block; flex-shrink:0 }
 .overlay.leaving { pointer-events:none }
 .sheet { background:var(--bg); color:var(--ink); padding:22px 16px 20px; border-radius:28px 28px 0 0; box-shadow:0 -8px 26px #10231717; max-height:91%; overflow:auto }
 .sheet .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px }.sheet .eyebrow { margin:9px 0 }.sheet .btn { margin-top:12px }.sheet .amount-field { margin:12px 0 7px }.sheet .icon-button { width:42px;height:42px }
+.sheet .order-choice { justify-content:space-between; gap:12px; width:100%; min-height:50px; text-align:start; cursor:pointer }
+.sheet .order-choice input { width:18px; height:18px; margin:0; flex:none; accent-color:var(--forest) }
+.order-choice .order-indicator { display:grid; place-items:center; width:18px; height:18px; flex:none; border:1.5px solid var(--soft); border-radius:50% }
+.order-choice[aria-checked=true] .order-indicator { border-color:var(--forest) }
+.order-choice[aria-checked=true] .order-indicator::after { content:''; width:8px; height:8px; background:var(--forest); border-radius:50% }
 .search-field { width:100%; height:46px; border:1px solid var(--edge); border-radius:18px; padding:0 14px; background:var(--paper); color:var(--ink); margin:3px 0 }
 .empty { padding:22px; font-size:15px; color:var(--soft); text-align:center; line-height:1.4 }
 .art { width:88px;height:80px;pointer-events:none }.gesture,.status,.nav,.sticky-action { flex-shrink:0 }
@@ -199,12 +245,15 @@ svg { display:block; flex-shrink:0 }
   .segment-moving::before { animation:segment-slide 200ms cubic-bezier(.2,.8,.2,1) }
   .segment-moving button.active { animation:select-ink 65ms step-end }
   .segment-moving button:not(.active) { animation:deselect-ink 65ms step-end }
+  .debt-direction-moving::before { animation:debt-segment-slide 200ms cubic-bezier(.2,.8,.2,1) }
+  .debt-direction-moving button.active,.debt-direction-moving button:not(.active) { animation:none }
   .row-arrival { animation:row-arrival 260ms cubic-bezier(.2,.8,.2,1) }
   .row-arrival.completed-goal .completed-open > svg:first-child path,
   .row-arrival.goal-achieved svg path,
   .row-arrival.tag.ok svg path { stroke-dasharray:26; animation:draw-check 320ms ease-out }
 }
 @keyframes segment-slide { from { transform:translateX(var(--previous-x)) } }
+@keyframes debt-segment-slide { from { transform:translateX(var(--previous-x)); background-color:var(--previous-fill) } }
 @keyframes select-ink { from { color:var(--soft) } }
 @keyframes deselect-ink { from { color:var(--on-cta) } }
 @keyframes row-arrival { from { opacity:.25; transform:translateY(7px) } }
@@ -232,11 +281,11 @@ svg { display:block; flex-shrink:0 }
 .detailhead-pill .icon-button {width:var(--bubble-height);height:var(--bubble-height)}
 .detailhead-pill h2 {line-height:1.375rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .detailhead-pill .detail-title {justify-self:center;max-width:100%;height:var(--bubble-height);padding:0 14px;border-radius:99px;border:1px solid var(--edge);background:color-mix(in srgb,var(--paper) 88%,transparent)}
-.goal-actions {position:relative}
-.goal-actions summary {cursor:pointer;list-style:none}
-.goal-actions summary::-webkit-details-marker {display:none}
-.goal-menu {position:absolute;right:0;top:100%;z-index:1;width:max-content;max-width:72cqw;padding:4px;background:var(--paper);border:1px solid var(--edge);border-radius:18px;box-shadow:0 5px 16px #10231720}
-.goal-menu .menu-action {display:flex;align-items:center;gap:10px;text-align:left;width:100%;min-height:48px;padding:8px 12px}
+.context-actions {position:relative}
+.context-actions summary {cursor:pointer;list-style:none}
+.context-actions summary::-webkit-details-marker {display:none}
+.context-menu {position:absolute;right:0;top:100%;z-index:1;width:max-content;max-width:72cqw;padding:4px;background:var(--paper);border:1px solid var(--edge);border-radius:18px;box-shadow:0 5px 16px #10231720}
+.context-menu .menu-action {display:flex;align-items:center;gap:10px;text-align:left;width:100%;min-height:48px;padding:8px 12px}
 .btn.withdrawal,.sheet.withdrawal .amount-field,.timeline-row.withdrawal .event-icon {background:var(--coral-tint);color:var(--coral)}
 .timeline-row.withdrawal .money,.sheet.withdrawal .amount-line input::placeholder {color:var(--coral)}
 .sheet.withdrawal .btn,.sheet .btn.destructive {background:var(--coral);color:var(--paper)}
@@ -272,3 +321,27 @@ svg { display:block; flex-shrink:0 }
 .finance-line{display:flex;align-items:center;padding-right:6px}.finance-line+.finance-line{border-top:1px solid var(--edge)}
 .finance-line .person-row{flex:1;min-width:0;padding-right:2px}.row-edit{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--forest);flex-shrink:0}
 .row-edit:hover,.row-edit:focus-visible{background:var(--mint)}
+
+.detailhead:has(> .person-header-actions) { grid-template-columns:46px minmax(0,1fr) auto }
+.person-header-actions {
+  display:flex; border:1px solid var(--edge); border-radius:99px; background:var(--paper); pointer-events:auto;
+}
+.person-header-actions .icon-button { border:0; background:transparent; width:45px; height:46px }
+.debt-history-tabs { display:grid; grid-template-columns:1fr 1fr; margin:8px 0; border-bottom:1px solid var(--edge) }
+.debt-history-tabs button { min-height:48px; padding:5px; border-bottom:2px solid transparent; color:var(--soft); font-weight:600 }
+.debt-history-tabs [aria-selected=true] { border-bottom-color:var(--forest); color:var(--forest) }
+.debt-history-controls { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-bottom:8px }
+.debt-history-controls .tabs { margin:0 }
+.debt-history-controls .icon-button { flex-shrink:0 }
+.loan-note { margin-top:3px; color:var(--soft); font-size:14px }
+.loan-chevron { min-width:36px; min-height:44px; color:var(--soft); margin:-4px -8px 0 -6px }
+.loan .btn { margin-bottom:4px }
+.repayment-input { display:grid; gap:6px; font-size:14px; font-weight:600 }
+.repayment-input > div {
+  display:flex; align-items:center; gap:12px; min-height:56px; padding:0 14px;
+  border:1px solid var(--soft); border-radius:16px; background:var(--paper);
+}
+.repayment-input > div:focus-within { border-color:var(--forest); box-shadow:inset 0 0 0 1px var(--forest) }
+.repayment-input input { min-width:0; flex:1; min-height:50px; border:0; background:none; color:var(--ink); outline:0 }
+.repayment-input:has([aria-invalid=true]) > div { border-color:var(--coral) }
+.field-current { display:block; overflow-wrap:anywhere; color:var(--ink) }

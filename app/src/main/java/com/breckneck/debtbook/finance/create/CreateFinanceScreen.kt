@@ -1,14 +1,9 @@
 package com.breckneck.debtbook.finance.create
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.BringIntoViewSpec
-import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
@@ -19,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -83,7 +77,7 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
             }
         },
     ) { padding ->
-        FinanceFormScroll(padding) {
+        BubbleFormScroll(padding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (!vm.editing) FinanceDirection(direction, enabled = enabled, select = vm::changeDirection)
             val amountError = if (attempted && (amount.text.isEmpty() || vm.parsedAmount() == null))
                 stringResource(R.string.repayment_invalid) else null
@@ -145,26 +139,4 @@ internal fun CreateFinanceScreen(vm: CreateFinanceViewModel, hostInsets: Padding
             enabled = !deleting, errorMessage = if (deleteFailed) stringResource(R.string.history_change_failed) else null)
     }
     LaunchedEffect(id) { if (id == 0) confirmDelete = false }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun FinanceFormScroll(padding: PaddingValues, content: @Composable ColumnScope.() -> Unit) {
-    val defaultScroll = LocalBringIntoViewSpec.current
-    val density = LocalDensity.current
-    val top = with(density) { padding.calculateTopPadding().toPx() }
-    val bottom = with(density) { padding.calculateBottomPadding().toPx() }
-    val focusScroll = remember(defaultScroll, top, bottom) {
-        object : BringIntoViewSpec {
-            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
-                defaultScroll.calculateScrollDistance(offset - top, size, (containerSize - top - bottom).coerceAtLeast(0f))
-        }
-    }
-    CompositionLocalProvider(LocalBringIntoViewSpec provides focusScroll) {
-        Column(
-            Modifier.fillMaxSize().consumeWindowInsets(padding).verticalScroll(rememberScrollState()).padding(padding),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content,
-        )
-    }
 }

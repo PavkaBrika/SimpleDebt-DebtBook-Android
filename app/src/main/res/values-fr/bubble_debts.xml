@@ -1,11 +1,27 @@
 <resources>
     <string name="debt_total">Solde total</string>
     <string name="debt_people">Personnes</string>
+    <string name="people_order_title">Ordre des personnes</string>
+    <string name="people_order_newest">Les plus récentes en premier</string>
+    <string name="people_order_oldest">Les plus anciennes en premier</string>
+    <string name="people_order_highest_balance">Solde le plus élevé en premier</string>
+    <string name="people_order_lowest_balance">Solde le plus bas en premier</string>
     <string name="find_person">Chercher une personne</string>
     <string name="debt_no_due">Sans échéance</string>
     <string name="debt_today">Échéance aujourd’hui</string>
     <string name="debt_overdue">En retard · %1$s</string>
     <string name="debt_empty_currency">Aucune personne correspondante</string>
+    <string name="debt_history_order">Ordre de l’historique</string>
+    <string name="debt_order_date_newest">Date d’écriture · récentes d’abord</string>
+    <string name="debt_order_date_oldest">Date d’écriture · anciennes d’abord</string>
+    <string name="debt_order_created_newest">Création · récentes d’abord</string>
+    <string name="debt_order_created_oldest">Création · anciennes d’abord</string>
+    <string name="debt_order_amount_highest">Montant · décroissant</string>
+    <string name="debt_order_amount_lowest">Montant · croissant</string>
+    <string name="debt_history_refresh_failed">Impossible d’actualiser l’historique</string>
+    <string name="debt_amount_required">Saisissez un montant</string>
+    <string name="debt_name_required">Saisissez un nom</string>
+    <string name="debt_save_failed">Impossible d’enregistrer la dette</string>
     <string name="debt_save">Enregistrer la dette</string>
     <string name="debt_deadline">Échéance</string>
     <string name="debt_clear_date">Effacer l’échéance</string>
@@ -24,4 +40,13 @@
     <string name="debt_record_remaining">Reste sur cette dette</string>
     <string name="debt_after_repayment">Après le remboursement, il restera %1$s</string>
     <string name="debt_out_of">sur %1$s</string>
+    <string name="debt_change_person">Changer de personne</string>
+    <string name="debt_choose_matching_person">Choisissez la personne parmi les fiches correspondantes.</string>
+    <string name="debt_contacts_short">Contacts</string>
+    <string name="debt_existing_people">Ajouter la dette à une personne existante</string>
+    <string name="debt_choose_photo">Choisir une photo</string>
+    <string name="debt_replace_photo">Remplacer la photo</string>
+    <string name="debt_remove_photo">Retirer la photo</string>
+    <string name="debt_selected_person">Personne sélectionnée</string>
+    <string name="debt_photo_failed">Impossible de charger la photo.</string>
 </resources>

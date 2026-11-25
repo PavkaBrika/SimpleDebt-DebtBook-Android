@@ -49,8 +49,11 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
             payload = root.get("data").let { require(it?.isJsonObject == true); it.asJsonObject }
         }
         val humans = payload.rows("humanList").map { row ->
+            val photo = if (version >= 6) row.optionalString("photo")?.also {
+                require(it.startsWith("/9j/") && it.length % 4 == 0 && PHOTO_BASE64.matches(it)) { "Invalid person photo" }
+            } else null
             HumanDomain(row.id(), row.string("name"), row.money("sumDebt", legacy), row.string("currency"),
-                if (legacy) BigDecimal.ZERO else row.money("openingAdjustment", false))
+                if (legacy) BigDecimal.ZERO else row.money("openingAdjustment", false), photo)
         }
         val debts = payload.rows("debtList").map { row ->
             if (version < 3) require(listOf("repaymentOfId", "operationId", "cancelled").none { row.has(it) }) { "Repayment fields need backup v3" }
@@ -237,8 +240,10 @@ class BackupCodec(private val legacyFinanceCurrency: String = "USD") {
         const val FORMAT = "SimpleDebtBackup"
         const val MAX_CHARACTERS = 32 * 1024 * 1024
         const val MAX_PHOTO_CHARACTERS = 8 * 1024 * 1024
-        private const val MAX_FIELD_CHARACTERS = 64 * 1024
+        const val MAX_PERSON_PHOTO_CHARACTERS = 64 * 1024
+        private const val MAX_FIELD_CHARACTERS = MAX_PERSON_PHOTO_CHARACTERS
         private const val MAX_RECORDS = 100_000
+        private val PHOTO_BASE64 = Regex("[A-Za-z0-9+/]*={0,2}")
         fun count(data: AppDataLists): Int = data.humanList.size + data.debtList.size + data.financeList.size + data.financeCategoryList.size + data.goalList.size + data.goalDepositList.size
     }
 }
