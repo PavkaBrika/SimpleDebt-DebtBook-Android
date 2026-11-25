@@ -50,13 +50,12 @@ class DebtFragment : Fragment() {
         onCurrencySelected(R.id.mainFragment, vm::selectCurrency)
         setFragmentResultListener("mainFragmentKey") { _, result ->
             result.getString("currency")?.let(vm::selectCurrency)
-            vm.setListStateLoading()
         }
         if (vm.isChangeDebtNameDialogOpened.value == true) vm.changedHuman.value?.let { openChangeDebtNameDialog(it) }
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onStart() {
+        super.onStart()
         vm.setListStateLoading()
     }
 

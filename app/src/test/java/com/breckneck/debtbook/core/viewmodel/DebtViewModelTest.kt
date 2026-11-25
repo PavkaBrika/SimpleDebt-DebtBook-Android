@@ -132,6 +132,7 @@ class DebtViewModelTest {
         vm.balance.observeForever(observer)
         vm.screenState.observeForever(stateObserver)
         try {
+            vm.setListStateLoading()
             val firstRead = requireNotNull(reads.poll(5, TimeUnit.SECONDS))
             val lender = HumanDomain(1, "Anna", 400.toBigDecimal(), "RUB")
             val borrower = HumanDomain(2, "Paul", (-100).toBigDecimal(), "RUB")
