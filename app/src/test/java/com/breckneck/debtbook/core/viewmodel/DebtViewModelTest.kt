@@ -9,6 +9,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import com.breckneck.debtbook.debt.main.DebtListBalance
+import com.breckneck.debtbook.debt.DebtUpgradeGuidance
 import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
@@ -20,6 +21,7 @@ import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
 import com.breckneck.deptbook.domain.util.HumanOrderAttribute
 import com.breckneck.deptbook.domain.util.ScreenState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -46,6 +48,7 @@ class DebtViewModelTest {
     private val updateHuman = Mockito.mock(UpdateHuman::class.java)
     private val setHumanOrder = Mockito.mock(SetHumanOrder::class.java)
     private val getHumanOrder = Mockito.mock(GetHumanOrder::class.java)
+    private val upgradeGuidance = Mockito.mock(DebtUpgradeGuidance::class.java)
 
     private lateinit var viewModel: DebtViewModel
 
@@ -56,6 +59,7 @@ class DebtViewModelTest {
         whenever(getDefaultCurrency.execute()).thenReturn("RUB")
         whenever(getAllHumansUseCase.execute()).thenReturn(emptyList())
         whenever(getAllDebts.execute()).thenReturn(emptyList())
+        whenever(upgradeGuidance.progress).thenReturn(MutableStateFlow(null))
         viewModel = createViewModel()
     }
 
@@ -69,7 +73,8 @@ class DebtViewModelTest {
         getDefaultCurrency = getDefaultCurrency,
         getHumanOrder = getHumanOrder,
         setHumanOrder = setHumanOrder,
-        updateHuman = updateHuman
+        updateHuman = updateHuman,
+        upgradeGuidance = upgradeGuidance,
     )
 
     @After

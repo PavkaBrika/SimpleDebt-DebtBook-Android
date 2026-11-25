@@ -6,6 +6,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.breckneck.debtbook.debt.DebtUpgradeGuidance
+import com.breckneck.debtbook.debt.DebtUpgradeTopics
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.model.PersonDebtHistory
 import com.breckneck.deptbook.domain.repository.DataTransaction
@@ -48,7 +50,8 @@ class DebtViewModel @Inject constructor(
     private val saved: SavedStateHandle,
     private val getHumanOrder: GetHumanOrder,
     private val setHumanOrder: SetHumanOrder,
-    private val updateHuman: UpdateHuman
+    private val updateHuman: UpdateHuman,
+    private val upgradeGuidance: DebtUpgradeGuidance,
 ) : ViewModel() {
 
     private val TAG = "MainFragmentViewModel"
@@ -63,6 +66,11 @@ class DebtViewModel @Inject constructor(
     internal val balance: LiveData<DebtListBalance> get() = _balance
     private var people: List<HumanDomain>? = null
     private var histories = emptyMap<Int, PersonDebtHistory>()
+    private var currenciesWithDebts = emptySet<String>()
+    private var hasEarlyEntries = false
+    private val _availableUpgradeTopics = MutableLiveData<DebtUpgradeTopics?>()
+    internal val availableUpgradeTopics: LiveData<DebtUpgradeTopics?> = _availableUpgradeTopics
+    internal val upgradeProgress = upgradeGuidance.progress
     val overviewCurrencies = MutableLiveData<List<String>>()
     val loadFailed = MutableLiveData(false)
     val deadlines = MutableLiveData<Map<Int, String?>>()
@@ -71,7 +79,25 @@ class DebtViewModel @Inject constructor(
         saved["listCurrency"] = value.takeUnless { it == getDefaultCurrency.execute() }
         selectedCurrency = value
         publishHumans()
+        if (_availableUpgradeTopics.value != null) publishUpgradeTopics()
     }
+
+    internal fun selectCurrencyFromPicker(value: String) {
+        if (value != selectedCurrency && upgradeProgress.value?.showCurrencyHint == true) {
+            // A restored picker can send its result before the list has reloaded.
+            if (people == null) saved["pendingCurrencyHintChoice"] = value
+            else if (value in currenciesWithDebts) upgradeGuidance.completeCurrencyHint()
+        }
+        selectCurrency(value)
+    }
+
+    internal fun recordFirstDebtListVisit() {
+        _availableUpgradeTopics.value?.let(upgradeGuidance::recordFirstVisit)
+    }
+
+    internal fun dismissUpgradeNotice() = upgradeGuidance.dismissNotice()
+
+    internal fun dismissCurrencyHint() = upgradeGuidance.completeCurrencyHint()
 
     private val _resultedHumanList = MutableLiveData<List<HumanDomain>>()
     val resultedHumanList: LiveData<List<HumanDomain>>
@@ -113,16 +139,19 @@ class DebtViewModel @Inject constructor(
     /** A refresh is a request, including when the previous result was empty. */
     fun setListStateLoading() {
         refreshJob?.cancel()
+        if (upgradeProgress.value == null) _availableUpgradeTopics.value = null
         refreshJob = viewModelScope.launch {
             if (people == null) {
                 loadFailed.value = false
                 _screenState.value = ScreenState.LOADING
             }
             try {
-                val (persons, loans) = withContext(Dispatchers.IO) {
+                val (persons, loans, recordedCurrencies) = withContext(Dispatchers.IO) {
                     val (persons, rows) = transaction.run { getAllHumansUseCase.execute() to getAllDebts.execute() }
                     val rowsByPerson = rows.groupBy { it.idHuman }
-                    persons to persons.associate { it.id to PersonDebtHistory.from(rowsByPerson[it.id].orEmpty()) }
+                    val histories = persons.associate { it.id to PersonDebtHistory.from(rowsByPerson[it.id].orEmpty()) }
+                    val currencies = persons.filter { it.id in rowsByPerson }.mapTo(mutableSetOf()) { it.currency }
+                    Triple(persons, histories, currencies)
                 }
                 val defaultCurrency = getDefaultCurrency.execute()
                 val currencies = (listOf(defaultCurrency) + persons.map { it.currency }).distinct()
@@ -133,9 +162,15 @@ class DebtViewModel @Inject constructor(
                 loadFailed.value = false
                 people = persons
                 histories = loans
+                currenciesWithDebts = recordedCurrencies
+                hasEarlyEntries = loans.values.any { it.earlyEntries.isNotEmpty() }
+                if (saved.remove<String>("pendingCurrencyHintChoice") in recordedCurrencies) {
+                    upgradeGuidance.completeCurrencyHint()
+                }
                 deadlines.value = loans.mapValues { (_, history) -> history.openLoans.mapNotNull { it.original.dueDay }.minOrNull() }
                 settled.value = loans.filterValues { it.openLoans.isEmpty() && it.settledLoans.isNotEmpty() }.keys
                 publishHumans()
+                publishUpgradeTopics()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -180,6 +215,13 @@ class DebtViewModel @Inject constructor(
         saved["listOrderByAmount"] = order.first == HumanOrderAttribute.Sum
         saved["listAscending"] = order.second
         publishHumans()
+    }
+
+    private fun publishUpgradeTopics() {
+        _availableUpgradeTopics.value = DebtUpgradeTopics(
+            otherCurrencies = currenciesWithDebts.any { it != selectedCurrency },
+            earlyEntries = hasEarlyEntries,
+        )
     }
 
     fun saveHumanOrder(order: Pair<HumanOrderAttribute, Boolean>) {

@@ -1,5 +1,8 @@
 package com.breckneck.debtbook.debt.details
 
+import com.breckneck.debtbook.debt.DebtUpgradeGuidance
+import kotlinx.coroutines.flow.MutableStateFlow
+
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
@@ -44,6 +47,7 @@ class DebtDetailsViewModelTest {
     private val getOrder: GetDebtOrder = mock()
     private val setOrder: SetDebtOrder = mock()
     private val recordRepayment: RecordRepaymentUseCase = mock()
+    private val upgradeGuidance: DebtUpgradeGuidance = mock()
     private val record = DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "1 Jan 2026", recordedAsLoan = true)
 
     private val person = com.breckneck.deptbook.domain.model.HumanDomain(7, "Person", record.sum, "EUR", BigDecimal.ZERO)
@@ -53,6 +57,7 @@ class DebtDetailsViewModelTest {
         whenever(getOrder.execute()).thenReturn(DebtOrderAttribute.CreationDate to false)
         whenever(debts.execute(any())).thenReturn(listOf(record))
         whenever(people.getHuman(7)).thenReturn(person)
+        whenever(upgradeGuidance.progress).thenReturn(MutableStateFlow(null))
     }
     @After fun teardown() = Dispatchers.resetMain()
 
@@ -60,7 +65,7 @@ class DebtDetailsViewModelTest {
         DebtDetailsViewModel(debts, latestId, people, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
-            }, state, mock(), recordRepayment)
+            }, state, mock(), recordRepayment, upgradeGuidance)
 
     @Test fun `repayment validates positive amount and refuses more than selected record`() {
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))

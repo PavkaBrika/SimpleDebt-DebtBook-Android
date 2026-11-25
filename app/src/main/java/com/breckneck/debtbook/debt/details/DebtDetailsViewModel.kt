@@ -9,6 +9,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.breckneck.debtbook.debt.DebtUpgradeGuidance
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.model.PersonDebtHistory
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
@@ -55,7 +56,8 @@ class DebtDetailsViewModel @Inject constructor(
     private val transaction: DataTransaction,
     private val savedStateHandle: SavedStateHandle,
     private val editDebt: com.breckneck.deptbook.domain.usecase.Debt.EditDebtUseCase,
-    private val recordRepayment: RecordRepaymentUseCase
+    private val recordRepayment: RecordRepaymentUseCase,
+    private val upgradeGuidance: DebtUpgradeGuidance,
 ) : ViewModel() {
 
     private val _screenState = MutableLiveData(DebtDetailsState.LOADING)
@@ -70,6 +72,7 @@ class DebtDetailsViewModel @Inject constructor(
     val history: LiveData<List<DebtDomain>> get() = _initialDebtList
     private val _loans = MutableLiveData<PersonDebtHistory>()
     val loans: LiveData<PersonDebtHistory> get() = _loans
+    internal val upgradeProgress = upgradeGuidance.progress
     private val _section = MutableLiveData<DebtSection>()
     val section: LiveData<DebtSection> get() = _section
     private val _visibleDebtRows = MutableLiveData<List<DebtDomain>>()
@@ -142,6 +145,19 @@ class DebtDetailsViewModel @Inject constructor(
         savedStateHandle["debtSection"] = section
         _section.value = section
         if (_screenState.value == DebtDetailsState.SUCCESS || _screenState.value == DebtDetailsState.EMPTY) updateVisibleRows()
+    }
+
+    internal fun onDebtSectionClick(section: DebtSection) {
+        if (section == DebtSection.EARLY && _section.value != DebtSection.EARLY) {
+            completeEarlyEntriesHint()
+        }
+        selectDebtSection(section)
+    }
+
+    internal fun completeEarlyEntriesHint() {
+        if (_loans.value?.earlyEntries?.isNotEmpty() == true) {
+            upgradeGuidance.completeEarlyEntriesHint()
+        }
     }
 
     internal fun showAddedDebt(positive: Boolean) {
