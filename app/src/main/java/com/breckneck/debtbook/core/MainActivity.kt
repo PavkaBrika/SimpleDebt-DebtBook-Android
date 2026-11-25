@@ -121,6 +121,11 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         super.onCreate(savedInstanceState)
         authGate.onCreate(savedInstanceState)
         enableBubbleEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            splashScreen.setOnExitAnimationListener { splash ->
+                splash.animate().alpha(0f).setDuration(150).withEndAction { splash.remove() }.start()
+            }
+        }
 //        val config = resources.configuration
 //        val lang = "fr" // your language code
 //        val locale = Locale(lang)
