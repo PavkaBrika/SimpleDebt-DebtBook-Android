@@ -446,7 +446,8 @@ class BubbleDebtJourneyTest {
         remainingAmount(anna, "12 400")
         text(context.getString(R.string.debt_today)).performClick()
         compose.onNodeWithTag("dueSaveButton").assertExists()
-        pressBack()
+        compose.onNodeWithTag("dueCancelButton").performClick()
+        compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
         compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("repay-$anna"))
         compose.onNodeWithTag("repay-$anna").performClick()
         compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("2400")
@@ -456,6 +457,8 @@ class BubbleDebtJourneyTest {
         remainingAmount(anna, "10 000")
         capture("partial")
         pressBack()
+        awaitDestination(R.id.mainFragment)
+        compose.awaitTag("peopleList").performScrollToIndex(0)
         balance("+15 900")
         person()
         val payment = dao.getAllDebtsById(anna).single { it.repaymentOfId == anna }
@@ -466,8 +469,9 @@ class BubbleDebtJourneyTest {
         compose.record(payment.id).assertTextContains(context.getString(R.string.repayment_cancelled))
         capture("undone")
         pressBack()
-        balance("+18 300")
+        awaitDestination(R.id.mainFragment)
         compose.awaitTag("peopleList").performScrollToIndex(0)
+        balance("+18 300")
         compose.onNode(hasText("RUB") and hasClickAction()).performClick()
         awaitDestination(R.id.currencyPickerFragment)
         awaitCurrencyScreen()
@@ -762,7 +766,7 @@ class BubbleDebtJourneyTest {
         pressBack()
         compose.awaitTag("addHumanButton")
         for ((tab, action, destination) in listOf(
-            Triple(R.string.finances, R.string.finance_add_expense, R.id.createFinanceFragment),
+            Triple(R.string.finances, R.string.finance_add_income, R.id.createFinanceFragment),
             Triple(R.string.goals, R.string.goal_new, R.id.createGoalsFragment),
             Triple(R.string.settings, R.string.synchronization, R.id.synchronizationFragment))) {
             compose.onNode(hasText(context.getString(tab)) and hasClickAction()).performClick()
