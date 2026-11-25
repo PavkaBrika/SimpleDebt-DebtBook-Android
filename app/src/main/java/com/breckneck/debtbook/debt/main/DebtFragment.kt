@@ -36,7 +36,7 @@ class DebtFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        bubbleScreen(R.id.humansLayout) { insets ->
+        bubbleScreen(R.id.humansLayout, tabDestination = R.id.mainFragment) { insets ->
             DebtListScreen(
                 vm, insets, requireActivity() as OnButtonClickListener,
                 rename = ::openChangeDebtNameDialog,

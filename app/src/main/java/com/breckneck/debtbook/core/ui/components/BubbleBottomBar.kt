@@ -1,6 +1,6 @@
 package com.breckneck.debtbook.core.ui.components
 
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -79,15 +79,16 @@ internal fun BubbleBottomBar(
     destination: Int,
     onDestinationSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    indicatorDestination: Int = destination,
 ) {
-    val selectedIndex = barTabs.indexOfFirst { it.destination == destination }
+    val selectedIndex = barTabs.indexOfFirst { it.destination == indicatorDestination }
     if (selectedIndex < 0) return
 
     val colors = bubbleColors()
     val layoutDirection = LocalLayoutDirection.current
     val position by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
-        animationSpec = tween(240, easing = CubicBezierEasing(.2f, .8f, .2f, 1f)),
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
         label = "Selected tab",
     )
 

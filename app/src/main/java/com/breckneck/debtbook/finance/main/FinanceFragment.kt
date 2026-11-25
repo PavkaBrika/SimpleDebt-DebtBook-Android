@@ -24,7 +24,7 @@ class FinanceFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        bubbleScreen(R.id.financeSummaryView) { insets ->
+        bubbleScreen(R.id.financeSummaryView, tabDestination = R.id.financeFragment) { insets ->
             val host = requireActivity() as OnButtonClickListener
             FinanceScreen(vm, insets, host) { openCurrencyPicker(R.id.financeFragment, it) }
         }

@@ -24,11 +24,13 @@ internal fun ComponentActivity.enableBubbleEdgeToEdge() {
 
 internal fun Fragment.bubbleScreen(
     @IdRes viewId: Int,
+    @IdRes tabDestination: Int? = null,
     content: @Composable (PaddingValues) -> Unit,
 ): ComposeView {
     val host = requireActivity() as MainActivity
     return ComposeView(requireContext()).apply {
         id = viewId
+        if (tabDestination != null) host.prepareTabTransition(tabDestination, this@bubbleScreen, this)
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setContent {
             val insets = host.screenInsets ?: return@setContent
