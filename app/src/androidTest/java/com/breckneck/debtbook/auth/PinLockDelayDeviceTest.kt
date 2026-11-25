@@ -19,6 +19,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
+import com.breckneck.debtbook.core.ui.awaitRoute
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import org.junit.*
@@ -139,18 +140,24 @@ class PinLockDelayDeviceTest {
             openProtection()
             scenario.onActivity { assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) }
             action(R.string.enable_pin).performClick()
+            compose.awaitRoute("PinManagement")
             scenario.onActivity { assertTrue(it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) }
             enter("2468")
             enter("2468")
+            compose.awaitRoute("AppSecurity")
             action(R.string.change_pin_code).assertIsDisplayed()
             scenario.onActivity { assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) }
             action(R.string.change_pin_code).performClick()
+            compose.awaitRoute("PinManagement")
             scenario.onActivity { assertTrue(it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) }
             enter("2468")
             enter("5678")
+            compose.awaitRoute("AppSecurity")
             action(R.string.disable_pin).performClick()
+            compose.awaitRoute("PinManagement")
             scenario.onActivity { assertTrue(it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) }
             enter("5678")
+            compose.awaitRoute("AppSecurity")
             action(R.string.enable_pin).assertIsDisplayed()
             assertFalse(prefs.getBoolean("pin_code_is_enabled", true))
             scenario.onActivity { assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) }

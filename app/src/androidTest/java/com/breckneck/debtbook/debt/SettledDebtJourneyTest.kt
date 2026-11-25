@@ -240,10 +240,7 @@ class SettledDebtJourneyTest {
     private fun awaitRows(vararg ids: Int) {
         compose.awaitRoute("DebtPerson")
         compose.waitUntil(10_000) {
-            compose.onAllNodes(hasTestTag("personHistoryLoading")).fetchSemanticsNodes().isEmpty() &&
-                (ids.isEmpty() || ids.all { id ->
-                    compose.onAllNodesWithTag("record-$id").fetchSemanticsNodes().isNotEmpty()
-                })
+            compose.onAllNodes(hasTestTag("personHistoryLoading")).fetchSemanticsNodes().isEmpty()
         }
         if (ids.isEmpty()) compose.awaitTag("personHistory").performScrollToNode(hasTestTag("emptyDebtsLayout"))
         else ids.forEach { compose.record(it).assertExists() }

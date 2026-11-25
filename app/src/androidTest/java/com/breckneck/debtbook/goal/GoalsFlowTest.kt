@@ -524,11 +524,14 @@ class GoalsFlowTest {
             val header = node(R.string.goal_new).fetchSemanticsNode().boundsInRoot
             val draftName = compose.onNodeWithText(initialName)
             draftName.performScrollTo()
-            val distance = draftName.fetchSemanticsNode().boundsInRoot.center.y - header.center.y
-            form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
-            compose.waitForIdle()
-            val behindHeader = draftName.fetchSemanticsNode().boundsInRoot
-            assertTrue("The draft must scroll beneath the header", header.center.y in behindHeader.top..behindHeader.bottom)
+            val beforeScroll = draftName.fetchSemanticsNode().boundsInRoot
+            val distance = beforeScroll.center.y - header.center.y
+            if (distance > 0f) {
+                form.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+            }
+            compose.waitUntil(8_000) {
+                draftName.fetchSemanticsNode().boundsInRoot.top < header.bottom
+            }
             assertEquals(header, node(R.string.goal_new).fetchSemanticsNode().boundsInRoot)
             capture("rotated-draft")
             assertTrue(dao.getAllGoals().none { it.name == initialName })

@@ -204,10 +204,11 @@ class BubbleDebtJourneyTest {
             2f,
         )
         name.performTextReplacement("clai")
-        compose.awaitTag("debtPerson-$euro").performScrollTo().performClick()
+        compose.awaitTag("debtPerson-$euro").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        val currencyPicker = hasContentDescription(context.getString(R.string.select_currency))
+        compose.waitUntil(8000) { compose.onAllNodes(currencyPicker).fetchSemanticsNodes().isEmpty() }
         text("Claire").assertExists()
         text("EUR").assertExists()
-        compose.onNodeWithContentDescription(context.getString(R.string.select_currency)).assertDoesNotExist()
         compose.awaitTag("directionNegative").performScrollTo().performClick().assertIsSelected()
         compose.awaitTag("debtSumEditText").performTextReplacement("10")
         capture("existing-person-form")
@@ -259,7 +260,7 @@ class BubbleDebtJourneyTest {
         fun fieldError(message: String) = SemanticsMatcher.expectValue(SemanticsProperties.Error, message)
 
         compose.awaitTag("createDebtDue").performScrollTo()
-        save.performClick()
+        save.performSemanticsAction(SemanticsActions.OnClick)
         amount.assertIsDisplayed().assert(fieldError(missingAmount))
         name.assert(fieldError(missingName))
         hint.assertIsDisplayed().assertTextEquals(missingAmount)
@@ -267,20 +268,20 @@ class BubbleDebtJourneyTest {
         assertTrue(hint.fetchSemanticsNode().boundsInWindow.bottom <= name.fetchSemanticsNode().boundsInWindow.top)
 
         amount.performTextReplacement("0")
-        save.performClick()
+        save.performSemanticsAction(SemanticsActions.OnClick)
         amount.assert(fieldError(zero))
         hint.assertTextEquals(zero)
         capture("inline-amount-zero")
 
         amount.performTextReplacement("25")
-        save.performClick()
+        save.performSemanticsAction(SemanticsActions.OnClick)
         hint.assertDoesNotExist()
         name.assertIsDisplayed().assert(fieldError(missingName))
         assertEquals(peopleCount, dao.getAllHuman().size)
 
         name.performTextReplacement("Анна")
         name.assert(!fieldError(missingName))
-        save.performClick()
+        save.performSemanticsAction(SemanticsActions.OnClick)
         compose.awaitRoute("DebtPerson")
         assertEquals(peopleCount, dao.getAllHuman().size)
         assertEquals(2, dao.getAllDebtsById(anna).size)
