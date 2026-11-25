@@ -124,6 +124,9 @@ svg { display:block; flex-shrink:0 }
 .person-photo-action { position:relative; min-height:48px; cursor:pointer }
 .person-photo-action:focus-within { outline:2px solid var(--forest); outline-offset:-2px }
 .person-photo-action input { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer }
+.person-edit-photo { display:grid; justify-items:center; gap:10px; padding:16px; border-bottom:1px solid var(--edge) }
+.person-edit-photo .motif { width:80px; height:80px }
+.reminder-time { overflow:hidden; border-top:1px solid var(--edge) }
 .debt-person-suggestions { overflow:hidden }
 .debt-person-choices { margin:0 10px 10px; border:1px solid var(--edge); border-radius:18px; background:var(--mint); color:var(--mint-ink); overflow:hidden }
 .debt-person-choices.choice-error { border-color:var(--coral); background:var(--coral-tint); color:var(--coral) }

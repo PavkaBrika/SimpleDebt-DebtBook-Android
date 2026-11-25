@@ -28,6 +28,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.bubbleScreen
 import com.breckneck.debtbook.core.ui.components.ConfirmationBottomSheet
@@ -82,7 +83,13 @@ class DebtDetailsFragment : Fragment() {
             var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
             var personSheet by rememberSaveable { mutableStateOf<PersonSheet?>(null) }
             DebtDetailsScreen(vm, insets, requireActivity() as OnButtonClickListener,
-                { personSheet = PersonSheet.DELETE }, { personSheet = PersonSheet.SHARE },
+                editPerson = {
+                    vm.humanId?.let { id ->
+                        findNavController().navigate(R.id.action_debtDetailsFragment_to_editDebtPersonFragment,
+                            Bundle().apply { putInt("idHuman", id) })
+                    }
+                },
+                delete = { personSheet = PersonSheet.DELETE }, share = { personSheet = PersonSheet.SHARE },
                 onRecord = { id -> initialSheet = DebtSheet.ACTIONS; vm.selectDebtAction(id) },
                 onDue = { id -> initialSheet = DebtSheet.DUE; vm.selectDebtAction(id) },
                 onRepaymentAction = { id -> initialSheet = DebtSheet.REMOVE; vm.selectDebtAction(id) })
@@ -198,7 +205,11 @@ class DebtDetailsFragment : Fragment() {
                                 debt.repaymentOfId?.let(vm::originalDebt)?.let { requireContext().originalDebtLabel(it, currency) },
                                 stringResource(R.string.repayment_cancel_confirm, MoneyDisplay.formatExact(debt.sum.abs(), currency), currency)
                             ).joinToString("\n")
-                            else stringResource(if (earlyEntry) R.string.early_entry_delete_question else R.string.debt_delete_question),
+                            else stringResource(when {
+                                earlyEntry -> R.string.early_entry_delete_question
+                                hasRepayments -> R.string.debt_delete_with_repayments_question
+                                else -> R.string.debt_delete_question
+                            }),
                             confirmText = action,
                             dismissText = stringResource(R.string.cancel),
                             onConfirm = { close(); vm.deleteDebt(debt) },

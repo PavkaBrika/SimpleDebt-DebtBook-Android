@@ -88,7 +88,6 @@ class DebtDetailsViewModel @Inject constructor(
         get() = _humanName
     private val _humanPhoto = MutableLiveData<String?>()
     internal val humanPhoto: LiveData<String?> get() = _humanPhoto
-    private var personRevision = 0
     private var _humanCurrency = savedStateHandle.get<String>("currency")
     val humanCurrency: String?
         get() = _humanCurrency
@@ -225,7 +224,6 @@ class DebtDetailsViewModel @Inject constructor(
     fun retry() {
         if (_isDeleting.value == true) return
         loadJob?.cancel()
-        val personRevisionAtLoad = personRevision
         if (_initialDebtList.value == null) _screenState.value = DebtDetailsState.LOADING
         loadJob = viewModelScope.launch {
             try {
@@ -273,10 +271,8 @@ class DebtDetailsViewModel @Inject constructor(
                 _initialDebtList.value = debts
                 _overallSum.value = person.sumDebt
                 _openingAdjustment.value = person.openingAdjustment
-                if (personRevisionAtLoad == personRevision) {
-                    _humanName.value = person.name
-                    _humanPhoto.value = person.photo
-                }
+                _humanName.value = person.name
+                _humanPhoto.value = person.photo
                 val request = savedStateHandle.get<String>("repaymentRequestId")
                 if (request != null && debts.any { it.operationId == request }) closeRepayment()
                 repaymentDebtId.value?.let { selected ->
@@ -347,50 +343,6 @@ class DebtDetailsViewModel @Inject constructor(
                 com.breckneck.deptbook.domain.model.DebtDueChange(day, minute))
         } }
         retry()
-    }
-
-    fun rename(name: String) {
-        val id = humanId ?: return
-        if (name.isBlank() || _isDeleting.value == true) return
-        _isDeleting.value = true
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) { transaction.run {
-                    people.updateHuman(requireNotNull(people.getHuman(id)).copy(name = name.trim()))
-                } }
-                personRevision++
-                _humanName.value = name.trim()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                _operationFailed.value = true
-            } finally {
-                _isDeleting.value = false
-            }
-        }
-    }
-
-    internal fun updatePhoto(readPhoto: suspend () -> String?) {
-        val id = humanId ?: return
-        if (_isDeleting.value == true) return
-        _operationFailed.value = false
-        _isDeleting.value = true
-        viewModelScope.launch {
-            try {
-                val photo = readPhoto()
-                withContext(Dispatchers.IO) { transaction.run {
-                    people.updateHuman(requireNotNull(people.getHuman(id)).copy(photo = photo))
-                } }
-                personRevision++
-                _humanPhoto.value = photo
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                _operationFailed.value = true
-            } finally {
-                _isDeleting.value = false
-            }
-        }
     }
 
     fun deleteHuman() {

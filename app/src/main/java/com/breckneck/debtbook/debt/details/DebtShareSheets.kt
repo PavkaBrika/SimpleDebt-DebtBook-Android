@@ -84,13 +84,18 @@ internal fun DebtStatementSheet(vm: DebtDetailsViewModel, onDismiss: () -> Unit,
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BubbleSheetHeader(stringResource(R.string.statement_preview), { closing = true }, enabled = !closing,
                 closeModifier = Modifier.testTag("closeDebtStatement"))
-            BubbleGroup {
-                StatementOption(R.string.statement_include_settled, "includeSettled", includeSettled,
-                    hasSettled && !closing) { includeSettled = it }
-                if (hasEarly) {
-                    HorizontalDivider(color = colors.border)
-                    StatementOption(R.string.statement_include_early_entries, "includeEarlyEntries", includeEarly, !closing) {
-                        includeEarly = it
+            if (hasSettled || hasEarly) {
+                BubbleGroup {
+                    if (hasSettled) {
+                        StatementOption(R.string.statement_include_settled, "includeSettled", includeSettled, !closing) {
+                            includeSettled = it
+                        }
+                    }
+                    if (hasSettled && hasEarly) HorizontalDivider(color = colors.border)
+                    if (hasEarly) {
+                        StatementOption(R.string.statement_include_early_entries, "includeEarlyEntries", includeEarly, !closing) {
+                            includeEarly = it
+                        }
                     }
                 }
             }

@@ -19,4 +19,5 @@
     <string name="due_optional">Необязательно</string>
     <string name="debt_entry_date">Дата записи</string>
     <string name="due_reminder_on">Напоминание включено</string>
+    <string name="debt_delete_with_repayments_question">Долг и все связанные с ним возвраты будут удалены.</string>
 </resources>

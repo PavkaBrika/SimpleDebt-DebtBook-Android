@@ -2,6 +2,7 @@ package com.breckneck.debtbook.debt.reminders
 
 import com.breckneck.debtbook.debt.awaitTag
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import com.breckneck.debtbook.debt.record
 import android.content.Context
 import android.graphics.Bitmap
@@ -176,7 +177,20 @@ class DueDateScreenTest {
                 assertEquals("2099-12-30", row().dueDay)
                 await("disabled alarm removed") { row().reminderToken == null && !scheduled() }
                 openDue()
-                compose.onNodeWithTag("dueReminderSwitch").performScrollTo().performClick()
+                val toggle = compose.onNodeWithTag("dueReminderSwitch").performScrollTo()
+                val fields = compose.onNodeWithTag("dueReminderFields")
+                val collapsed = fields.fetchSemanticsNode().size.height
+                compose.mainClock.autoAdvance = false
+                try {
+                    toggle.performSemanticsAction(SemanticsActions.OnClick)
+                    compose.mainClock.advanceTimeBy(96)
+                    val growing = fields.fetchSemanticsNode().size.height
+                    compose.mainClock.advanceTimeBy(320)
+                    val expanded = fields.fetchSemanticsNode().size.height
+                    assertTrue("Animated height $collapsed → $growing → $expanded", collapsed < growing && growing < expanded)
+                } finally {
+                    compose.mainClock.autoAdvance = true
+                }
                 applyDate()
                 await("alarm enabled again") { scheduled() }
                 openDue()

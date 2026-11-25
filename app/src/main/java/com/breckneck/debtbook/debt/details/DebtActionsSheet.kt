@@ -92,10 +92,8 @@ internal fun DebtActionsSheet(
                     HorizontalDivider(color = colors.border)
                 }
                 DebtSheetAction(Icons.Outlined.Edit, R.string.edit, "editButton", enabled, onEdit)
-                if (!hasRepayments) {
-                    HorizontalDivider(color = colors.border)
-                    DebtSheetAction(Icons.Outlined.DeleteOutline, R.string.delete, "deleteButton", enabled, onRemove, destructive = true)
-                }
+                HorizontalDivider(color = colors.border)
+                DebtSheetAction(Icons.Outlined.DeleteOutline, R.string.delete, "deleteButton", enabled, onRemove, destructive = true)
             }
         }
     }

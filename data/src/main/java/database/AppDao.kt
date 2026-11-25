@@ -130,11 +130,14 @@ interface AppDao {
             if (previous.cancelled) return
             updateDebt(previous.copy(cancelled = true))
         } else {
-            require(getAllDebts().none { it.repaymentOfId == previous.id }) { "Debt has repayment history" }
+            deleteLoanRepayments(previous.id, previous.idHuman)
             deleteDebt(previous)
         }
         addSum(previous.idHuman, BigDecimal.ZERO)
     }
+
+    @Query("DELETE FROM debt WHERE repaymentOfId = :loanId AND idHuman = :humanId")
+    fun deleteLoanRepayments(loanId: Int, humanId: Int)
 
     @Transaction
     fun restoreRepayment(id: Int, humanId: Int): Boolean {

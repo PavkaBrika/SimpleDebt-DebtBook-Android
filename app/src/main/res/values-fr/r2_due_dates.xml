@@ -19,4 +19,5 @@
     <string name="due_optional">Facultatif</string>
     <string name="debt_entry_date">Date de la dette</string>
     <string name="due_reminder_on">Rappel activé</string>
+    <string name="debt_delete_with_repayments_question">Le prêt et tous les remboursements associés seront supprimés.</string>
 </resources>

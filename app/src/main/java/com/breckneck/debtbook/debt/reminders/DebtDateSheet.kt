@@ -11,13 +11,23 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
@@ -25,11 +35,13 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -48,6 +60,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +70,8 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -113,6 +129,17 @@ internal fun DebtDateSheet(
     var enabled by rememberSaveable { mutableStateOf(initialReminder == true && allowed) }
     var minute by rememberSaveable { mutableIntStateOf(initialMinute) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
+    var revealTime by remember { mutableStateOf(false) }
+    val timeRequester = remember { BringIntoViewRequester() }
+    val timeVisibility = remember { MutableTransitionState(enabled) }
+    timeVisibility.targetState = enabled
+    LaunchedEffect(revealTime, timeVisibility.isIdle, timeVisibility.currentState) {
+        if (revealTime && timeVisibility.isIdle && timeVisibility.currentState) {
+            withFrameNanos {}
+            timeRequester.bringIntoView()
+            revealTime = false
+        }
+    }
     var clear by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(day) { if (day != null) clear = false }
     val unchangedTime = day == initialDay && initialReminder == true && minute == initialMinute
@@ -126,6 +153,7 @@ internal fun DebtDateSheet(
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         allowed = reminders.allowed()
         enabled = granted && allowed
+        revealTime = enabled
     }
     DisposableEffect(lifecycle, reminders) {
         val observer = LifecycleEventObserver { _, event ->
@@ -163,12 +191,10 @@ internal fun DebtDateSheet(
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 BubbleGroup(Modifier.padding(horizontal = calendarInset)) {
-                    DatePicker(
+                    DebtCalendarPicker(
                         state = calendar,
-                        title = null,
-                        modifier = Modifier.fillMaxWidth().testTag("dueDatePicker"),
-                        showModeToggle = !compact,
-                        colors = debtCalendarColors(colors.paper),
+                        compact = compact,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     if (clearable && initialDay != null) {
                         TextButton(
@@ -179,13 +205,14 @@ internal fun DebtDateSheet(
                     }
                 }
                 AnimatedVisibility(visible = showReminder) {
-                    BubbleGroup(Modifier.padding(horizontal = 16.dp)) {
+                    BubbleGroup(Modifier.padding(horizontal = 16.dp).testTag("dueReminderFields")) {
                         BubbleFieldRow(
                             Icons.Outlined.Notifications, stringResource(R.string.due_enable),
                             Modifier.testTag("dueReminderSwitch")
                                 .toggleable(enabled, enabled = interactive && showReminder, role = Role.Switch) { checked ->
                                     allowed = reminders.allowed()
                                     enabled = checked && allowed
+                                    revealTime = enabled
                                     if (checked && !allowed && Build.VERSION.SDK_INT >= 33 &&
                                         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                                         PackageManager.PERMISSION_GRANTED
@@ -195,12 +222,19 @@ internal fun DebtDateSheet(
                                 },
                             trailing = { Switch(enabled, onCheckedChange = null, enabled = interactive, colors = bubbleSwitchColors()) },
                         ) {}
-                        if (enabled) {
-                            HorizontalDivider(color = colors.border)
-                            BubbleFieldRow(
-                                Icons.Outlined.Schedule, stringResource(R.string.debt_time),
-                                Modifier.testTag("dueTimeButton").clickable(enabled = interactive) { pickingTime = true },
-                            ) { Text(formatMinute(minute)) }
+                        AnimatedVisibility(
+                            visibleState = timeVisibility,
+                            enter = expandVertically(tween(220)) + fadeIn(tween(180)),
+                            exit = shrinkVertically(tween(180)) + fadeOut(tween(150)),
+                        ) {
+                            Column {
+                                HorizontalDivider(color = colors.border)
+                                BubbleFieldRow(
+                                    Icons.Outlined.Schedule, stringResource(R.string.debt_time),
+                                    Modifier.testTag("dueTimeButton").bringIntoViewRequester(timeRequester)
+                                        .clickable(enabled = interactive && enabled) { pickingTime = true },
+                                ) { Text(formatMinute(minute)) }
+                            }
                         }
                         if (!allowed) {
                             Text(stringResource(R.string.due_permission_denied),
@@ -241,6 +275,38 @@ internal fun DebtDateSheet(
             ) { Text(confirmText) }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DebtCalendarPicker(
+    state: DatePickerState,
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+    title: (@Composable () -> Unit)? = null,
+) {
+    val formatter = remember { DatePickerDefaults.dateFormatter() }
+    val colors = debtCalendarColors()
+    DatePicker(
+        state = state,
+        modifier = modifier.testTag("dueDatePicker"),
+        dateFormatter = formatter,
+        colors = colors,
+        title = title,
+        headline = {
+            ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+            )) {
+                DatePickerDefaults.DatePickerHeadline(
+                    state.selectedDateMillis, state.displayMode, formatter,
+                    Modifier.fillMaxWidth().padding(start = if (compact) 12.dp else 60.dp, end = if (compact) 12.dp else 0.dp)
+                        .heightIn(min = 60.dp).wrapContentHeight(Alignment.CenterVertically).testTag("debtCalendarHeadline"),
+                    contentColor = colors.headlineContentColor,
+                )
+            }
+        },
+        showModeToggle = !compact,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

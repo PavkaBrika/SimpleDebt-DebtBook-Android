@@ -19,4 +19,5 @@
     <string name="due_optional">Optional</string>
     <string name="debt_entry_date">Datum der Schuld</string>
     <string name="due_reminder_on">Erinnerung an</string>
+    <string name="debt_delete_with_repayments_question">Das Darlehen und alle zugehörigen Rückzahlungen werden gelöscht.</string>
 </resources>

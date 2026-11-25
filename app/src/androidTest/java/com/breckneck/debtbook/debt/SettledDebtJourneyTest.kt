@@ -143,6 +143,7 @@ class SettledDebtJourneyTest {
         compose.awaitTag("shareDebtText").performClick()
         val statement = compose.awaitTag("statementText").assertIsDisplayed()
         compose.onNodeWithTag("includeEarlyEntries").assertDoesNotExist()
+        compose.onNodeWithTag("includeSettled").assertDoesNotExist()
         for ((label, total) in listOf(R.string.statement_lent to 1000, R.string.statement_borrowed to 1000,
             R.string.statement_even to 0)) {
             statement.assertTextContains(screen.screenString(label).format("${amount(total)} RUB"), substring = true)

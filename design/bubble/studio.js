@@ -214,7 +214,7 @@ function person(f) {
     debtChips(debtDirections,f.historyFilter,'history-direction','Направление долга')+
     (history(p,f)||empty(f.personSection==='open'?'Нет открытых долгов.':'Нет погашенных долгов.')),
     {action:primary('new','Новый долг','plus'),topBar:backbar(p.name,{action:'<div class="person-header-actions">'+
-      iconButton('person-share','Поделиться','share')+personMenu(p)+'</div>',avatar:personAvatar(p)})});
+      iconButton('person-share','Поделиться','share')+personMenu()+'</div>',avatar:personAvatar(p)})});
 }
 function field(iconName,label,control,trailing='') {
   return '<div class="field"><span class="field-icon">'+icon(iconName,17)+'</span><label class="field-body"><span class="label">'+label+'</span>'+control+'</label>'+trailing+'</div>';
@@ -232,9 +232,9 @@ function debtErrorSlot(key) {
 function scheduleFields(obj,prefix,outstanding=true) {
   const inlineError=prefix==='d.'?debtErrorSlot:()=>'';
   if(!outstanding)return '<div class="group">'+field('date','Срок возврата','<span class="field-current">'+(obj.due?dateText(obj.due):'Без срока')+'</span>')+'</div>';
-  return '<div class="group">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+inlineError('due')+
+  return '<div class="group schedule-fields">'+field('date','Срок возврата',input(prefix+'due',obj.due,'','date'))+inlineError('due')+
     '<label class="field"><span class="field-icon">'+icon('bell',17)+'</span><span class="field-body">Напомнить мне</span><input data-bind="'+prefix+'remind" type="checkbox" '+(obj.remind?'checked':'')+' '+(!obj.due?'disabled':'')+'></label>'+inlineError('remind')+
-    (obj.remind?field('bell','Время в день срока',input(prefix+'time',obj.time,'','time'))+inlineError('time'):'')+'</div>'+permissionPrompt(obj,prefix);
+    (obj.remind?'<div class="reminder-time">'+field('bell','Время в день срока',input(prefix+'time',obj.time,'','time'))+inlineError('time')+'</div>':'')+'</div>'+permissionPrompt(obj,prefix);
 }
 function newDebt(f) {
   const d=f.d;
@@ -662,7 +662,20 @@ function bind(event) {
   if(prop==='remind'||prop==='due')obj.askNotify=!!obj.remind&&notificationAccess!=='granted';
   if(event.type==='change'&&['due','remind','cur'].includes(prop)){
     if(key==='d.cur')obj.personError=false;
+    const sheet=key==='s.remind'&&!reducedMotion.matches;
+    const previous=sheet?sections[i].querySelector('.sheet .reminder-time'):null;
+    const previousHeight=previous?.offsetHeight;
     render(i,true);
+    if(sheet) {
+      const current=sections[i].querySelector('.sheet .reminder-time');
+      const hidden={height:'0px',opacity:0};
+      if(current&&!previous) current.animate([hidden,{height:current.offsetHeight+'px',opacity:1}],{duration:220,easing:'ease-out'});
+      if(previous&&!current) {
+        previous.inert=true;previous.setAttribute('aria-hidden','true');
+        sections[i].querySelector('.sheet .schedule-fields').append(previous);
+        previous.animate([{height:previousHeight+'px',opacity:1},hidden],{duration:180,easing:'ease-in'}).onfinish=()=>previous.remove();
+      }
+    }
     if(key==='d.remind'&&obj.remind)sections[i].querySelector('[data-bind="d.time"]')?.scrollIntoView({
       block:'center',behavior:reducedMotion.matches?'instant':'smooth'
     });

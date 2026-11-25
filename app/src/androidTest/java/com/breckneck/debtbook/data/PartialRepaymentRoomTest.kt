@@ -42,7 +42,6 @@ class PartialRepaymentRoomTest {
                 assertAmount((value("7.01") + value("80") * sign.toBigDecimal()).toPlainString(), dao.getHumanSumDebt(1))
                 rejected { dao.saveDebt(repayment((-81 * sign).toString(), "request-000000002")) }
                 rejected { dao.reviseDebt(dao.getAllDebts().first().copy(sum = value("50"))) }
-                rejected { dao.removeDebt(dao.getAllDebts().first()) }
                 dao.saveDebt(repayment((-80 * sign).toString(), "request-000000003"))
                 assertAmount("7.01", dao.getHumanSumDebt(1))
                 val first = dao.getAllDebts().first { it.operationId == "request-000000001" }
@@ -76,9 +75,16 @@ class PartialRepaymentRoomTest {
             val payment = dao.getAllDebts().single { it.repaymentOfId != null }
             try { dao.removeDebt(payment); fail("cancel should fail") } catch (_: android.database.sqlite.SQLiteException) { }
             assertFalse(dao.getAllDebts().single { it.id == payment.id }.cancelled)
+            val original = dao.getAllDebts().single { it.repaymentOfId == null }
+            try { dao.removeDebt(original); fail("delete should fail") } catch (_: android.database.sqlite.SQLiteException) { }
+            assertEquals(setOf(original.id, payment.id), dao.getAllDebts().map { it.id }.toSet())
             db.openHelper.writableDatabase.execSQL("DROP TRIGGER fail_balance")
             dao.saveDebt(request)
             assertAmount("20", dao.getHumanSumDebt(1))
+            dao.removeDebt(original)
+            dao.removeDebt(original)
+            assertTrue(dao.getAllDebts().isEmpty())
+            assertAmount("0", dao.getHumanSumDebt(1))
         }
     }
 

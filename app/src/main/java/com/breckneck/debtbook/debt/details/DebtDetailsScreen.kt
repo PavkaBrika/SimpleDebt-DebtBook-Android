@@ -1,6 +1,5 @@
 package com.breckneck.debtbook.debt.details
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,10 +11,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.HideImage
 import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.SouthWest
 import androidx.compose.material.icons.outlined.Tune
@@ -25,7 +22,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -41,8 +37,6 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.DebtFilterChip
 import com.breckneck.debtbook.debt.DebtOrderSheet
 import com.breckneck.debtbook.debt.PersonAvatar
-import com.breckneck.debtbook.debt.encodePersonPhoto
-import com.breckneck.debtbook.debt.rememberDebtPhotoPicker
 import com.breckneck.debtbook.debt.main.dueLabel
 import com.breckneck.debtbook.debt.main.localDay
 import com.breckneck.debtbook.debt.main.signedMoney
@@ -67,16 +61,11 @@ private val historyOrders = listOf(
 
 @Composable
 internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, host: DebtDetailsFragment.OnButtonClickListener,
-    delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit, onDue: (Int) -> Unit, onRepaymentAction: (Int) -> Unit) {
+    editPerson: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit,
+    onDue: (Int) -> Unit, onRepaymentAction: (Int) -> Unit) {
     val today = localDay()
     val name by vm.humanName.observeAsState("")
     val photo by vm.humanPhoto.observeAsState()
-    val context = LocalContext.current.applicationContext
-    val photoPicker = rememberDebtPhotoPicker(
-        onFailure = { Toast.makeText(context, R.string.debt_photo_failed, Toast.LENGTH_SHORT).show() },
-    ) { uri ->
-        vm.updatePhoto { encodePersonPhoto(context, uri) }
-    }
     val currency = vm.humanCurrency.orEmpty()
     val sum by vm.overallSum.observeAsState()
     val state by vm.screenState.observeAsState()
@@ -98,7 +87,6 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
             showLoading = true
         }
     }
-    var renaming by rememberSaveable { mutableStateOf(false) }
     val colors = bubbleColors()
     BubbleScaffold(
         hostInsets = hostInsets,
@@ -120,14 +108,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                         }
                     },
                 ) { dismiss ->
-                    BubbleActionItem(stringResource(R.string.person_rename), Icons.Outlined.Edit,
-                        { dismiss(); renaming = true })
-                    BubbleActionItem(
-                        stringResource(if (photo == null) R.string.debt_choose_photo else R.string.debt_replace_photo),
-                        Icons.Outlined.AddAPhoto, { dismiss(); photoPicker() },
-                    )
-                    if (photo != null) BubbleActionItem(stringResource(R.string.debt_remove_photo), Icons.Outlined.HideImage,
-                        { dismiss(); vm.updatePhoto { null } })
+                    BubbleActionItem(stringResource(R.string.edit), Icons.Outlined.Edit, { dismiss(); editPerson() })
                     BubbleActionItem(stringResource(R.string.person_delete_action), Icons.Outlined.DeleteOutline,
                         { dismiss(); delete() }, destructive = true)
                 }
@@ -226,13 +207,6 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
             vm.onSetDebtSort(filter, choice)
             if (rememberChoice) vm.saveDebtOrder(choice)
         }
-    }
-    if (renaming) {
-        var input by rememberSaveable { mutableStateOf(name) }
-        AlertDialog(onDismissRequest = { renaming = false }, title = { Text(stringResource(R.string.person_rename)) },
-            text = { OutlinedTextField(input, { input = it }, singleLine = true, label = { Text(stringResource(R.string.person_name)) }) },
-            confirmButton = { TextButton({ vm.rename(input); renaming = false }, enabled = input.isNotBlank()) { Text(stringResource(R.string.save)) } },
-            dismissButton = { TextButton({ renaming = false }) { Text(stringResource(R.string.cancel)) } })
     }
 }
 

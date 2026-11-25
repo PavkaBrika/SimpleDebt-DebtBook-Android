@@ -38,6 +38,7 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.reminders.DebtDateSheet
+import com.breckneck.debtbook.debt.reminders.DebtCalendarPicker
 import com.breckneck.debtbook.debt.reminders.DebtReminderTimeDialog
 import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.debtbook.debt.reminders.debtCalendarColors
@@ -221,11 +222,9 @@ private fun CreateDebtDueCalendar(initialDay: String?, minDay: String?, onDismis
         },
     ) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            DatePicker(
+            DebtCalendarPicker(
                 state = calendar,
-                modifier = Modifier.testTag("dueDatePicker"),
-                showModeToggle = !compact,
-                colors = debtCalendarColors(),
+                compact = compact,
                 title = {
                     Text(
                         stringResource(R.string.debt_deadline),

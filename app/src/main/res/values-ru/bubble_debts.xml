@@ -49,4 +49,6 @@
     <string name="debt_remove_photo">Убрать фото</string>
     <string name="debt_selected_person">Человек выбран</string>
     <string name="debt_photo_failed">Не удалось загрузить фото.</string>
+    <string name="person_edit_title">Редактировать человека</string>
+    <string name="person_edit_failed">Не удалось сохранить карточку человека.</string>
 </resources>

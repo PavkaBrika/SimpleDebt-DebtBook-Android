@@ -49,4 +49,6 @@
     <string name="debt_remove_photo">Remove photo</string>
     <string name="debt_selected_person">Person selected</string>
     <string name="debt_photo_failed">Could not load the photo.</string>
+    <string name="person_edit_title">Edit person</string>
+    <string name="person_edit_failed">Could not save the person.</string>
 </resources>
