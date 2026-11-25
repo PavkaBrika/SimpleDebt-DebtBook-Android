@@ -3,6 +3,7 @@ package com.breckneck.debtbook.debt
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.content.Context
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
@@ -70,7 +71,15 @@ class DebtRefreshScreenTest {
                 scenario.onActivity { it.navController.navigate(R.id.settingsFragment) }
                 repo.replaceAllAppData(empty)
                 scenario.onActivity { it.onBackButtonClick() }
-                await { vm.resultedHumanList.value?.isEmpty() == true && vm.screenState.value == ScreenState.EMPTY }
+                await {
+                    var resumed = false
+                    scenario.onActivity {
+                        val entry = it.navController.currentBackStackEntry
+                        resumed = entry?.destination?.id == R.id.mainFragment &&
+                            entry.lifecycle.currentState == Lifecycle.State.RESUMED
+                    }
+                    resumed && vm.resultedHumanList.value?.isEmpty() == true && vm.screenState.value == ScreenState.EMPTY
+                }
                 // A second refresh from EMPTY must not be swallowed by equal StateFlow values.
                 repo.replaceAllAppData(empty.copy(humanList = listOf(HumanDomain(990002, "After empty", BigDecimal.ONE, "EUR"))))
                 scenario.onActivity {
