@@ -39,8 +39,13 @@ class FinanceCurrencyTest {
                     if (current == code) return
                     compose.onNode(hasText(current) and hasClickAction()).performClick()
                     compose.awaitRoute("Currencies")
-                    compose.onNodeWithText(code).performScrollTo().performClick()
+                    compose.onNodeWithContentDescription(context.getString(R.string.search_currency)).performClick()
+                    compose.onNode(hasSetTextAction()).performTextReplacement(code)
+                    val option = hasText(code, substring = true) and hasClickAction()
+                    compose.waitUntil(8_000) { compose.onAllNodes(option).fetchSemanticsNodes().size == 1 }
+                    compose.onNode(option).performClick()
                     compose.awaitRoute("Finances")
+                    compose.waitUntil(8_000) { compose.onNode(hasText(code) and hasClickAction()).isDisplayed() }
                 }
                 compose.awaitRoute("Finances")
                 currency("EUR")
