@@ -25,6 +25,7 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.core.ui.hideKeyboardBeforeBack
 import com.breckneck.debtbook.finance.main.FinancePeriod
 import com.breckneck.debtbook.finance.main.weekPickerLabel
 import com.breckneck.debtbook.settings.edgeSwipe
@@ -274,7 +275,7 @@ class FinanceFlowTest {
         awaitText(str(R.string.finance_new_expense))
         node(expenseTab).assertIsSelected()
         capture("expense-form-accent")
-        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        compose.hideKeyboardBeforeBack(activity { it.window })
         back()
         awaitDestination(R.id.financeFragment)
         summaryList().performTouchInput { swipeLeft() }

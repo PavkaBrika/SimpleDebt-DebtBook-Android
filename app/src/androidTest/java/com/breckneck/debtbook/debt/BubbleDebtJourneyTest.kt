@@ -19,12 +19,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.debtbook.core.screenAnimationsEnabled
+import com.breckneck.debtbook.core.ui.hideKeyboardBeforeBack
 import com.breckneck.debtbook.settings.edgeSwipe
 import com.breckneck.debtbook.settings.requirePredictiveGestures
 import com.breckneck.deptbook.domain.util.DecimalInput
@@ -816,7 +816,7 @@ class BubbleDebtJourneyTest {
     }
 
     private fun returnFromForm() {
-        closeSoftKeyboard()
+        compose.hideKeyboardBeforeBack(main.window)
         pressBack()
     }
 
