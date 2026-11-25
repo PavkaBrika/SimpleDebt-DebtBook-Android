@@ -58,7 +58,8 @@ class DebtViewModel @Inject constructor(
         get() = _screenState
     private var refreshJob: Job? = null
 
-    private var selectedCurrency = saved.get<String>("listCurrency") ?: getDefaultCurrency.execute()
+    internal var selectedCurrency = saved.get<String>("listCurrency") ?: getDefaultCurrency.execute()
+        private set
     private val _balance = MutableLiveData<DebtListBalance>()
     internal val balance: LiveData<DebtListBalance> get() = _balance
     private var people: List<HumanDomain>? = null

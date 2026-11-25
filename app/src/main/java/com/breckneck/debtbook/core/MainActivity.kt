@@ -281,21 +281,20 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val root = findViewById<View>(R.id.rootLayout)
         val dock = findViewById<View>(R.id.bottomDock)
         var safeBars: Insets? = null
-        var dockMeasured = false
+        var dockContentHeight = 0
 
         fun updateScreenInsets() {
             val bars = safeBars ?: return
-            if (!dockMeasured) return
             val density = resources.displayMetrics.density
             screenInsets = PaddingValues.Absolute(
                 left = (bars.left / density).dp,
                 top = (bars.top / density).dp,
                 right = (bars.right / density).dp,
-                bottom = (dock.height / density).dp,
+                bottom = ((dockContentHeight + dock.paddingBottom) / density).dp,
             )
         }
-        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            dockMeasured = true
+        dock.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            dockContentHeight = (bottom - top - dock.paddingBottom).coerceAtLeast(0)
             updateScreenInsets()
         }
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
@@ -305,7 +304,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
             val keyboardOpen = ime > bars.bottom
             dock.translationY = if (keyboardOpen) -ime.toFloat() else 0f
             dock.updatePadding(left = bars.left, right = bars.right, bottom = if (keyboardOpen) 0 else bars.bottom)
-            if (!dock.isLayoutRequested) updateScreenInsets()
+            updateScreenInsets()
             insets
         }
         ViewCompat.requestApplyInsets(root)

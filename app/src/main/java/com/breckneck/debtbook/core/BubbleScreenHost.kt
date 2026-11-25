@@ -7,6 +7,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.IdRes
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.ComposeView
@@ -33,7 +37,8 @@ internal fun Fragment.bubbleScreen(
         if (tabDestination != null) host.prepareTabTransition(tabDestination, this@bubbleScreen, this)
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setContent {
-            val insets = host.screenInsets ?: return@setContent
+            val insets = host.screenInsets
+                ?: WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
             DebtBookTheme {
                 CompositionLocalProvider(LocalHostedTabBarHeight provides host.hostedTabBarHeight) { content(insets) }
             }

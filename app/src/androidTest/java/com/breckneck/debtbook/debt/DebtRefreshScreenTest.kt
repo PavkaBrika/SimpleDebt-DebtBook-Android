@@ -15,6 +15,7 @@ import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.deptbook.domain.model.AppDataLists
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.ScreenState
+import database.AppDataBase
 import org.junit.Assert.*
 import org.junit.Test
 import repository.AppDataRepositoryImpl
@@ -42,12 +43,22 @@ class DebtRefreshScreenTest {
         prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true)
             .putString("default_currency", "EUR")
             .putInt("debts_quantity_for_app_rate_dialog_show", Int.MAX_VALUE).commit()
+        val database = AppDataBase(context).openHelper.writableDatabase
         try {
             repo.replaceAllAppData(empty)
+            // Hold the writer used by DebtViewModel's read transaction until the first layout is visible.
+            database.beginTransactionNonExclusive()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 lateinit var vm: DebtViewModel
                 scenario.onActivity { vm = ViewModelProvider(current(it))[DebtViewModel::class.java] }
+                val title = compose.awaitTag("bubbleRootTitle").assertIsDisplayed()
+                val titleTop = title.fetchSemanticsNode().boundsInWindow.top
+                compose.awaitTag("debtBalance").assertIsDisplayed()
+                compose.onAllNodesWithText("—", useUnmergedTree = true).assertCountEquals(3)
+                assertNull(vm.balance.value)
+                database.endTransaction()
                 await { vm.screenState.value == ScreenState.EMPTY }
+                assertEquals(titleTop, title.fetchSemanticsNode().boundsInWindow.top, 0f)
                 scenario.onActivity { it.onAddButtonClick() }
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 compose.awaitTag("humanNameEditText").performTextReplacement("Refresh test")
@@ -99,6 +110,7 @@ class DebtRefreshScreenTest {
                 assertEquals(1, vm.resultedHumanList.value!!.size)
             }
         } finally {
+            if (database.inTransaction()) database.endTransaction()
             repo.replaceAllAppData(original)
             prefs.edit().putBoolean("pin_code_is_enabled", pin).putBoolean("ads_disabled", ads)
                 .putInt("debts_quantity_for_app_rate_dialog_show", rate).putString("default_currency", currency).commit()

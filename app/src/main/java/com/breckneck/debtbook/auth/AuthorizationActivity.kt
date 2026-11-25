@@ -33,6 +33,7 @@ class AuthorizationActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_Debtbook)
         super.onCreate(savedInstanceState)
         enableBubbleEdgeToEdge()
         trustedCaller = callingActivity?.packageName == packageName
@@ -46,6 +47,10 @@ class AuthorizationActivity : AppCompatActivity() {
                 pinEnabled = vm.isPINCodeEnabled.value == true,
                 nowMillis = SystemClock.elapsedRealtime(),
                 delayMillis = getPinLockDelay.execute().millis)) {
+            if (!trustedCaller) {
+                // Leave the launch window in place until Main draws its own content.
+                window.decorView.viewTreeObserver.addOnPreDrawListener { false }
+            }
             completeAuthentication()
             return
         }
