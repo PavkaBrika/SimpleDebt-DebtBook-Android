@@ -2,6 +2,7 @@ package com.breckneck.debtbook.debt.details
 
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.doOnPreDraw
 import com.breckneck.debtbook.common.launchOnLifecycleStarted
 import android.content.Context
 import android.content.Intent
@@ -77,12 +78,28 @@ class DebtDetailsFragment : Fragment() {
     }
 
     private val vm by viewModels<DebtDetailsViewModel>()
+    private var awaitingContent = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) {
+            awaitingContent = true
+            postponeEnterTransition()
+        }
+    }
+
+    private fun onContentReady() {
+        if (!awaitingContent) return
+        awaitingContent = false
+        requireView().doOnPreDraw { startPostponedEnterTransition() }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         bubbleScreen(R.id.debtDetailsSheets) { insets ->
             var initialSheet by rememberSaveable { mutableStateOf(DebtSheet.ACTIONS) }
             var personSheet by rememberSaveable { mutableStateOf<PersonSheet?>(null) }
             DebtDetailsScreen(vm, insets, requireActivity() as OnButtonClickListener,
+                onContentReady = ::onContentReady,
                 editPerson = {
                     vm.humanId?.let { id ->
                         findNavController().navigate(R.id.action_debtDetailsFragment_to_editDebtPersonFragment,
@@ -123,6 +140,12 @@ class DebtDetailsFragment : Fragment() {
                 null -> Unit
             }
         }
+
+    override fun onDestroyView() {
+        awaitingContent = false
+        startPostponedEnterTransition()
+        super.onDestroyView()
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         launchOnLifecycleStarted {
