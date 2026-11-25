@@ -119,6 +119,19 @@ class BubbleDebtJourneyTest {
         compose.onNode(panel and hasText("$amount\u00a0₽"), useUnmergedTree = true).assertExists()
     }
 
+    @Test fun repeatedTapDuringPersonEntryOpensOneHistory() {
+        compose.awaitTag("peopleList").performScrollToNode(hasTestTag("person-$anna"))
+        val onClick = requireNotNull(compose.onNodeWithTag("person-$anna")
+            .fetchSemanticsNode().config[SemanticsActions.OnClick].action)
+        compose.runOnIdle {
+            onClick()
+            onClick()
+        }
+        compose.awaitTag("personHistory").assertIsDisplayed()
+        pressBack()
+        awaitDestination(R.id.mainFragment)
+    }
+
     @Test fun currencyScreenFiltersDebtsAndPreservesTheNewDebtDraft() {
         balance("+18 300")
         compose.onNode(hasText("RUB") and hasClickAction()).performClick()
@@ -417,6 +430,8 @@ class BubbleDebtJourneyTest {
         assertEquals(searchCenter.x, closeCenter.x, 1f)
         assertEquals(searchCenter.y, closeCenter.y, 1f)
         balanceCard.assertDoesNotExist()
+        val tabs = compose.onNodeWithTag("bubbleBottomBar-${R.id.mainFragment}")
+        tabs.assertDoesNotExist()
 
         field.performTextReplacement("бОр")
         compose.waitUntil(8000) { compose.onAllNodesWithTag("person-$anna").fetchSemanticsNodes(false).isEmpty() }
@@ -437,6 +452,7 @@ class BubbleDebtJourneyTest {
         field.assertTextContains("бОр")
         pressBack()
         search.assertIsDisplayed()
+        tabs.assertIsDisplayed()
         assertEquals(originalHeight, balanceCard.fetchSemanticsNode().boundsInWindow.height, 1f)
         balance("+18 300")
     }
@@ -448,7 +464,8 @@ class BubbleDebtJourneyTest {
         remainingAmount(anna, "12 400")
         text(context.getString(R.string.debt_today)).performClick()
         compose.onNodeWithTag("dueSaveButton").assertExists()
-        pressBack()
+        compose.onNodeWithTag("dueCancelButton").performClick()
+        compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
         compose.onNodeWithTag("personHistory").performScrollToNode(hasTestTag("repay-$anna"))
         compose.onNodeWithTag("repay-$anna").performClick()
         compose.onNodeWithTag("repaymentAmountInput").performTextReplacement("2400")
@@ -458,6 +475,8 @@ class BubbleDebtJourneyTest {
         remainingAmount(anna, "10 000")
         capture("partial")
         pressBack()
+        awaitDestination(R.id.mainFragment)
+        compose.awaitTag("peopleList").performScrollToIndex(0)
         balance("+15 900")
         person()
         val payment = dao.getAllDebtsById(anna).single { it.repaymentOfId == anna }
@@ -468,8 +487,9 @@ class BubbleDebtJourneyTest {
         compose.record(payment.id).assertTextContains(context.getString(R.string.repayment_cancelled))
         capture("undone")
         pressBack()
-        balance("+18 300")
+        awaitDestination(R.id.mainFragment)
         compose.awaitTag("peopleList").performScrollToIndex(0)
+        balance("+18 300")
         compose.onNode(hasText("RUB") and hasClickAction()).performClick()
         awaitDestination(R.id.currencyPickerFragment)
         awaitCurrencyScreen()
@@ -652,7 +672,8 @@ class BubbleDebtJourneyTest {
             hasTestTag("bottomTabIndicator") and hasAnyAncestor(hasTestTag("bubbleBottomBar-$destination")),
             useUnmergedTree = true,
         )
-        val original = indicator(R.id.mainFragment).fetchSemanticsNode().boundsInWindow
+        val originalIndicator = indicator(R.id.mainFragment).fetchSemanticsNode()
+        val original = originalIndicator.boundsInWindow
         val debt = compose.awaitTag("addHumanButton").fetchSemanticsNode().boundsInWindow
         fun title(label: Int): SemanticsNodeInteraction {
             val title = hasTestTag("bubbleRootTitle") and hasText(context.getString(label))
@@ -667,7 +688,9 @@ class BubbleDebtJourneyTest {
             awaitDestination(R.id.financeFragment)
             compose.mainClock.advanceTimeBy(80)
             compose.awaitTag("bubbleBottomBar-${R.id.financeFragment}")
-            val halfway = indicator(R.id.financeFragment).fetchSemanticsNode().boundsInWindow
+            val movingIndicator = indicator(R.id.financeFragment).fetchSemanticsNode()
+            assertEquals("The same indicator should move between tabs", originalIndicator.id, movingIndicator.id)
+            val halfway = movingIndicator.boundsInWindow
             compose.mainClock.advanceTimeBy(320)
             val end = indicator(R.id.financeFragment).fetchSemanticsNode().boundsInWindow
             assertTrue("Indicator position ${original.left} → ${halfway.left} → ${end.left}",
@@ -761,7 +784,7 @@ class BubbleDebtJourneyTest {
         pressBack()
         compose.awaitTag("addHumanButton")
         for ((tab, action, destination) in listOf(
-            Triple(R.string.finances, R.string.finance_add_expense, R.id.createFinanceFragment),
+            Triple(R.string.finances, R.string.finance_add_income, R.id.createFinanceFragment),
             Triple(R.string.goals, R.string.goal_new, R.id.createGoalsFragment),
             Triple(R.string.settings, R.string.synchronization, R.id.synchronizationFragment))) {
             compose.onNode(hasText(context.getString(tab)) and hasClickAction()).performClick()

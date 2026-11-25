@@ -49,7 +49,7 @@ class SettingsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         val host = requireActivity() as OnButtonClickListener
-        return bubbleScreen(R.id.settingsComposeView) { insets ->
+        return bubbleScreen(R.id.settingsComposeView, tabDestination = R.id.settingsFragment) { insets ->
             Surface(color = bubbleColors().background, contentColor = bubbleColors().ink) {
                 SettingsScreen(vm, insets, main, host,
                     onAppSecurity = { openSettingsPage(R.id.action_settingsFragment_to_appSecurityFragment) },

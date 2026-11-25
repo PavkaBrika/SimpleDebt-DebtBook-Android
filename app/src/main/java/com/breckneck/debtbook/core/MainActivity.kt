@@ -11,10 +11,10 @@ import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.debtbook.auth.AuthSession
 import database.AppDataBase
 import androidx.core.view.ViewCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
-import androidx.navigation.ui.onNavDestinationSelected
 import com.breckneck.debtbook.auth.ActivityAuthGate
 import com.breckneck.debtbook.auth.DebtSystemPicker
 import android.content.ComponentName
@@ -23,29 +23,37 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.*
 import android.util.Log
-import android.view.Menu
 import android.view.View
 import android.view.ViewStub
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.appcompat.widget.PopupMenu
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.edit
 import androidx.core.graphics.Insets
 import androidx.lifecycle.compose.currentStateAsState
+import androidx.fragment.app.Fragment
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.navOptions
 import androidx.navigation.fragment.NavHostFragment
 import com.breckneck.debtbook.BuildConfig
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.core.ui.components.BubbleTabMotion
+import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
 import com.breckneck.debtbook.debt.details.DebtDetailsFragment
 import com.breckneck.debtbook.debt.main.DebtFragment
 import com.breckneck.debtbook.debt.create.CreateDebtFragment
@@ -103,16 +111,26 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         },
         lockDelayMillis = { vm.pinLockDelayMillis() },
     )
-    internal var screenInsets by mutableStateOf(PaddingValues(0.dp))
+    internal var screenInsets by mutableStateOf<PaddingValues?>(null)
         private set
-    internal val bubbleTabMotion = BubbleTabMotion()
-    private lateinit var tabMenu: Menu
+    private var rootTabDestination by mutableStateOf<Int?>(null)
+    private var indicatorDestination by mutableStateOf<Int?>(null)
+    private var pendingTab: Int? = null
+    private var debtSearchActive by mutableStateOf(false)
+    private var measuredTabBarHeight by mutableStateOf<Dp?>(null)
+    internal val hostedTabBarHeight: Dp?
+        get() = if (rootTabDestination != null) measuredTabBarHeight else null
     lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         authGate.onCreate(savedInstanceState)
         enableBubbleEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            splashScreen.setOnExitAnimationListener { splash ->
+                splash.animate().alpha(0f).setDuration(150).withEndAction { splash.remove() }.start()
+            }
+        }
 //        val config = resources.configuration
 //        val lang = "fr" // your language code
 //        val locale = Locale(lang)
@@ -177,60 +195,117 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.frameLayout) as NavHostFragment
         navController = navHostFragment.navController
-        navController.addOnDestinationChangedListener { _, destination, _ -> bubbleTabMotion.destinationChanged(destination.id) }
-
+        configureRootTabs(restoreLastTab = savedInstanceState == null && intent.action == ACTION_OPEN_FROM_LAUNCHER)
         configureHostInsets()
-        // NavigationUI keeps each tab's saved back stack. The destination draws its own bar.
-        tabMenu = PopupMenu(this, findViewById<View>(R.id.bottomDock)).apply { inflate(R.menu.menu_bottom_nav) }.menu
+    }
 
+    private fun configureRootTabs(restoreLastTab: Boolean) {
         val navigationPreferences = getPreferences(MODE_PRIVATE)
-        if (savedInstanceState == null && intent.action == ACTION_OPEN_FROM_LAUNCHER) {
+        if (restoreLastTab) {
             val savedTab = navigationPreferences.getString(LAST_TAB, null)
             val tabId = RESTORABLE_TABS.entries.firstOrNull { it.value == savedTab }?.key
             if (tabId != null && tabId != navController.currentDestination?.id) {
-                tabMenu.findItem(tabId)?.onNavDestinationSelected(navController)
+                navigateToTab(tabId)
             }
         }
         var previousDestinationId = navController.currentDestination?.id
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            if (destination.id == previousDestinationId) return@addOnDestinationChangedListener
-            previousDestinationId = destination.id
-            val tab = RESTORABLE_TABS[destination.id] ?: return@addOnDestinationChangedListener
-            navigationPreferences.edit { putString(LAST_TAB, tab) }
+            val tab = destination.id.takeIf { it in TOP_LEVEL_DESTINATIONS }
+            rootTabDestination = tab
+            if (pendingTab != tab || tab == null) {
+                pendingTab = null
+                indicatorDestination = tab
+            }
+            if (destination.id != previousDestinationId) {
+                previousDestinationId = destination.id
+                RESTORABLE_TABS[destination.id]?.let { navigationPreferences.edit { putString(LAST_TAB, it) } }
+            }
         }
+        val bar = findViewById<ComposeView>(R.id.rootTabBar)
+        bar.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            if (bottom > top) measuredTabBarHeight = ((bottom - top) / resources.displayMetrics.density).dp
+        }
+        bar.setContent {
+            val destination = rootTabDestination ?: return@setContent
+            if (destination == R.id.mainFragment && debtSearchActive) return@setContent
+            DebtBookTheme {
+                BubbleBottomBar(
+                    destination = destination,
+                    onDestinationSelected = ::onTabSelected,
+                    indicatorDestination = indicatorDestination ?: destination,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                )
+            }
+        }
+    }
+
+    internal fun prepareTabTransition(destination: Int, fragment: Fragment, view: View) {
+        if (pendingTab != destination) return
+        fragment.postponeEnterTransition()
+        view.doOnPreDraw {
+            if (pendingTab == destination && fragment.parentFragmentManager.primaryNavigationFragment === fragment) {
+                pendingTab = null
+                indicatorDestination = destination
+            }
+            fragment.startPostponedEnterTransition()
+        }
+    }
+
+    override fun onDebtSearchChanged(searching: Boolean) {
+        debtSearchActive = searching
     }
 
     override fun onTabSelected(id: Int) {
         val from = navController.currentDestination?.id
-        if (from in TOP_LEVEL_DESTINATIONS && from != id &&
-            tabMenu.findItem(id)?.onNavDestinationSelected(navController) == true
-        ) {
-            maybeShowInterstitial()
-        }
+        if (from !in TOP_LEVEL_DESTINATIONS || id !in TOP_LEVEL_DESTINATIONS || from == id) return
+        pendingTab = id
+        navigateToTab(id)
+        if (navController.currentDestination?.id == id) maybeShowInterstitial()
+    }
+
+    private fun navigateToTab(id: Int) {
+        navController.navigate(id, null, navOptions {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            anim {
+                enter = R.animator.tab_enter
+                exit = R.animator.tab_exit
+                popEnter = R.animator.tab_enter
+                popExit = R.animator.tab_exit
+            }
+        })
     }
 
     private fun configureHostInsets() {
         val root = findViewById<View>(R.id.rootLayout)
         val dock = findViewById<View>(R.id.bottomDock)
-        var safeBars = Insets.NONE
+        var safeBars: Insets? = null
+        var dockMeasured = false
 
         fun updateScreenInsets() {
+            val bars = safeBars ?: return
+            if (!dockMeasured) return
             val density = resources.displayMetrics.density
             screenInsets = PaddingValues.Absolute(
-                left = (safeBars.left / density).dp,
-                top = (safeBars.top / density).dp,
-                right = (safeBars.right / density).dp,
+                left = (bars.left / density).dp,
+                top = (bars.top / density).dp,
+                right = (bars.right / density).dp,
                 bottom = (dock.height / density).dp,
             )
         }
-        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateScreenInsets() }
-        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            safeBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-            val keyboardOpen = ime > safeBars.bottom
-            dock.translationY = if (keyboardOpen) -ime.toFloat() else 0f
-            dock.updatePadding(left = safeBars.left, right = safeBars.right, bottom = if (keyboardOpen) 0 else safeBars.bottom)
+        dock.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            dockMeasured = true
             updateScreenInsets()
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            safeBars = bars
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val keyboardOpen = ime > bars.bottom
+            dock.translationY = if (keyboardOpen) -ime.toFloat() else 0f
+            dock.updatePadding(left = bars.left, right = bars.right, bottom = if (keyboardOpen) 0 else bars.bottom)
+            if (!dock.isLayoutRequested) updateScreenInsets()
             insets
         }
         ViewCompat.requestApplyInsets(root)
@@ -422,6 +497,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
 
     //MainFragment interfaces
     override fun onHumanClick(idHuman: Int, currency: String, name: String) {
+        if (navController.currentDestination?.id != R.id.mainFragment) return
         val args = Bundle()
         args.putInt("idHuman", idHuman)
         args.putString("currency", currency)
@@ -431,6 +507,7 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
     }
 
     override fun onAddButtonClick() {
+        if (navController.currentDestination?.id != R.id.mainFragment) return
         navController.navigate(R.id.action_mainFragment_to_newDebtFragment)
         vm.onActionClick()
     }

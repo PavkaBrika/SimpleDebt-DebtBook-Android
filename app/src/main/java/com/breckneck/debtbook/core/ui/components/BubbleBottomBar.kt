@@ -1,24 +1,22 @@
 package com.breckneck.debtbook.core.ui.components
 
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -32,23 +30,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
@@ -63,30 +60,16 @@ private val barTabs = listOf(
     BarTab(R.id.settingsFragment, R.string.settings, Icons.Outlined.Tune),
 )
 
-internal val LocalBubbleTabMotion = compositionLocalOf<BubbleTabMotion?> { null }
+internal val LocalHostedTabBarHeight = compositionLocalOf<Dp?> { null }
 
-/** Keeps the indicator position across the separate Fragment compositions. */
-internal class BubbleTabMotion {
-    private var target by mutableIntStateOf(-1)
-    var position by mutableFloatStateOf(0f)
-        private set
-
-    fun destinationChanged(destination: Int) {
-        val index = barTabs.indexOfFirst { it.destination == destination }
-        if (index < 0) {
-            if (target >= 0) position = target.toFloat()
-            target = -1
-        } else {
-            if (target < 0) position = index.toFloat()
-            target = index
-        }
-    }
-
-    suspend fun moveTo(index: Int) {
-        if (target != index || position == index.toFloat()) return
-        Animatable(position).animateTo(index.toFloat(), tween(240, easing = CubicBezierEasing(.2f, .8f, .2f, 1f))) {
-            if (target == index) position = value
-        }
+/** A nested Fragment transition includes the root tab bar in the outgoing screen or back preview. */
+@Composable
+internal fun BubbleScreenTabs(destination: Int, onDestinationSelected: (Int) -> Unit) {
+    val hostedHeight = LocalHostedTabBarHeight.current
+    if (hostedHeight == null) {
+        BubbleBottomBar(destination, onDestinationSelected)
+    } else {
+        Spacer(Modifier.height(hostedHeight))
     }
 }
 
@@ -96,13 +79,18 @@ internal fun BubbleBottomBar(
     destination: Int,
     onDestinationSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    indicatorDestination: Int = destination,
 ) {
-    val selectedIndex = barTabs.indexOfFirst { it.destination == destination }
+    val selectedIndex = barTabs.indexOfFirst { it.destination == indicatorDestination }
     if (selectedIndex < 0) return
 
     val colors = bubbleColors()
-    val motion = LocalBubbleTabMotion.current
-    LaunchedEffect(motion, selectedIndex) { motion?.moveTo(selectedIndex) }
+    val layoutDirection = LocalLayoutDirection.current
+    val position by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label = "Selected tab",
+    )
 
     Box(
         modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).testTag("bubbleBottomBar-$destination"),
@@ -115,13 +103,16 @@ internal fun BubbleBottomBar(
             border = BorderStroke(1.dp, colors.border),
             shadowElevation = 3.dp,
         ) {
-            BoxWithConstraints(Modifier.padding(6.dp)) {
-                val tabWidth = maxWidth / barTabs.size
+            Box(Modifier.padding(6.dp)) {
                 Box(Modifier.matchParentSize()) {
-                    Box(Modifier.offset { IntOffset(
-                        (tabWidth * (motion?.position ?: selectedIndex.toFloat())).roundToPx(), 0,
-                    ) }.width(tabWidth).fillMaxHeight().background(colors.selectedTab, CircleShape)
-                        .testTag("bottomTabIndicator"))
+                    Box(
+                        Modifier.fillMaxWidth(1f / barTabs.size).fillMaxHeight()
+                            .graphicsLayer {
+                                val direction = if (layoutDirection == LayoutDirection.Ltr) 1f else -1f
+                                translationX = direction * size.width * position
+                            }
+                            .background(colors.selectedTab, CircleShape).testTag("bottomTabIndicator"),
+                    )
                 }
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup()) {
                     barTabs.forEach { tab ->

@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
-import com.breckneck.debtbook.core.ui.components.LocalBubbleTabMotion
+import com.breckneck.debtbook.core.ui.components.LocalHostedTabBarHeight
 
 internal fun ComponentActivity.enableBubbleEdgeToEdge() {
     // Before API 26 the navigation buttons are always white.
@@ -24,15 +24,18 @@ internal fun ComponentActivity.enableBubbleEdgeToEdge() {
 
 internal fun Fragment.bubbleScreen(
     @IdRes viewId: Int,
+    @IdRes tabDestination: Int? = null,
     content: @Composable (PaddingValues) -> Unit,
 ): ComposeView {
     val host = requireActivity() as MainActivity
     return ComposeView(requireContext()).apply {
         id = viewId
+        if (tabDestination != null) host.prepareTabTransition(tabDestination, this@bubbleScreen, this)
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setContent {
+            val insets = host.screenInsets ?: return@setContent
             DebtBookTheme {
-                CompositionLocalProvider(LocalBubbleTabMotion provides host.bubbleTabMotion) { content(host.screenInsets) }
+                CompositionLocalProvider(LocalHostedTabBarHeight provides host.hostedTabBarHeight) { content(insets) }
             }
         }
     }

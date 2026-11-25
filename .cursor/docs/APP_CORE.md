@@ -65,7 +65,7 @@ app/src/main/java/com/breckneck/debtbook/
 
 ### Характеристики
 - Хостит `NavHostFragment` с `nav_graph.xml`
-- Bottom Navigation с 4 вкладками: Долги, Финансы, Цели, Настройки
+- Четыре вкладки — Долги, Финансы, Цели и Настройки. Общая панель в `MainActivity` сохраняет свой индикатор во время смены разделов. `NavController` сохраняет стек вкладки и восстанавливает его при возврате.
 - `hardwareAccelerated="true"`, `windowSoftInputMode="adjustPan"`
 - Использует `MainActivityViewModel` для общего состояния
 
@@ -325,7 +325,7 @@ AES шифрование через Android Keystore (minSdk 23). Alias: `"PIN"`
 - `VIBRATE` — вибрация при ошибке ввода PIN
 
 ### Другие XML-ресурсы
-- `menu_bottom_nav.xml` — элементы bottom navigation
+- `activity_main.xml` размещает общую панель вкладок над баннером. `animator/tab_enter.xml` и `animator/tab_exit.xml` задают переход между разделами.
 - `arrays.xml` — массивы валют и прочее
 - `data_extraction_rules.xml` — правила бэкапа
 - `provider_paths.xml` — пути для FileProvider (фото целей)

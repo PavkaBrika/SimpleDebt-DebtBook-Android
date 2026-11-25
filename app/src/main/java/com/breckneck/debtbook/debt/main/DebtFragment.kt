@@ -28,6 +28,7 @@ class DebtFragment : Fragment() {
 
         fun onAddButtonClick()
         fun onTabSelected(id: Int)
+        fun onDebtSearchChanged(searching: Boolean)
 
         fun onFilterButtonLongClick()
 
@@ -35,7 +36,7 @@ class DebtFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        bubbleScreen(R.id.humansLayout) { insets ->
+        bubbleScreen(R.id.humansLayout, tabDestination = R.id.mainFragment) { insets ->
             DebtListScreen(
                 vm, insets, requireActivity() as OnButtonClickListener,
                 rename = ::openChangeDebtNameDialog,
@@ -47,16 +48,18 @@ class DebtFragment : Fragment() {
         }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        vm.isSearching.observe(viewLifecycleOwner) { searching ->
+            (requireActivity() as OnButtonClickListener).onDebtSearchChanged(searching)
+        }
         onCurrencySelected(R.id.mainFragment, vm::selectCurrency)
         setFragmentResultListener("mainFragmentKey") { _, result ->
             result.getString("currency")?.let(vm::selectCurrency)
-            vm.setListStateLoading()
         }
         if (vm.isChangeDebtNameDialogOpened.value == true) vm.changedHuman.value?.let { openChangeDebtNameDialog(it) }
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onStart() {
+        super.onStart()
         vm.setListStateLoading()
     }
 
