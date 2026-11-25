@@ -34,6 +34,7 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.DebtFilterChip
 import com.breckneck.debtbook.debt.DebtUpgradeHint
 import com.breckneck.debtbook.debt.DebtUpgradeNotice
+import com.breckneck.debtbook.debt.rememberDebtUpgradeHintTransition
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.HumanDomain
@@ -86,6 +87,11 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
     val people by vm.resultedHumanList.observeAsState(emptyList())
     val failed by vm.loadFailed.observeAsState(false)
     val searching by vm.isSearching.observeAsState(false)
+    val currencyHint = rememberDebtUpgradeHintTransition(
+        R.string.debt_upgrade_open_currencies.takeIf {
+            !searching && topics?.otherCurrencies == true && guidance?.showCurrencyHint == true
+        },
+    )
     val query by vm.query.collectAsState()
     val filter by vm.humanFilter.observeAsState(Filter.ALL)
     val order = vm.humanOrder.observeAsState().value
@@ -163,12 +169,12 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     }
                 }
             }
-            if (!searching && topics?.otherCurrencies == true && guidance?.showCurrencyHint == true) {
+            if (!searching) {
                 item(key = "upgradeCurrencyHint") {
                     DebtUpgradeHint(
+                        transition = currencyHint,
                         title = R.string.debt_upgrade_currency_hint,
                         description = R.string.debt_upgrade_currency_description,
-                        action = R.string.debt_upgrade_open_currencies,
                         dismissLabel = R.string.debt_upgrade_close_currency_hint,
                         onAction = { onCurrencyClick(currency) },
                         onDismiss = vm::dismissCurrencyHint,

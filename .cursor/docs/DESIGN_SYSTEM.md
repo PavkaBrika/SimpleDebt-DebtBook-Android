@@ -103,6 +103,7 @@ ModalBottomSheet(
 
 - Use `DebtBookOutlinedAction` for secondary actions that sit next to a form field or beside a primary button. Its outline establishes the hit area. When an icon makes the action easier to recognize, place it before the label and let the label provide the accessible name.
 - Use `DebtBookSwitchRow` for a setting with a short label and an on/off state. The whole outlined row toggles one accessible control. The Material switch provides the thumb and track animation.
+- Fade conditional hints, cards, and inline messages in and out. Animate their layout space at the same time so the surrounding controls move smoothly. Keep the transition in a stable container through exit, including inside a lazy list, and respect the system animation scale. Check both directions and the movement of adjacent content through the normal user flow.
 - Reveal settings with `AnimatedVisibility` when they become relevant. Keep confirmation and dismissal controls reachable while the scrollable body changes size. Let Material components manage their own internal transitions, such as switching between calendar and keyboard date entry. Use `animateContentSize` on the content wrapper when an in-place height change needs its own animation.
 - Check compact screens with a large font, both themes, and the keyboard open where relevant. In hybrid layouts, include space for the final elevated card to draw its shadow inside the Compose host.
 
