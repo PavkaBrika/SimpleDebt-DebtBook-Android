@@ -9,8 +9,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DateRange
@@ -36,16 +34,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleFieldRow
-import com.breckneck.debtbook.core.ui.components.BubbleOutlinedButton
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.reminders.DebtDateSheet
-import com.breckneck.debtbook.debt.reminders.DebtCalendarPicker
 import com.breckneck.debtbook.debt.reminders.DebtReminderTimeDialog
 import com.breckneck.debtbook.debt.reminders.DebtReminders
-import com.breckneck.debtbook.debt.reminders.debtCalendarColors
-import com.breckneck.debtbook.debt.reminders.isDebtCalendarCompact
 import com.breckneck.debtbook.debt.reminders.openNotificationSettings
-import com.breckneck.debtbook.debt.reminders.rememberDebtCalendar
 import com.breckneck.debtbook.debt.reminders.formatMinute
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
 import com.breckneck.deptbook.domain.util.LedgerDate
@@ -188,58 +181,22 @@ internal fun DebtDueFields(vm: CreateDebtViewModel, revealTimeRow: suspend () ->
     }
 
     if (calendarOpen) {
-        CreateDebtDueCalendar(due, date?.let(LedgerDate::canonical), { calendarOpen = false }) { day ->
+        DebtDateSheet(
+            title = stringResource(R.string.debt_deadline),
+            initialDay = due,
+            minDay = date?.let(LedgerDate::canonical),
+            clearable = true,
+            confirmText = stringResource(R.string.due_apply),
+            onDismiss = { calendarOpen = false },
+        ) { day, _ ->
             val retainedMinute = minute.takeIf { reminder && day?.let(DebtReminderPolicy::canSchedule) == true }
             vm.setDueDraft(day, retainedMinute)
-            calendarOpen = false
         }
     }
     if (timeOpen) {
         DebtReminderTimeDialog(minute, { timeOpen = false }) {
             vm.setDueDraft(due, it)
             timeOpen = false
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CreateDebtDueCalendar(initialDay: String?, minDay: String?, onDismiss: () -> Unit, onSelect: (String?) -> Unit) {
-    val colors = bubbleColors()
-    val compact = isDebtCalendarCompact()
-    val calendar = rememberDebtCalendar(initialDay, minDay = minDay, compact = compact)
-    val day = calendar.selectedDateMillis?.takeIf(calendar.selectableDates::isSelectableDate)?.let(LedgerDate::dayFromPickerMillis)
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        colors = debtCalendarColors(),
-        tonalElevation = 0.dp,
-        confirmButton = {
-            TextButton({ onSelect(day) }, Modifier.testTag("dueSaveButton"), enabled = day != null) {
-                Text(stringResource(R.string.due_apply), color = if (day == null) colors.muted else colors.action)
-            }
-        },
-        dismissButton = {
-            TextButton(onDismiss) { Text(stringResource(R.string.cancel), color = colors.action) }
-        },
-    ) {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
-            DebtCalendarPicker(
-                state = calendar,
-                compact = compact,
-                title = {
-                    Text(
-                        stringResource(R.string.debt_deadline),
-                        Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                },
-            )
-            if (initialDay != null) {
-                BubbleOutlinedButton({ onSelect(null) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                    .testTag("clearDueDate")) {
-                    Text(stringResource(R.string.debt_clear_date), color = colors.danger)
-                }
-            }
         }
     }
 }

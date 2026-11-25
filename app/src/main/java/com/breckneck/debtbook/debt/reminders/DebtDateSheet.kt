@@ -68,7 +68,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -102,9 +101,6 @@ private val calendarGridWidth = 360.dp
 
 @Composable
 private fun debtCalendarWindowWidth(): Dp = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
-
-@Composable
-internal fun isDebtCalendarCompact(): Boolean = debtCalendarWindowWidth() < calendarGridWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -289,11 +285,10 @@ internal fun DebtDateSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DebtCalendarPicker(
+private fun DebtCalendarPicker(
     state: DatePickerState,
     compact: Boolean,
     modifier: Modifier = Modifier,
-    title: (@Composable () -> Unit)? = null,
 ) {
     val formatter = remember { DatePickerDefaults.dateFormatter() }
     val colors = debtCalendarColors()
@@ -302,7 +297,7 @@ internal fun DebtCalendarPicker(
         modifier = modifier.testTag("dueDatePicker"),
         dateFormatter = formatter,
         colors = colors,
-        title = title,
+        title = null,
         headline = {
             Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 24.dp, end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -329,10 +324,10 @@ internal fun DebtCalendarPicker(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun debtCalendarColors(container: Color = bubbleColors().paper): androidx.compose.material3.DatePickerColors {
+private fun debtCalendarColors(): androidx.compose.material3.DatePickerColors {
     val colors = bubbleColors()
     return DatePickerDefaults.colors(
-        containerColor = container,
+        containerColor = colors.paper,
         titleContentColor = colors.muted,
         headlineContentColor = colors.ink,
         weekdayContentColor = colors.muted,
@@ -353,8 +348,8 @@ internal fun debtCalendarColors(container: Color = bubbleColors().paper): androi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun rememberDebtCalendar(initialDay: String?, minDay: String? = null, maxDay: String? = null,
-    compact: Boolean = isDebtCalendarCompact()): androidx.compose.material3.DatePickerState {
+private fun rememberDebtCalendar(initialDay: String?, minDay: String?, maxDay: String?,
+    compact: Boolean): androidx.compose.material3.DatePickerState {
     val minMillis = minDay?.let(LedgerDate::pickerMillis)
     val maxMillis = maxDay?.let(LedgerDate::pickerMillis)
     val selectableDates = remember(minMillis, maxMillis) {

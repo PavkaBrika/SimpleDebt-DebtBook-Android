@@ -87,7 +87,8 @@ class CreateDebtDueScreenTest {
                 compose.onNodeWithTag("dueSaveButton").performClick()
 
                 compose.openDueCalendarInForm()
-                compose.onNodeWithTag("dueDatePicker").assertExists()
+                compose.onNodeWithTag("dueDatePicker").assert(hasAnyAncestor(hasTestTag("debtDueSheet")))
+                compose.onNodeWithTag("clearDueDate").assertDoesNotExist()
                 compose.onNodeWithTag("dueReminderSwitch").assertDoesNotExist()
                 compose.enterDebtDate(scenario, testDay(-1))
                 compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
@@ -98,6 +99,11 @@ class CreateDebtDueScreenTest {
                 val time = compose.awaitTag("createDebtReminderTime").assertIsDisplayed()
                 assertTrue(time.fetchSemanticsNode().boundsInWindow.bottom <=
                     compose.awaitTag("setFinanceButton").fetchSemanticsNode().boundsInWindow.top)
+                compose.openDueCalendarInForm()
+                compose.enterDebtDate(scenario, "2099-12-01")
+                compose.onNodeWithTag("dueCancelButton").performClick()
+                compose.onNodeWithTag("createDebtDue").assertTextContains(LedgerDate.display("2099-11-29"))
+                compose.onNodeWithTag("createDebtReminder").assertIsOn()
                 time.performClick()
                 compose.awaitTag("timeInput").assertExists()
                 compose.onNodeWithTag("timeConfirm").performClick()
@@ -118,7 +124,15 @@ class CreateDebtDueScreenTest {
                 compose.openDueCalendarInForm()
                 compose.enterDebtDate(scenario, "2099-12-01")
                 compose.onNodeWithTag("dueSaveButton").performClick()
+                compose.clickDebtFormAction("createDebtReminder").assertIsOn()
+                compose.openDueCalendarInForm()
+                compose.onNodeWithTag("clearDueDate").performClick()
                 compose.onNodeWithTag("debtDueSheet").assertDoesNotExist()
+                compose.onNodeWithTag("createDebtReminder").assertIsOff().assertIsNotEnabled()
+                compose.openDueCalendarInForm()
+                compose.onNodeWithTag("dueSaveButton").assertIsNotEnabled()
+                compose.enterDebtDate(scenario, "2099-12-01")
+                compose.onNodeWithTag("dueSaveButton").performClick()
                 compose.awaitTag("setFinanceButton").performClick()
                 compose.waitUntil(15_000) { dao.getAllDebtsById(person.id).size == 2 }
                 val second = dao.getAllDebtsById(person.id).single { it.id != first.id }
