@@ -36,7 +36,7 @@ internal fun SettingsScreen(
     BubbleScaffold(
         hostInsets = hostInsets,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = bubbleRootTitleTopPadding, bottom = 16.dp),
-        tabs = { BubbleBottomBar(R.id.settingsFragment, host::onTabSelected) },
+        tabs = { BubbleScreenTabs(R.id.settingsFragment, host::onTabSelected) },
     ) { padding ->
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {

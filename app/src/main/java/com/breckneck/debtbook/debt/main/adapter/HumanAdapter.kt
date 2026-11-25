@@ -22,8 +22,6 @@ class HumanAdapter(
 
     interface OnHumanClickListener{
         fun onHumanClick(humanDomain: HumanDomain, position: Int)
-
-        fun onHumanLongClick(humanDomain: HumanDomain, position: Int)
     }
 
     fun updateHuman(humanDomain: HumanDomain, position: Int) {
@@ -75,10 +73,6 @@ class HumanAdapter(
 
         holder.humanCardView.setOnClickListener{
             humanClickListener.onHumanClick(humanDomain = humanDomain, position = position)
-        }
-        holder.humanCardView.setOnLongClickListener {
-            humanClickListener.onHumanLongClick(humanDomain = humanDomain, position = position)
-            return@setOnLongClickListener true
         }
     }
 

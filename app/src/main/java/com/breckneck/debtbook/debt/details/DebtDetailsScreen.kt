@@ -31,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.withResumed
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
@@ -63,14 +65,17 @@ private val historyOrders = listOf(
 
 @Composable
 internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValues, host: DebtDetailsFragment.OnButtonClickListener,
-    editPerson: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit,
+    onContentReady: () -> Unit, editPerson: () -> Unit, delete: () -> Unit, share: () -> Unit, onRecord: (Int) -> Unit,
     onDue: (Int) -> Unit, onRepaymentAction: (Int) -> Unit) {
     val today = localDay()
     val name by vm.humanName.observeAsState("")
     val photo by vm.humanPhoto.observeAsState()
     val currency = vm.humanCurrency.orEmpty()
-    val sum by vm.overallSum.observeAsState()
-    val state by vm.screenState.observeAsState()
+    val balance by vm.overallSum.observeAsState()
+    val loadState by vm.screenState.observeAsState(DebtDetailsState.LOADING)
+    var enteringWithLoader by remember { mutableStateOf(false) }
+    val state = if (enteringWithLoader) DebtDetailsState.LOADING else loadState
+    val sum = if (enteringWithLoader) null else balance
     val busy by vm.isDeleting.observeAsState(false)
     val rows by vm.visibleDebtRows.observeAsState(emptyList())
     val loans by vm.loans.observeAsState()
@@ -89,12 +94,19 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
     val filter by vm.debtFilter.observeAsState(Filter.ALL)
     var sortOpen by rememberSaveable { mutableStateOf(false) }
     var showLoading by remember { mutableStateOf(false) }
-    LaunchedEffect(state) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(state, lifecycle) {
         showLoading = false
         if (state == DebtDetailsState.LOADING) {
             delay(200)
             showLoading = true
+            // A slow read can finish mid-transition. Compose its cards once the fragment has entered.
+            enteringWithLoader = true
+            lifecycle.withResumed { enteringWithLoader = false }
         }
+    }
+    if (state != DebtDetailsState.LOADING || showLoading) {
+        SideEffect(onContentReady)
     }
     val colors = bubbleColors()
     BubbleScaffold(
@@ -200,7 +212,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
             }
             when (state) {
                 DebtDetailsState.ERROR -> item { BubbleOutlinedButton(vm::retry) { Text(stringResource(R.string.history_retry)) } }
-                DebtDetailsState.LOADING, null -> if (showLoading) item {
+                DebtDetailsState.LOADING -> if (showLoading) item {
                     LinearProgressIndicator(Modifier.fillMaxWidth().testTag("personHistoryLoading"))
                 }
                 DebtDetailsState.EMPTY -> item {

@@ -69,8 +69,6 @@
     <string name="support">Unterstützung</string>
     <string name="something_went_wrong">Etwas ist schief gelaufen</string>
     <string name="privacy_policy">Datenschutzbestimmungen</string>
-    <string name="person_rename_hint">Namen gedrückt halten, um ihn zu ändern</string>
-    <string name="person_rename">Namen der Person ändern</string>
     <string name="select_currency">Währung auswählen</string>
     <string name="a11y_currency_picker">Währung: %1$s. Tippen, um zu ändern</string>
     <string name="order_by_date">Datum</string>

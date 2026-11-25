@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.breckneck.debtbook.R
-import com.breckneck.debtbook.core.ui.components.BubbleBottomBar
+import com.breckneck.debtbook.core.ui.components.BubbleScreenTabs
 import com.breckneck.debtbook.core.ui.components.BubbleButton
 import com.breckneck.debtbook.core.ui.components.BubbleRootTitle
 import com.breckneck.debtbook.core.ui.components.BubbleScaffold
@@ -64,7 +64,7 @@ private fun GoalsContent(
                 Text(stringResource(R.string.goal_new), Modifier.padding(start = 8.dp))
             }
         },
-        tabs = { BubbleBottomBar(R.id.goalsFragment, onTabSelected) },
+        tabs = { BubbleScreenTabs(R.id.goalsFragment, onTabSelected) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

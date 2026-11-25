@@ -12,7 +12,7 @@ import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.model.PersonDebtHistory
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
-import com.breckneck.deptbook.domain.usecase.Human.*
+import com.breckneck.deptbook.domain.usecase.Human.GetAllHumansUseCase
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
@@ -50,7 +50,6 @@ class DebtViewModel @Inject constructor(
     private val saved: SavedStateHandle,
     private val getHumanOrder: GetHumanOrder,
     private val setHumanOrder: SetHumanOrder,
-    private val updateHuman: UpdateHuman,
     private val upgradeGuidance: DebtUpgradeGuidance,
 ) : ViewModel() {
 
@@ -61,7 +60,8 @@ class DebtViewModel @Inject constructor(
         get() = _screenState
     private var refreshJob: Job? = null
 
-    private var selectedCurrency = saved.get<String>("listCurrency") ?: getDefaultCurrency.execute()
+    internal var selectedCurrency = saved.get<String>("listCurrency") ?: getDefaultCurrency.execute()
+        private set
     private val _balance = MutableLiveData<DebtListBalance>()
     internal val balance: LiveData<DebtListBalance> get() = _balance
     private var people: List<HumanDomain>? = null
@@ -113,13 +113,6 @@ class DebtViewModel @Inject constructor(
     private val _isSortDialogOpened = saved.getLiveData("listOrderOpen", false)
     val isSortDialogOpened: LiveData<Boolean>
         get() = _isSortDialogOpened
-    private val _isChangeDebtNameDialogOpened = MutableLiveData<Boolean>()
-    val isChangeDebtNameDialogOpened: LiveData<Boolean>
-        get() = _isChangeDebtNameDialogOpened
-
-    private val _changedHuman = MutableLiveData<HumanDomain>()
-    val changedHuman: LiveData<HumanDomain>
-        get() = _changedHuman
     private val _isSearching = saved.getLiveData("listSearching", false)
     val isSearching: LiveData<Boolean>
         get() = _isSearching
@@ -128,7 +121,6 @@ class DebtViewModel @Inject constructor(
 
     init {
         getHumanOrder()
-        setListStateLoading()
         viewModelScope.launch {
             _searchQuery.debounce(500).collectLatest {
                 if (_isSearching.value == true) publishHumans()
@@ -228,36 +220,12 @@ class DebtViewModel @Inject constructor(
         setHumanOrder.execute(order = order)
     }
 
-    fun updateHuman(human: HumanDomain) {
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) { transaction.run {
-                    val current = getAllHumansUseCase.execute().first { it.id == human.id }
-                    updateHuman.execute(current.copy(name = human.name))
-                } }
-                setListStateLoading()
-                Log.e(TAG, "human updated")
-            } catch (e: Exception) {
-                Log.e(TAG, e.stackTraceToString())
-            }
-        }
-    }
-
     fun onHumanSortDialogOpen() {
         _isSortDialogOpened.value = true
     }
 
     fun onHumanSortDialogClose() {
         _isSortDialogOpened.value = false
-    }
-
-    fun onChangeDebtNameDialogOpen(humanDomain: HumanDomain) {
-        _isChangeDebtNameDialogOpened.value = true
-        _changedHuman.value = humanDomain
-    }
-
-    fun onChangeDebtNameDialogClose() {
-        _isChangeDebtNameDialogOpened.value = false
     }
 
     fun setSearchQuery(query: String) {

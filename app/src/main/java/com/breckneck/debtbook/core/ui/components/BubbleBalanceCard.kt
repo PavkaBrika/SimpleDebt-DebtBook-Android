@@ -63,7 +63,7 @@ internal fun BubbleBalanceCard(
     title: String,
     currency: String,
     balance: String,
-    onCurrencyClick: () -> Unit,
+    onCurrencyClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     showCoins: Boolean = false,
     balanceValue: java.math.BigDecimal? = null,
@@ -93,7 +93,8 @@ internal fun BubbleBalanceCard(
                     ) {
                         Text(title, Modifier.weight(1f, fill = false), color = palette.muted, style = MaterialTheme.typography.labelLarge)
                         Box(
-                            Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onCurrencyClick)
+                            Modifier.clip(CircleShape)
+                                .clickable(enabled = onCurrencyClick != null, role = Role.Button) { onCurrencyClick?.invoke() }
                                 .height(48.dp),
                             contentAlignment = Alignment.Center,
                         ) {

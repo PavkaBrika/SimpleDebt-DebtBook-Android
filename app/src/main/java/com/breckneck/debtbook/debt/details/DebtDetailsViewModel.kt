@@ -244,7 +244,7 @@ class DebtDetailsViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             try {
                 if (_debtOrder.value == null) {
-                    val preference = getDebtOrder.execute()
+                    val preference = withContext(Dispatchers.IO) { getDebtOrder.execute() }
                     val attribute = when (savedStateHandle.get<String>("historyOrder")) {
                         "creation" -> DebtOrderAttribute.CreationDate
                         "date" -> DebtOrderAttribute.Date
@@ -261,11 +261,20 @@ class DebtDetailsViewModel @Inject constructor(
                 _humanId = id
                 savedStateHandle["idHuman"] = id
                 savedStateHandle["newHuman"] = false
-                val (debts, person, personLoans) = withContext(Dispatchers.IO) {
-                    val (rows, balance) = transaction.run {
+                val (debts, person) = withContext(Dispatchers.IO) {
+                    transaction.run {
                         getAllDebtsByIdUseCase.execute(id) to requireNotNull(people.getHuman(id))
                     }
-                    Triple(rows, balance, PersonDebtHistory.from(rows))
+                }
+                val order = requireNotNull(_debtOrder.value)
+                val (personLoans, sortedDebts) = withContext(Dispatchers.Default) {
+                    // If a legacy row fails to sort, keep the snapshot and try the active filter below.
+                    val sorted = try {
+                        sortDebts(debts, order)
+                    } catch (_: Exception) {
+                        null
+                    }
+                    PersonDebtHistory.from(debts) to sorted
                 }
                 _humanCurrency = person.currency
                 _loans.value = personLoans
@@ -301,7 +310,7 @@ class DebtDetailsViewModel @Inject constructor(
                         selectDebtAction(requested)
                     }
                 }
-                applySort()
+                applySort(sortedDebts?.takeIf { order == _debtOrder.value })
                 _refreshFailed.value = false
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -312,12 +321,13 @@ class DebtDetailsViewModel @Inject constructor(
         }
     }
 
-    private fun applySort() {
+    private fun applySort(presorted: List<DebtDomain>? = null) {
         try {
             val history = _loans.value ?: return
             val filter = _debtFilter.value ?: Filter.ALL
-            val filtered = _initialDebtList.value.orEmpty().filter { history.includesEntry(it, filter) }
-            _resultedDebtList.value = sortDebts(filtered, _debtOrder.value!!)
+            val source = presorted ?: _initialDebtList.value.orEmpty()
+            val filtered = if (filter == Filter.ALL) source else source.filter { history.includesEntry(it, filter) }
+            _resultedDebtList.value = if (presorted != null) filtered else sortDebts(filtered, requireNotNull(_debtOrder.value))
             updateVisibleRows()
         } catch (_: Exception) {
             // Legacy locale-dependent dates can fail to sort. Keep the records unchanged;

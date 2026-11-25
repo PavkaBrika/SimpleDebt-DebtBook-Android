@@ -1,11 +1,13 @@
 package com.breckneck.debtbook.debt.main
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.Search
@@ -22,6 +24,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
@@ -37,10 +40,10 @@ import com.breckneck.debtbook.debt.DebtUpgradeNotice
 import com.breckneck.debtbook.debt.rememberDebtUpgradeHintTransition
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.finance.financeMoney
-import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.util.Filter
 import com.breckneck.deptbook.domain.util.LedgerDate
 import java.math.BigDecimal
+import kotlinx.coroutines.delay
 
 internal fun BigDecimal.signedMoney(currency: String) = (if (signum() > 0) "+" else "") + financeMoney(currency)
 
@@ -73,7 +76,7 @@ internal fun dueLabel(day: String, open: Boolean, today: String): String = when 
 
 @Composable
 internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: DebtFragment.OnButtonClickListener,
-    visible: Boolean, rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
+    visible: Boolean, onCurrencyClick: (String) -> Unit) {
     val colors = bubbleColors()
     val today = localDay()
     val balance = vm.balance.observeAsState().value
@@ -135,35 +138,34 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 }
             }
         },
-        tabs = if (searching) null else { { BubbleBottomBar(R.id.mainFragment, host::onTabSelected) } },
+        tabs = if (searching) null else { { BubbleScreenTabs(R.id.mainFragment, host::onTabSelected) } },
     ) { padding ->
+        val currency = balance?.currency ?: vm.selectedCurrency
         LazyColumn(
             Modifier.fillMaxSize().testTag("peopleList"),
             state = if (searching) searchScroll else peopleScroll,
             contentPadding = padding,
         ) {
-            if (balance == null) {
-                item {
-                    if (failed) DebtListRetry(vm::setListStateLoading)
-                    else LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
-                return@LazyColumn
-            }
-            val currency = balance.currency
             if (!searching) item(key = "balance") {
-                BubbleBalanceCard(stringResource(R.string.debt_total), currency, balance.total.signedMoney(currency),
-                    { onCurrencyClick(currency) }, modifier = Modifier.testTag("debtBalance"),
-                    showCoins = true, balanceValue = balance.total) {
+                BubbleBalanceCard(
+                    title = stringResource(R.string.debt_total),
+                    currency = currency,
+                    balance = balance?.total?.signedMoney(currency) ?: "—",
+                    onCurrencyClick = balance?.let { { onCurrencyClick(currency) } },
+                    modifier = Modifier.testTag("debtBalance"),
+                    showCoins = true,
+                    balanceValue = balance?.total,
+                ) {
                     FlowRow(maxItemsInEachRow = if (it) 1 else 2,
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((label, value) in listOf(R.string.show_positive to balance.receivable, R.string.show_negative to balance.payable.abs())) {
+                        for ((label, value) in listOf(R.string.show_positive to balance?.receivable, R.string.show_negative to balance?.payable?.abs())) {
                             Column(Modifier.weight(1f)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(if (label == R.string.show_positive) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast,
                                         null, Modifier.size(15.dp), tint = colors.heroMuted)
                                     Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = colors.heroMuted)
                                 }
-                                Text(value.financeMoney(currency), style = MaterialTheme.typography.titleMedium)
+                                Text(value?.financeMoney(currency) ?: "—", style = MaterialTheme.typography.titleMedium)
                             }
                         }
                     }
@@ -203,19 +205,28 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     }
                 }
             }
-            if (failed) item { DebtListRetry(vm::setListStateLoading) }
-            if (people.isEmpty() && !failed) item {
+            if (failed) item(key = "retry") { DebtListRetry(vm::setListStateLoading) }
+            if (balance == null && !failed) item(key = "loading") { DebtListProgress() }
+            if (balance != null && people.isEmpty() && !failed) item(key = "empty") {
                 BubbleGroup { Text(stringResource(if (query.isBlank()) R.string.debt_empty_currency else R.string.debt_empty_search),
                     Modifier.fillMaxWidth().padding(22.dp), textAlign = TextAlign.Center, color = colors.muted) }
             }
-            itemsIndexed(people, key = { _, person -> person.id }) { index, person ->
-                BubbleGroupedRow(index, people.size) {
-                    BubbleListRow(Modifier.combinedClickable(onClick = { host.onHumanClick(person.id, currency, person.name) },
-                        onLongClickLabel = stringResource(R.string.person_rename), onLongClick = { rename(person) })
-                        .testTag("person-${person.id}").padding(14.dp),
+            itemsIndexed(people, key = { _, person -> person.id }, contentType = { _, _ -> "person" }) { index, person ->
+                BubbleGroupedRow(index, people.size, Modifier.animateItem(fadeInSpec = tween(180), placementSpec = null, fadeOutSpec = null)) {
+                    BubbleListRow(
+                        modifier = Modifier
+                            .clickable(role = Role.Button) { host.onHumanClick(person.id, currency, person.name) }
+                            .testTag("person-${person.id}").padding(14.dp),
                         leading = { PersonAvatar(person.id, person.photo) },
-                        trailing = { Text(person.sumDebt.signedMoney(currency), fontWeight = FontWeight.Bold,
-                            color = if (person.sumDebt.signum() < 0) colors.danger else colors.onMint) }) {
+                        trailing = {
+                            Text(
+                                person.sumDebt.signedMoney(currency),
+                                fontWeight = FontWeight.Bold,
+                                color = if (person.sumDebt.signum() < 0) colors.danger else colors.onMint,
+                            )
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(18.dp), tint = colors.muted)
+                        },
+                    ) {
                         Text(person.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         val day = deadlines[person.id]
                         Text(if (day != null) dueLabel(day, true, today) else stringResource(
@@ -236,6 +247,16 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
             host.onTickVibration()
         }
     }
+}
+
+@Composable
+private fun DebtListProgress() {
+    var showProgress by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(200)
+        showProgress = true
+    }
+    if (showProgress) LinearProgressIndicator(Modifier.fillMaxWidth())
 }
 
 @Composable

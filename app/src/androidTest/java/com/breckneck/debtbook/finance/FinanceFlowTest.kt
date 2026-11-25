@@ -25,6 +25,7 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.core.ui.hideKeyboardBeforeBack
 import com.breckneck.debtbook.finance.main.FinancePeriod
 import com.breckneck.debtbook.finance.main.weekPickerLabel
 import com.breckneck.debtbook.settings.edgeSwipe
@@ -260,12 +261,11 @@ class FinanceFlowTest {
     }
 
     @Test fun addButtonsBelongToThePageAndOpenItsOperation() {
-        val pager = SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)
         val expense = hasText(str(R.string.finance_add_expense)) and hasClickAction()
         val income = hasText(str(R.string.finance_add_income)) and hasClickAction()
         val incomeTab = hasText(str(R.string.revenues)) and hasClickAction()
         val expenseTab = hasText(str(R.string.expenses)) and hasClickAction()
-        node(income and hasAnyAncestor(pager)).performClick()
+        node(income and hasTestTag("addFinanceButton")).performClick()
         awaitText(str(R.string.finance_new_income))
         val incomeBounds = node(incomeTab).assertIsSelected().fetchSemanticsNode().boundsInRoot
         val expenseBounds = node(expenseTab).assertIsNotSelected().fetchSemanticsNode().boundsInRoot
@@ -275,9 +275,11 @@ class FinanceFlowTest {
         awaitText(str(R.string.finance_new_expense))
         node(expenseTab).assertIsSelected()
         capture("expense-form-accent")
+        compose.hideKeyboardBeforeBack(activity { it.window })
         back()
+        awaitDestination(R.id.financeFragment)
         summaryList().performTouchInput { swipeLeft() }
-        node(expense and hasAnyAncestor(pager)).performClick()
+        node(expense and hasTestTag("addFinanceButton")).performClick()
         awaitText(str(R.string.finance_new_expense))
         node(expenseTab).assertIsSelected()
     }

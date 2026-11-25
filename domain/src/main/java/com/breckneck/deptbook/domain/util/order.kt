@@ -2,7 +2,6 @@ package com.breckneck.deptbook.domain.util
 
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.model.HumanDomain
-import java.text.SimpleDateFormat
 
 fun sortHumans(debtList: List<HumanDomain>, order: Pair<HumanOrderAttribute, Boolean>): List<HumanDomain> {
     val sortedList: List<HumanDomain>
@@ -43,11 +42,11 @@ fun sortDebts(debtList: List<DebtDomain>, order: Pair<DebtOrderAttribute, Boolea
             }
         }
         DebtOrderAttribute.Date -> {
-            if (order.second) {
-                sortedList = debtList.sortedWith(comparator = compareBy { LedgerDate.sortKey(it.date) }).asReversed()
-            } else {
-                sortedList = debtList.sortedWith(comparator = compareBy { LedgerDate.sortKey(it.date) })
+            val dateKeys = mutableMapOf<String, String>()
+            val byDate = debtList.sortedBy { debt ->
+                dateKeys.getOrPut(debt.date) { LedgerDate.sortKey(debt.date) }
             }
+            sortedList = if (order.second) byDate.asReversed() else byDate
         }
     }
     return sortedList

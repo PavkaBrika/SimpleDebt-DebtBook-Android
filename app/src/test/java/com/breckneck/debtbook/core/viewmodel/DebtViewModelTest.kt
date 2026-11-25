@@ -17,7 +17,6 @@ import com.breckneck.debtbook.debt.main.DebtViewModel
 import com.breckneck.deptbook.domain.repository.DataTransaction
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebts
 import com.breckneck.deptbook.domain.usecase.Human.GetAllHumansUseCase
-import com.breckneck.deptbook.domain.usecase.Human.UpdateHuman
 import com.breckneck.deptbook.domain.usecase.Settings.GetDefaultCurrency
 import com.breckneck.deptbook.domain.usecase.Settings.GetHumanOrder
 import com.breckneck.deptbook.domain.usecase.Settings.SetHumanOrder
@@ -48,7 +47,6 @@ class DebtViewModelTest {
     private val getAllDebts = Mockito.mock(GetAllDebts::class.java)
     private val getAllHumansUseCase = Mockito.mock(GetAllHumansUseCase::class.java)
     private val getDefaultCurrency = Mockito.mock(GetDefaultCurrency::class.java)
-    private val updateHuman = Mockito.mock(UpdateHuman::class.java)
     private val setHumanOrder = Mockito.mock(SetHumanOrder::class.java)
     private val getHumanOrder = Mockito.mock(GetHumanOrder::class.java)
     private val upgradeGuidance = Mockito.mock(DebtUpgradeGuidance::class.java)
@@ -76,7 +74,6 @@ class DebtViewModelTest {
         getDefaultCurrency = getDefaultCurrency,
         getHumanOrder = getHumanOrder,
         setHumanOrder = setHumanOrder,
-        updateHuman = updateHuman,
         upgradeGuidance = upgradeGuidance,
     )
 
@@ -85,7 +82,6 @@ class DebtViewModelTest {
         Mockito.reset(
             getAllHumansUseCase,
             getDefaultCurrency,
-            updateHuman,
             setHumanOrder,
             getHumanOrder,
         )
@@ -140,6 +136,7 @@ class DebtViewModelTest {
         vm.balance.observeForever(observer)
         vm.screenState.observeForever(stateObserver)
         try {
+            vm.setListStateLoading()
             val firstRead = requireNotNull(reads.poll(5, TimeUnit.SECONDS))
             val lender = HumanDomain(1, "Anna", 400.toBigDecimal(), "RUB")
             val borrower = HumanDomain(2, "Paul", (-100).toBigDecimal(), "RUB")
@@ -185,6 +182,7 @@ class DebtViewModelTest {
         val observer = Observer<DebtUpgradeTopics?> { if (it != null) loaded.countDown() }
         model.availableUpgradeTopics.observeForever(observer)
         try {
+            model.setListStateLoading()
             assertTrue(loaded.await(5, TimeUnit.SECONDS))
             assertTrue(model.resultedHumanList.value!!.isEmpty())
             assertEquals(listOf("USD", "EUR"), model.overviewCurrencies.value)
@@ -227,6 +225,7 @@ class DebtViewModelTest {
         val observer = Observer<DebtUpgradeTopics?> { if (it != null) loaded.countDown() }
         model.availableUpgradeTopics.observeForever(observer)
         try {
+            model.setListStateLoading()
             model.selectCurrencyFromPicker("EUR")
             Mockito.verify(upgradeGuidance, Mockito.never()).completeCurrencyHint()
             proceed.countDown()

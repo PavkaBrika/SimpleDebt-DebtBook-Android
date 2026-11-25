@@ -69,8 +69,6 @@
     <string name="support">Поддежка</string>
     <string name="something_went_wrong">Что-то пошло не так</string>
     <string name="privacy_policy">Политика конфиденциальности</string>
-    <string name="person_rename_hint">Нажмите и удерживайте имя, чтобы изменить его</string>
-    <string name="person_rename">Изменить имя человека</string>
     <string name="select_currency">Выберите валюту</string>
     <string name="a11y_currency_picker">Валюта, %1$s. Нажмите, чтобы сменить</string>
     <string name="order_by_date">По дате</string>
