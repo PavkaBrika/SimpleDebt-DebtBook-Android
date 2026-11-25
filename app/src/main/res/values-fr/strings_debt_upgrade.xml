@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="debt_upgrade_title">Dettes après la mise à jour</string>
+    <string name="debt_upgrade_intro">Vos écritures sont toujours là. Voici où les retrouver.</string>
+    <string name="debt_upgrade_got_it">Compris</string>
+    <string name="debt_upgrade_currency_topic">Dettes par devise</string>
+    <string name="debt_upgrade_currency_notice">Changez la devise sur la carte du solde pour voir les autres dettes.</string>
+    <string name="debt_upgrade_history_topic">Écritures anciennes</string>
+    <string name="debt_upgrade_history_notice">Retrouvez votre historique de la version précédente dans la fiche de la personne.</string>
+    <string name="debt_upgrade_currency_hint">Dettes dans d’autres devises</string>
+    <string name="debt_upgrade_currency_description">Changez de devise pour voir les autres dettes.</string>
+    <string name="debt_upgrade_open_currencies">Ouvrir la liste des devises</string>
+    <string name="debt_upgrade_history_hint">Écritures de la version précédente</string>
+    <string name="debt_upgrade_history_description">Retrouvez votre ancien historique dans l’onglet « Écritures anciennes ».</string>
+    <string name="debt_upgrade_open_early_entries">Ouvrir les écritures anciennes</string>
+    <string name="debt_upgrade_close_notice">Fermer le message de mise à jour</string>
+    <string name="debt_upgrade_close_currency_hint">Fermer le conseil sur les devises</string>
+    <string name="debt_upgrade_close_history_hint">Fermer le conseil sur les écritures anciennes</string>
+</resources>

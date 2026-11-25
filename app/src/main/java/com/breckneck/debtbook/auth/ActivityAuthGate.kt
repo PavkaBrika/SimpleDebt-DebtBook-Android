@@ -114,7 +114,7 @@ class ActivityAuthGate(
             if (canAccess()) View.VISIBLE else View.INVISIBLE
     }
 
-    private fun canAccess() = AuthSession.canAccess(pinEnabled(),
+    internal fun canAccess() = AuthSession.canAccess(pinEnabled(),
         SystemClock.elapsedRealtime(), lockDelayMillis())
 
     private companion object {

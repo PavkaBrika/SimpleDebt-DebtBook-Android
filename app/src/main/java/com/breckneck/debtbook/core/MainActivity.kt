@@ -252,6 +252,8 @@ class MainActivity : AppCompatActivity(), DebtFragment.OnButtonClickListener,
         authGate.onPostResume()
     }
 
+    internal fun canAccessApp() = authGate.canAccess()
+
     internal fun prepareDebtPickerIntent(picker: DebtSystemPicker, intent: Intent): Intent {
         val handler = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo
         val systemFlags = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP

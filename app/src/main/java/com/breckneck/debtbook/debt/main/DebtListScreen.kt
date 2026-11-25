@@ -32,6 +32,8 @@ import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.DebtFilterChip
+import com.breckneck.debtbook.debt.DebtUpgradeHint
+import com.breckneck.debtbook.debt.DebtUpgradeNotice
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.finance.financeMoney
 import com.breckneck.deptbook.domain.model.HumanDomain
@@ -70,10 +72,15 @@ internal fun dueLabel(day: String, open: Boolean, today: String): String = when 
 
 @Composable
 internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: DebtFragment.OnButtonClickListener,
-    rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
+    visible: Boolean, rename: (HumanDomain) -> Unit, onCurrencyClick: (String) -> Unit) {
     val colors = bubbleColors()
     val today = localDay()
     val balance = vm.balance.observeAsState().value
+    val topics by vm.availableUpgradeTopics.observeAsState()
+    val guidance by vm.upgradeProgress.collectAsState()
+    LaunchedEffect(visible, topics) {
+        if (visible && topics != null) vm.recordFirstDebtListVisit()
+    }
     val deadlines by vm.deadlines.observeAsState(emptyMap())
     val settled by vm.settled.observeAsState(emptySet())
     val people by vm.resultedHumanList.observeAsState(emptyList())
@@ -156,6 +163,19 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                     }
                 }
             }
+            if (!searching && topics?.otherCurrencies == true && guidance?.showCurrencyHint == true) {
+                item(key = "upgradeCurrencyHint") {
+                    DebtUpgradeHint(
+                        title = R.string.debt_upgrade_currency_hint,
+                        description = R.string.debt_upgrade_currency_description,
+                        action = R.string.debt_upgrade_open_currencies,
+                        dismissLabel = R.string.debt_upgrade_close_currency_hint,
+                        onAction = { onCurrencyClick(currency) },
+                        onDismiss = vm::dismissCurrencyHint,
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
+                }
+            }
             item(key = "peopleHeader") {
                 BubbleSectionTitle(stringResource(R.string.debt_people), Modifier.padding(top = 12.dp)) {
                     Row(Modifier.clip(CircleShape).combinedClickable(onClick = vm::onHumanSortDialogOpen,
@@ -199,6 +219,9 @@ internal fun DebtListScreen(vm: DebtViewModel, hostInsets: PaddingValues, host: 
                 }
             }
         }
+    }
+    guidance?.takeIf { visible && topics != null && it.showNotice }?.let {
+        DebtUpgradeNotice(it.topics, vm::dismissUpgradeNotice)
     }
     if (orderOpen && order != null) {
         DebtPeopleOrderSheet(order, onDismiss = vm::onHumanSortDialogClose) { choice, rememberChoice ->

@@ -29,7 +29,7 @@ internal data class DebtUpgradeProgress(
 
 /** Stores the result of the first successful visit, including a visit with no applicable topics. */
 @Singleton
-class DebtUpgradeGuidance @Inject constructor(@ApplicationContext private val context: Context) {
+class DebtUpgradeGuidance @Inject constructor(@param:ApplicationContext private val context: Context) {
     private val prefs = context.getSharedPreferences("debt_upgrade_guidance", Context.MODE_PRIVATE)
     private val _progress = MutableStateFlow(readProgress())
     internal val progress = _progress.asStateFlow()

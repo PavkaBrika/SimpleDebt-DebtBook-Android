@@ -36,6 +36,7 @@ import com.breckneck.debtbook.core.ui.components.*
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.debt.DebtFilterChip
 import com.breckneck.debtbook.debt.DebtOrderSheet
+import com.breckneck.debtbook.debt.DebtUpgradeHint
 import com.breckneck.debtbook.debt.PersonAvatar
 import com.breckneck.debtbook.debt.main.dueLabel
 import com.breckneck.debtbook.debt.main.localDay
@@ -73,6 +74,7 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
     val rows by vm.visibleDebtRows.observeAsState(emptyList())
     val loans by vm.loans.observeAsState()
     val section by vm.section.observeAsState(DebtSection.OPEN)
+    val guidance by vm.upgradeProgress.collectAsState()
     val adjustment by vm.openingAdjustment.observeAsState(BigDecimal.ZERO)
     val ready = !busy && state in listOf(DebtDetailsState.SUCCESS, DebtDetailsState.EMPTY)
     val refreshFailed by vm.refreshFailed.observeAsState(false)
@@ -150,11 +152,28 @@ internal fun DebtDetailsScreen(vm: DebtDetailsViewModel, hostInsets: PaddingValu
                         }
                     }
                 }
+                if (ready && loans?.earlyEntries?.isNotEmpty() == true && guidance?.showEarlyEntriesHint == true) {
+                    item(key = "upgradeEarlyEntriesHint") {
+                        val inEarlyEntries = section == DebtSection.EARLY
+                        DebtUpgradeHint(
+                            title = R.string.debt_upgrade_history_hint,
+                            description = R.string.debt_upgrade_history_description,
+                            action = if (inEarlyEntries) R.string.debt_upgrade_got_it else R.string.debt_upgrade_open_early_entries,
+                            dismissLabel = R.string.debt_upgrade_close_history_hint,
+                            onAction = {
+                                if (inEarlyEntries) vm.completeEarlyEntriesHint()
+                                else vm.onDebtSectionClick(DebtSection.EARLY)
+                            },
+                            onDismiss = vm::completeEarlyEntriesHint,
+                            modifier = Modifier.padding(top = 10.dp),
+                        )
+                    }
+                }
                 item(key = "debtSections") {
                     Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         DebtHistoryTabs(section, !loans?.earlyEntries.isNullOrEmpty(), ready,
-                            vm::selectDebtSection, Modifier.weight(1f))
+                            vm::onDebtSectionClick, Modifier.weight(1f))
                         BubbleIconButton({ sortOpen = true }, Modifier.testTag("sortButton"), enabled = ready && order != null) {
                             Icon(Icons.Outlined.Tune, stringResource(R.string.debt_history_order), Modifier.size(19.dp))
                         }
