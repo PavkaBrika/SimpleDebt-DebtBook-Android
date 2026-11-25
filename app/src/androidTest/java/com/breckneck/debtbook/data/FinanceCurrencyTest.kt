@@ -34,21 +34,23 @@ class FinanceCurrencyTest {
             repo.replaceAllAppData(data)
             ActivityScenario.launch(MainActivity::class.java).use {
                 compose.awaitTag("bottomTab-finances").performClick()
-                fun currency(code: String) {
+                fun currency(label: Int) {
+                    val optionLabel = context.getString(label)
+                    val code = optionLabel.substringAfterLast(' ')
                     val current = prefs.getString("finance_currency", null) ?: "USD"
                     if (current == code) return
                     compose.onNode(hasText(current) and hasClickAction()).performClick()
                     compose.awaitRoute("Currencies")
                     compose.onNodeWithContentDescription(context.getString(R.string.search_currency)).performClick()
                     compose.onNode(hasSetTextAction()).performTextReplacement(code)
-                    val option = hasText(code, substring = true) and hasClickAction()
-                    compose.waitUntil(8_000) { compose.onAllNodes(option).fetchSemanticsNodes().size == 1 }
-                    compose.onNode(option).performClick()
+                    val option = compose.onNode(hasText(optionLabel) and hasClickAction())
+                    compose.waitUntil(8_000) { option.isDisplayed() }
+                    option.performClick()
                     compose.awaitRoute("Finances")
                     compose.waitUntil(8_000) { compose.onNode(hasText(code) and hasClickAction()).isDisplayed() }
                 }
                 compose.awaitRoute("Finances")
-                currency("EUR")
+                currency(R.string.eur)
                 compose.onNode(hasText(context.getString(R.string.expenses)) and hasClickAction()).performClick()
                 compose.waitUntil(10_000) { compose.onAllNodesWithText("10.01", substring = true)
                     .fetchSemanticsNodes().isNotEmpty() }
@@ -58,9 +60,9 @@ class FinanceCurrencyTest {
                 compose.waitUntil(10_000) { compose.onAllNodesWithText("10.01", substring = true)
                     .fetchSemanticsNodes().isEmpty() }
                 next.performClick()
-                currency("USD")
-                currency("EUR")
-                currency("USD")
+                currency(R.string.usd)
+                currency(R.string.eur)
+                currency(R.string.usd)
                 compose.waitUntil(10_000) { compose.onAllNodesWithText("20.02", substring = true)
                     .fetchSemanticsNodes().isNotEmpty() }
                 assertEquals(listOf("EUR", "USD"), repo.getAllAppData().financeList.sortedBy { it.id }.map { it.currency })
