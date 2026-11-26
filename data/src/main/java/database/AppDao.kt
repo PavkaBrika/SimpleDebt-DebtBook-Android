@@ -26,6 +26,9 @@ interface AppDao {
     @Query("SELECT * FROM human")
     fun getAllHuman(): List<Human>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM human)")
+    fun hasDebtPeople(): Boolean
+
     @Query("DELETE FROM human")
     fun deleteAllHumans()
 

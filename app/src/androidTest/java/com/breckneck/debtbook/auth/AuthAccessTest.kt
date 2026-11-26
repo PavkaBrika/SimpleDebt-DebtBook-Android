@@ -29,6 +29,7 @@ import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.util.CryptoManager
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.debt.openDebts
 import com.breckneck.debtbook.debt.awaitTag
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import database.AppDataBase
@@ -173,6 +174,7 @@ class AuthAccessTest {
             ?.split(',')?.map(String::toInt)?.also { require(it.size == 2) }
         instrumentation.runOnMainSync { AuthSession.unlock() }
         ActivityScenario.launch(MainActivity::class.java).use {
+            compose.openDebts()
             compose.awaitTag("addHumanButton").performClick()
             compose.awaitTag("debtSumEditText").performTextReplacement("42")
             compose.awaitTag("pickDebtContact").performClick()
@@ -228,6 +230,7 @@ class AuthAccessTest {
         try {
             instrumentation.runOnMainSync { AuthSession.unlock() }
             ActivityScenario.launch(MainActivity::class.java).use {
+                compose.openDebts()
                 compose.awaitTag("addHumanButton").performClick()
                 compose.awaitTag("debtSumEditText").performTextReplacement("42")
                 compose.awaitTag("humanNameEditText").performTextReplacement(name)

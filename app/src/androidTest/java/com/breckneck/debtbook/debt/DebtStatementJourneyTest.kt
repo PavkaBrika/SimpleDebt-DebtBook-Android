@@ -89,6 +89,7 @@ class DebtStatementJourneyTest {
             }
 
             ActivityScenario.launch(MainActivity::class.java).use { screen ->
+                compose.openDebts()
                 compose.awaitTag("peopleList").performScrollToNode(hasText(name))
                 compose.onNodeWithText(name).performClick()
                 compose.awaitTag("openDebtsTab").assertIsSelected()

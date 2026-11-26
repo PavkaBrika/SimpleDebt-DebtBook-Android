@@ -13,7 +13,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.util.UUID
 import javax.inject.Inject
 
-/** Authenticate before CLEAR_TOP can remove an already displayed PIN activity. */
+/** Authenticate in a separate task so each notification reaches the existing main task after PIN. */
 @AndroidEntryPoint
 class ReminderEntryActivity : AppCompatActivity() {
     @Inject lateinit var pinEnabled: GetPINCodeEnabled
@@ -36,7 +36,7 @@ class ReminderEntryActivity : AppCompatActivity() {
                 action = DebtReminders.ACTION_OPEN
                 putExtra(MainActivity.REMINDER_REQUEST, UUID.randomUUID().toString())
                 putExtra(DebtReminders.EXTRA_DEBT, intent.getIntExtra(DebtReminders.EXTRA_DEBT, -1))
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             })
             finish()
         }

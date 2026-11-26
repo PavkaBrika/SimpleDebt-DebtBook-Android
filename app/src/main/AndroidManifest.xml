@@ -74,7 +74,11 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".debt.reminders.ReminderEntryActivity" android:exported="false" />
+        <activity
+            android:name=".debt.reminders.ReminderEntryActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity="" />
 
         <receiver android:name=".debt.reminders.DebtReminderReceiver" android:exported="false">
             <intent-filter>

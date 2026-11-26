@@ -18,11 +18,13 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.annotation.VisibleForTesting
+import androidx.compose.runtime.key
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.breckneck.debtbook.app.App
+import com.breckneck.debtbook.app.wasUpdated
 import kotlinx.coroutines.flow.first
 import androidx.navigation.NavHostController
 import com.breckneck.debtbook.BuildConfig
@@ -32,7 +34,9 @@ import com.breckneck.debtbook.auth.DebtSystemPicker
 import com.breckneck.debtbook.core.navigation.DebtBookHost
 import com.breckneck.debtbook.core.navigation.DebtPerson
 import com.breckneck.debtbook.core.navigation.Debts
+import com.breckneck.debtbook.core.navigation.Finances
 import com.breckneck.debtbook.core.navigation.MainTab
+import com.breckneck.debtbook.core.navigation.selectTab
 import com.breckneck.debtbook.debt.reminders.DebtReminders
 import com.breckneck.debtbook.settings.main.AppTheme
 import com.breckneck.debtbook.settings.openSettingsIntent
@@ -90,10 +94,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         val preferences = getPreferences(MODE_PRIVATE)
-        val launchTab = if (savedInstanceState == null && intent.action == ACTION_OPEN_FROM_LAUNCHER) {
-            val lastTab = preferences.getString(LAST_TAB, null)
-            MainTab.entries.firstOrNull { it.persisted && it.key == lastTab }
-        } else null
+        val restoreNavigation = savedInstanceState?.getBoolean(FINANCES_ROOT_STATE) == true
+        val fromLauncher = intent.action == ACTION_OPEN_FROM_LAUNCHER ||
+            (savedInstanceState != null && intent.action == null)
 
         vm.debtQuantity.observe(this) { vm.showAppRating(fromSettings = false) }
         vm.getAppTheme()
@@ -114,8 +117,33 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) { openReminderWhenUnlocked() }
         }
-        setContent {
-            DebtBookHost(this, vm, launchTab, preferences)
+        lifecycleScope.launch {
+            val launchTab = if (!restoreNavigation && fromLauncher) {
+                val lastTab = preferences.getString(LAST_TAB, null)
+                when {
+                    lastTab != null -> MainTab.entries.firstOrNull { it.persisted && it.key == lastTab }
+                        ?: MainTab.FINANCES
+                    wasUpdated() -> hasExistingDebtBook()?.let { hasPeople ->
+                        if (hasPeople) MainTab.DEBTS else MainTab.FINANCES
+                    }
+                    else -> MainTab.FINANCES
+                }
+            } else null
+            setContent {
+                // A saved controller from the previous graph can still have Debts as its root.
+                key(Finances) { DebtBookHost(this@MainActivity, vm, launchTab, preferences) }
+            }
+        }
+    }
+
+    private suspend fun hasExistingDebtBook(): Boolean? = withContext(Dispatchers.IO) {
+        try {
+            AppDataBase(this@MainActivity).appDao().hasDebtPeople()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.w("MainActivity", "Unable to read the existing debt book at launch", error)
+            null
         }
     }
 
@@ -189,6 +217,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, R.string.due_missing, Toast.LENGTH_SHORT).show()
                 } else {
                     nav.popBackStack<Debts>(inclusive = false)
+                    nav.selectTab(MainTab.DEBTS)
                     nav.navigate(DebtPerson(result.id, result.currency, result.name, openDebtId = id))
                 }
             } catch (cancelled: CancellationException) {
@@ -305,6 +334,7 @@ class MainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
         authGate.onSaveInstanceState(outState)
         outState.putString(HANDLED_REMINDER, handledReminder)
+        outState.putBoolean(FINANCES_ROOT_STATE, navController != null)
     }
 
     internal fun onFilterButtonLongClick() {
@@ -342,6 +372,7 @@ class MainActivity : AppCompatActivity() {
         internal const val LAST_TAB = "last_tab"
         internal const val REMINDER_REQUEST = "reminderRequest"
         private const val HANDLED_REMINDER = "handledReminder"
+        private const val FINANCES_ROOT_STATE = "financesRootState"
         private val adPolicy = InterstitialPolicy(SystemClock.elapsedRealtime())
     }
 }

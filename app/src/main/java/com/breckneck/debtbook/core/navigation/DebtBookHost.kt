@@ -63,6 +63,7 @@ import com.breckneck.debtbook.core.ui.theme.DebtBookTheme
 import com.breckneck.debtbook.core.ui.theme.bubbleColors
 import com.breckneck.debtbook.settings.rating.AppRatingSheet
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.drop
 
 @Composable
 internal fun DebtBookHost(
@@ -77,7 +78,8 @@ internal fun DebtBookHost(
 
     LaunchedEffect(nav) {
         activity.onGraphReady(nav)
-        nav.currentBackStackEntryFlow.collect { entry ->
+        // A restored task or reminder entry can set up the graph without a launcher tab visit.
+        nav.currentBackStackEntryFlow.drop(if (launchTab == null) 1 else 0).collect { entry ->
             entry.destination.mainTab()?.takeIf { it.persisted }?.let { selected ->
                 preferences.edit { putString(MainActivity.LAST_TAB, selected.key) }
             }
@@ -92,7 +94,7 @@ internal fun DebtBookHost(
             CompositionLocalProvider(LocalHostedTabBarHeight provides tabHeight) {
                 PreparedScreenHost(
                     navController = nav,
-                    startDestination = Debts,
+                    startDestination = Finances,
                     initialize = { launchTab?.let(this::selectTab) },
                     animate = animate,
                     tabBar = { entry, tab ->
@@ -220,9 +222,9 @@ internal fun NavDestination?.mainTab(): MainTab? = when {
 private fun isTabTransition(from: NavDestination, to: NavDestination) =
     from.mainTab() != null && to.mainTab() != null
 
-private fun NavHostController.selectTab(tab: MainTab): Boolean {
+internal fun NavHostController.selectTab(tab: MainTab): Boolean {
     if (currentDestination.mainTab() == tab) return false
-    if (tab == MainTab.DEBTS) return popBackStack<Debts>(inclusive = false, saveState = true)
+    if (tab == MainTab.FINANCES) return popBackStack<Finances>(inclusive = false, saveState = true)
 
     val route = when (tab) {
         MainTab.DEBTS -> Debts
@@ -233,7 +235,7 @@ private fun NavHostController.selectTab(tab: MainTab): Boolean {
     navigate(route) {
         launchSingleTop = true
         restoreState = true
-        popUpTo<Debts> { saveState = true }
+        popUpTo<Finances> { saveState = true }
     }
     return true
 }

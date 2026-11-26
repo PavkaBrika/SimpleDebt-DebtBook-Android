@@ -178,7 +178,7 @@ private fun FinanceContent(
 
 @Composable
 private fun FinanceAddButton(direction: FinanceCategoryState, onAdd: () -> Unit, modifier: Modifier) {
-    BubbleButton(onAdd, modifier.testTag("addFinanceButton"), colors = financeActionColors(direction)) {
+    BubbleButton(onAdd, modifier.testTag("addFinanceButton")) {
         Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
         val label = if (direction == FinanceCategoryState.EXPENSE) R.string.finance_add_expense else R.string.finance_add_income
         Text(stringResource(label), Modifier.padding(start = 8.dp))
@@ -203,7 +203,7 @@ private fun FinancePage(
     val totals = state.totalsFor(direction)
     val amount = totals.total.takeIf { state.hasTotals }
     val expenses = direction == FinanceCategoryState.EXPENSE
-    val palette = financeBalancePalette(direction)
+    val palette = bubbleBalancePalette()
     var sharesOpen by rememberSaveable(direction) { mutableStateOf(false) }
     val hasCategories = totals.categories.isNotEmpty()
     val sharesExpanded = sharesOpen && hasCategories
@@ -322,7 +322,7 @@ private fun FinancePreview() {
     val period = FinancePeriod(FinanceInterval.DAY, LedgerDate.today())
     DebtBookTheme {
         FinanceContent(
-            FinanceSummary("RUB", FinanceCategoryState.INCOME, period, summarizeFinances(emptyList(), "RUB", period)),
+            FinanceSummary("RUB", FinanceCategoryState.EXPENSE, period, summarizeFinances(emptyList(), "RUB", period)),
             {}, {}, {}, {}, {}, {}, {},
         )
     }

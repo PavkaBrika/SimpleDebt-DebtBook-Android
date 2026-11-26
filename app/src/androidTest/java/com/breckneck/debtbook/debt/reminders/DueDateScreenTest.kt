@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.reminders
 
+import com.breckneck.debtbook.debt.openDebts
 import com.breckneck.debtbook.debt.awaitTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.semantics.SemanticsActions
@@ -113,6 +114,7 @@ class DueDateScreenTest {
                     repaymentOfId = id, operationId = "test-due-repayment-1"))
             }
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                compose.openDebts()
                 compose.waitUntil(8000) { compose.onNodeWithText("Due screen").isDisplayed() }
                 compose.onNodeWithText("Due screen").performClick()
                 waitForHistory()

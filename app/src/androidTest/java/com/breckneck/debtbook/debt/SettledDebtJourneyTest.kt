@@ -109,6 +109,7 @@ class SettledDebtJourneyTest {
     }
 
     private fun settle() {
+        compose.openDebts()
         tap("addHumanButton")
         compose.awaitTag("humanNameEditText").performTextReplacement(name)
         compose.awaitTag("debtSumEditText").performTextReplacement("1000")
@@ -160,6 +161,7 @@ class SettledDebtJourneyTest {
     }
 
     private fun reopenAndFinish() {
+        compose.openDebts()
         filtersAndOpen(positive = false, negative = true, balance = -1000)
         val lent = issued().id
         val owed = borrowed().id

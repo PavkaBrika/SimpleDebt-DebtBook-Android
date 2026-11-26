@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.reminders
 
+import com.breckneck.debtbook.debt.openDebts
 import com.breckneck.debtbook.debt.awaitTag
 import androidx.compose.ui.test.*
 import com.breckneck.debtbook.debt.record
@@ -53,6 +54,7 @@ class DeniedReminderScreenTest {
             dao.insertHuman(Human(id, "Denied reminder", BigDecimal.ZERO, "EUR"))
             dao.saveDebt(Debt(id, BigDecimal("100"), id, null, "2026-11-16"))
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                compose.openDebts()
                 compose.waitUntil(8000) { compose.onNodeWithText("Denied reminder").isDisplayed() }
                 compose.onNodeWithText("Denied reminder").performClick()
                 waitFor("history missing") { try { compose.record(id).assertIsDisplayed(); true } catch (_: Exception) { false } }

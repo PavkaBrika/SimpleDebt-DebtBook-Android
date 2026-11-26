@@ -361,6 +361,10 @@ class GoalsFlowTest {
     }
 
     @Test fun tabSelectionAndSystemInsetsFollowNavHost() {
+        val tabPositions = listOf("finances", "debts", "goals", "settings").map { key ->
+            compose.onNodeWithTag("bottomTab-$key").fetchSemanticsNode().boundsInWindow.center.x
+        }
+        assertTrue(tabPositions.zipWithNext().all { (left, right) -> left < right })
         for ((title, id) in listOf(
             R.string.debts to "Debts", R.string.finances to "Finances",
             R.string.settings to "Settings", R.string.goals to "Goals",
@@ -402,13 +406,12 @@ class GoalsFlowTest {
         bar.performTouchInput { taps.forEach { click(it) } }
         checkTab(R.string.debts, "Debts")
 
-        tab(R.string.finances, "Finances")
-        checkTab(R.string.finances, "Finances")
         val previous = onMain { activity -> activity.also { it.recreate() } }
         compose.waitUntil(15_000) { onMain { it !== previous } == true }
-        checkTab(R.string.finances, "Finances")
-        ordinaryBack("Debts")
         checkTab(R.string.debts, "Debts")
+        tab(R.string.debts, "Debts")
+        ordinaryBack("Finances")
+        checkTab(R.string.finances, "Finances")
     }
 
     @Test fun launcherRestoresLastTabAfterTaskIsCleared() {
@@ -420,7 +423,7 @@ class GoalsFlowTest {
                     compose.mainClock.advanceTimeByFrame()
                     compose.onAllNodes(hasTestTag(destination)).fetchSemanticsNodes(false).isNotEmpty()
                 }
-                if (destination != "Debts") compose.onNodeWithTag("Debts").assertDoesNotExist()
+                if (destination != "Finances") compose.onNodeWithTag("Finances").assertDoesNotExist()
             } finally {
                 compose.mainClock.autoAdvance = true
             }
@@ -439,6 +442,16 @@ class GoalsFlowTest {
             relaunchOn(destination)
             compose.onNode(hasText(context.getString(title)) and isSelectable()).assertIsSelected()
         }
+    }
+
+    @Test fun launcherFallsBackToFinancesForAnUnknownTab() {
+        onMain { activity ->
+            activity.getPreferences(Context.MODE_PRIVATE).edit()
+                .putString(MainActivity.LAST_TAB, "unknown-section").commit()
+        }
+        launchFromLauncher()
+        compose.awaitRoute("Finances")
+        compose.onNodeWithTag("bottomTab-finances").assertIsSelected()
     }
 
     @Test fun goalFormsScrollUnderFixedControlsAndKeepInputAboveTheKeyboard() {

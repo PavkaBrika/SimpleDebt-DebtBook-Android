@@ -3,6 +3,12 @@ package com.breckneck.debtbook.debt
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import com.breckneck.debtbook.core.ui.awaitRoute
+
+internal fun ComposeTestRule.openDebts() {
+    awaitTag("bottomTab-debts").performClick()
+    awaitRoute("Debts")
+}
 
 internal fun ComposeTestRule.record(id: Int): SemanticsNodeInteraction {
     val tag = "record-$id"
