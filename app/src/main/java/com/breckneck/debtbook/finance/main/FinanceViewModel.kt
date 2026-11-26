@@ -76,7 +76,7 @@ class FinanceViewModel @Inject constructor(
 ) : ViewModel() {
     private val savedDay = saved.get<String>("day") ?: LedgerDate.today()
     private val current = MutableStateFlow(FinanceSummary(
-        getCurrency.execute(getDefaultCurrency::execute), saved["direction"] ?: FinanceCategoryState.INCOME,
+        getCurrency.execute(getDefaultCurrency::execute), saved["direction"] ?: FinanceCategoryState.EXPENSE,
         FinancePeriod(
             interval = saved["interval"] ?: FinanceInterval.DAY,
             day = savedDay,

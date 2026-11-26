@@ -56,30 +56,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.ui.components.BubbleBalancePalette
-import com.breckneck.debtbook.core.ui.components.bubbleBalancePalette
-import com.breckneck.debtbook.core.ui.theme.LocalDebtBookDarkTheme
 import com.breckneck.debtbook.finance.badgeColor
 import com.breckneck.debtbook.finance.localizedName
-import com.breckneck.deptbook.domain.util.FinanceCategoryState
 import java.math.MathContext
 import java.text.NumberFormat
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-
-@Composable
-internal fun financeBalancePalette(direction: FinanceCategoryState): BubbleBalancePalette =
-    if (direction == FinanceCategoryState.INCOME) {
-        bubbleBalancePalette()
-    } else {
-        BubbleBalancePalette(
-            container = if (LocalDebtBookDarkTheme.current) Color(0xFF4E2A2B) else Color(0xFF643432),
-            content = Color(0xFFFFF2E8),
-            muted = Color(0xFFF1C4B7),
-            border = Color(0xFF985E58),
-        )
-    }
 
 private const val ExpandedStrokeFraction = .15f
 private val ChartPadding = 4.dp
