@@ -81,8 +81,8 @@ internal fun FinanceOverview(state: FinanceSummary) {
                         headingContent()
                         netValue()
                     }
-                    incomeValue(Modifier.weight(1f))
                     expenseValue(Modifier.weight(1f))
+                    incomeValue(Modifier.weight(1f))
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -95,8 +95,8 @@ internal fun FinanceOverview(state: FinanceSummary) {
                         netValue()
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        incomeValue(Modifier.weight(1f))
                         expenseValue(Modifier.weight(1f))
+                        incomeValue(Modifier.weight(1f))
                     }
                 }
             }

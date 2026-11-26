@@ -25,7 +25,7 @@ import com.breckneck.deptbook.domain.util.MoneyDisplay
 import java.math.BigDecimal
 import java.util.Currency
 
-internal val financeDirections = listOf(FinanceCategoryState.INCOME, FinanceCategoryState.EXPENSE)
+internal val financeDirections = listOf(FinanceCategoryState.EXPENSE, FinanceCategoryState.INCOME)
 
 @Composable
 internal fun financeActionColors(direction: FinanceCategoryState): ButtonColors {

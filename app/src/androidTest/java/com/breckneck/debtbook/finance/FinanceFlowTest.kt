@@ -155,8 +155,13 @@ class FinanceFlowTest {
         val incomeTab = node(hasText(str(R.string.revenues)) and hasClickAction())
         val expenseTab = node(hasText(str(R.string.expenses)) and isSelected()).assertIsDisplayed()
         val overviewTitle = node(hasText(str(R.string.finance_period_total))).assertIsDisplayed()
-        assertTrue(incomeTab.fetchSemanticsNode().boundsInRoot.left < expenseTab.fetchSemanticsNode().boundsInRoot.left)
-        assertTrue(overviewTitle.fetchSemanticsNode().boundsInRoot.bottom <= incomeTab.fetchSemanticsNode().boundsInRoot.top)
+        val expenseTabBounds = expenseTab.fetchSemanticsNode().boundsInRoot
+        val incomeTabBounds = incomeTab.fetchSemanticsNode().boundsInRoot
+        assertTrue(expenseTabBounds.left < incomeTabBounds.left)
+        assertTrue(overviewTitle.fetchSemanticsNode().boundsInRoot.bottom <= expenseTabBounds.top)
+        fun overviewLabel(id: Int) = compose.onAllNodesWithText(str(id)).fetchSemanticsNodes()
+            .single { it.boundsInRoot.bottom <= expenseTabBounds.top }.boundsInRoot
+        assertTrue(overviewLabel(R.string.expenses).left < overviewLabel(R.string.revenues).left)
         direction(R.string.revenues)
         incomeTab.assertIsSelected()
         total("90")
@@ -194,13 +199,13 @@ class FinanceFlowTest {
         shares.performClick()
         assertEquals(collapsedWidth, shares.fetchSemanticsNode().boundsInRoot.width)
 
-        summaryList().performTouchInput { swipeLeft() }
+        summaryList().performTouchInput { swipeRight() }
         node(hasText(str(R.string.expenses)) and isSelected()).assertIsDisplayed()
         total("45")
         node(hasText("Expense today") and hasText(context.getString(R.string.finance_share_of_total, 80))).assertIsDisplayed()
         capture("expense-page")
-        summaryList().performTouchInput { swipeRight() }
-        incomeTab.assertIsDisplayed()
+        summaryList().performTouchInput { swipeLeft() }
+        incomeTab.assertIsSelected().assertIsDisplayed()
         act(R.string.expenses)
         total("45")
 
@@ -271,7 +276,7 @@ class FinanceFlowTest {
         awaitText(str(R.string.finance_new_income))
         val incomeBounds = node(incomeTab).assertIsSelected().fetchSemanticsNode().boundsInRoot
         val expenseBounds = node(expenseTab).assertIsNotSelected().fetchSemanticsNode().boundsInRoot
-        assertTrue(incomeBounds.left < expenseBounds.left)
+        assertTrue(expenseBounds.left < incomeBounds.left)
         capture("income-form-accent")
         node(expenseTab).performClick()
         awaitText(str(R.string.finance_new_expense))
@@ -285,10 +290,13 @@ class FinanceFlowTest {
         compose.waitUntil(15_000) { onActivity { it !== previous } == true }
         compose.awaitRoute("Finances")
         node(incomeTab).assertIsSelected()
-        summaryList().performTouchInput { swipeLeft() }
+        summaryList().performTouchInput { swipeRight() }
         node(expense and hasTestTag("addFinanceButton")).performClick()
         awaitText(str(R.string.finance_new_expense))
         node(expenseTab).assertIsSelected()
+        node(incomeTab).performClick()
+        awaitText(str(R.string.finance_new_income))
+        node(incomeTab).assertIsSelected()
     }
 
     @Test fun customDateRangeIncludesBothEndsAndStepsByItsLength() {
