@@ -482,6 +482,38 @@ class BubbleDebtJourneyTest {
         balance("+18 300")
     }
 
+    @Test fun searchFindsPeopleAcrossCurrenciesAndOpensTheirHistory() {
+        balance("+18 300")
+        val negative = hasText(context.getString(R.string.show_negative)) and isSelectable()
+        compose.awaitTag("peopleList").performScrollToNode(negative)
+        compose.onNode(negative).performClick().assertIsSelected()
+        text("Claire").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription(context.getString(R.string.find_person)).performClick()
+        text(context.getString(R.string.show_all)).assertIsSelected()
+        val claire = compose.awaitTag("person-$euro").assertTextContains("+810\u00a0€")
+        text("Борис").assertIsDisplayed()
+
+        val field = compose.onNode(hasSetTextAction())
+        field.performTextReplacement(" cLaI ")
+        compose.waitUntil(8000) { compose.onAllNodesWithText("Борис").fetchSemanticsNodes(false).isEmpty() }
+        claire.assertIsDisplayed().performClick()
+        compose.awaitRoute("DebtPerson")
+        compose.awaitTag("personBalanceCard")
+        compose.onNode(hasAnyAncestor(hasTestTag("personBalanceCard")) and hasText("EUR", substring = true))
+            .assertIsDisplayed()
+        pressBack()
+        compose.awaitRoute("Debts")
+        field.assertTextContains(" cLaI ")
+        claire.assertIsDisplayed()
+
+        compose.onNodeWithContentDescription(context.getString(R.string.clear_currency_search)).performClick()
+        compose.onNodeWithContentDescription(context.getString(R.string.close_currency_search)).performClick()
+        compose.onNode(hasText("RUB") and hasClickAction()).assertIsDisplayed()
+        compose.onNode(negative).assertIsSelected()
+        text("Claire").assertDoesNotExist()
+    }
+
     @Test fun annaRepaymentAndUndoUpdateWholeCurrency() {
         balance("+18 300")
         capture("list")

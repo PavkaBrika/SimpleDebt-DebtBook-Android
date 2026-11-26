@@ -78,6 +78,7 @@ class DebtViewModel @Inject constructor(
     fun selectCurrency(value: String) {
         saved["listCurrency"] = value.takeUnless { it == getDefaultCurrency.execute() }
         selectedCurrency = value
+        publishBalance()
         publishHumans()
         if (_availableUpgradeTopics.value != null) publishUpgradeTopics()
     }
@@ -106,6 +107,8 @@ class DebtViewModel @Inject constructor(
     private val _humanFilter = saved.getLiveData("listFilter", Filter.ALL)
     val humanFilter: LiveData<Filter>
         get() = _humanFilter
+    private val _searchFilter = saved.getLiveData("searchFilter", Filter.ALL)
+    internal val searchFilter: LiveData<Filter> get() = _searchFilter
     private val _humanOrder = MutableLiveData<Pair<HumanOrderAttribute, Boolean>>()
     val humanOrder: LiveData<Pair<HumanOrderAttribute, Boolean>>
         get() = _humanOrder
@@ -161,6 +164,7 @@ class DebtViewModel @Inject constructor(
                 }
                 deadlines.value = loans.mapValues { (_, history) -> history.openLoans.mapNotNull { it.original.dueDay }.minOrNull() }
                 settled.value = loans.filterValues { it.openLoans.isEmpty() && it.settledLoans.isNotEmpty() }.keys
+                publishBalance()
                 publishHumans()
                 publishUpgradeTopics()
             } catch (e: CancellationException) {
@@ -186,23 +190,31 @@ class DebtViewModel @Inject constructor(
         )
     }
 
-    private fun publishHumans() {
+    private fun publishBalance() {
         val inCurrency = people?.filter { it.currency == selectedCurrency } ?: return
         _balance.value = DebtListBalance(
             currency = selectedCurrency,
             receivable = inCurrency.filter { it.sumDebt.signum() > 0 }.sumOf { it.sumDebt },
             payable = inCurrency.filter { it.sumDebt.signum() < 0 }.sumOf { it.sumDebt },
         )
-        val filter = humanFilter.value ?: Filter.ALL
-        val sorted = orderHumans(inCurrency.filter { histories.getValue(it.id).matches(filter, it.sumDebt) })
-        val query = if (_isSearching.value == true) _searchQuery.value.trim() else ""
-        val visible = sorted.filter { it.name.contains(query, ignoreCase = true) }
+    }
+
+    private fun publishHumans() {
+        val allPeople = people ?: return
+        val searching = _isSearching.value == true
+        val filter = (if (searching) _searchFilter.value else _humanFilter.value) ?: Filter.ALL
+        val query = if (searching) _searchQuery.value.trim() else ""
+        val visible = orderHumans(allPeople.filter { person ->
+            (searching || person.currency == selectedCurrency) &&
+                person.name.contains(query, ignoreCase = true) &&
+                histories.getValue(person.id).matches(filter, person.sumDebt)
+        })
         _resultedHumanList.value = visible
         _screenState.value = if (visible.isEmpty()) ScreenState.EMPTY else ScreenState.SUCCESS
     }
 
     fun onSetHumanSort(filter: Filter, order: Pair<HumanOrderAttribute, Boolean>) {
-        _humanFilter.value = filter
+        if (_isSearching.value == true) _searchFilter.value = filter else _humanFilter.value = filter
         _humanOrder.value = order
         saved["listOrderByAmount"] = order.first == HumanOrderAttribute.Sum
         saved["listAscending"] = order.second
@@ -238,6 +250,7 @@ class DebtViewModel @Inject constructor(
 
     fun onStopSearch() {
         saved["listQuery"] = ""
+        _searchFilter.value = Filter.ALL
         setIsSearching(false)
     }
 
