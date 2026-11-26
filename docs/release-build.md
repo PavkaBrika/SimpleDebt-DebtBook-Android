@@ -1,6 +1,6 @@
 # Сборка и подпись SimpleDebt
 
-Пакет — `com.breckneck.debtbook`. Сборка `4.6.5 (44)` добавляет AppMetrica для Google Play и RuStore. Сценарий обновления с магазинной версии описан в [подготовке внутреннего теста](r2.2-play-internal-2026-11-20.md).
+Пакет — `com.breckneck.debtbook`. Google Play и RuStore используют один release-вариант. AppMetrica подключена с `4.6.5 (44)`, события использования долгов добавлены в `4.6.6 (45)`. [Воронка использования долгов](appmetrica-debt-usage.md). [Подготовка обновления с магазинной версии](r2.2-play-internal-2026-11-20.md).
 
 ## Локальная проверка и CI
 
@@ -52,9 +52,9 @@ bash ./gradlew :app:verifyReleaseSigning
 bash ./gradlew :app:bundleRelease
 ```
 
-`bundleRelease` создаёт `app/build/outputs/bundle/release/SimpleDebtBook-v4.6.5(44)-release.aab`, а `assembleRelease` создаёт одноимённый APK в `app/build/outputs/apk/release/`. Версия и код в имени берутся из `app/build.gradle`. Мастер Android Studio использует те же имена в выбранном каталоге.
+`bundleRelease` создаёт `app/build/outputs/bundle/release/SimpleDebtBook-v4.6.6(45)-release.aab`, а `assembleRelease` создаёт одноимённый APK в `app/build/outputs/apk/release/`. Версия и код в имени берутся из `app/build.gradle`. Мастер Android Studio использует те же имена в выбранном каталоге.
 
-`verifyReleaseSigning` проверяет наличие полного набора параметров и файла и блокирует `androiddebugkey`. Доступность ключа и корректность пароля проверяет Android Gradle Plugin при подписи. В каталоге с AAB проверьте подпись командой `jarsigner -verify 'SimpleDebtBook-v4.6.5(44)-release.aab'`, затем сравните SHA-256 из `keytool -printcert -jarfile 'SimpleDebtBook-v4.6.5(44)-release.aab'` с сертификатом **ключа загрузки** в Play Console. При отсутствии конфигурации сборка release останавливается до упаковки.
+`verifyReleaseSigning` проверяет наличие полного набора параметров и файла и блокирует `androiddebugkey`. Доступность ключа и корректность пароля проверяет Android Gradle Plugin при подписи. В каталоге с AAB проверьте подпись командой `jarsigner -verify 'SimpleDebtBook-v4.6.6(45)-release.aab'`, затем сравните SHA-256 из `keytool -printcert -jarfile 'SimpleDebtBook-v4.6.6(45)-release.aab'` с сертификатом **ключа загрузки** в Play Console. При отсутствии конфигурации сборка release останавливается до упаковки.
 
 ## Условия перед выпуском
 
