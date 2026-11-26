@@ -7,7 +7,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import android.view.KeyEvent
-import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -76,17 +75,11 @@ class ReminderPinNavigationTest {
                 val entry = inst.addMonitor(ReminderEntryActivity::class.java.name, null, false)
                 try {
                     if (fromShade) {
+                        // Device acceptance mode waits for a real tap in the Android notification shade.
                         if (attempt > 0) notifications.notify(DebtReminders.TAG, id, posted)
                         android.os.ParcelFileDescriptor.AutoCloseInputStream(
                             inst.uiAutomation.executeShellCommand("cmd statusbar expand-notifications")
                         ).use { it.readBytes() }
-                        val title = context.getString(R.string.due_notification_title)
-                        compose.waitUntil(15_000) {
-                            var node = inst.uiAutomation.rootInActiveWindow
-                                ?.findAccessibilityNodeInfosByText(title)?.firstOrNull { it.text?.toString() == title }
-                            while (node != null && !node.isClickable) node = node.parent
-                            node?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
-                        }
                     } else posted.contentIntent.send()
                     assertNotNull("Notification must open ReminderEntryActivity", inst.waitForMonitorWithTimeout(entry, 30_000))
                 } finally { inst.removeMonitor(entry) }
