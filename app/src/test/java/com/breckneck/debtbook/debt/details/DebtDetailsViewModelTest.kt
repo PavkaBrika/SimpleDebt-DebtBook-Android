@@ -4,6 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.SavedStateHandle
+import com.breckneck.debtbook.app.DebtUsageAnalytics
 import com.breckneck.debtbook.core.navigation.DebtPerson
 import com.breckneck.debtbook.debt.DebtUpgradeGuidance
 import com.breckneck.deptbook.domain.model.DebtDomain
@@ -12,6 +13,7 @@ import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.GetAllDebtsByIdUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase
+import com.breckneck.deptbook.domain.usecase.Debt.RecordRepaymentUseCase.Result
 import com.breckneck.deptbook.domain.usecase.Human.AddSumUseCase
 import com.breckneck.deptbook.domain.usecase.Human.DeleteHumanUseCase
 import com.breckneck.deptbook.domain.usecase.Human.GetLastHumanIdUseCase
@@ -48,6 +50,7 @@ class DebtDetailsViewModelTest {
     private val setOrder: SetDebtOrder = mock()
     private val recordRepayment: RecordRepaymentUseCase = mock()
     private val upgradeGuidance: DebtUpgradeGuidance = mock()
+    private val analytics: DebtUsageAnalytics = mock()
     private val record = DebtDomain(9, "12.34".toBigDecimal().stripTrailingZeros(), 7, null, "1 Jan 2026", recordedAsLoan = true)
 
     private val person = com.breckneck.deptbook.domain.model.HumanDomain(7, "Person", record.sum, "EUR", BigDecimal.ZERO)
@@ -65,7 +68,7 @@ class DebtDetailsViewModelTest {
         DebtDetailsViewModel(debts, latestId, people, deleteHuman, deleteHumanDebts, deleteDebt,
             addSum, getOrder, setOrder, object : DataTransaction {
                 override fun <T> run(block: () -> T): T = block()
-            }, state, mock(), recordRepayment, upgradeGuidance, DebtPerson(
+            }, state, mock(), recordRepayment, upgradeGuidance, analytics, DebtPerson(
                 idHuman = state["idHuman"] ?: 0,
                 currency = state["currency"],
                 newHuman = state["newHuman"] ?: false,
@@ -105,6 +108,7 @@ class DebtDetailsViewModelTest {
         recreated.saveRepayment()
         recreated.repaymentError.await { it == RepaymentError.SAVE_FAILED }
         verify(recordRepayment, times(2)).execute(eq(9), eq(7), eq("2.34".toBigDecimal()), any(), eq(request))
+        verifyNoInteractions(analytics)
     }
 
     @Test fun `committed request recovered from saved state closes form without another payment`() {
@@ -124,7 +128,7 @@ class DebtDetailsViewModelTest {
     @Test fun `repeated repayment tap submits one request while write is pending`() {
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
-        doAnswer { started.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)); false }
+        doAnswer { started.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)); Result.RECORDED }
             .whenever(recordRepayment).execute(any(), any(), any(), any(), any())
         val model = vm(SavedStateHandle(mapOf("idHuman" to 7, "currency" to "EUR")))
         model.screenState.await { it == DebtDetailsState.SUCCESS }
@@ -136,6 +140,18 @@ class DebtDetailsViewModelTest {
         release.countDown()
         model.repaymentDebtId.await { it == null }
         verify(recordRepayment, times(1)).execute(any(), any(), any(), any(), any())
+        verify(analytics).existingDebtActionSaved()
+    }
+
+    @Test fun `retry of a committed repayment does not count as an action`() {
+        whenever(recordRepayment.execute(any(), any(), any(), any(), any())).thenReturn(Result.ALREADY_RECORDED)
+        val model = vm()
+        model.screenState.await { it == DebtDetailsState.SUCCESS }
+        model.openRepayment(record)
+        model.changeRepaymentAmount("2.34")
+        model.saveRepayment()
+        model.repaymentDebtId.await { it == null }
+        verifyNoInteractions(analytics)
     }
 
     @Test fun `restored ID loads history without querying latest person`() {

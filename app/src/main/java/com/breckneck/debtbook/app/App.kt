@@ -8,11 +8,14 @@ import com.yandex.mobile.ads.common.YandexAds
 import dagger.hilt.android.HiltAndroidApp
 import io.appmetrica.analytics.AppMetrica
 import io.appmetrica.analytics.AppMetricaConfig
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 @HiltAndroidApp
 class App: Application() {
+    @Inject lateinit var debtUsageAnalytics: DebtUsageAnalytics
+
     private val adsInitialized = MutableStateFlow(false)
     internal val adsReady = adsInitialized.asStateFlow()
 
@@ -33,8 +36,10 @@ class App: Application() {
     }
 
     private fun activateAppMetrica() {
+        val updated = wasUpdated()
+        debtUsageAnalytics.initialize(updated)
         val config = AppMetricaConfig.newConfigBuilder(BuildConfig.APPMETRICA_API_KEY)
-            .handleFirstActivationAsUpdate(wasUpdated())
+            .handleFirstActivationAsUpdate(updated)
             .withSessionsAutoTrackingEnabled(true)
             .withLocationTracking(false)
             .withAdvIdentifiersTracking(false)

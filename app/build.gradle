@@ -43,8 +43,8 @@ android {
         applicationId "com.breckneck.debtbook"
         minSdk 23
         targetSdk 36
-        versionCode 44
-        versionName "4.6.5"
+        versionCode 45
+        versionName "4.6.6"
         buildConfigField 'String', 'APPMETRICA_API_KEY', '""'
         buildConfigField 'boolean', 'DEMO_ADS', 'false'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

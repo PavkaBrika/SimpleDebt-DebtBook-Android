@@ -10,8 +10,10 @@ import androidx.lifecycle.SavedStateHandle
 import com.breckneck.debtbook.core.navigation.DebtPerson
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.breckneck.debtbook.app.DebtUsageAnalytics
 import com.breckneck.debtbook.debt.DebtUpgradeGuidance
 import com.breckneck.deptbook.domain.model.DebtDomain
+import com.breckneck.deptbook.domain.model.DebtDueChange
 import com.breckneck.deptbook.domain.model.PersonDebtHistory
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtUseCase
 import com.breckneck.deptbook.domain.usecase.Debt.DeleteDebtsByHumanIdUseCase
@@ -61,6 +63,7 @@ class DebtDetailsViewModel @AssistedInject internal constructor(
     private val editDebt: com.breckneck.deptbook.domain.usecase.Debt.EditDebtUseCase,
     private val recordRepayment: RecordRepaymentUseCase,
     private val upgradeGuidance: DebtUpgradeGuidance,
+    private val debtUsageAnalytics: DebtUsageAnalytics,
     @Assisted private val route: DebtPerson,
 ) : ViewModel() {
     @AssistedFactory
@@ -218,8 +221,12 @@ class DebtDetailsViewModel @AssistedInject internal constructor(
         viewModelScope.launch {
             var saved = false
             try {
-                val settled = withContext(Dispatchers.IO) { recordRepayment.execute(debt.id, debt.idHuman, amount, day, request) }
-                if (settled) feedback.tryEmit(RepaymentFeedback.SETTLED)
+                val repayment = withContext(Dispatchers.IO) {
+                    val result = recordRepayment.execute(debt.id, debt.idHuman, amount, day, request)
+                    if (result != RecordRepaymentUseCase.Result.ALREADY_RECORDED) debtUsageAnalytics.existingDebtActionSaved()
+                    result
+                }
+                if (repayment == RecordRepaymentUseCase.Result.SETTLED) feedback.tryEmit(RepaymentFeedback.SETTLED)
                 saved = true
                 _debtDeleted.value = Unit
             } catch (cancelled: CancellationException) {
@@ -374,11 +381,15 @@ class DebtDetailsViewModel @AssistedInject internal constructor(
 
     suspend fun saveDue(id: Int, day: String?, minute: Int?) {
         val owner = requireNotNull(humanId)
-        withContext(Dispatchers.IO) { transaction.run {
-            val current = getAllDebtsByIdUseCase.execute(owner).first { it.id == id }
-            editDebt.execute(id, current.sum, owner, current.info, current.date,
-                com.breckneck.deptbook.domain.model.DebtDueChange(day, minute))
-        } }
+        withContext(Dispatchers.IO) {
+            val reminderChanged = transaction.run {
+                val current = getAllDebtsByIdUseCase.execute(owner).first { it.id == id }
+                val due = DebtDueChange(day, minute)
+                editDebt.execute(id, current.sum, owner, current.info, current.date, due)
+                due.schedulesReminderComparedTo(current)
+            }
+            if (reminderChanged) debtUsageAnalytics.existingDebtActionSaved()
+        }
         retry()
     }
 

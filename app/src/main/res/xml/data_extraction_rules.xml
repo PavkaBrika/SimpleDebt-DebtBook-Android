@@ -2,8 +2,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="debt_upgrade_guidance.xml" />
+        <exclude domain="sharedpref" path="debt_usage_analytics.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="debt_upgrade_guidance.xml" />
+        <exclude domain="sharedpref" path="debt_usage_analytics.xml" />
     </device-transfer>
 </data-extraction-rules>
