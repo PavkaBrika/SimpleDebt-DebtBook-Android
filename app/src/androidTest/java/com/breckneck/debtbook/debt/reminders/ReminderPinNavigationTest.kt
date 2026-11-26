@@ -53,8 +53,8 @@ class ReminderPinNavigationTest {
         try {
             dao.deleteDebtsByHumanId(id); dao.deleteHumanById(id)
             dao.insertHuman(Human(id, "Protected owner", BigDecimal.ZERO, currency))
-            dao.saveDebt(Debt(id, BigDecimal("10.5"), id, "Requested original", "2026-11-16"))
-            dao.saveDebt(Debt(id + 1, BigDecimal("50"), id, "Other original", "2026-11-16"))
+            dao.saveDebt(Debt(id, BigDecimal("10.5"), id, "Requested original", "2026-11-16", recordedAsLoan = true))
+            dao.saveDebt(Debt(id + 1, BigDecimal("50"), id, "Other original", "2026-11-16", recordedAsLoan = true))
             dao.updateDebt(dao.getAllDebtsById(id).first { it.id == id }.copy(
                 dueDay = DebtReminderPolicy.today(now), reminderMinute = 0, reminderToken = token))
             val fromShade = InstrumentationRegistry.getArguments().getString("openNotificationShade") == "true"
