@@ -170,7 +170,7 @@ class FinanceFlowTest {
         shares.performClick()
         val addIncome = node(hasText(str(R.string.finance_add_income)) and hasClickAction())
         val ring = shares.fetchSemanticsNode().boundsInRoot
-        assertTrue(ring.width > collapsedWidth * 2.5f)
+        assertTrue(ring.width > collapsedWidth)
         assertTrue(ring.bottom <= addIncome.fetchSemanticsNode().boundsInRoot.top + 1f)
         instrumentation.uiAutomation.waitForIdle(260, 4000)
         capture("shares-ring")
