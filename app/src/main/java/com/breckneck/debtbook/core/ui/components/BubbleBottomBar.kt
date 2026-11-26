@@ -55,8 +55,8 @@ import com.breckneck.debtbook.core.ui.theme.bubbleColors
 private data class BarTab(val destination: MainTab, val title: Int, val icon: ImageVector)
 
 private val barTabs = listOf(
-    BarTab(MainTab.DEBTS, R.string.debts, Icons.Outlined.MenuBook),
     BarTab(MainTab.FINANCES, R.string.finances, Icons.Outlined.DonutSmall),
+    BarTab(MainTab.DEBTS, R.string.debts, Icons.Outlined.MenuBook),
     BarTab(MainTab.GOALS, R.string.goals, Icons.Outlined.Flag),
     BarTab(MainTab.SETTINGS, R.string.settings, Icons.Outlined.Tune),
 )
