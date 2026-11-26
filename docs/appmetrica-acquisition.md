@@ -2,6 +2,8 @@
 
 Google Play и RuStore используют один проект Debt Book (App ID `6392758`) и один SDK API key для пакета `com.breckneck.debtbook`. Ключ для release настраивается по инструкции сборки. [Сборка и подпись](release-build.md).
 
+Для оценки действий с долгами после установки используйте [воронку первого долга и повторного действия](appmetrica-debt-usage.md).
+
 | Магазин | Ссылка для ручной проверки | Настройки трекера |
 | --- | --- | --- |
 | Google Play | [Открыть тестовую ссылку Google Play](https://redirect.appmetrica.yandex.com/serve/1038929808093879441?appmetrica_js_redirect=0) | [Debt Book — Яндекс Директ — Google Play](https://appmetrica.yandex.ru/campaign?campaignId=1038929808093879441&appId=6392758) |

@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.breckneck.debtbook.core.navigation.DebtForm
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
+import com.breckneck.debtbook.app.DebtUsageAnalytics
 import com.breckneck.deptbook.domain.model.DebtDomain
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.repository.DataTransaction
@@ -36,6 +37,7 @@ class CreateDebtViewModelTest {
     private val getDebts: GetAllDebtsByIdUseCase = mock()
     private val addSum: AddSumUseCase = mock()
     private val people: HumanRepository = mock()
+    private val analytics: DebtUsageAnalytics = mock()
     private val existing = HumanDomain(7, "Person", BigDecimal.ZERO, "EUR")
     private val transaction = object : DataTransaction { override fun <T> run(block: () -> T): T = block() }
     @Before fun setup() {
@@ -47,7 +49,9 @@ class CreateDebtViewModelTest {
         whenever(people.getAllHumans()).thenReturn(emptyList())
     }
     @After fun teardown() = Dispatchers.resetMain()
-    private fun vm() = CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum, transaction, SavedStateHandle(), people, DebtForm())
+    private fun vm(route: DebtForm = DebtForm(), saveTransaction: DataTransaction = transaction) =
+        CreateDebtViewModel(defaults, date, setHuman, latest, setDebt, editDebt, getDebts, addSum,
+            saveTransaction, SavedStateHandle(), people, analytics, route)
 
     @Test fun `duplicate save is ignored and navigation waits for persistence`() {
         val started = CountDownLatch(1)
@@ -63,6 +67,7 @@ class CreateDebtViewModelTest {
         model.savedOwner.await { it?.id == 7 }
         verify(setDebt, times(1)).execute("12.34".toBigDecimal().stripTrailingZeros(), 7, null, "14 Nov 2026", null, null)
         verify(addSum, times(1)).execute(7, "12.34".toBigDecimal().stripTrailingZeros())
+        verify(analytics).debtCreated()
     }
 
     @Test fun `failed write permits retry without reporting success`() {
@@ -74,6 +79,7 @@ class CreateDebtViewModelTest {
         assertTrue(model.saveError.value!!)
         assertNull(model.savedOwner.value)
         verifyNoInteractions(addSum)
+        verifyNoInteractions(analytics)
         model.saveDebt(7, -1, "Person", "12.34".toBigDecimal().stripTrailingZeros(), "14 Nov 2026", "")
         model.savedOwner.await { it?.id == 7 }
         verify(addSum, times(1)).execute(7, "12.34".toBigDecimal().stripTrailingZeros())
@@ -87,6 +93,34 @@ class CreateDebtViewModelTest {
         verify(editDebt).execute(9, -"20.55".toBigDecimal().stripTrailingZeros(), 7, null, "14 Nov 2026")
         verify(addSum).execute(7, -"20.55".toBigDecimal().stripTrailingZeros() - "12.34".toBigDecimal().stripTrailingZeros())
         verifyNoInteractions(setDebt, setHuman)
+        verifyNoInteractions(analytics)
+    }
+
+    @Test fun `analytics waits for the debt transaction to commit`() {
+        val failedCommit = object : DataTransaction {
+            override fun <T> run(block: () -> T): T {
+                block()
+                throw IllegalStateException("commit failed")
+            }
+        }
+        val model = vm(saveTransaction = failedCommit)
+        model.saveDebt(7, -1, "Person", BigDecimal.TEN, "2026-11-14", "")
+        model.saveError.await { it == true }
+        verifyNoInteractions(analytics)
+    }
+
+    @Test fun `editing counts only a newly scheduled or changed reminder`() {
+        val previous = DebtDomain(9, BigDecimal.TEN, 7, null, "2026-11-14", dueDay = "2026-12-01", reminderMinute = 600)
+        whenever(getDebts.execute(7)).thenReturn(listOf(previous))
+        for ((day, minute) in listOf("2026-12-01" to 600, "2026-12-02" to null, "2026-12-01" to 660)) {
+            // The form initially has no reminder in its navigation arguments. Compare with the stored row.
+            val model = vm()
+            model.setDueDraft(day, minute)
+            model.saveDebt(7, 9, "Person", BigDecimal.TEN, previous.date, "")
+            model.savedOwner.await { it?.id == 7 }
+        }
+        verify(analytics).existingDebtActionSaved()
+        verifyNoMoreInteractions(analytics)
     }
 
     @Test fun `a unique exact match in the draft currency is reused`() {

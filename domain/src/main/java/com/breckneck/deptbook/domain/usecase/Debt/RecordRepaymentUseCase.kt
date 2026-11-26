@@ -9,17 +9,18 @@ import java.math.BigDecimal
 class RepaymentExceedsRemaining(val remaining: BigDecimal) : IllegalArgumentException("Repayment exceeds remaining debt")
 
 class RecordRepaymentUseCase(private val repository: DebtRepository, private val transaction: DataTransaction) {
+    enum class Result { ALREADY_RECORDED, RECORDED, SETTLED }
+
     /** Returns true if restoring this payment settles its original loan. */
     fun restore(id: Int, humanId: Int): Boolean = repository.restoreRepayment(id, humanId)
 
-    /** Returns true only when this write settles the original loan. */
-    fun execute(originalId: Int, humanId: Int, amount: BigDecimal, day: String, requestId: String): Boolean = transaction.run {
+    fun execute(originalId: Int, humanId: Int, amount: BigDecimal, day: String, requestId: String): Result = transaction.run {
         require(amount.signum() > 0)
         val history = repository.getAllDebtsById(humanId)
         val previous = history.firstOrNull { it.operationId == requestId }
         if (previous != null) {
             require(previous.repaymentOfId == originalId && previous.sum.abs().compareTo(amount) == 0) { "Repayment request reused" }
-            false
+            Result.ALREADY_RECORDED
         } else {
             val original = requireNotNull(history.firstOrNull { it.id == originalId && it.repaymentOfId == null })
             val remaining = RepaymentPolicy.remaining(original, history)
@@ -27,7 +28,7 @@ class RecordRepaymentUseCase(private val repository: DebtRepository, private val
             require(original.sum.signum() != 0)
             repository.setDebt(DebtDomain(0, amount * (-original.sum.signum()).toBigDecimal(), humanId,
                 null, day, repaymentOfId = original.id, operationId = requestId))
-            amount.compareTo(remaining) == 0
+            if (amount.compareTo(remaining) == 0) Result.SETTLED else Result.RECORDED
         }
     }
 }

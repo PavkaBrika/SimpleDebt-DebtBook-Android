@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.breckneck.debtbook.core.navigation.DebtForm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.breckneck.debtbook.app.DebtUsageAnalytics
 import com.breckneck.deptbook.domain.model.DebtDueChange
 import com.breckneck.deptbook.domain.model.HumanDomain
 import com.breckneck.deptbook.domain.repository.DataTransaction
@@ -42,6 +43,7 @@ class CreateDebtViewModel @AssistedInject internal constructor(
     private val transaction: DataTransaction,
     private val savedState: SavedStateHandle,
     private val people: HumanRepository,
+    private val debtUsageAnalytics: DebtUsageAnalytics,
     @Assisted private val route: DebtForm,
 ) : ViewModel() {
     @AssistedFactory
@@ -147,19 +149,28 @@ class CreateDebtViewModel @AssistedInject internal constructor(
         needsPersonChoice.value = false
         viewModelScope.launch {
             try {
-                val owner = withContext(Dispatchers.IO) { transaction.run {
-                    val owner = resolveOwner(humanId, name.trim(), draftCurrency, photo)
-                    val id = owner.id
-                    if (debtId > 0) {
-                        val previous = requireNotNull(getDebts.execute(id).firstOrNull { it.id == debtId })
-                        editDebt.execute(debtId, sum, id, info.ifBlank { null }, date, due)
-                        addSum.execute(id, sum - previous.sum)
-                    } else {
-                        setDebt.execute(sum, id, info.ifBlank { null }, date, selectedDay, selectedMinute)
-                        addSum.execute(id, sum)
+                val owner = withContext(Dispatchers.IO) {
+                    val (owner, reminderChanged) = transaction.run {
+                        val owner = resolveOwner(humanId, name.trim(), draftCurrency, photo)
+                        val id = owner.id
+                        val reminderChanged = if (debtId > 0) {
+                            val previous = requireNotNull(getDebts.execute(id).firstOrNull { it.id == debtId })
+                            editDebt.execute(debtId, sum, id, info.ifBlank { null }, date, due)
+                            addSum.execute(id, sum - previous.sum)
+                            due?.schedulesReminderComparedTo(previous) == true
+                        } else {
+                            setDebt.execute(sum, id, info.ifBlank { null }, date, selectedDay, selectedMinute)
+                            addSum.execute(id, sum)
+                            false
+                        }
+                        owner to reminderChanged
+                    }
+                    when {
+                        debtId <= 0 -> debtUsageAnalytics.debtCreated()
+                        reminderChanged -> debtUsageAnalytics.existingDebtActionSaved()
                     }
                     owner
-                } }
+                }
                 savedOwner.value = owner
             } catch (_: AmbiguousDebtOwner) {
                 needsPersonChoice.value = true

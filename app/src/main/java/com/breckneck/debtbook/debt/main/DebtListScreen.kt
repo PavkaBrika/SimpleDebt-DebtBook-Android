@@ -105,7 +105,7 @@ internal fun DebtListScreen(
         },
     )
     val query by vm.query.collectAsState()
-    val filter by vm.humanFilter.observeAsState(Filter.ALL)
+    val filter by (if (searching) vm.searchFilter else vm.humanFilter).observeAsState(Filter.ALL)
     val order = vm.humanOrder.observeAsState().value
     val orderOpen by vm.isSortDialogOpened.observeAsState(false)
     val peopleScroll = rememberLazyListState()
@@ -217,19 +217,19 @@ internal fun DebtListScreen(
             if (failed) item(key = "retry") { DebtListRetry(vm::setListStateLoading) }
             if (balance == null && !failed) item(key = "loading") { DebtListProgress() }
             if (balance != null && people.isEmpty() && !failed) item(key = "empty") {
-                BubbleGroup { Text(stringResource(if (query.isBlank()) R.string.debt_empty_currency else R.string.debt_empty_search),
+                BubbleGroup { Text(stringResource(if (searching && query.isNotBlank()) R.string.debt_empty_search else R.string.debt_empty_currency),
                     Modifier.fillMaxWidth().padding(22.dp), textAlign = TextAlign.Center, color = colors.muted) }
             }
             itemsIndexed(people, key = { _, person -> person.id }, contentType = { _, _ -> "person" }) { index, person ->
                 BubbleGroupedRow(index, people.size, Modifier.animateItem(fadeInSpec = tween(180), placementSpec = null, fadeOutSpec = null)) {
                     BubbleListRow(
                         modifier = Modifier
-                            .clickable(role = Role.Button) { onPerson(person.id, currency, person.name) }
+                            .clickable(role = Role.Button) { onPerson(person.id, person.currency, person.name) }
                             .testTag("person-${person.id}").padding(14.dp),
                         leading = { PersonAvatar(person.id, person.photo) },
                         trailing = {
                             Text(
-                                person.sumDebt.signedMoney(currency),
+                                person.sumDebt.signedMoney(person.currency),
                                 fontWeight = FontWeight.Bold,
                                 color = if (person.sumDebt.signum() < 0) colors.danger else colors.onMint,
                             )

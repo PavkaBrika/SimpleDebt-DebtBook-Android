@@ -1,6 +1,6 @@
 # Сборка и подпись SimpleDebt
 
-Пакет — `com.breckneck.debtbook`. Сборка `4.6.5 (44)` добавляет AppMetrica для Google Play и RuStore. Сценарий обновления с магазинной версии описан в [подготовке внутреннего теста](r2.2-play-internal-2026-11-20.md).
+Пакет — `com.breckneck.debtbook`. Google Play и RuStore используют один release-вариант. AppMetrica подключена с `4.6.5 (44)`, события использования долгов добавлены в `4.6.6 (45)`. [Воронка использования долгов](appmetrica-debt-usage.md). [Подготовка обновления с магазинной версии](r2.2-play-internal-2026-11-20.md).
 
 ## Локальная проверка и CI
 
@@ -26,9 +26,16 @@ JAVA_HOME="$(/usr/libexec/java_home -v 17)" bash ./gradlew -Pandroid.builder.sdk
 
 Запустите приложение с иконки лаунчера. Дождитесь записи `Banner loaded` в Logcat, смените вкладку и поверните экран. Долгое нажатие на фильтр долгов переключает рекламу в этой сборке. Проверьте, что при отключении баннера список и нижняя панель занимают освободившееся место. Демонстрационная сборка использует `demo-banner-yandex` и `demo-interstitial-yandex`. [Документация Яндекса](https://ads.yandex.com/helpcenter/ru/dev/android/compose/adaptive-sticky-banner).
 
-## AppMetrica для обоих магазинов
+## AppMetrica в release и debug
 
-В настройках Debt Book скопируйте **API key (для использования в SDK)**. Для обеих магазинных сборок укажите один ключ в `local.properties` как `appMetricaApiKey` или в среде сборки как `SIMPLEDEBT_APPMETRICA_API_KEY`. Переменная среды имеет приоритет. Gradle проверяет формат SDK API key при сборке release. Debug собирается с пустым ключом и без активации AppMetrica. [Настройки проекта Debt Book](https://appmetrica.yandex.ru/application/edit?type=edit&appId=6392758).
+Каждый вариант берёт свой **API key (для использования в SDK)**. Переменная среды имеет приоритет над значением в локальном `local.properties`.
+
+| Вариант | Поле в `local.properties` | Переменная среды | Проект AppMetrica |
+| --- | --- | --- | --- |
+| `release` | `appMetricaApiKey` | `SIMPLEDEBT_APPMETRICA_API_KEY` | [Debt Book](https://appmetrica.yandex.ru/application/edit?type=edit&appId=6392758) |
+| `debug` | `appMetricaTestApiKey` | `SIMPLEDEBT_APPMETRICA_TEST_API_KEY` | [Debt Book — тест аналитики](https://appmetrica.yandex.ru/application/edit?type=edit&appId=6394279) |
+
+Для `release` требуется ключ. Для `debug` пустое значение отключает AppMetrica. Gradle проверяет формат заданных ключей и отклоняет `debug`, если его ключ совпадает с ключом `release`. События первого долга в `debug` проверяйте на чистой установке с тестовым ключом. [Тестовая воронка](appmetrica-debt-usage.md).
 
 ## Подпись выпуска
 
@@ -52,9 +59,9 @@ bash ./gradlew :app:verifyReleaseSigning
 bash ./gradlew :app:bundleRelease
 ```
 
-`bundleRelease` создаёт `app/build/outputs/bundle/release/SimpleDebtBook-v4.6.5(44)-release.aab`, а `assembleRelease` создаёт одноимённый APK в `app/build/outputs/apk/release/`. Версия и код в имени берутся из `app/build.gradle`. Мастер Android Studio использует те же имена в выбранном каталоге.
+`bundleRelease` создаёт `app/build/outputs/bundle/release/SimpleDebtBook-v4.6.6(45)-release.aab`, а `assembleRelease` создаёт одноимённый APK в `app/build/outputs/apk/release/`. Версия и код в имени берутся из `app/build.gradle`. Мастер Android Studio использует те же имена в выбранном каталоге.
 
-`verifyReleaseSigning` проверяет наличие полного набора параметров и файла и блокирует `androiddebugkey`. Доступность ключа и корректность пароля проверяет Android Gradle Plugin при подписи. В каталоге с AAB проверьте подпись командой `jarsigner -verify 'SimpleDebtBook-v4.6.5(44)-release.aab'`, затем сравните SHA-256 из `keytool -printcert -jarfile 'SimpleDebtBook-v4.6.5(44)-release.aab'` с сертификатом **ключа загрузки** в Play Console. При отсутствии конфигурации сборка release останавливается до упаковки.
+`verifyReleaseSigning` проверяет наличие полного набора параметров и файла и блокирует `androiddebugkey`. Доступность ключа и корректность пароля проверяет Android Gradle Plugin при подписи. В каталоге с AAB проверьте подпись командой `jarsigner -verify 'SimpleDebtBook-v4.6.6(45)-release.aab'`, затем сравните SHA-256 из `keytool -printcert -jarfile 'SimpleDebtBook-v4.6.6(45)-release.aab'` с сертификатом **ключа загрузки** в Play Console. При отсутствии конфигурации сборка release останавливается до упаковки.
 
 ## Условия перед выпуском
 
