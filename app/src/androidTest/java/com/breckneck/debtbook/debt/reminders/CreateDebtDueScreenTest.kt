@@ -1,5 +1,6 @@
 package com.breckneck.debtbook.debt.reminders
 
+import com.breckneck.debtbook.debt.openDebts
 import com.breckneck.debtbook.debt.awaitTag
 import androidx.compose.ui.test.*
 import android.content.Context
@@ -32,6 +33,7 @@ class CreateDebtDueScreenTest {
         try {
             prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true).commit()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                compose.openDebts()
                 compose.awaitTag("addHumanButton").performClick()
                 compose.awaitTag("debtSumEditText").performTextReplacement("25")
                 compose.awaitTag("humanNameEditText").performTextReplacement("Past reminder QA")
@@ -76,6 +78,7 @@ class CreateDebtDueScreenTest {
         try {
             prefs.edit().putBoolean("pin_code_is_enabled", false).putBoolean("ads_disabled", true).commit()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                compose.openDebts()
                 compose.awaitTag("addHumanButton").performClick()
                 compose.awaitTag("humanNameEditText").performTextReplacement(name)
                 compose.awaitTag("debtSumEditText").performTextReplacement("125")

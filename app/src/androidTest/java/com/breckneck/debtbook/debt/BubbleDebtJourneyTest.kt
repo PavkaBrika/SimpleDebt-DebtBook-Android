@@ -968,7 +968,7 @@ class BubbleDebtJourneyTest {
         compose.awaitRoute("Debts")
     }
 
-    @Test fun predictiveFormBackToPersonListAndLauncher() {
+    @Test fun predictiveFormBackToPersonListAndFinances() {
         requirePredictiveGestures(context)
         person()
         compose.awaitTag("addDebtButton").performClick()
@@ -996,6 +996,8 @@ class BubbleDebtJourneyTest {
         compose.awaitRoute("DebtForm")
         swipe(false, "Debts")
         compose.awaitRoute("Debts")
+        swipe(false, "Finances")
+        compose.awaitRoute("Finances")
         fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
             inst.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
         val launcher = shell("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME")

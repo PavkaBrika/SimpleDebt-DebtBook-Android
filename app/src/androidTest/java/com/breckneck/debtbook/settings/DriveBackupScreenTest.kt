@@ -16,6 +16,7 @@ import androidx.test.espresso.Espresso.pressBack
 import androidx.test.platform.app.InstrumentationRegistry
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.core.MainActivity
+import com.breckneck.debtbook.debt.openDebts
 import com.breckneck.debtbook.settings.synchronization.SynchronizationViewModel
 import com.breckneck.debtbook.settings.synchronization.util.BackupDrive
 import com.breckneck.deptbook.domain.backup.BackupCodec
@@ -187,7 +188,8 @@ class DriveBackupScreenTest {
         androidx.test.espresso.Espresso.pressBack()
         compose.awaitRoute("Settings")
         androidx.test.espresso.Espresso.pressBack()
-        compose.awaitRoute("Debts")
+        compose.awaitRoute("Finances")
+        compose.openDebts()
         compose.waitUntil(10_000) { compose.onNodeWithText(latest.humanList.single().name).isDisplayed() }
     }
     @Test fun savingRequiresConfirmationAndKeepsExactlyOneEarlierCopy() = withScreen { scenario, vm, drive ->

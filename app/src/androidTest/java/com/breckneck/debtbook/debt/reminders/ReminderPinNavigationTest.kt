@@ -5,7 +5,9 @@ import com.breckneck.debtbook.debt.awaitTag
 import com.breckneck.debtbook.settings.edgeSwipe
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
+import android.os.Build
+import android.view.KeyEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -18,6 +20,7 @@ import androidx.test.runner.lifecycle.Stage
 import com.breckneck.debtbook.R
 import com.breckneck.debtbook.auth.AuthSession
 import com.breckneck.debtbook.auth.PinCodeStore
+import com.breckneck.debtbook.core.ui.awaitRoute
 import com.breckneck.debtbook.core.MainActivity
 import com.breckneck.deptbook.domain.util.CRYPTO_FILE_NAME
 import com.breckneck.deptbook.domain.util.DebtReminderPolicy
@@ -59,24 +62,32 @@ class ReminderPinNavigationTest {
             }
             prefs.edit().putBoolean("pin_code_is_enabled", true).putBoolean("fingerprint_auth_is_enabled", false)
                 .putLong("pin_lock_delay_millis", 0L).putBoolean("ads_disabled", true).commit()
-            PinCodeStore(context).save("1234"); AuthSession.lock()
+            PinCodeStore(context).save("1234")
+            finishActivities()
             fun notification() = notifications.activeNotifications.firstOrNull { it.tag == DebtReminders.TAG && it.id == id }
             fun waitForPinKeypad() = compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("9").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
             }
-            run {
-                context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                waitForPinKeypad()
-                compose.waitUntil(if (fromShade) 120_000 else 5000) { notification() != null }
-                val inst = InstrumentationRegistry.getInstrumentation()
+            val inst = InstrumentationRegistry.getInstrumentation()
+            compose.waitUntil(if (fromShade) 120_000 else 5000) { notification() != null }
+            val posted = checkNotNull(notification()).notification
+            repeat(2) { attempt ->
+                AuthSession.lock()
                 val entry = inst.addMonitor(ReminderEntryActivity::class.java.name, null, false)
                 try {
                     if (fromShade) {
-                        // Device acceptance mode: tap the actual notification in the expanded Android shade.
+                        if (attempt > 0) notifications.notify(DebtReminders.TAG, id, posted)
                         android.os.ParcelFileDescriptor.AutoCloseInputStream(
                             inst.uiAutomation.executeShellCommand("cmd statusbar expand-notifications")
                         ).use { it.readBytes() }
-                    } else checkNotNull(notification()).notification.contentIntent.send()
+                        val title = context.getString(R.string.due_notification_title)
+                        compose.waitUntil(15_000) {
+                            var node = inst.uiAutomation.rootInActiveWindow
+                                ?.findAccessibilityNodeInfosByText(title)?.firstOrNull { it.text?.toString() == title }
+                            while (node != null && !node.isClickable) node = node.parent
+                            node?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+                        }
+                    } else posted.contentIntent.send()
                     assertNotNull("Notification must open ReminderEntryActivity", inst.waitForMonitorWithTimeout(entry, 30_000))
                 } finally { inst.removeMonitor(entry) }
                 waitForPinKeypad()
@@ -92,24 +103,22 @@ class ReminderPinNavigationTest {
                 }
                 compose.onNodeWithTag("debtActionsCancel").assertExists()
                 compose.onNodeWithText(amount, substring = true).assertExists()
-                if (android.os.Build.VERSION.SDK_INT >= 35) {
+                if (Build.VERSION.SDK_INT >= 35) {
                     inst.edgeSwipe(false) {}
                 } else compose.onNodeWithTag("debtActionsCancel").performClick()
                 compose.onNodeWithText("Protected owner").assertIsDisplayed()
                 compose.onNodeWithText("Reminder already sent").assertDoesNotExist()
                 compose.onNodeWithText("Напоминание уже отправлено").assertDoesNotExist()
-                if (android.os.Build.VERSION.SDK_INT >= 35) {
-                    android.os.SystemClock.sleep(400)
-                    inst.edgeSwipe(false) {}
-                    compose.awaitTag("addHumanButton").assertIsDisplayed()
-                }
+                inst.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                compose.awaitRoute("Debts")
+                compose.awaitTag("addHumanButton").assertIsDisplayed()
+                inst.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                compose.awaitRoute("Finances")
             }
         } finally {
             if (android.os.Build.VERSION.SDK_INT >= 29) InstrumentationRegistry.getInstrumentation()
                 .uiAutomation.executeShellCommand("cmd statusbar collapse").close()
-            InstrumentationRegistry.getInstrumentation().runOnMainSync {
-                Stage.values().flatMap { ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(it) }.distinct().forEach { it.finish() }
-            }
+            finishActivities()
             dao.deleteDebtsByHumanId(id); dao.deleteHumanById(id)
             notifications.cancel(DebtReminders.TAG, id)
             context.getSharedPreferences("debt_reminder_schedule", Context.MODE_PRIVATE).edit().remove("sent-$id-$token").commit()
@@ -118,6 +127,13 @@ class ReminderPinNavigationTest {
                 (previous[key] as? Boolean)?.let { editor.putBoolean(key, it) } ?: editor.remove(key)
             (previous["pin_lock_delay_millis"] as? Long)?.let { editor.putLong("pin_lock_delay_millis", it) } ?: editor.remove("pin_lock_delay_millis")
             editor.commit(); bytes?.let { file.writeBytes(it) } ?: file.delete(); AuthSession.lock()
+        }
+    }
+
+    private fun finishActivities() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            Stage.values().flatMap { ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(it) }
+                .distinct().forEach { it.finish() }
         }
     }
 }

@@ -82,7 +82,7 @@ class FinanceFlowTest {
     }
 
     @Test fun expenseRoundTripAndExactPeriodBalances() {
-        direction(R.string.expenses)
+        node(hasText(str(R.string.expenses)) and isSelected()).assertIsDisplayed()
         act(R.string.finance_add_expense)
         input(R.string.sum, "255,75")
         input(R.string.comment, note)
@@ -152,11 +152,13 @@ class FinanceFlowTest {
         repeat(16) { entry("Earlier expense $it", FinanceCategoryStateData.EXPENSE, previous, 16 - it) }
         act(R.string.debts)
         act(R.string.finances)
-        val incomeTab = node(hasText(str(R.string.revenues)) and isSelected()).assertIsDisplayed()
-        val expenseTab = node(hasText(str(R.string.expenses)) and hasClickAction())
+        val incomeTab = node(hasText(str(R.string.revenues)) and hasClickAction())
+        val expenseTab = node(hasText(str(R.string.expenses)) and isSelected()).assertIsDisplayed()
         val overviewTitle = node(hasText(str(R.string.finance_period_total))).assertIsDisplayed()
         assertTrue(incomeTab.fetchSemanticsNode().boundsInRoot.left < expenseTab.fetchSemanticsNode().boundsInRoot.left)
         assertTrue(overviewTitle.fetchSemanticsNode().boundsInRoot.bottom <= incomeTab.fetchSemanticsNode().boundsInRoot.top)
+        direction(R.string.revenues)
+        incomeTab.assertIsSelected()
         total("90")
         awaitText("+" + 45.toBigDecimal().financeMoney("RUB"))
         val incomeCategory = hasText("Income today") and hasText(context.getString(R.string.finance_share_of_total, 67))
@@ -264,6 +266,7 @@ class FinanceFlowTest {
         val income = hasText(str(R.string.finance_add_income)) and hasClickAction()
         val incomeTab = hasText(str(R.string.revenues)) and hasClickAction()
         val expenseTab = hasText(str(R.string.expenses)) and hasClickAction()
+        direction(R.string.revenues)
         node(income and hasTestTag("addFinanceButton")).performClick()
         awaitText(str(R.string.finance_new_income))
         val incomeBounds = node(incomeTab).assertIsSelected().fetchSemanticsNode().boundsInRoot
@@ -277,6 +280,11 @@ class FinanceFlowTest {
         compose.hideKeyboardBeforeBack(activity { it.window })
         back()
         compose.awaitRoute("Finances")
+        node(incomeTab).assertIsSelected()
+        val previous = activity { it.also { activity -> activity.recreate() } }
+        compose.waitUntil(15_000) { onActivity { it !== previous } == true }
+        compose.awaitRoute("Finances")
+        node(incomeTab).assertIsSelected()
         summaryList().performTouchInput { swipeLeft() }
         node(expense and hasTestTag("addFinanceButton")).performClick()
         awaitText(str(R.string.finance_new_expense))
@@ -460,6 +468,7 @@ class FinanceFlowTest {
                 0, "Income category ${index + 1}", FinanceCategoryStateData.INCOME, "#DBEDCD", 0x1F4DA,
             ))
         }
+        direction(R.string.revenues)
         act(R.string.finance_add_income)
         val save = node(hasText(str(R.string.finance_save_entry)) and hasClickAction()).assertIsDisplayed()
         val footer = save.fetchSemanticsNode().boundsInWindow
@@ -669,13 +678,15 @@ class FinanceFlowTest {
         compose.waitForIdle()
     }
 
-    private fun <T> activity(block: (MainActivity) -> T): T {
+    private fun <T> activity(block: (MainActivity) -> T): T = requireNotNull(onActivity(block))
+
+    private fun <T> onActivity(block: (MainActivity) -> T): T? {
         var result: T? = null
         instrumentation.runOnMainSync {
-            val current = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().single()
-            result = block(current)
+            result = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                .filterIsInstance<MainActivity>().singleOrNull()?.let(block)
         }
-        return requireNotNull(result)
+        return result
     }
 
     private fun gesture(out: String, into: String, previewText: String, cancel: Boolean) {

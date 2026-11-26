@@ -44,6 +44,7 @@ class DebtRefreshScreenTest {
             // Hold the writer used by DebtViewModel's read transaction until the first layout is visible.
             database.beginTransactionNonExclusive()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                compose.openDebts()
                 val title = compose.awaitTag("bubbleRootTitle").assertIsDisplayed()
                 val titleTop = title.fetchSemanticsNode().boundsInWindow.top
                 compose.awaitTag("debtBalance").assertIsDisplayed()

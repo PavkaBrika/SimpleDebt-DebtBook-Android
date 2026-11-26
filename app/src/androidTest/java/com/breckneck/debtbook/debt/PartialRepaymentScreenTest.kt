@@ -81,6 +81,7 @@ class PartialRepaymentScreenTest {
     }
 
     private fun open() {
+        compose.openDebts()
         compose.waitUntil(8000) { compose.onNodeWithText("R2 test").isDisplayed() }
         compose.onNodeWithText("R2 test").performClick()
         ready()

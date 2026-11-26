@@ -70,6 +70,7 @@ class DebtReliabilityTest {
     }
     @Test fun createEditDeleteAndActivityRecreationPreserveAmounts() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            compose.openDebts()
             compose.awaitTag("addHumanButton").performClick()
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             compose.awaitTag("humanNameEditText").performTextReplacement(name)
@@ -122,6 +123,7 @@ class DebtReliabilityTest {
     @Test fun rootInsetsKeepNavigationAndSaveAboveSystemBarsAndKeyboard() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            compose.openDebts()
             val list = compose.awaitTag("peopleList").fetchSemanticsNode().boundsInWindow
             val tabs = compose.onNode(hasText(context.getString(R.string.settings)) and isSelectable())
                 .assertIsDisplayed().fetchSemanticsNode().boundsInWindow
