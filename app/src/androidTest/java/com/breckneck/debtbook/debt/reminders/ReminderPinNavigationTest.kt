@@ -6,6 +6,7 @@ import com.breckneck.debtbook.settings.edgeSwipe
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
 import android.view.KeyEvent
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -32,6 +33,7 @@ import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
 import java.text.DecimalFormatSymbols
+import util.DeviceCurrency
 
 class ReminderPinNavigationTest {
     @get:Rule val compose = createEmptyComposeRule()
@@ -40,6 +42,7 @@ class ReminderPinNavigationTest {
         val dao = AppDataBase(context).appDao()
         val prefs = context.getSharedPreferences("shared_prefs_settings", Context.MODE_PRIVATE)
         val previous = prefs.all.toMap()
+        val currency = prefs.getString("default_currency", null) ?: DeviceCurrency.get(context)
         val file = File(context.filesDir, CRYPTO_FILE_NAME)
         val bytes = file.takeIf { it.exists() }?.readBytes()
         val id = 900066
@@ -49,7 +52,7 @@ class ReminderPinNavigationTest {
         val notifications = context.getSystemService(NotificationManager::class.java)
         try {
             dao.deleteDebtsByHumanId(id); dao.deleteHumanById(id)
-            dao.insertHuman(Human(id, "Protected owner", BigDecimal.ZERO, "EUR"))
+            dao.insertHuman(Human(id, "Protected owner", BigDecimal.ZERO, currency))
             dao.saveDebt(Debt(id, BigDecimal("10.5"), id, "Requested original", "2026-11-16"))
             dao.saveDebt(Debt(id + 1, BigDecimal("50"), id, "Other original", "2026-11-16"))
             dao.updateDebt(dao.getAllDebtsById(id).first { it.id == id }.copy(
@@ -68,6 +71,12 @@ class ReminderPinNavigationTest {
                 compose.onAllNodesWithText("9").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
             }
             val inst = InstrumentationRegistry.getInstrumentation()
+            val gestureNavigation = Build.VERSION.SDK_INT >= 35 &&
+                Settings.Secure.getInt(context.contentResolver, "navigation_mode", 0) == 2
+            fun systemBack() {
+                if (gestureNavigation) inst.edgeSwipe(false) {}
+                else inst.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            }
             compose.waitUntil(if (fromShade) 120_000 else 5000) { notification() != null }
             val posted = checkNotNull(notification()).notification
             repeat(2) { attempt ->
@@ -89,23 +98,22 @@ class ReminderPinNavigationTest {
                 assertFalse(AuthSession.isUnlocked)
                 "1234".forEach { compose.onNodeWithText(it.toString()).performClick() }
                 compose.waitUntil(15000) { AuthSession.isUnlocked }
-                val amount = "10${DecimalFormatSymbols().decimalSeparator}50 EUR"
+                val amount = "10${DecimalFormatSymbols().decimalSeparator}50 $currency"
                 compose.waitUntil(15_000) {
                     compose.onAllNodesWithText(amount, substring = true)
                         .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
                 }
                 compose.onNodeWithTag("debtActionsCancel").assertExists()
                 compose.onNodeWithText(amount, substring = true).assertExists()
-                if (Build.VERSION.SDK_INT >= 35) {
-                    inst.edgeSwipe(false) {}
-                } else compose.onNodeWithTag("debtActionsCancel").performClick()
+                if (gestureNavigation) systemBack()
+                else compose.onNodeWithTag("debtActionsCancel").performClick()
                 compose.onNodeWithText("Protected owner").assertIsDisplayed()
                 compose.onNodeWithText("Reminder already sent").assertDoesNotExist()
                 compose.onNodeWithText("Напоминание уже отправлено").assertDoesNotExist()
-                inst.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                systemBack()
                 compose.awaitRoute("Debts")
                 compose.awaitTag("addHumanButton").assertIsDisplayed()
-                inst.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                systemBack()
                 compose.awaitRoute("Finances")
             }
         } finally {
