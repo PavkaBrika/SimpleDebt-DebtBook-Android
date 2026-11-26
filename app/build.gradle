@@ -34,6 +34,9 @@ if (localPropertiesFile.isFile()) {
 }
 def appMetricaApiKey = (providers.environmentVariable('SIMPLEDEBT_APPMETRICA_API_KEY').orNull
     ?: localProperties.getProperty('appMetricaApiKey', '')).trim()
+def appMetricaTestApiKey = providers.environmentVariable('SIMPLEDEBT_APPMETRICA_TEST_API_KEY')
+    .getOrElse(localProperties.getProperty('appMetricaTestApiKey', '')).trim()
+def appMetricaKeyPattern = /(?i)[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/
 
 android {
     namespace "com.breckneck.debtbook"
@@ -67,6 +70,7 @@ android {
 
     buildTypes {
         debug {
+            buildConfigField 'String', 'APPMETRICA_API_KEY', groovy.json.JsonOutput.toJson(appMetricaTestApiKey)
             buildConfigField 'boolean', 'DEMO_ADS', providers.gradleProperty('demoAds').map {
                 Boolean.parseBoolean(it).toString()
             }.orElse('false').get()
@@ -109,8 +113,22 @@ def verifyAppMetricaApiKey = tasks.register('verifyAppMetricaApiKey') {
     group = 'verification'
     description = 'Require the Debt Book AppMetrica SDK API key for release builds.'
     doLast {
-        if (!(appMetricaApiKey ==~ /(?i)[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/)) {
+        if (!(appMetricaApiKey ==~ appMetricaKeyPattern)) {
             throw new GradleException('Configure the AppMetrica SDK API key in local.properties or SIMPLEDEBT_APPMETRICA_API_KEY; see docs/release-build.md.')
+        }
+    }
+}
+
+def verifyDebugAppMetricaApiKey = tasks.register('verifyDebugAppMetricaApiKey') {
+    group = 'verification'
+    description = 'Validate the optional test AppMetrica SDK API key for debug builds.'
+    doLast {
+        if (appMetricaTestApiKey.isEmpty()) return
+        if (!(appMetricaTestApiKey ==~ appMetricaKeyPattern)) {
+            throw new GradleException('Configure a valid test AppMetrica SDK API key in appMetricaTestApiKey or SIMPLEDEBT_APPMETRICA_TEST_API_KEY.')
+        }
+        if (appMetricaTestApiKey.equalsIgnoreCase(appMetricaApiKey)) {
+            throw new GradleException('Use separate AppMetrica SDK API keys for debug and release.')
         }
     }
 }
@@ -132,6 +150,9 @@ def verifyReleaseSigning = tasks.register('verifyReleaseSigning') {
 }
 tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
     dependsOn verifyReleaseSigning, verifyAppMetricaApiKey
+}
+tasks.matching { it.name == 'preDebugBuild' }.configureEach {
+    dependsOn verifyDebugAppMetricaApiKey
 }
 
 base {

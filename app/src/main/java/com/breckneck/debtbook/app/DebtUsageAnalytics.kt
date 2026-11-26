@@ -20,7 +20,7 @@ class DebtUsageAnalytics internal constructor(
     @Inject
     constructor(@ApplicationContext context: Context) : this(
         context.getSharedPreferences("debt_usage_analytics", Context.MODE_PRIVATE),
-        enabled = !BuildConfig.DEBUG,
+        enabled = BuildConfig.APPMETRICA_API_KEY.isNotEmpty(),
         reportEvent = AppMetrica::reportEvent,
     )
 

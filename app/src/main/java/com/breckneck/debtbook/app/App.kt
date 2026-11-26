@@ -24,10 +24,13 @@ class App: Application() {
 
         com.breckneck.debtbook.debt.reminders.DebtReminders.get(this).start()
 
-        if (!BuildConfig.DEBUG || BuildConfig.DEMO_ADS) {
+        val initializeAds = !BuildConfig.DEBUG || BuildConfig.DEMO_ADS
+        if (initializeAds) {
             YandexAds.setUserConsent(false)
             YandexAds.setAppAdAnalyticsReporting(false)
-            if (!BuildConfig.DEBUG) activateAppMetrica()
+        }
+        if (BuildConfig.APPMETRICA_API_KEY.isNotEmpty()) activateAppMetrica()
+        if (initializeAds) {
             YandexAds.initialize(this) {
                 adsInitialized.value = true
                 Log.i("YandexAds", "Yandex initialized")
